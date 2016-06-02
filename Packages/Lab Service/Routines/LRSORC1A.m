@@ -1,5 +1,5 @@
 LRSORC1A ;DALISC/DRH - LRSORC Continued ;07-22-93
- ;;5.2;LAB SERVICE;**201,344,351,384**;Sep 27, 1994;Build 25
+ ;;5.2;LAB SERVICE;**201,344,351,384**;Sep 27, 1994;Build 1
 INIT ;
  S U="^"
  D CONTROL
@@ -54,9 +54,9 @@ PRINT ;
  ....;S PNM=PNM1_","_PNM2
  ....;S LRCHNG=LRSPEC D CHNCASE^LRSORA2 S LRSPEC=LRCHNG
  ....;DSS/RAF - begin modifications
- ....I $G(VA("MRN"))]"" D
- .....W !,$E(PNM,1,22),?23,$G(VA("MRN",0))_": ",$E(SSN,1,11)
- .....W !,?23,"DOB: ",$P($G(VADM(3)),U,2)
+ ....I $G(VA("MRN"))]"",$T(VFDDOB^LRSORA2)]"" D
+ .....W !,$E(PNM,1,22),?23,$G(VA("MRN",0))_": ",SSN
+ .....W !,?23,"DOB: ",$$VFDDOB^LRSORA2(SSN)  ;RAF - 7/8/2015
  .....W:LRDPF=2 !,$E(LRLOC,1,12),?23,$E(LRAN,1,14)
  ....E  W !,$E(PNM,1,22),?23,$E(SSN,1,11) W:LRDPF=2 ?35,$E(LRLOC,1,12),?48,$E(LRAN,1,14)
  ....;DSS/RAF - end modification
@@ -74,10 +74,10 @@ PRNTST ;
  ..D CONT D:$E(IOST,1,2)="C-" WAIT Q:LREND
  ..W @IOF D HDR
  ..;DSS/RAF - BEGIN MOD for MRN label and DOB
- ..I $G(VA("MRN"))]"" D
+ ..I $G(VA("MRN"))]"",$T(VFDDOB^LRSORA2)]"" D
  ...W !,$E(PNM,1,22),?23,$G(VA("MRN",0))_" : ",SSN
- ...W !,?23,"DOB: ",$P($G(VADM(3)),U,2),?63,LRSPDAT
- ...W:LRDPF=2 !,$E(LRLOC,1,12),?57,$E(LRAN,1,14)
+ ...W !,?23,"DOB: ",$P($G(VADM(3)),U,2)
+ ...W:LRDPF=2 !,$E(LRLOC,1,12),?23,$E(LRAN,1,14),?63,LRSPDAT
  ..E  D
  ...W !,$E(PNM,1,22),?23,$E(SSN,1,11) W:LRDPF=2 ?35,$E(LRLOC,1,12),?48,$E(LRAN,1,14)
  ...W ?63,LRSPDAT
@@ -115,12 +115,15 @@ COM ;Print comments on specimen
  .I ($Y>(IOSL-7)) D
  ..D CONT D:$E(IOST,1,2)="C-" WAIT Q:LREND
  ..W @IOF D HDR
- ..I $G(VA("MRN"))']"" W !,$E(PNM,1,22),?23,$E(SSN,1,11) W:LRDPF=2 ?35,$E(LRLOC,1,12),?48,$E(LRAN,1,14) D
- ...W ?63,LRSPDAT
- ..I $G(VA("MRN"))]"" W !,$E(PNM,1,22),?23,$E(SSN,1,11) W:LRDPF=2 ?35,$E(LRLOC,1,12),?48,$E(LRAN,1,14) D
- ...W ?63,LRSPDAT,!,?23,"DOB: ",$P($G(VADM(3)),U,2)
- ..;W !,PNM,?35,SSN W:LRDPF=2 " ",LRLOC,?60,LRAN
- ..;D HDR
+ ..;DSS/RAF - BEGIN MOD for MRN label and DOB
+ ..;W !,$E(PNM,1,23),?25,SSN W:LRDPF=2 " ",LRLOC,?50,$E(LRAN,1,14)
+ ..I $G(VA("MRN"))]"",$T(VFDDOB^LRSORA2)]"" D
+ ...W !,$E(PNM,1,23),?25,$G(VA("MRN",0))_": ",SSN
+ ...W !,?25,"DOB: ",$$VFDDOB^LRSORA2(SSN)  ;RAF 7/8/2015
+ ...W:LRDPF=2 " ",LRLOC,?25,$E(LRAN,1,14)
+ ..E  W !,$E(PNM,1,22),?23,SSN W:LRDPF=2 " ",?35,LRLOC,?48,$E(LRAN,1,14),?63,LRSPDAT
+ ..;DSS/RAF - END MOD
+ ..D HDR
  ..W !,"COMMENT(S): "
  .Q:LREND
  .W ?12,^TMP("LR",$J,LRSUB1,LRSUB2,LRSUB3,LRAN,"COM",C),!
@@ -143,3 +146,4 @@ WAIT ;
  S:($D(DTOUT))!($D(DUOUT)) LREND=1
  Q
 CONT W !?10,"CONTINUED NEXT PAGE",! Q
+ ;;2013.1;VENDOR - DOCUMENT STORAGE SYS;**60**;05 May 2014

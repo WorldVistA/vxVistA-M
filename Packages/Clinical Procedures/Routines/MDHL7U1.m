@@ -1,10 +1,11 @@
 MDHL7U1 ; HOIFO/WAA -Routine utilities for CP PROCESSING OBX ; 7/26/00
- ;;1.0;CLINICAL PROCEDURES;;Apr 01, 2004
+ ;;1.0;CLINICAL PROCEDURES;**11**;Apr 01, 2004;Build 67
  ;
 PATHCHK(X,Y) ; Check the OBX to see if it is a path then set the path.
  ;
  S Y=0
- I $S($P(X,"|",3)="ST":0,$P(X,"|",3)="TX":0,1:1) Q
+ ; Add the OBX report type of RP Reference Pointer
+ I $S($P(X,"|",3)="ST":0,$P(X,"|",3)="TX":0,$P(X,"|",3)="RP":0,1:1) Q
  I X["//" S X=$TR(X,"/","\")
  I X["\E\" D
  . N Y,Z
@@ -56,7 +57,6 @@ URL ;;PROCESS URL;.303
  . S ^MDD(703.1,MDIEN,.1,MDDZ,.1)=PATH("FPATH")
  . Q
  Q
- Q
 DDL ;;PROCESS DLL;.304
  N CNT
  S CNT=0
@@ -70,7 +70,6 @@ DDL ;;PROCESS DLL;.304
  . S ^MDD(703.1,MDIEN,.1,MDDZ,0)=$P(MDATT(PROC),";",6)
  . S ^MDD(703.1,MDIEN,.1,MDDZ,.1)=PATH("FPATH")
  . Q
- Q
  Q
 UUEN ;;PROCESS UUENCODE;.305
  N CNT,CNT2,MDDZ
@@ -101,7 +100,6 @@ XML ;;PROCESS XML;.306
  . S ^MDD(703.1,MDIEN,.1,MDDZ,0)=$P(MDATT(PROC),";",6)
  . S ^MDD(703.1,MDIEN,.1,MDDZ,.1)=PATH("FPATH")
  . Q
- Q
  Q
 XMS ;;PROCESS XMS;.307
  N CNT

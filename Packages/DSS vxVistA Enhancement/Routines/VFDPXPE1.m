@@ -1,5 +1,5 @@
 VFDPXPE1 ;CFS - Main Routine for Data Capture ;05/26/2013
- ;;2011.1.3;DSS,INC VXVISTA OPEN SOURCE;**1**;08 Aug 2013
+ ;;2011.1.3;DSS,INC VXVISTA OPEN SOURCE;**1**;08 Aug 2013;Build 2
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;+This routine is responsible for:
  ;+ - creating new entries in PCE files,

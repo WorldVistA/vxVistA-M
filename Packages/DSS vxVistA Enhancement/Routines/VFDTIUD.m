@@ -1,5 +1,5 @@
 VFDTIUD ;DSS/JLG - vxVistA Disable Encounter RPC ; 1/30/2013 13:50
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 7
+ ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 13
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  Q

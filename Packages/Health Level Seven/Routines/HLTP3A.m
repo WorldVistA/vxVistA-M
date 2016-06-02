@@ -1,5 +1,6 @@
-HLTP3A ;SFIRMFO/RSD - Transaction Processor for TCP- INIT ;11/19/2003  13:57
- ;;1.6;HEALTH LEVEL SEVEN;**109**;Oct 13, 1995
+HLTP3A ;SFIRMFO/RSD - Transaction Processor for TCP- INIT ;10/31/2008  11:01
+ ;;1.6;HEALTH LEVEL SEVEN;**109,142**;Oct 13, 1995;Build 17
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  ;split from hltp3
  Q
@@ -10,7 +11,11 @@ INIT ;initialize variables, get MSA & header, returns HLRESLT if error
  S HLMTIENS=+X,HLMTIEN=+$P(X,U,2),HLMSA=$$MSA^HLTP3(HLMTIEN)
  ;
  ;get header and validate
+ ; patch HL*1.6*142: locking code for MPI-client/server
+ F  L +^HLMA(HLMTIENS,"MSH"):10 Q:$T  H 1
+ F COUNT=1:1:15 Q:$G(^HLMA(HLMTIENS,"MSH",1,0))]""  H COUNT
  M HLHDRO=^HLMA(HLMTIENS,"MSH")
+ L -^HLMA(HLMTIENS,"MSH")
  ;HLMSA is by ref., for a batch msg HLMSA will be setup in HLTPCK2
  D CHK^HLTPCK2(.HLHDRO,.HL,.HLMSA)
  ;Update Message Administration file #773, for incoming message

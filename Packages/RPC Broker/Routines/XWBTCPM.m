@@ -1,7 +1,39 @@
-XWBTCPM ;ISF/RWF - BROKER TCP/IP PROCESS HANDLER ;01/04/2006  62562.56228
- ;;1.1;RPC BROKER;**35,43**;Mar 28, 1997;Build 86
+XWBTCPM ;ISF/RWF - BROKER TCP/IP PROCESS HANDLER ; 8/28/2013 10:43am
+ ;;1.1;RPC BROKER;**35,43,49,53,991**;Mar 28, 1997;Build 11
+ ;Per VHA Directive 2004-038, this routine should not be modified
  ;Based on: XWBTCPC & XWBTCPL, Modified by ISF/RWF
- ;Changed to be started by UCX or %ZISTCPS
+ ;Changed to be started by TCPIP service or %ZISTCPS
+ ;
+ ; Change History:
+ ;
+ ; 2005 01 20 OIFO/RWF: XWB*1.1*35 SEQ #30, NON-callback server. Original
+ ; routine created. 
+ ;
+ ; 2006 05 15 OIFO/RWF: XWB*1.1*43 SEQ #36, New broker long timeout fix.
+ ; The original Broker and the new Broker had different timeout checks
+ ; resulting in records remaining in a locked state long after client
+ ; termination. Decreasing the BROKER ACTIVITY TIMEOUT caused problems
+ ; with Imaging. The new broker was changed to use the same timeout check
+ ; as the original broker, allowing the BROKER ACTIVITY TIMEOUT value to
+ ; be changed back to its pre XWB*1.1*35 value of (180 was the
+ ; recommended value). Also folded entry point for the new M-to-M Broker
+ ; into this main broker entry point, to eliminate the need for a
+ ; separate port, entry point, and VMS or Unix service. Also added
+ ; GTMLNUX entry point to support running the Broker on GT.M on Linux
+ ; using an xinetd service. in CONNTYPE, NEW, SETTIME, GTMLNUX.
+ ;
+ ; 2009 03 31 OIFO/JLI: XWB*1.1*49 SEQ #40, Improve Support for Linux.
+ ; $$OS^XWBTCPM was changed to return "GT.M" under GTM. Revised to make
+ ; Broker work with xinetd on Linux with Cache. in OS and passim.
+ ;
+ ; 2013 08 19-28 VEN/TOAD: XWB*1.1*991 SEQ #46, M2M Security Fixes.
+ ; Load new parameter XWBM2M into new local variable XWBM2M to control
+ ; whether the M-to-M Broker is suppressed. Changed call to M2M to
+ ; honor the new XWBM2M parameter. Improved support for GT.M on Linux
+ ; by preventing an error loop that generates ZINTRECURSEIO errors at
+ ; WBF+3^XWBRW. Annotated & refactored CONNTYPE and INIT for clarity.
+ ; Change History added. in XWBTCPM, CONNTYPE, ETRAP, INIT, EOR.
+ ;
  ;
 DSM ;DSM called from ucx, % passed in with device.
  D ESET
@@ -13,7 +45,7 @@ DSM ;DSM called from ucx, % passed in with device.
  ;
 CACHEVMS ;Cache'/VMS tcpip entry point, called from XWBTCP_START.COM file
  D ESET
- S XWBTDEV="SYS$NET"
+ S XWBTDEV=$S($ZV["VMS":"SYS$NET",1:$P) ;Support for both VMS/TCPIP and Linux/xinetd
  ; **Cache'/VMS specific code**
  O XWBTDEV::5
  X "U XWBTDEV:(::""-M"")" ;Packet mode like DSM
@@ -37,30 +69,47 @@ GTMLNX ;From Linux xinetd script
  D ESET
  ;GTM specific code
  S @("$ZINTERRUPT=""I $$JOBEXAM^ZU($ZPOSITION)""")
- S XWBTDEV=$P X "U XWBTDEV:(nowrap:nodelimiter)"
+ S XWBTDEV=$P X "U XWBTDEV:(nowrap:nodelimiter:ioerror=""TRAP"")"
  S %="",@("%=$ZTRNLNM(""REMOTE_HOST"")") S:$L(%) IO("GTM-IP")=%
  G CONNTYPE
  ;
 ESET ;Set inital error trap
  S U="^",$ETRAP="D ^%ZTER H" ;Set up the error trap
+ S X="",@("$ZT=X") ;Clear old trap
  Q
+ ;
+ ;
  ;Find the type of connection and jump to the processing routine.
 CONNTYPE ;
- N XWBDEBUG,XWBAPVER,XWBCLMAN,XWBENVL,XWBLOG,XWBOS,XWBPTYPE
- N XWBTBUF,XWBTIP,XWBTSKT,XWBVER,XWBWRAP,XWBSHARE,XWBT
- N SOCK,TYPE
- ;DSS/LM - Begin modification - vxVistA variables
- N @$$VFD2
- ;DSS/LM - End modification
- D INIT
- S XWB=$$BREAD^XWBRW(5,XWBTIME)
- D LOG("MSG format is "_XWB_" type "_$S(XWB="[XWB]":"NEW",XWB="{XWB}":"OLD",XWB="<?xml":"M2M",1:"Unk"))
- I XWB["[XWB]" G NEW
- I XWB["{XWB}" G OLD^XWBTCPM1
- I XWB["<?xml" G M2M
- I $L($T(OTH^XWBTCPM2)) D OTH^XWBTCPM2 ;See if a special code.
- D LOG("Prefix not known: "_XWB)
- Q
+ ; input:
+ ;   error trap is set
+ ;   any interrupts are set
+ ;   socket to client is opened and used
+ ;   XWBTDEV = the socket port
+ ;
+ N SOCK,TYPE,XWBAPVER,XWBCLMAN,XWBDEBUG,XWBENVL,XWBLOG,XWBM2M,XWBOS
+ N XWBPTYPE,XWBSHARE,XWBT,XWBTBUF,XWBTIP,XWBTSKT,XWBVER,XWBWRAP
+ ;DSS/SMP - BEGIN MODS - vxVistA RPC Auditing
+ I $$VFDVX N @$$VLIST^VFDXWB
+ ;DSS/SMP - END MODS
+ D INIT ; set up common variables
+ ;
+ S XWB=$$BREAD^XWBRW(5,XWBTIME) ; read in the first message
+ D LOG("MSG format is "_XWB_" type "_$S(XWB="[XWB]":"NEW",XWB="{XWB}":"OLD",XWB="<?xml":"M2M",XWB="~BSE~":"BSE",XWB="~EAC~":"EAC",XWB="~SVR~":"SVR",1:"Unk")) ; ID type
+ ;
+ I XWB["[XWB]" G NEW ; new Broker
+ ;
+ I XWB["{XWB}" G OLD^XWBTCPM1 ; old Broker
+ ;
+ I XWB["<?xml",XWBM2M G M2M ; M-to-M Broker, if allowed
+ ;
+ I $L($T(OTH^XWBTCPM2)) D  ; if it's a special supported message type
+ . D OTH^XWBTCPM2 ; process it
+ E  D  ; otherwise we don't support this message type
+ . D LOG("Prefix not known: "_XWB) ; so just log it
+ ;
+ QUIT  ; end of CONNTYPE
+ ;
  ;
 NEWJOB() ;Check if OK to start a new job, Return 1 if OK, 0 if not OK.
  N X,Y,J,XWBVOL
@@ -103,13 +152,13 @@ NEW ;New broker
  ;Attempt to share license, Must have TCP port open first.
  U XWBTDEV ;D SHARELIC^%ZOSV(1)
  ;setup null device "NULL"
- S %ZIS="0H",IOP="NULL" D ^%ZIS S XWBNULL=IO I POP S XWBERROR="No NULL device" D ^%ZTER,EXIT Q
+ S %ZIS="0H",IOP="NULL" D ^%ZIS S XWBNULL=IO I POP S XWBERROR="No NULL device" D LOG(XWBERROR),EXIT Q
  D SAVDEV^%ZISUTL("XWBNULL")
  ;change process name
  D CHPRN("ip"_$P(XWBTIP,".",3,4)_":"_XWBTDEV)
  ;
 RESTART ;The error trap returns to here
- N $ESTACK S $ETRAP="D ETRAP^XWBTCPM"
+ N $ESTACK S $ETRAP="D ETRAP^XWBTCPM(0)"
  S DT=$$DT^XLFDT,DTIME=30
  U XWBTDEV D MAIN
  D LOG("Exit: "_XWBTBUF)
@@ -149,29 +198,28 @@ MAIN ; -- main message processing loop. debug at MAIN+1
  Q  ;End Of Main
  ;
  ;
-ETRAP ; -- on trapped error, send error info to client
+ETRAP(EXIT) ; -- on trapped error, send error info to client
  N XWBERC,XWBERR
  ;Change trapping during trap.
- S $ETRAP="D ^%ZTER,EXIT^XWBTCPM HALT"
+ S $ETRAP="D ^%ZTER,ETRAP^XWBTCPM(1)"
  S XWBERC=$E($$EC^%ZOSV,1,200),XWBERR="M  ERROR="_XWBERC_$C(13,10)_"LAST REF="_$$LGR^%ZOSV
  I $EC["U411" S XWBERROR="U411",XWBSEC="",XWBERR="Data Transfer Error to Server"
  D ^%ZTER ;%ZTER clears $ZE and $ZCODE
  D LOG("In ETRAP: "_XWBERC) ;Log
- I (XWBERC["READ")!(XWBERC["WRITE")!(XWBERC["SYSTEM-F") D EXIT HALT
+ I (XWBERC["READ")!(XWBERC["WRITE")!(XWBERC["SYSTEM-F")!(XWBERC["IOEOF")!(XWBERC["ZINTRECURSEIO") D EXIT X "HALT "
  U XWBTDEV
- I $G(XWBT("PCNT")) L ^XUTL("XUSYS",$J,0)
+ I $G(XWBT("PCNT")) L +^XUTL("XUSYS",$J,0):99
  E  L  ;Clear Locks
- ;I XWBOS'="DSM" D
- S XWBPTYPE=1 ;So SNDERR won't check XWBR
- ;D SNDERR^XWBRW,WRITE^XWBRW($C(24)_XWBERR_$C(4))
+ ;
+ I EXIT D EXIT X "HALT "
  D ESND^XWBRW($C(24)_XWBERR_$C(4))
  S $ETRAP="Q:($ESTACK&'$QUIT)  Q:$ESTACK -9 S $ECODE="""" D CLEANP^XWBTCPM G RESTART^XWBTCPM",$ECODE=",U99,"
  Q
  ;
 CLEANP ;Clean up the partion
- ;DSS/LM - BEGIN MODS - protect VFD RPC AUDIT local variables
- N @$$VFD2
- ;DSS/LM - END MODS
+ ;DSS/SMP - BEGIN MODS - preserve vxVistA RPC Audit variables
+ I $$VFDVX N @$$VLIST^VFDXWB
+ ;DSS/SMP - END MODS
  N XWBTDEV,XWBNULL D KILL^XUSCLEAN
  Q
  ;
@@ -188,8 +236,8 @@ CHPRN(N) ;change process name
  Q
  ;
 SETTIME(%) ;Set the Read timeout 0=RPC, 1=sign-on
- S XWBTIME=$S($G(%):90,$G(XWBVER)>1.105:$$BAT^XUPARAM,1:36000),XWBTIME(1)=2
- I $G(%) S XWBTIME=$S($G(XWBVER)>1.1:90,1:36000)
+ ; Increased timeout period (%=1) during signon from 90 to 180 for accessibility reasons
+ S XWBTIME=$S($G(%):180,$G(XWBVER)>1.1:$$BAT^XUPARAM,1:36000),XWBTIME(1)=5 ; (*p35)
  Q
 TIMEOUT ;Do this on MAIN  loop timeout
  I $G(DUZ)>0 D QSND^XWBRW("#BYE#") Q
@@ -199,26 +247,35 @@ TIMEOUT ;Do this on MAIN  loop timeout
  Q
  ;
 OS() ;Return the OS
- Q $S(^%ZOSF("OS")["DSM":"DSM",^("OS")["UNIX":"UNIX",^("OS")["OpenM":"OpenM",1:"MSM")
+ Q $S(^%ZOSF("OS")["OpenM":"OpenM",^%ZOSF("OS")["GT.M":"GT.M",^("OS")["DSM":"DSM",1:"UNK")
  ;
-INIT ;Setup
- S U="^",XWBTIME=10,XWBOS=$$OS,XWBDEBUG=0,XWBRBUF=""
- S XWBDEBUG=$$GET^XPAR("SYS","XWBDEBUG")
- ;DSS/LM - Begin modification - initialize vxVistA local variables
- D VFD
- ;DSS/LM - End modification
- S XWBT("BF")=$S(XWBOS="GT.M":"#",1:"!")
- S XWBT("PCNT")=0 I XWBOS="GT.M",$L($T(^XUSCNT)) S XWBT("PCNT")=1
- D LOGSTART^XWBDLOG("XWBTCPM")
- Q
+ ;
+INIT ; Setup common variables for all brokers types
+ S U="^"
+ S XWBDEBUG=$$GET^XPAR("SYS","XWBDEBUG") ; enable or disable debug log
+ S XWBM2M=$$GET^XPAR("ALL","XWBM2M") ; enable or disable M-to-M Broker
+ S XWBOS=$$OS ; MUMPS implementation ("operating system")
+ S XWBRBUF=""
+ S XWBT("BF")=$S(XWBOS="GT.M":"#",1:"!") ; buffer flush
+ S XWBT("PCNT")=0 ; count processes? default to false
+ I XWBOS="GT.M",$L($T(^XUSCNT)) D  ; for GT.M systems
+ . S XWBT("PCNT")=1 ; set flag to count processes
+ S XWBTIME=10 ; default time-out (overridden for new & old broker)
+ ;
+ D LOGSTART^XWBDLOG("XWBTCPM") ; start broker log
+ ;DSS/SMP - BEGIN MODS
+ I $$VFDVX D PARM^VFDXWB
+ ;DSS/SMP - END MODS
+ Q  ; end of INIT
+ ;
  ;
 DEBUG ;Entry point for debug, Build a server to get the connect
- ;DSM sample;ZDEBUG ON S $ZB(1)="SERV+1^XWBTCPM:1",$ZB="ETRAP+1^XWBTCPM:1"
+ ;Cache sample;ZB SERV+1^XWBTCPM:"L+" ZB ETRAP+1^XWBTCPM:"B"
  W !,"Before running this entry point set your debugger to stop at"
  W !,"the place you want to debug. Some spots to use:"
  W !,"'SERV+1^XWBTCPM', 'MAIN+1^XWBTCPM' or 'CAPI+1^XWBPRS.'",!
  W !,"or location of your choice.",!
- W !,"IP Socket to Listen on: " R SOCK:300 Q:'$T!(SOCK["^")
+ W !,"IP Socket to Listen on: " R SOCK:300,! Q:'$T!(SOCK["^")
  ;Use %ZISTCP to do a single server
  D LISTEN^%ZISTCP(SOCK,"SERV^XWBTCPM")
  U $P W !,"Done"
@@ -239,25 +296,11 @@ LOG(MSG) ;Record Debug Info
  D:$G(XWBDEBUG) LOG^XWBDLOG(MSG)
  Q
  ;
-VFD ;DSS/LM - BEGIN MODS - called from INIT above
- ; initialize some local variables in the RPC partition
- ; >>>>> VFD RPC AUDIT variables
- S VFDAUDIT=$$VFD1("SYS","VFD RPC AUDIT ENABLED")
- S VFDPMODE=$$VFD1("SYS","VFD RPC AUDIT PATIENTS")
- S VFDUMODE=$$VFD1("SYS","VFD RPC AUDIT USERS")
- S (VFDCNT,VFDDFN,VFDIENS,VFDQUIT,VFDRPC)=""
- S VFDHNDL=$$NOW^XLFDT_"~"_$J
- I VFDAUDIT,XWBDEBUG S VFDAUDIT=2 ;Indicates AUDIT + DEBUG
- I VFDAUDIT S XWBDEBUG=3 ;Need 'very verbose' for VFDAUDIT
- ; ..... end VFD RPC AUDIT variables
- Q
  ;
-VFD1(ENT,NM) Q $$GET^XPAR(ENT,NM)
+EOR ; end of routine XWBTCPM
  ;
-VFD2() ; list of variable for argument of NEW or KILL command
- ; do not include a final comma at end of list
- ;;VFDAUDIT,VFDDFN,VFDIENS,VFDHNDL,VFDPMODE,VFDUMODE
- ;;
- N I,X,Z S Z=""
- F I=2:1 S X=$P($T(VFD2+I),";",3) Q:X=""  S:I>2 X=","_X S Z=Z_X
- Q Z
+ ;DSS/SMP - BEGIN MODS - OSEHRA test
+VFDVX(SUP) ; is vxVistA, 0:No, 1:Open Source, 2:Supported
+ N VX S VX=$G(^%ZOSF("ZVX"))
+ Q $S(VX'["VX":0,$G(SUP):2,VX="VXS":2,1:1)
+ 

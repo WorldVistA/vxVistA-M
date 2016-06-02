@@ -1,6 +1,11 @@
-DINIT0F9 ;SFISC/MKO-DATA FOR FORM AND BLOCK FILES ;10:49 AM  30 Mar 1999
- ;;22.0;VA FileMan;;Mar 30, 1999
- ;Per VHA Directive 10-93-142, this routine should not be modified.
+DINIT0F9 ;SFISC/MKO-DATA FOR FORM AND BLOCK FILES ;29JULY2014
+ ;;22.2;MSC Fileman;;Jan 05, 2015;
+ ;;Submitted to OSEHRA 5 January 2015 by the VISTA Expertise Network.
+ ;;Based on Medsphere Systems Corporation's MSC Fileman 1051.
+ ;;Licensed under the terms of the Apache License, Version 2.0.
+ ;;GFT;**167,1050**
+ ;
+ ;TAG 'ENTRY+172' CHANGED TO REMEMBER LANGUAGE OF PRINT TEMPLATE HEADER
  F I=1:2 S X=$T(ENTRY+I) G:X="" ^DINIT0FA S Y=$E($T(ENTRY+I+1),5,999),X=$E(X,4,999),@X=Y
  Q
 ENTRY ;
@@ -148,6 +153,14 @@ ENTRY ;
  ;;=10
  ;;^DIST(.404,.10011,40,7,2)
  ;;=10,28^1^10,13^1
+ ;;^DIST(.404,.10011,40,21409,0)
+ ;;=9.5^!M^^3
+ ;;^DIST(.404,.10011,40,21409,.1)
+ ;;=S Y=$J("CANONIC FOR FILE "_$P(^DIPT(DA,0),U,4)_":",40)
+ ;;^DIST(.404,.10011,40,21409,1)
+ ;;=21409
+ ;;^DIST(.404,.10011,40,21409,2)
+ ;;=10,71^3^10,30^1 
  ;;^DIST(.404,.10011,40,8,0)
  ;;=11^SUB-HEADER SUPPRESSED^3
  ;;^DIST(.404,.10011,40,8,1)
@@ -175,7 +188,7 @@ ENTRY ;
  ;;^DIST(.404,.10011,40,12,22)
  ;;=I '$$DHD^DIP3(X,+$P($G(^DIPT(DA,0)),U,4),0) K X
  ;;^DIST(.404,.10011,40,12,23)
- ;;=S ^DIPT(DA,"H")=$S(DDSEXT="":"@",1:DDSEXT)
+ ;;=S ^DIPT(DA,"H")=$S(DDSEXT="":"@",1:DDSEXT) I $G(DUZ("LANG")) S ^("HLANG")=DUZ("LANG")
  ;;^DIST(.404,.10011,40,13,0)
  ;;=5^^4
  ;;^DIST(.404,.10011,40,13,2)
@@ -262,3 +275,9 @@ ENTRY ;
  ;;=12,15^16^12,10
  ;;^DIST(.404,.110101,40,9,14)
  ;;=D USEVAL^DIKCFORM
+ ;;^DIST(.404,.110101,40,666,0)
+ ;;=666^Do Not ReIndex^3
+ ;;^DIST(.404,.110101,40,666,1)
+ ;;=666
+ ;;^DIST(.404,.110101,40,666,2)
+ ;;=14,26^22^14,10

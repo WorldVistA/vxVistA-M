@@ -1,7 +1,6 @@
-VFDCONT1 ;DSS/SGM - CONTINGENCY UTILITIES CONTINUED; 10/26/2011 16:55
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 153
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
- ;;Copyright 1995-2010,Document Storage Systems Inc.,All Rights Reserved
+VFDCONT1 ;DSS/SGM/SMP - CONTINGENCY UTILITIES CONTINUED ;  06/04/15 14:15
+ ;;2013.1;DSS,INC VXVISTA OPEN SOURCE;**52**;04 Jun 2015;Build 2
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ;
  ;
  ;This routine should only be called from within VFDCONT* routines
@@ -16,6 +15,8 @@ VFDCONT1 ;DSS/SGM - CONTINGENCY UTILITIES CONTINUED; 10/26/2011 16:55
  ;10086  ^%ZIS
  ;10089  ^%ZISC
  ;       HTFM^XLFDT
+ ;
+ Q
  ;
 INP(NODE,ROU) ; main loop for getting next inpatient to gen report
  ; NODE - req - contingency report type
@@ -36,6 +37,7 @@ INP(NODE,ROU) ; main loop for getting next inpatient to gen report
  .S X=$$PATIENT(DFN) I $P(X,U)=-1 Q
  .S VFDPAT=X
  .S FILE=$$FILENAME(X,NODE,WARD) I FILE?1"-1^".E Q
+ .S PATH=$$PATH(NODE,WARD) I PATH?1"-1^".E Q
  .I $$OPEN(PATH,FILE) Q
  .D @ROU,^%ZISC
  .S X=VFDPAT_U_DFN_U_PATH_U_FILE D LOG(NODE,X)
@@ -62,6 +64,7 @@ OUT ; main loop to get next clinic and patient to gen report
  ...S X=$$PATIENT(DFN) I $P(X,U)=-1 Q
  ...S VFDPAT=X
  ...S FILE=$$FILENAME(X,NODE) I FILE?1"-1^".E Q
+ ...S PATH=$$PATH(NODE,U_VFDCL) I PATH?1"-1^".E Q
  ...I $$OPEN(PATH,FILE) Q
  ...D @ROU,^%ZISC
  ...S X=VFDPAT_U_DFN_U_PATH_U_FILE D LOG(NODE,X)
@@ -79,6 +82,7 @@ OUT ; main loop to get next clinic and patient to gen report
  ..S X=$$PATIENT(DFN) I $P(X,U)=-1 Q
  ..S VFDPAT=X
  ..S FILE=$$FILENAME(X,NODE) I FILE?1"-1^".E Q
+ ..S PATH=$$PATH(NODE,U_VFDCL) I PATH?1"-1^".E Q
  ..I $$OPEN(PATH,FILE) Q
  ..D @ROU,^%ZISC
  ..S X=VFDPAT_U_DFN_U_PATH_U_FILE D LOG(NODE,X)
@@ -177,6 +181,23 @@ OPEN(PATH,FILE) ; open the HFS device and USE it
  S %ZIS("HFSMODE")="W",%ZIS("HFSNAME")=PATH_FILE
  D ^%ZIS I 'POP U IO
  Q POP
+ ;
+PATH(NODE,INP) ; Get Path
+ ;NODE - req - contingency report type
+ ; INP - req - inpatient ward name ^ IEN (if we have it)
+ N DIV,PATH,WARD
+ S PATH="",WARD=$P(INP,U,2)
+ I 'WARD D
+ .S WARD=$$FIND1^DIC(44,,"O",$P(INP,U),,,"VFDERR") Q:$D(VFDERR)
+ .I 'WARD S WARD=$O(^SC("B",$P(INP,U),0))
+ I 'WARD Q "-1^WARD not found"
+ S PATH=$$XPARGET1^VFDCONT0(WARD_";SC(","VFD CONTING PATH",NODE)
+ I PATH'="" Q PATH
+ S DIV=$$GET1^DIQ(44,WARD_",",3,"I")
+ S:DIV PATH=$$XPARGET1^VFDCONT0(DIV_";DIC(4,","VFD CONTING PATH",NODE)
+ I PATH'="" Q PATH
+ S PATH=$$XPARGET1^VFDCONT0("SYS","VFD CONTING PATH",NODE)
+ Q $S(PATH'="":PATH,1:"-1^No path found")
  ;
 PATIENT(DFN) ; return patient name with MRN or last-four-ssn
  N I,X,Y,Z,ID,VA

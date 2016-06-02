@@ -1,5 +1,5 @@
 VFDXTR02 ;DSS/SGM - MODIFIED XTVNUM FOR DSS ; 07/29/2011 11:13
- ;;2.0;DSS,INC VXVISTA OPEN SOURCE;;29 Jul 2011;Build 92
+ ;;3.0;DSS,INC VXVISTA OPEN SOURCE;;15 May 2015;Build 29
  ;Copyright 1995-2011,Document Storage Systems Inc. All Rights Reserved
  ;
  ;  This is a clone of the XTVNUM program to reset the version#

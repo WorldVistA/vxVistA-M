@@ -1,5 +1,6 @@
-MAGXCVI ;WOIFO/SEB,MLH - Image Index Conversion Generate ; 24 Mar 2005  10:52 AM
- ;;3.0;IMAGING;**17,25,31**;Mar 31, 2005
+MAGXCVI ;WOIFO/SEB,MLH - Image Index Conversion Generate ; 05/18/2007 11:23
+ ;;3.0;IMAGING;**17,25,31,54**;03-July-2009;;Build 1424
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGXCVI ;WOIFO/SEB,MLH - Image Index Conversion Generate ; 24 Mar 2005  10:52 AM
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -75,7 +75,7 @@ GEN1(START,END,RECFLAG,QUEUED) ; Main entry point.
  S ^XTMP("MAGCVIXGEN",0)=EXPDAT_U_CURDAT_U_"IMAGE INDEX CONVERSION"
  K ^XTMP("MAG30P25","SUMMARY"),^TMP($J)
  S $P(^XTMP("MAG30P25","STATUS"),U,13,14)=1_U_ZTSK
- D NOW^%DTC S Y=% D DD^%DT S STARTDT=Y
+ S STARTDT=$$HTE^XLFDT($H,1)
  S START=+$G(START),END=+$G(END),STOP=0
  I END=0 S END=+$P($G(^MAG(2005,0)),U,3)
  S $P(^XTMP("MAG30P25","STATUS"),U,1,5)=DUZ_U_START_U_STARTDT_U_U
@@ -85,7 +85,7 @@ GEN1(START,END,RECFLAG,QUEUED) ; Main entry point.
  . D GEN2(MAGIEN,CT,RECFLAG,QUEUED) S $P(^XTMP("MAG30P25","STATUS"),U,6)=MAGIEN
  . I QUEUED,$$S^%ZTLOAD S STOP=1,$P(^XTMP("MAG30P25","STATUS"),U,13)=2
  . Q
- D NOW^%DTC S Y=% D DD^%DT S ENDDT=Y
+ S ENDDT=$$HTE^XLFDT($H,1)
  S $P(^XTMP("MAG30P25","STATUS"),U,4,5)=$S(STOP:MAGIEN,1:END)_U_ENDDT
  S ^XTMP("MAG30P25","SUMMARY")=$P(^XTMP("MAG30P25","STATUS"),U,2,5)
  I 'STOP S $P(^XTMP("MAG30P25","STATUS"),U,13)=3
@@ -111,7 +111,7 @@ GEN2(MAGIEN,CT,XFREC,QUEUED) N INDXDATA
  I XFREC="N",$D(^XTMP("MAGIXCVGEN",MAGIEN)) Q
  K ^XTMP("MAGIXCVGEN",MAGIEN)
  D GENIEN(MAGIEN,.INDXDATA)
- D NOW^%DTC S ^XTMP("MAGIXCVGEN",MAGIEN)=%_U_INDXDATA
+ S ^XTMP("MAGIXCVGEN",MAGIEN)=$$NOW^XLFDT()_U_INDXDATA
  I INDXDATA="" S INDXDATA="(none)"
  S SUMMARY=$G(^XTMP("MAG30P25","SUMMARY",INDXDATA))
  I $P(SUMMARY,U,2)="" S $P(SUMMARY,U,2)=MAGIEN

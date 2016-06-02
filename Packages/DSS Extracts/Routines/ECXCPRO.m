@@ -1,5 +1,5 @@
-ECXCPRO ;ALB/JAP - PRO Extract YTD Report ; 8/23/05 1:36pm
- ;;3.0;DSS EXTRACTS;**21,24,33,84**;Dec 22, 1997
+ECXCPRO ;ALB/JAP - PRO Extract YTD Report ;3/4/13  15:45
+ ;;3.0;DSS EXTRACTS;**21,24,33,84,137,144**;Dec 22, 1997;Build 9
  ;accumulates extract data by hcpcs code for all extracts in fiscal year date range
  ;if an extract has been purged, then totals will be falsely low
  ;if more than 1 extract exists for a particular month, then totals will be falsely high
@@ -10,7 +10,7 @@ ECXCPRO ;ALB/JAP - PRO Extract YTD Report ; 8/23/05 1:36pm
  ;
  ;
 EN ;setup & queue
- N DIC,DA,DR,DIQ,DIR,DIRUT,DTOUT,DUOUT,DIV,LAST,OUT
+ N DIC,DA,DR,DIQ,DIR,DIRUT,DTOUT,DUOUT,DIV,LAST,OUT,CNT,ECXPORT ;144
  S ECXERR=0
  S ECXHEAD="PRO"
  W !!,"Setup for PRO Extract YTD HCPCS Report --",!
@@ -40,6 +40,13 @@ EN ;setup & queue
  S ECXPGM="PROCESS^ECXCPRO",ECXDESC="PRO Extract YTD Lab Report"
  S ECXSAVE("ECXHEAD")="",ECXSAVE("ECXDIV(")="",ECXSAVE("ECXARRAY(")="",ECXSAVE("ECXPRIME")="",ECXSAVE("ECXALL")=""
  ;determine output device and queue if requested
+ S ECXPORT=$$EXPORT^ECXUTL1 Q:ECXPORT=-1  I ECXPORT D  Q  ;144
+ .K ^TMP($J,"ECXPORT") ;144
+ .S ^TMP($J,"ECXPORT",0)="REPORT TYPE^PSAS HCPCS^QTY COM^TOTAL COM^AVE COM^QTY VA^TOTAL VA^AVE VA^QTY LAB^TOTAL LAB^AVE LAB^ALL AVE" ;144
+ .S CNT=1 ;144
+ .D PROCESS ;144
+ .D EXPDISP^ECXUTL1 ;144
+ .D ^ECXKILL ;144
  W !!,"Please note: The PRO Extract YTD HCPCS Report requires 132 columns."
  W !,"             Select an appropriate device for output."
  W ! D DEVICE^ECXUTLA(ECXPGM,ECXDESC,.ECXSAVE)
@@ -74,6 +81,7 @@ PROCESS ;begin processing
  .S ECXHCPC=$P(NODE0,U,33),ECXTYPE=$E(ECXFEKEY,6),ECXSRCE=$E(ECXFEKEY,7)
  .S ECXQTY=$P(NODE0,U,12),ECXCTAMT=$P(NODE0,U,25),ECXGRPR=$P(NODE1,U,4)
  .I ECXFELOC["NONL" S ECXSTAT=$P(ECXFELOC,"NONL",1),ECXFORM="NONL"
+ .I ECXFELOC["HO2" S ECXSTAT=$P(ECXFELOC,"HO2",1),ECXFORM="NONL" ;137
  .;if this station is lab requesting station, then count lab transaction
  .I ECXFELOC["ORD" D
  ..S ECXSTAT=$P(ECXFELOC,"ORD",1),ECXFORM="ORD"
@@ -103,7 +111,7 @@ PROCESS ;begin processing
  ;print report
  D PRINT^ECXCPRO1
  ;cleanup
- D AUDIT^ECXKILL
+ I '$G(ECXPORT) D AUDIT^ECXKILL ;144
  Q
  ;
 HCPCS ;setup hcpcs cross-reference

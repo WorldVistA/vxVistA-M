@@ -1,6 +1,6 @@
-VFDPSOLB ;DSS/SGM - SUPPORT FOR MODS FOR PSO LABELS ; 10/05/2012 18:14
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 153
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
+VFDPSOLB ;DSS/SGM - SUPPORT FOR MODS FOR PSO LABELS ; 4/3/14 2:33pm
+ ;;1.0;DSSDOR - DOCUMENT STORAGE SYS;;17 Mar 2014;Build 2
+ ;Copyright 1995-2014,Document Storage Systems Inc. All Rights Reserved
  ;
  ;This routine is invoked from various PSO label print routines.
  ;The mods in those routines check for $G(VFDPSOLB) to determine as to
@@ -70,6 +70,10 @@ MAIL(VFDMAIL,SITE,PTECH,FORM) ;
  I $G(PTECH),$G(TECH)'="" D
  . S (I,J,X)=""
  . I TECH["/" S I=$P($P(TECH,"/"),"(",2),J=$P($P(TECH,"/",2),")")
+ .;DSS/AMC - Start mod for Rph initials from partial and refill
+ .I $D(RXF) S J=I
+ .I $D(RXP),$G(RXPI) S I=$P(^PSRX(RX,"P",RXPI,0),U,7),J=""
+ .;DSS/AMC - End of mod
  . I I="" S I=$P($P(TECH,"(",2),")")
  . S Y=$P($G(^VA(200,+I,0)),U,2)
  . I +J S Y=Y_"/"_$P($G(^VA(200,+J,0)),U,2)
@@ -155,10 +159,175 @@ VAMC(SRC) ; replace VAMC chars with 1-4 char abbrev from 59,21600.01
  . Q
  G OUT
  ;
+ ;
+ ; Following entry points by DSS/SMH to support printing NDC
+ ; and manufacturer from the Outpatient Routines.
+ ; Mods made only to PSOLLL1 for laser labels.
+ ;
+NDC(RX) ; $$ ; Get NDC for a prescription for last fill in File 52
+ ; Input:  Rx: Rx IEN in file 52.
+ ; Output: NDC in 5-4-2 format (dashes included)
+ ;
+ QUIT $$GETNDC^PSONDCUT(RX)
+ ;
+MANUF(RX) ; $$ ; Get Manufacturer for a prescription in File 52
+ ; Input:  Rx: Rx IEN in file 52.
+ ; Output: Manufacturer Name
+ ;
+ N NDC S NDC=$$NDC(RX) ; 5-4-2 NDC
+ Q $$MANUF1(NDC) ; Pass control to inner call
+ ;
+MANUF1(NDC) ; [Private] - Inner Manuf call by formatted NDC
+ ; Input: NDC in 5-4-2 (HIPPA) format
+ ; Output: Manufacturer or ____ if not found.
+ ; Unit Testable
+ N MNDC S MNDC=$P(NDC,"-",1,2)      ; Get 5-4
+ I NDC="" Q "_____________"         ; nothing.
+ ;
+ ; Read back
+ N RESULT
+ I $D(^VFD(21675.95,0)) D  ; If FDB Manuf file here...
+ . N MIEN S MIEN=$$FIND1^DIC(21675.95,,"QX",MNDC,"B") ; Find in B Ix
+ . I MIEN S RESULT=$$GET1^DIQ(21675.95,MIEN,.02) I 1 ; Return short nm
+ . E  D  ; no match on 5-4. Try just 5.
+ . . S MNDC=$P(MNDC,"-")
+ . . N %1,IEN
+ . . S %1=$O(^VFD(21675.95,"B",MNDC))
+ . . I %1'[MNDC QUIT  ; Fell off the deep end
+ . . S IEN=$O(^(%1,""))
+ . . S RESULT=$$GET1^DIQ(21675.95,IEN,.02)
+ E  D                    ; Otherwise use VA Manuf file
+ . S MNDC=$P(MNDC,"-"),MNDC="0"_MNDC               ; Use 6 digit manu
+ . N MIEN S MIEN=$$FIND1^DIC(55.95,,"QX",MNDC,"C") ; Find in C index
+ . I MIEN S RESULT=$$GET1^DIQ(55.95,MIEN,.01)      ; Manu name field.
+ I '$D(RESULT) Q "_____________"         ; nothing.
+ Q RESULT
+ ;
+PTADDR(PSOYORIG) ; DSS/SMH - Print Patient Address on Label
+ ;
+ ; If SIG overflow or continued fill(?) don't print it.
+ ; Already printed on earlier label
+ I SIGF!$G(FILLCONT) QUIT
+ ;
+ ; Move cursor to the top
+ S PSOY=PSOYORIG
+ ;
+ ; Get Pharmacy Address info in VFD
+ N VFD
+ D MAIL(.VFD,PSOSITE,1)
+ ;
+ ; Compute the lengths of the lines in Pharm Addr into VFDL
+ N VFDL,L
+ N I F I=1:1:4 D
+ . D STRT^PSOLLU1("SIG",VFD(I),.L)   ; Get Length
+ . S VFDL(I)=L(6)+L(8)/2             ; Get size for font 7
+ . S VFDL("B",VFDL(I))=""            ; Index lengths
+ ;
+ ; Find longest
+ N MAX S MAX=$O(VFDL("B",""),-1)     ;
+ ;
+ I MAX<2.1 S MAX=2.1                 ; Justify if small address
+ ;
+ ; Move Cursor to beyond the longest + simdgen
+ S PSOX=MAX*300+5
+ ;
+ N REM S REM=3.375-MAX                 ; Remaining # of inches
+ ;
+ S PSOFONT="F6B"
+ D PRINTTC(PNM,REM,PSOFONT)            ; Print Patient Name
+ S PSOFONT="F6"
+ ;
+ ; ADD CHECK FOR BAD ADDRESS INDICATOR OR FOREIGN ADDRESS
+ N PSOBADR,PSOTEMP,PSOFORGN,I
+ S PSOBADR=0,PSOTEMP=0
+ S PSOFORGN=$P($G(VAPA(25)),"^",2) I PSOFORGN'="",PSOFORGN'["UNITED STATES" S PSOFORGN=1
+ I 'PSOFORGN S PSOBADR=$$BADADR^DGUTL3(DFN)
+ I 'PSOFORGN,PSOBADR S PSOTEMP=$$CHKTEMP^PSOBAI(DFN)
+ ;
+ ; Print Patient Address lines (Addr 1-3)
+ F I=1:1:3 I $G(VAPA(I))]"" D
+ . S T="" I I=1,'PSOFORGN,PSOBADR,'$G(PSOTEMP) S T="** BAD ADDRESS INDICATED **"
+ . I I=1,T="",PSOFORGN S T="*** FOREIGN ADDRESS ***"
+ . I T="" I 'PSOFORGN I 'PSOBADR!$G(PSOTEMP) S T=$G(VAPA(I))
+ . D PRINTTC(T,REM,PSOFONT)
+ ;
+ ; Print City State Zip
+ S A=+$G(VAPA(5)) I A S A=$S($D(^DIC(5,A,0)):$P(^(0),"^",2),1:"UNKNOWN")
+ S T="" I 'PSOFORGN I 'PSOBADR!$G(PSOTEMP) S T=$G(VAPA(4))_", "_A_"  "_$S($G(VAPA(11)):$P(VAPA(11),"^",2),1:$G(VAPA(6)))
+ D PRINTTC(T,REM,PSOFONT)
+ QUIT
+ ;
+ ;
+TRANWARN(RX) ; [Protected] - Print Federal Controlled Subst Warning
+ ; Input: RX - Prescription IEN in 52
+ ; DSS/SMH
+ N DEA S DEA=$$GET1^DIQ(52,RX,"6:3") ; DRUG:DEA
+ S DEA=+DEA ; Remove the suffixes
+ I 234'[DEA QUIT  ; Not Schedules 2, 3 or 4
+ ;
+ ; Text from http://www.deadiversion.usdoj.gov/pubs/manuals/pharm2/pharm_content.htm Section X
+ N TEXT S TEXT="CAUTION: Federal law prohibits the transfer of this drug to any person other than the patient for whom it was prescribed."
+ N F S F=$C(27)_"(10U"_$C(27)_"(s1p4v0s0b16602T" ; Font
+ S PSOY=PSOY-25  ; Move up a little
+ D PRINT(F_TEXT) ; and print
+ QUIT
+ ;
+OMH() ; [Only permitted to be called PSOLLL1] Are we on OMH? Certain elements need to bolded/unbolded per NY Law
+ N SITE S SITE=$P($$SITE^VASITE(),U,3)
+ Q $E(SITE,1,3)=111 ; OMH Station Numbers
+ ;
+ ;
+ ; DSS/AMC - Start mods for partial ndc and mfg
+GETRXPI(VFDRX,RXP1) ; [Protected] Get IEN for Partial
+ N PARTDT,RXP2
+ S PARTDT=$P(RXP1,U),RXP2=$O(^PSRX(VFDRX,"P","B",PARTDT,0))
+ Q +RXP2
+ ; DSS/AMC - End mod
+ ;
+ ; DSS/AMC - Start of mod ; Get Partial NDC Number
+GETNDC(RX,PART) ; [Protected] Returns the Partial's NDC #
+ ; Input:  (r) RX - Rx IEN (#52)
+ ;         (o) PART - Partial #
+ ; Output:     NDC - Rx NDC #
+ N NDC S NDC=$$GET1^DIQ(52.2,PART_","_RX,1)
+ Q $$NDCFMT^PSSNDCUT(NDC)
+ ; DSS/AMC - End of mods
+ ;
  ;----------------------- PRIVATE SUBROUTINES -----------------------
-PRINT(T,F) ;
+PRINT(T,F) ; Send Text to Printer
  I $G(F)=1 I $G(PSOIO(PSOFONT))]"" X PSOIO(PSOFONT)
  I $G(PSOIO("ST"))]"" X PSOIO("ST")
  W T,!
  I $G(PSOIO("ET"))]"" X PSOIO("ET")
  Q
+PRINTTC(T,LEN,PSOFONT) ; [Private to routine]; Print and possibly truncate
+ ; T = Text
+ ; LEN = Length in inches in which to print it
+ ; PSOFONT = Font size. F6,F6B,F8,F9,F10,F11,F12 etc
+ N SIZEFONT S SIZEFONT=$P(PSOFONT,"B") ; Remove bold
+ S SIZEFONT=$E(SIZEFONT,2,99)   ; Remove the F
+ N L D STRT^PSOLLU1("ML",T,.L)  ; Get text lengths
+ N DONE S DONE=0
+ F  D  Q:DONE  Q:T=""
+ . I L(SIZEFONT)<LEN D PRINT(T,1) S DONE=1
+ . E  K L S T=$E(T,1,$L(T)-1) D STRT^PSOLLU1("ML",T,.L)
+ QUIT
+ ;
+TEST I $L($T(^XTMUNIT)) D EN^XTMUNIT($T(+0),1) QUIT
+T1 ; @Test $$MANUF1 for all drugs
+ ;N POP D OPEN^%ZISH("FILE1",$$DEFDIR^%ZISH(),"NDC-MANUF-ANALYSIS.TXT","W")
+ ;I POP QUIT
+ ;U IO
+ N VFDI F VFDI=0:0 S VFDI=$O(^PSDRUG(VFDI)) Q:'VFDI  D
+ . I ^(VFDI,0)
+ . I +$G(^("I")) QUIT  ; Inactive date present
+ . N VAC S VAC=$P(^(0),U,2)
+ . I VAC["XA" QUIT
+ . N NDC S NDC=$P($G(^(2)),U,4)
+ . I 'NDC QUIT
+ . S NDC=$$NDCFMT^PSSNDCUT(NDC) ; Hippa NDC format
+ . N MNF S MNF=$$MANUF1(NDC)
+ . W $P(^PSDRUG(VFDI,0),U),?40,NDC,?60,MNF,!
+ . D CHKTF^XTMUNIT(MNF'["____")
+ ;D CLOSE^%ZISH()
+ QUIT

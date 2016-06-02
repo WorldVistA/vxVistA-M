@@ -1,5 +1,6 @@
-RCDPESR3 ;ALB/TMK - Server auto-update utilities - EDI Lockbox ;06/06/02
- ;;4.5;Accounts Receivable;**173,214,208,255**;Mar 20, 1995;Build 1
+RCDPESR3 ;ALB/TMK/PJH - Server auto-update utilities - EDI Lockbox ; 10/14/10 5:01pm
+ ;;4.5;Accounts Receivable;**173,214,208,255,269,283**;Mar 20, 1995;Build 8
+ ;;Per VHA Directive 2004-038, this routine should not be modified.
  Q
  ;
 EFTIN(RCTXN,RCD,XMZ,RCGBL,RCEFLG) ; Adds a new EFT record to AR file 344.3
@@ -71,19 +72,23 @@ ADDEFT(RCTXN,RCXMZ,RCGBL,RCERR) ; File EFT TOTAL record in file 344.3
  N RCTDA,RCRCPT,RCDUP,RCHAC,Z,Z0
  S (RCERR,RCTDA)=""
  ;
- I $E($P(RCTXN,U,6),1,3)'="469",$E($P(RCTXN,U,6),1,3)'="569",$E($P(RCTXN,U,6),1,3)'="HAC" D  G ADDQ ; Invalid EFT deposit number
- . N RCDXM,RCCT
- . S RCCT=0
- . S RCCT=RCCT+1,RCDXM(RCCT)="This EFT has an invalid deposit number for EDI Lockbox and has been rejected.",RCCT=RCCT+1,RCDXM(RCCT)=" "
- . S RCCT=RCCT+1,RCDXM(RCCT)=" ",RCCT=RCCT+1,RCDXM(RCCT)="Here are the contents of this message:"
- . D DISP("EDI LBOX INVALID EFT DEPOSIT #",RCCT,.RCDXM,RCXMZ)
+ ;I $E($P(RCTXN,U,6),1,3)'="469",$E($P(RCTXN,U,6),1,3)'="569",$E($P(RCTXN,U,6),1,3)'="HAC" D  G ADDQ ; Invalid EFT deposit number
+ ;. N RCDXM,RCCT
+ ;. S RCCT=0
+ ;. S RCCT=RCCT+1,RCDXM(RCCT)="This EFT has an invalid deposit number for EDI Lockbox and has been rejected.",RCCT=RCCT+1,RCDXM(RCCT)=" "
+ ;. S RCCT=RCCT+1,RCDXM(RCCT)=" ",RCCT=RCCT+1,RCDXM(RCCT)="Here are the contents of this message:"
+ ;. D DISP("EDI LBOX INVALID EFT DEPOSIT #",RCCT,.RCDXM,RCXMZ)
  ;
  ; Make sure it's not already there or if so, it has no ptr to a deposit
  ; or if a deposit exists, that the deposit does not yet have a receipt
  S RCDUP=0,RCHAC=$E($P(RCTXN,U,6),1,3)="HAC" ; This is a HAC deposit
  I $P(RCTXN,U,6)'="" D
+ . ;Format Deposit Date as FM date
+ . N RCDDAT
+ . S X=$$FDT^RCDPESR9($P(RCTXN,U,7))
+ . S RCDDAT=0,%DT="X" D ^%DT S:Y>0 RCDDAT=Y
  . S Z=0 ; Lookup deposit by deposit #
- . F  S Z=$O(^RCY(344.3,"C",$P(RCTXN,U,6),Z)) Q:'Z  S Z0=$G(^RCY(344.3,Z,0)) S:'$P(Z0,U,3) RCTDA=Z Q:RCTDA  D  Q
+ . F  S Z=$O(^RCY(344.3,"ADEP",RCDDAT,$P(RCTXN,U,6),Z)) Q:'Z  S Z0=$G(^RCY(344.3,Z,0)) S:'$P(Z0,U,3) RCTDA=Z Q:RCTDA  D  Q
  .. ; Deposit found - find receipt
  .. I $O(^RCY(344,"AD",$P(Z0,U,3),0)) S RCDUP=Z Q
  .. S RCTDA=Z

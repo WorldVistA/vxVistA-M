@@ -1,7 +1,6 @@
-XOBVRPC ;; mjk/alb - VistaLInk RPC Server Listener Code ; 07/27/2002  13:00
- ;;1.5;VistALink;;Sep 09, 2005
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.0.026]
- ;
+XOBVRPC ;; mjk/alb - VistaLink RPC Server Listener Code ; 07/27/2002  13:00
+ ;;1.6;VistALink;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
  QUIT
  ;
  ; ------------------------------------------------------------------------
@@ -177,12 +176,13 @@ PROCESS ; -- send the real results
  IF XOBPTYPE=5 DO  QUIT
  . IF $EXTRACT($GET(XOBR))'="^" QUIT
  . SET XOBR=$GET(@XOBR) DO WRITE^XOBVSKT(XOBR)
- ; -- variable length records only good upto 255 char)
+ ; -- variable length records only good up to 255 char)
  IF XOBPTYPE=6 DO
  . SET I="" FOR  SET I=$ORDER(XOBR(I)) QUIT:I=""  DO WRITE^XOBVSKT($CHAR($LENGTH(XOBR(I)))),WRITE^XOBVSKT(XOBR(I))
  QUIT
  ;
 ERROR(CODE,RPCNAME,PARAMS) ; -- send rpc application error
+ NEW XOBI,XOBDAT
  ; -- if parameters are passed as in CODE (where CODE = code^param1^param2^...)
  ; -- parse CODE and put parameters into PARAMS array.
  IF CODE[U,$DATA(PARAMS)=0 DO
@@ -217,12 +217,12 @@ VER() ; -- check version and if re-authentication check is needed
  ; -- client version
  SET CV=XOBDATA("XOB RPC","RPC HANDLER VERSION")
  ; -- current server version
- SET SV="1.5"
+ SET SV="1.6"
  ; -- client environment
  SET ENV=XOBSYS("ENV")
  ;
  ; -- if client version is not supported then return error
- IF ("^1.0^1.5^")'[(U_CV_U) DO  GOTO VERQ
+ IF ("^1.0^1.5^1.6^")'[(U_CV_U) DO  GOTO VERQ
  . SET XOBERR=182009_U_CV_U_SV_U_"Client version not supported"
  ;
  ; -- if client environment is not supported then return error

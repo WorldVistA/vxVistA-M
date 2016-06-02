@@ -1,5 +1,5 @@
 VFDIPSS9 ;DSS/WLC - Pre/Post-installation routine for NewCrop KID Build ;23 Nov 2010 10:04
- ;;2011.1.2;VENDOR - DOCUMENT STORAGE SYS;;02 Oct 2013;Build 4
+ ;;2011.1.2;VENDOR - DOCUMENT STORAGE SYS;;02 Oct 2013;Build 13
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
 POST  ; post-installation routine

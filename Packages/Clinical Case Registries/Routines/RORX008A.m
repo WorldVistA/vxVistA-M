@@ -1,6 +1,22 @@
-RORX008A ;HOIFO/BH,SG - VERA REIMBURSEMENT REPORT ; 10/6/05 1:00pm
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORX008A ;HOIFO/BH,SG,VAC - VERA REIMBURSEMENT REPORT ;4/7/09 2:08pm
+ ;;1.5;CLINICAL CASE REGISTRIES;**8,13,19,21**;Feb 17, 2006;Build 45
  ;
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                 --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*8    MAR  2010   V CARR       Modified to handle ICD9 filter for
+ ;                                      'include' or 'exclude'.
+ ;ROR*1.5*13   DEC  2010   A SAUNDERS   User can select specific patients,
+ ;                                      clinics, or divisions for the report.
+ ;ROR*1.5*19   FEB  2012   K GUPTA      Support for ICD-10 Coding System
+ ;ROR*1.5*21   SEP 2013    T KOPP       Added ICN as last report column if
+ ;                                      additional identifier option selected
+ ;                                      
+ ;******************************************************************************
+ ;******************************************************************************
  Q
  ;
  ;***** QUERIES THE REGISTRY
@@ -14,8 +30,11 @@ RORX008A ;HOIFO/BH,SG - VERA REIMBURSEMENT REPORT ; 10/6/05 1:00pm
  ;
 QUERY(FLAGS) ;
  N RORPTN        ; Number of patients in the registry
+ N RORCDLIST     ; Flag to indicate whether a clinic or division list exists
+ N RORCDSTDT     ; Start date for clinic/division utilization search
+ N RORCDENDT     ; End date for clinic/division utilization search
  ;
- N CLINAIDS,CMPXCARE,CNT,CNTARV,CNTBASIC,CNTCMPX,ECNT,IEN,NAME,PATIEN,RC,RORIEN,RORXDST,TMP,UTLCHK,VA,VADM,VAERR,XREFNODE
+ N CLINAIDS,CMPXCARE,CNT,CNTARV,CNTBASIC,CNTCMPX,ECNT,FLAG,IEN,NAME,PATIEN,RC,RCC,RORIEN,RORXDST,TMP,UTLCHK,VA,VADM,VAERR,XREFNODE
  ;
  S XREFNODE=$NA(^RORDATA(798,"AC",+RORREG))
  S RORPTN=$$REGSIZE^RORUTL02(+RORREG)  S:RORPTN<0 RORPTN=0
@@ -27,17 +46,33 @@ QUERY(FLAGS) ;
  S TMP=$$PARAM^RORTSK01("OPTIONS","REGMEDSMRY")
  S RORXDST("SINGLE")='TMP!'$$PARAM^RORTSK01("PATIENTS","COMPLEX")
  ;
+ ;=== Set up Clinic/Division list parameters
+ S RORCDLIST=$$CDPARMS^RORXU001(.RORTSK,.RORCDSTDT,.RORCDENDT)
+ ;
  ;--- Browse through the registry records
  S RORIEN=0
+ S FLAG=$G(RORTSK("PARAMS","ICDFILT","A","FILTER"))
  F  S RORIEN=$O(@XREFNODE@(RORIEN))  Q:RORIEN'>0  D  Q:RC<0
+ . ;--- Start progress counter
  . S TMP=$S(RORPTN>0:CNT/RORPTN,1:"")
  . S RC=$$LOOP^RORTSK01(TMP)  Q:RC<0
  . S CNT=CNT+1
+ . ;--- Get patient DFN
+ . S PATIEN=$$PTIEN^RORUTL01(RORIEN) Q:PATIEN'>0
+ . ;check for patient list and quit if not on list
+ . I $D(RORTSK("PARAMS","PATIENTS","C")),'$D(RORTSK("PARAMS","PATIENTS","C",PATIEN)) Q
  . ;--- Check if the patient should be skipped
  . Q:$$SKIP^RORXU005(RORIEN,FLAGS,RORSDT,ROREDT)
+ . ;--- Check patient against ICD list
+ . S RCC=0
+ . I FLAG'="ALL" D
+ . . S RCC=$$ICD^RORXU010(PATIEN)
+ . I (FLAG="INCLUDE")&(RCC=0) Q
+ . I (FLAG="EXCLUDE")&(RCC=1) Q
+ . ; End of check of ICD list
  . ;
- . ;--- Get the patient IEN (DFN)
- . S PATIEN=$$PTIEN^RORUTL01(RORIEN)  Q:PATIEN'>0
+ . ;--- Check for Clinic or Division list and quit if not in list
+ . I RORCDLIST,'$$CDUTIL^RORXU001(.RORTSK,PATIEN,RORCDSTDT,RORCDENDT) Q
  . ;
  . ;--- Skip Clinical AIDS if Complex Care was not requested
  . S CMPXCARE=0
@@ -56,7 +91,7 @@ QUERY(FLAGS) ;
  . . F  S IEN=$O(RORXDST("ARV",IEN))  Q:IEN'>0  D
  . . . D:'$D(^TMP("RORX008",$J,"DRG",IEN))
  . . . . S ^TMP("RORX008",$J,"DRG",IEN)=RORXDST("ARV",IEN)
- . . . S ^(CLINAIDS)=$G(^TMP("RORX008",$J,"DRG",IEN,CLINAIDS))+1
+ . . . S ^(CLINAIDS)=$G(^TMP("RORX008",$J,"DRG",IEN,CLINAIDS))+1 ;naked reference: ^TMP("RORX008",$J,"DRG",IEN,CLINAIDS)
  . . S CMPXCARE=1,CNTARV=CNTARV+1
  . ;
  . ;--- Skip Basic Care if it was not requested
@@ -68,6 +103,7 @@ QUERY(FLAGS) ;
  . . S TMP=$$DATE^RORXU002(VADM(6)\1)
  . . S TMP=TMP_U_($D(RORXDST("ARV"))>0)_U_CMPXCARE_U_CLINAIDS
  . . S ^TMP("RORX008",$J,"PAT",PATIEN)=VA("BID")_U_VADM(1)_U_TMP
+ . . S $P(^TMP("RORX008",$J,"PAT",PATIEN),U,6)=$S($$PARAM^RORTSK01("PATIENTS","ICN"):$$ICN^RORUTL02(PATIEN),1:"")
  ;
  ;--- Totals
  S ^TMP("RORX008",$J,"PAT")=CNTBASIC_U_CNTCMPX_U_CNTARV
@@ -130,6 +166,7 @@ STORE(REPORT) ;
  . . D ADDVAL^RORTSK11(RORTSK,"AIDSTAT",+$P(BUF,U,6),ITEM,1)
  . . D ADDVAL^RORTSK11(RORTSK,"ARV",+$P(BUF,U,4),ITEM,1)
  . . D ADDVAL^RORTSK11(RORTSK,"COMPLEX",+$P(BUF,U,5),ITEM,1)
+ . . I $$PARAM^RORTSK01("PATIENTS","ICN") D ADDVAL^RORTSK11(RORTSK,"ICN",$P(BUF,U,6),ITEM,1)
  ;
  ;--- Summary
  S BUF=@NODE@("PAT")

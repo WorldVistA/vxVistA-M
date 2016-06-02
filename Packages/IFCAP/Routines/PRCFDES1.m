@@ -1,6 +1,6 @@
-PRCFDES1 ;WISC/LEM-ESIG MAINTENANCE ROUTINE ;1/19/93  1:05 PM
-V ;;5.1;IFCAP;;Oct 20, 2000
- ;Per VHA Directive 10-93-142, this routine should not be modified.
+PRCFDES1 ;WISC/LEM-ESIG MAINTENANCE ROUTINE ;1/5/11  16:28
+V ;;5.1;IFCAP;**154**;Oct 20, 2000;Build 5
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  ;ROUTINE FOR MAINTAINING FIELD 61 (CERTIFIED BY ELEC SIG), FILE 421.5
 DECODE(LEVEL0) ;Extrinsic Function to return hashed electronic sig to readable form.
  ;returns "" if unsuccessful
@@ -41,6 +41,7 @@ ENCODE(LEVEL0,USERNUM,Y) ;Encode e signature for version 1 only
  S $P(RECORD21,"^",1,2)="1^"_$$SUM^PRCUESIG(SIGBLOCK)
  S ^PRCF(421.5,LEVEL0,2)=RECORD2
  S ^PRCF(421.5,LEVEL0,2.1)=RECORD21
+ N PRCDATE S PRCDATE=$P(RECORD21,U,5) I PRCDATE'="",LEVEL0>0 S ^PRCF(421.5,"AF",PRCDATE,LEVEL0)=""
  S Y=1 QUIT
 REMOVE(LEVEL0) ;Entry point to remove e signature from record
  ;NOT an extrinsic function
@@ -48,6 +49,7 @@ REMOVE(LEVEL0) ;Entry point to remove e signature from record
  S RECORD2=$G(^PRCF(421.5,LEVEL0,2))
  S RECORD21=$G(^PRCF(421.5,LEVEL0,2.1))
  F I=10,12 S $P(RECORD2,"^",I)=""
+ N PRCDATE S PRCDATE=$P(RECORD21,U,5) I PRCDATE'="",LEVEL0>0 K ^PRCF(421.5,"AF",PRCDATE,LEVEL0)
  F I=2,5 S $P(RECORD21,"^",I)=""
  S ^PRCF(421.5,LEVEL0,2)=RECORD2
  S ^PRCF(421.5,LEVEL0,2.1)=RECORD21

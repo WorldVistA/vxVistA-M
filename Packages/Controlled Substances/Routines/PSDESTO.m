@@ -1,8 +1,10 @@
 PSDESTO ;BIR/BJW-Add CS Non-Inv Drug to Holding file ; 28 Feb 98
- ;;3.0; CONTROLLED SUBSTANCES ;**8,32,66**;13 Feb 97;Build 3
+ ;;3.0; CONTROLLED SUBSTANCES ;**8,32,66,69**;13 Feb 97;Build 13
  ;**Y2K compliance**;display 4 digit year on va forms
+ ;References to ^PSD(58.86, supported by DBIA4472
+ ;
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- I '$D(^XUSEC("PSJ RPHARM",DUZ)) W !!,"Please contact your Pharmacy Coordinator for access to",!,"destroy Controlled Substances.",!!,"PSJ RPHARM security key required.",! G END
+ I '$D(^XUSEC("PSJ RPHARM",DUZ)),'$D(^XUSEC("PSD TECH ADV",DUZ)) W !!,"Please contact your Pharmacy Coordinator for access to",!,"destroy Controlled Substances.",!!,"PSJ RPHARM or PSD TECH ADV security key required.",! G END
  S PSDUZ=DUZ D NOW^%DTC S PSDT=+$E(%,1,12)
  W !!,?5,"NOTE: This Holding for Destruction transaction WILL NOT update your",!,?5,"Controlled Substances inventory balance.",!!
 ASKD ;ask disp location

@@ -1,5 +1,6 @@
-MAGDRPC8 ;WOIFO/EdM - RPCs for Master Files ; 06/09/2005  09:07
- ;;3.0;IMAGING;**11,30,51**;26-August-2005
+MAGDRPC8 ;WOIFO/EdM/BT - RPCs for Master Files ; 29 Mar 2012 11:59 AM
+ ;;3.0;IMAGING;**11,30,51,54,118**;Mar 19, 2002;Build 4525;May 01, 2013
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGDRPC8 ;WOIFO/EdM - RPCs for Master Files ; 06/09/2005  09:07
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -18,9 +18,10 @@ MAGDRPC8 ;WOIFO/EdM - RPCs for Master Files ; 06/09/2005  09:07
  Q
  ;
 UPDTAPP(OUT,APP) ; RPC = MAG DICOM UPDATE SCU LIST
- N A,D0,GWLOC,GWNAM,HDR,I,MIN,N,NOW,P5,P7,PLUS,SERVNAM,UP,X
+ N A,D0,D1,DIMSE,GWLOC,GWNAM,HDR,I,MIN,N,NOW,P5,P7,PLUS,SERVNAM,UP,X
  S (GWNAM,GWLOC)="",N=0
  S A="" F  S A=$O(APP(A)) Q:A=""  D
+ . Q:A["_"
  . S X=APP(A) F I=1:1:7 S:$P(X,"^",I)="" N=N+1
  . S:GWNAM="" GWNAM=$P(X,"^",5)
  . S:GWLOC="" GWLOC=$P(X,"^",7)
@@ -34,7 +35,7 @@ UPDTAPP(OUT,APP) ; RPC = MAG DICOM UPDATE SCU LIST
  S HDR=$G(^MAG(2006.587,0))
  S $P(HDR,"^",1,2)="DICOM TRANSMIT DESTINATION^2006.587"
  ;
- D NOW^%DTC S NOW=%,(MIN,PLUS,UP)=0
+ S NOW=$$NOW^XLFDT(),(MIN,PLUS,UP)=0
  ;
  S D0="" F  S D0=$O(^MAG(2006.587,"D",GWNAM,GWLOC,D0)) Q:D0=""  D
  . S X=$G(^MAG(2006.587,D0,0)),SERVNAM=$P(X,"^",1) Q:SERVNAM=""
@@ -47,18 +48,44 @@ UPDTAPP(OUT,APP) ; RPC = MAG DICOM UPDATE SCU LIST
  . S ^MAG(2006.587,D0,0)=$P(X,"^",1,8),UP=UP+1
  . S ^MAG(2006.587,"C",SERVNAM,GWLOC,GWNAM,D0)=""
  . S ^MAG(2006.587,"D",GWNAM,GWLOC,D0)=""
+ . K DIMSE S DIMSE=A(SERVNAM)_"_"
+ . S X=DIMSE F  S X=$O(APP(X)) Q:$E(X,1,$L(DIMSE))'=DIMSE  D
+ . . S N=$P(X,"_",2) Q:N=""
+ . . S DIMSE(N)=APP(X)
+ . . S DIMSE("C-ECHO")="1^1"
+ . . Q
+ . K ^MAG(2006.587,D0,1)
+ . S D1=0,X="" F  S X=$O(DIMSE(X)) Q:X=""  D
+ . . S D1=D1+1,^MAG(2006.587,D0,1,D1,0)=X_"^"_DIMSE(X)
+ . . S ^MAG(2006.587,D0,1,"B",X,D1)=""
+ . . Q
+ . S:D1 ^MAG(2006.587,D0,1,0)="^2006.5871SA^"_D1_"^"_D1
  . Q
  S $P(HDR,"^",4)=$P(HDR,"^",4)-MIN
  ;
  S A="" F  S A=$O(APP(A)) Q:A=""  D
+ . Q:A["_"
  . S X=APP(A),$P(X,"^",8)=NOW
  . S D0=$O(^MAG(2006.587," "),-1)+1,PLUS=PLUS+1,$P(HDR,"^",3)=D0
  . S ^MAG(2006.587,D0,0)=$P(X,"^",1,8),SERVNAM=$P(X,"^",1)
  . S ^MAG(2006.587,"B",SERVNAM,D0)=""
  . S ^MAG(2006.587,"C",SERVNAM,GWLOC,GWNAM,D0)=""
  . S ^MAG(2006.587,"D",GWNAM,GWLOC,D0)=""
+ . K DIMSE S DIMSE=A_"_"
+ . S X=DIMSE F  S X=$O(APP(X)) Q:$E(X,1,$L(DIMSE))'=DIMSE  D
+ . . S N=$P(X,"_",2) Q:N=""
+ . . S DIMSE(N)=APP(X)
+ . . S DIMSE("C-ECHO")="1^1"
+ . . Q
+ . K ^MAG(2006.587,D0,1)
+ . S D1=0,X="" F  S X=$O(DIMSE(X)) Q:X=""  D
+ . . S D1=D1+1,^MAG(2006.587,D0,1,D1,0)=X_"^"_DIMSE(X)
+ . . S ^MAG(2006.587,D0,1,"B",X,D1)=""
+ . . Q
+ . S:D1 ^MAG(2006.587,D0,1,0)="^2006.5871SA^"_D1_"^"_D1
  . Q
- S $P(HDR,"^",4)=$P(HDR,"^",4)+PLUS
+ S (N,D0)=0 F  S D0=$O(^MAG(2006.587,D0)) Q:'D0  S N=N+1
+ S $P(HDR,"^",4)=N
  S ^MAG(2006.587,0)=HDR
  L -^MAG(2006.587,0)
  S OUT="1"
@@ -75,10 +102,11 @@ UPDTGW(OUT,ONAM,NNAM,OLOC,NLOC) ; RPC = MAG DICOM UPDATE GATEWAY NAME
  S (N,D0)=0 F  S D0=$O(^MAG(2006.587,D0)) Q:'D0  D
  . S X=$G(^MAG(2006.587,D0,0)),P5=$P(X,"^",5) Q:P5'=ONAM
  . S P1=$P(X,"^",1),P7=$P(X,"^",7)
- . I OLOC'="",P5'="" K ^MAG(2006.587,"C",P1,OLOC,P5,D0),^MAG(2006.587,"D",P5,OLOC,D0)
+ . I OLOC'="",P5'="",P1'="" K ^MAG(2006.587,"C",P1,OLOC,P5,D0)
+ . I OLOC'="",P5'="" K ^MAG(2006.587,"D",P5,OLOC,D0)
  . S $P(X,"^",5)=NNAM,$P(X,"^",7)=NLOC
  . S ^MAG(2006.587,D0,0)=X
- . S ^MAG(2006.587,"C",P1,NLOC,NNAM,D0)=""
+ . S:P1'="" ^MAG(2006.587,"C",P1,NLOC,NNAM,D0)=""
  . S ^MAG(2006.587,"D",NNAM,NLOC,D0)=""
  . S N=N+1
  . Q
@@ -94,14 +122,14 @@ SIBS(P0,T) N MAGLOC,P1,P2
  Q
  ;
 LOCS(OUT) ; RPC = MAG DICOM VALID LOCATIONS
- N D0,I,M,N,P1,R,T
+ N D0,I,MAGM,N,P1,MAGR,T
  S N=1
  S D0=0 F  S D0=$O(^MAG(2006.1,D0)) Q:'D0  D
  . S X=$G(^MAG(2006.1,D0,0)),P1=$P(X,"^",1) Q:P1=""
  . I +P1=P1 S T(P1)="" Q
- . D FIND^DIC(4,"","","BX",P1,"*","","","","R","M") ; IA #4389
- . S I=0 F  S I=$O(R("DILIST",2,I)) Q:'I  D
- . . S P1=R("DILIST",2,I) I P1 K R S T(P1)=""
+ . D FIND^DIC(4,"","","BX",P1,"*","","","","MAGR","MAGM") ; IA #4389
+ . S I=0 F  S I=$O(MAGR("DILIST",2,I)) Q:'I  D
+ . . S P1=MAGR("DILIST",2,I) I P1 K MAGR S T(P1)=""
  . . Q
  . Q
  I $T(+1^XUPARAM)'="" S P1=$$KSP^XUPARAM("INST") D:P1 SIBS(P1,.T)
@@ -114,15 +142,15 @@ LOCS(OUT) ; RPC = MAG DICOM VALID LOCATIONS
  Q
  ;
 GETPLACE(OUT,LOCATION) ; RPC = MAG DICOM GET PLACE
- N D0,P1,M,R,X
+ N D0,P1,MAGM,MAGR,X
  S LOCATION=+$G(LOCATION)
  S OUT="-1,Location """_LOCATION_""" not found."
  S D0=0 F  S D0=$O(^MAG(2006.1,D0)) Q:'D0  D  Q:OUT>0
  . S X=$G(^MAG(2006.1,D0,0)),P1=$P(X,"^",1) Q:P1=""
  . I +P1=P1,LOCATION=P1 S OUT=D0 Q
- . D FIND^DIC(4,"","","BX",P1,"*","","","","R","M")
- . S I=0 F  S I=$O(R("DILIST",2,I)) Q:'I  D
- . . I LOCATION=R("DILIST",2,I) S OUT=D0
+ . D FIND^DIC(4,"","","BX",P1,"*","","","","MAGR","MAGM")
+ . S I=0 F  S I=$O(MAGR("DILIST",2,I)) Q:'I  D
+ . . I LOCATION=MAGR("DILIST",2,I) S OUT=D0
  . . Q
  . Q
  Q
@@ -150,12 +178,18 @@ HIGHHL7(OUT) ; RPC = MAG DICOM GET HIGHEST HL7
  Q
  ;
 FINDLOC(OUT,NAME) ; RPC = MAG DICOM FIND LOCATION
- N I,M,P1,R,X
+ ; NAME is the location to find in either Institution Name or Station Number
+ ;         fields of the Institution File (#4)
+ ;
+ N MAGM,MAGR,I
  S OUT="-1,Invalid location """_NAME_"""."
- D FIND^DIC(4,"",.01,"BXA",NAME,"*","","","","R","M")
- S I=0 F  S I=$O(R("DILIST",2,I)) Q:'I  D
- . S P1=R("DILIST",2,I) I P1 K R S OUT=P1
- . Q
+ ;
+ ; Find NAME in either Institution Name or Station Number fields
+ D FIND^DIC(4,"",.01,"BXA",NAME,"*","B^D","","","MAGR","MAGM")
+ ;
+ I MAGR("DILIST",0) D
+ . S I=$O(MAGR("DILIST",2,"")) ; If multiple found, return the first IEN
+ . S OUT=MAGR("DILIST",2,I)
  Q
  ;
 VALIMGT(OUT) ; RPC = MAG DICOM GET IMAGING TYPES
@@ -191,7 +225,7 @@ HL7PTR(OUT,ACTION,VALUE) ; RPC = MAG DICOM HL7 POINTER ACTION
  I ACTION="GetDate" D  Q
  . S X=$G(^MAGDHL7(2006.5,+VALUE,0))
  . I X="" S OUT="-1,Invalid Pointer """_VALUE_"""." Q
- . S Y=$P(X,"^",3) D DD^%DT S OUT=Y
+ . S OUT=$$FMTE^XLFDT($P(X,"^",3),1)
  . Q
  I ACTION="DatePtr" D  Q
  . S Y=$O(^MAGDHL7(2006.5,"C",VALUE),-1)
@@ -204,7 +238,7 @@ HL7PTR(OUT,ACTION,VALUE) ; RPC = MAG DICOM HL7 POINTER ACTION
  . . S Y=$O(^MAGDHL7(2006.5,"C",Y,""))
  . . I Y S OUT=Y ; found date
  . . E  D
-  . . . ; otherwise, find the appropriate entry the hard way
+ . . . ; otherwise, find the appropriate entry the hard way
  . . . S D0=$O(^MAGDHL7(2006.5,0))
  . . . S Y=$P($G(^MAGDHL7(2006.5,D0,0)),"^",3) I Y'<X S OUT=0 Q
  . . . S D0=" " F  S D0=$O(^MAGDHL7(2006.5,D0),-1) Q:'D0  D  Q:OUT

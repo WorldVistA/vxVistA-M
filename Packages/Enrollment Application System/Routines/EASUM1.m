@@ -1,5 +1,5 @@
 EASUM1 ;ALB/SEK,GN - IVM MEANS/COPAY TEST UPLOAD DRIVER ; 7/6/04 1:23pm
- ;;1.0;ENROLLMENT APPLICATION SYSTEM;**23,30,35,42**;21-OCT-94
+ ;;1.0;ENROLLMENT APPLICATION SYSTEM;**23,30,35,42,86**;21-OCT-94;Build 4
  ;;Per VHA Directive 10-93-142, this routine should not be modified.
  ;
  ;EAS*1*42 add RX Copay to Z06 Upload/Delete
@@ -45,9 +45,9 @@ ADD ; add new annual means test file (408.31) stub
  ;         DFN (.02) Patient IEN
  ;         DGMTYPT (.19) type of test (1-means test, 2-Rx Copay test)
  ; output  DGMTI annual means test IEN
- S DGMTDT=IVMMTDT                 ;stop setting DGMTYPT here, EAS*1*42
+ S DGMTDT=IVMMTDT
  D ADD^DGMTA
- I $G(IVMMTIEN)="" S IVMMTIEN=+Y    ;Set IEN if only MT on file is Z06 MT
+ I $G(IVMMTIEN)="" S IVMMTIEN=$G(DGMTI) ;Set IEN if only MT on file is Z06 MT
  ;
  ;Create new Z06 IVM Means Test
  ; Make STUB MT primary, add comment that it was created by Edb
@@ -59,17 +59,16 @@ ADD ; add new annual means test file (408.31) stub
  ;
  ; Linking logic for MT & CT, conditionally set link field 2.06 
  ;   Link the CT to MT (if MT found), or MT to CT (if CT found)
- ;   don't link tests older than Oct. 1999 or not same Year & NOT
- ;    Cat "C" (i.e. Cat "C" & > Oct. 1999 is ok to link)
+ ;   don't link tests older than Oct. 1999 or not same Year
  N LNKDAT,LNKMT,LNKDTE,LNKCAT,CURIEN
  S CURIEN=DGMTI,LNKMT=""
  S LNKDAT=$$LST^DGMTU(DFN,DGMTDT,$S(DGMTYPT=1:2,1:1)),DGMTI=CURIEN
  S:LNKDAT LNKMT=+LNKDAT,LNKDTE=$P(LNKDAT,"^",2),LNKCAT=$P(LNKDAT,"^",4)
  ; set LNKMT off if either of two scenarios below
- I LNKMT D                                  ;check for < Oct. 1999 1st
+ I LNKMT D
+ . I $E(LNKDTE,1,3)'=$E(DGMTDT,1,3) S LNKMT="@" Q
  . I DGMTDT<2991001 S LNKMT="" Q
- . I $E(LNKDTE,1,3)'=$E(DGMTDT,1,3),LNKCAT'="C" S LNKMT="" Q
- S:LNKMT DR=DR_";2.06////^S X=LNKMT"
+ S:LNKMT'="" DR=DR_";2.06////^S X=LNKMT"
  ;
  D ^DIE K DA,DIE,DR                            ;update new 408.31 test
  ;

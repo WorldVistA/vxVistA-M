@@ -1,5 +1,5 @@
 PSOSDP ;BHAM ISC/SAB - poly pharmacy report attached to action/info profile ;12/13/93 8:24
- ;;7.0;OUTPATIENT PHARMACY;**2,17,19,107,110,155,176,233,258,326**;DEC 1997;Build 7
+ ;;7.0;OUTPATIENT PHARMACY;**2,17,19,107,110,155,176,233,258,326**;DEC 1997;Build 8
  ;called from PSOSD
  Q:+$G(^TMP($J,DFN))<PSONUM!($G(DOD(DFN))]"")  S DRG="",P=0,PSOPOLP=0 D HD K SGY
  F  S DRG=$O(^TMP($J,DFN,DRG)) Q:DRG=""  F  S P=$O(^TMP($J,DFN,DRG,P)) Q:'P  I $G(^PSRX(P,0))]"" S RX0=^PSRX(P,0),RX2=$G(^(2)),RX3=$G(^(3)) D  K SGY
@@ -17,7 +17,7 @@ HD S FN=DFN
  S PSNAME=$E(VADM(1),1,28),PSDOB=$P(VADM(3),"^",2)
  W @IOF,!,"Polypharmacy Rx Profile Review",?47,"Run Date: " S Y=DT D DT^DIO2 W ?71,"Page: "_PAGE S PAGE=PAGE+1,X=$$SITE^VASITE
  ;DSS/CRL - BEGIN MOD - deveteranize, orig code argument of ELSE
- I $T(VX^VFDI0000)'="",$$VX^VFDI0000["VX" D VFD^PSOSD1("SDP")
+ I $G(^%ZOSF("ZVX"))["VX" D VFD^PSOSD1("SDP")
  E  W !,"Sorted by drug name for Rx's currently active",@$S(PSORM:"?70",1:"!"),"Site: VAMC "_$P(X,"^",2)_"( "_$P(X,"^",3)_")",!,$E(LINE,1,$S('PSORM:80,1:IOM)-1)
  ;DSS/CRL - END MOD
  I $D(CLINICX) W !?1,"Clinic: ",$E(CLINICX,1,28),?45,"Date/Time: " S Y=CLDT D DT^DIO2 W !?1,"Name  : ",PSNAME,?30 W ?58,"Review Date: ________" W !?1,"DOB   : "_PSDOB
@@ -28,7 +28,14 @@ HD S FN=DFN
  S PSOBAR4=$G(PSOBAR3)]""&($G(PSOBAR2)]"")&(+$P($G(PSOPAR),"^"))
  I PSOBAR4 S X="S",X2=PSSN W @$S('PSORM:"!?30",1:"?$X+5") S X1=$X W @PSOBAR3,X2,@PSOBAR2,$C(13) S $X=0
  F GMRVSTR="WT","HT" S VM=GMRVSTR D EN6^GMRVUTL S @VM=X,$P(@VM,"^")=$E($P(@VM,"^"),4,5)_"/"_$E($P(@VM,"^"),6,7)_"/"_($E($P(@VM,"^"),1,3)+1700)
- S X=$P(WT,"^",8),Y=$J(X/2.2,0,2),WT=WT_"^"_Y,X=$P(HT,"^",8),Y=$J(2.54*X,0,2),HT=HT_"^"_Y
+ ;DSS/SMP - BEGIN MODS
+ I $G(^%ZOSF("ZVX"))["VX" D  I 1
+ .S X=$P(WT,"^",8),Y=$$LB2KG^VFDXLF(X,2),WT=WT_"^"_Y
+ .S X=$P(HT,"^",8),Y=$$IN2CM^VFDXLF(X,2),HT=HT_"^"_Y
+ E  D
+ .S X=$P(WT,"^",8),Y=$J(X/2.2,0,2),WT=WT_"^"_Y
+ .S X=$P(HT,"^",8),Y=$J(2.54*X,0,2),HT=HT_"^"_Y
+ ;DSS/SMP - END MODS
  W !?1,"WEIGHT(Kg): " W:+$P(WT,"^",8) $P(WT,"^",9)_" ("_$P(WT,"^")_")" W ?41,"HEIGHT(cm): " W:$P(HT,"^",8) $P(HT,"^",9)_" ("_$P(HT,"^")_")" K VM,WT,HT
  W !,$E(LINE,1,$S('PSORM:80,1:IOM)-1),!!!?10 F I=1:1:70 W "*"
  W !?10,"*",?35,"POLYPHARMACY REVIEW",?79,"*",!?10,"*",?79,"*",!?10,"* Patient:  "_PSNAME,?50,"(ID#: "_VA("BID")_")",?79,"*"

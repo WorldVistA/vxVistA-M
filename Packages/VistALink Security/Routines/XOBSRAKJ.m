@@ -1,7 +1,6 @@
 XOBSRAKJ ;kc/oak - VistALink Reauthentication Code, SSO/UC KAAJEE ; 03/02/2004  07:00
- ;;1.5;VistALink Security;;Sep 09, 2005
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.0.026]
- ;
+ ;;1.6;VistALink Security;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
  QUIT
  ;
  ; ------------------------------------------------------------------------

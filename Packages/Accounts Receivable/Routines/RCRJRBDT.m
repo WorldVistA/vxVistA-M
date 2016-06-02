@@ -1,6 +1,6 @@
-RCRJRBDT ;WISC/RFJ-bad debt retransmit ;1 Feb 98
- ;;4.5;Accounts Receivable;**101,170,191,138,239**;Mar 20, 1995
- ;;Per VHA Directive 10-93-142, this routine should not be modified.
+RCRJRBDT ;WISC/RFJ-bad debt retransmit ; 9/2/10 8:47am
+ ;;4.5;Accounts Receivable;**101,170,191,138,239,273**;Mar 20, 1995;Build 3
+ ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  ;
  ; - deactivate this option with patch PRCA*4.5*239
@@ -131,7 +131,7 @@ BDR ; Compile new Bad Debt Report.
  ;  show mccf
  D SETLINE(" ")
  D SETLINE($E(SPACE,1,26)_"Medical Care Collection Fund")
- D SETLINE($E(SPACE,1,20)_" Funds 528701; 528703; 528704; and 528709")
+ D SETLINE($E(SPACE,1,20)_" Funds 528701; 528703; 528704; 528709; and 528711")
  D SETLINE($E(SPACE,1,26)_"----------------------------")
  D SETLINE(" ")
  D SETLINE(" ")
@@ -149,6 +149,9 @@ BDR ; Compile new Bad Debt Report.
  ;     5              133N             528704 - 133N
  ;     6              1338             528704 - 1338
  ;     7            1319.2             528709 - 1319
+ ;     8            1319.5             528711 - 1319
+ ;     9            133N.2             528711 - 133N
+ ;    10            1338.2             528711 - 1338
  ;
  S RCARR(1)="1319.3^528701 - 1319"
  S RCARR(2)="1319^528703 - 1319"
@@ -157,6 +160,9 @@ BDR ; Compile new Bad Debt Report.
  S RCARR(5)="133N^528704 - 133N"
  S RCARR(6)="1338^528704 - 1338"
  S RCARR(7)="1319.2^528709 - 1319"
+ S RCARR(8)="1319.5^528711 - 1319"
+ S RCARR(9)="133N.2^528711 - 133N"
+ S RCARR(10)="1338.2^528711 - 1338"
  ;
  S RCX="" F  S RCX=$O(RCARR(RCX)) Q:RCX=""  S RCD=RCARR(RCX) D
  .S RCDATA=$G(^RC(348.1,+$O(^RC(348.1,"B",$P(RCD,"^"),0)),0))

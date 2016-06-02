@@ -1,6 +1,6 @@
-VFDVZOSF ;VSA/SGM - INTERFACE TO %ZOSF GLOBAL ; 07/28/2011 18:15
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 86
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
+VFDVZOSF ;VSA/SGM/SMP - INTERFACE TO %ZOSF GLOBAL ; 06/19/2015 12:30
+ ;;15.0;DSS,INC VXVISTA OPEN SOURCE;;15 Sep 2015;Build 29
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ;
  ;DBIA# Supported Reference
  ;----- --------------------------------
@@ -163,6 +163,6 @@ XNODE(N) ; nodes which expect a value in X
  ;
 YNODE(N) ; nodes which return a value in Y
  ;;^ACTJ^AVJ^EOT^JOBPARAM^LPC^MTBOT^MTERR^MTONLINE^MTWPROT^PRIINQ^
- ;;^PROGMODE^SIZE^TMK^TRMRD^UCI^UCICHECK^UPPERCASE^ZD^
+ ;;^PROGMODE^RSUM^RSUM1^SIZE^TMK^TRMRD^UCI^UCICHECK^UPPERCASE^ZD^
  I $T(YNODE+1)[(U_N_U) Q 1
  Q $T(YNODE+2)[(U_N_U)

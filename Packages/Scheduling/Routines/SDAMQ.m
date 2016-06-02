@@ -1,11 +1,12 @@
 SDAMQ ;ALB/MJK - AM Background Job ; 12/1/91
- ;;5.3;Scheduling;**44,132,153**;Aug 13, 1993
+ ;;5.3;Scheduling;**44,132,153,578,588**;Aug 13,1993;Build 53
  ;
 EN ; -- manual entry point
  I '$$SWITCH D MES G ENQ
- N SDBEG,SDEND,SDAMETH
+ N SDBEG,SDEND,SDAMETH,Y
  S (SDBEG,SDEND)="",SDAMETH=2 G ENQ:'$$RANGE(.SDBEG,.SDEND,.SDAMETH)
  ;D START G ENQ ; line for testing
+ N ZTDESC,ZTIO,ZTRTN,ZTSAVE
  S ZTIO="",ZTRTN="START^SDAMQ",ZTDESC="ReCalc Appointment Status"
  F X="SDBEG","SDEND","SDAMETH" S ZTSAVE(X)=""
  K ZTSK D ^%ZTLOAD W:$D(ZTSK) "  (Task: #",ZTSK,")"
@@ -14,6 +15,7 @@ ENQ Q
 START ;
  G STARTQ:'$$SWITCH
  N SDSTART,SDFIN
+ ;N SDMHNOSH ; set for no show report
  K ^TMP("SDSTATS",$J)
  S SDSTART=$$NOW^SDAMU D ADD^SDAMQ1
  D EN^SDAMQ3(SDBEG,SDEND)  ; appointments
@@ -28,6 +30,8 @@ AUTO ; -- nightly job entry point
  ; -- do yesterday's first
  S X1=DT,X2=-1 D C^%DTC
  S (SDOPCDT,SDBEG)=X,SDEND=X+.24,SDAMETH=1 D START
+ D EN^SDMHNS
+ D EN^SDMHPRO
  ; -- check previous 30 days starting with the day before yesterday
  F SDBACK=2:1:31 S X1=DT,X2=-SDBACK D C^%DTC Q:X<$$SWITCH^SDAMU  I '$P($G(^SDD(409.65,+$O(^SDD(409.65,"B",X,0)),0)),U,5) S SDBEG=X,SDEND=X+.24,SDAMETH=1 D START
 AUTOQ K SDOPCDT,SDBEG,SDEND,SDAMETH,SDBACK,X,X1,X2 Q

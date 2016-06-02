@@ -1,5 +1,5 @@
-ORCXPND1 ; SLC/MKB - Expanded Display cont ;08/31/09  09:18
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**26,67,75,89,92,94,148,159,188,172,215,243,280**;Dec 17, 1997;Build 7
+ORCXPND1 ; SLC/MKB - Expanded Display cont ;09/21/12  05:58
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**26,67,75,89,92,94,148,159,188,172,215,243,280,340,306**;Dec 17, 1997;Build 18
  ;
  ; External References
  ;   DBIA  2387  ^LAB(60
@@ -23,6 +23,7 @@ ORCXPND1 ; SLC/MKB - Expanded Display cont ;08/31/09  09:18
  ;   DBIA 10061  OAD^VADPT
  ;   DBIA 10103  $$FMTE^XLFDT
  ;   DBIA  4408  DISP^DGIBDSP
+ ;   DBIA  5697  START^SCMCMHTC
  ;
 COVER ; -- Cover Sheet
  N PKG S PKG=$P($G(^TMP("OR",$J,ORTAB,"IDX",NUM)),U,4)
@@ -48,16 +49,14 @@ MEDS ; -- Pharmacy
 LABS ; -- Laboratory [RESULTS ONLY for ID=OE order #]
  N ORIFN,X,SUB,TEST,NAME,SS,IDE,IVDT,TST,CCNT,ORCY,IG,TCNT
  K ^TMP("LRRR",$J)  ;DBIA 2503
- ;DSS/RAF - BEGIN MOD - fix for undef error on AP result when viewing
+ ;DSS/SMP - BEGIN MOD - fix for undef error on AP result when viewing
  ;   from the coversheet in CPRS.  Original VA code commented out and
- ;   then reinserted as argument of line starting with I 'X.
- ;   11/02/2012 - temporary check for vxInterface package
- ;I (ID?2.5U1" "2N1" "1.N1"-"7N1"."1.4N)!(ID?2.5U1" "2N1" "1.N1"-"7N) D AP^ORCXPND3 Q  ;ID=Accession #-Date/time specimen taken
+ ;   then reinserted as argument of line starting with I 'X
+ ;I (ID?2.5E1" "2N1" "1.N1"-"7N1"."1.4N)!(ID?2.5E1" "2N1" "1.N1"-"7N) D AP^ORCXPND3 Q  ;ID=Accession #-Date/time specimen taken
  N VFDVX S VFDVX=$$VX("VFDLA7O")
- S X=0
- I VFDVX S X=$$VFD Q:X=1
- I 'X I (ID?2.5U1" "2N1" "1.N1"-"7N1"."1.4N)!(ID?2.5U1" "2N1" "1.N1"-"7N) D AP^ORCXPND3
- ;DSS/SGM - END MODS 
+ S X=0 I VFDVX S X=$$VFD Q:X=1
+ I 'X I (ID?2.5E1" "2N1" "1.N1"-"7N1"."1.4N)!(ID?2.5E1" "2N1" "1.N1"-"7N) D AP^ORCXPND3 Q  ;ID=Accession #-Date/time specimen taken
+ ;DSS/SMP - END MOD
  S ORIFN=+ID,IDE=$G(^OR(100,+ID,4)) Q:'$L(IDE)  ; OE# -> Lab#
  I +IDE  D RR^LR7OR1(+ORVP,IDE) I '$D(^TMP("LRRR",$J,+ORVP)) S $P(IDE,";",1,3)=";;" ;Order possibly purged, reset to lookup on file 63
  I '+IDE,$P(IDE,";",5)  D RR^LR7OR1(+ORVP,,9999999-$P(IDE,";",5),9999999-$P(IDE,";",5),$P(IDE,";",4))
@@ -81,9 +80,9 @@ LABS ; -- Laboratory [RESULTS ONLY for ID=OE order #]
  .. K ^TMP("LRC",$J)
  . I SS="CH" D  Q
  .. S (TCNT,TST)=0 F  S TST=$O(TEST(SS,IVDT,TST)) Q:TST=""  S CCNT=0,TCNT=TCNT+1 D
- ... ;DSS/CFS - BEGIN MOD
+ ... ;DSS/SMP - BEGIN MOD
  ... I VFDVX D VFD1 Q
- ... ;DSS/CFS - END MOD
+ ... ;DSS/SMP - END MOD
  ... I TCNT=1 D
  .... S LCNT=LCNT+1,^TMP("ORXPND",$J,LCNT,0)="   Collection time:          "_$$FMTE^XLFDT(9999999-IVDT,1)
  .... S LCNT=LCNT+1,^TMP("ORXPND",$J,LCNT,0)=$$S(1,CCNT," ")_$$S(3,CCNT,"Test Name")_$$S(29,CCNT,"Result")_$$S(39,CCNT,"Units")_$$S(55,CCNT,"Range") D:$D(IOUON) SETVIDEO^ORCXPND(LCNT,1,70,IOUON,IOUOFF)
@@ -167,24 +166,38 @@ DGINQ(DFN) ; Patient Inquiry
  D START^ORWRP(80,"DGINQB^ORCXPND1(DFN)")
  Q
 DGINQB(DFN) ; Build Patient Inquiry
- N CONTACT,ORDOC,ORTEAM,ORVP,XQORNOD,ORSSTRT,ORSSTOPT,VAOA
- S ORVP=DFN_";DPT(",XQORNOD=1
+ N CONTACT,ORDOC,ORTEAM,ORMHP,ORVP,XQORNOD,ORSSTRT,ORSSTOPT,VAOA,CPRSGUI,ORINP,ORATP,ORASS
+ S ORVP=DFN_";DPT(",XQORNOD=1,CPRSGUI=1
  D EN^DGRPD ; MAS Patient Inquiry
+ K CPRSGUI
  ;
  S ORDOC=$$OUTPTPR^SDUTL3(DFN)
  S ORTEAM=$$OUTPTTM^SDUTL3(DFN)
- I ORDOC!ORTEAM  D
+ S ORMHP=$$START^SCMCMHTC(DFN) ;Retrieve Mental Health Provider
+ S ORINP=$G(^DPT(DFN,.104))
+ S ORATP=$G(^DPT(DFN,.1041))
+ S ORASS=$P($$OUTPTAP^SDUTL3(DFN,DT),U,2)
+ I ORDOC!ORTEAM!ORMHP!ORINP!ORATP  D
  . W !!,"Primary Care Information:"
- . I ORDOC W !,"Primary Practitioner:  ",$P(ORDOC,"^",2)
- . I ORTEAM W !,"Primary Care Team:     ",$P(ORTEAM,"^",2)
+ . I ORDOC W !,"Primary Practitioner: ",$P(ORDOC,"^",2)
+ . I ORTEAM W !,"Primary Care Team:    ",$P(ORTEAM,"^",2)
+ . I $$INPT^ORWPT1(DFN) D
+ . . I ORATP W !,"Attending Physician:  ",$P($G(^VA(200,+ORATP,0)),U)
+ . . I ORINP W !,"Inpatient Provider:   ",$P($G(^VA(200,+ORINP,0)),U)
+ . I $L(ORASS) W !,"Associate Provider:   ",ORASS
+ . I ORMHP D
+ .. W !!,"MH Treatment Information:"
+ .. W !,"MH Treatment Coord:   ",$E($P(ORMHP,"^",2),1,28) D
+ ... W ?52,"Position: ",$E($P(ORMHP,"^",3),1,18)
+ .. W !,"MH Treatment Team:    ",$E($P(ORMHP,"^",5),1,56)
  W !!,"Health Insurance Information:"
  D DISP^DGIBDSP  ;DBIA #4408
- ;DSS/CFS - BEGIN MOD - Deveteranization
+ ;DSS/SMP - BEGIN MOD - Deveteranization
  ; original VA lines now argument of ELSE command
  I $$VX
  E  W !!,"Service Connection/Rated Disabilities:"
  E  D DIS^DGRPDB
- ;DSS/CFS - END MOD - Deveteranization
+ ;DSS/SMP - END MOD - Deveteranization
  F CONTACT="N","S" D
  .S VAOA("A")=$S(CONTACT="N":"",1:3)
  .D OAD^VADPT ;   Get NOK Information
@@ -224,7 +237,7 @@ INC(X,Y) ; Character Position Count
  N INC S INC=X+$L(Y)
  Q INC
  ;
- ;DSS/RAF - BEGIN MOD needed to determine anatomic path data
+ ;DSS/SMP - BEGIN MOD needed to determine anatomic path data
 VFD() ;
  ; Extrinsic function, QUIT 1 if do not continue
  N X,Y,Z,DD63,IENS,OUT,PKGREF,XQADATA
@@ -241,7 +254,7 @@ VFD() ;
  . . S OUT("LRACC")=$$VFDGET1(DD63,IENS,.06)
  . . Q
  . Q:'$D(OUT)
- . S ID=OUT("LRACC")_"-"_OUT("LRIDT"),XQADATA=OUT("LRSS") D AP^ORCXPND3
+ . S ID=OUT("LRACC")_"-"_OUT("LRIDT"),XQADATA=OUT("LRSS")_U_U_$G(OUT("LRIDT")) D AP^ORCXPND3
  . Q
  ; if get to this point, then if accession area is SP,CY, or EM then do
  ; this vxVistA code, else continue processing through the LABS module.
@@ -258,11 +271,12 @@ VFD1 ;
  . S X="   Collection time:          "_$$FMTE^XLFDT(9999999-IVDT,1) D VFDSET
  . S VFDLRDFN=$$VFDGET1(2,+ORVP_",",63,"I")
  . S VIENS=IVDT_","_VFDLRDFN_","
- . S X="   Ref Lab Acc#:             "_$$VFDGET1(63.04,VIENS,.34) D VFDSET
+ . S X="   Collecting Person:        "_$$VFDGET1(63.04,VIENS,.21602) D VFDSET
+ . S X="   HL7 Ref Lab Acc#:             "_$$VFDGET1(63.04,VIENS,.34) D VFDSET
  . S X="   Lab Arrival Date/Time:    "_$$VFDGET1(63.04,VIENS,.21601) D VFDSET
  . S X="   Report Date/time:         "_$$VFDGET1(63.04,VIENS,.03) D VFDSET
  . S X=" " D VFDSET
- . S X=$$S(1,CCNT," ")_$$S(3,CCNT,"Test Name")_$$S(51,CCNT,"Result")_$$S(69,CCNT,"Units")_$$S(86,CCNT,"Range")
+ . S X=$$S(1,CCNT," ")_$$S(3,CCNT,"Test Name")_$$S(51,CCNT,"Result")_$$S(69,CCNT,"Units")_$$S(92,CCNT,"Range")
  . D VFDSET
  . D:$D(IOUON) SETVIDEO^ORCXPND(LCNT,1,70,IOUON,IOUOFF)
  . Q
@@ -284,5 +298,7 @@ VFDGET1(FILE,VIEN,FLD,FLG) ;
 VFDSET S LCNT=LCNT+1,^TMP("ORXPND",$J,LCNT,0)=X Q
  ;
 VX(RTN) ; vxVistA check
- Q:$T(VX^VFDI0000)="" 0 Q:$$VX^VFDI0000'["VX" 0 Q:$G(RTN)="" 1
+ I $G(^%ZOSF("ZVX"))'["VX" Q 0
+ Q:$G(RTN)="" 1
  S:$E(RTN)'=U RTN=U_RTN Q $T(@RTN)'=""
+ ;;2013.1;VENDOR - DOCUMENT STORAGE SYS;**16**;11 DEC 2014

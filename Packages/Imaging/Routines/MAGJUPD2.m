@@ -1,5 +1,5 @@
 MAGJUPD2 ;WIRMFO/JHC VistaRad RPCs-Update PS & KEY Img ; 14 July 2004  10:05 AM
- ;;3.0;IMAGING;**18,76**;Jun 22, 2007;Build 19
+ ;;3.0;IMAGING;**18,76,101**;Nov 06, 2009;Build 50
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -77,9 +77,9 @@ PSINIT(LINE) ; Init storage space for a Presentation State ; inits some vars for
  S UID=$P(LINE,U),X=$P(LINE,U,2),DELETE=($P(LINE,U,3)="DELETE"),TYPE=$S(X="KEY":"K",X="INTERP":"I",1:"")
  I UID="" G PSINITZ
  I INTERPFL,(TYPE'="K"),(TYPE'="U") S TYPE="I" ; just in case...
- S IEN=$O(@IMGREF@(210,"B",UID,""))
  L +@IMGREF@(210,0):5
  E  Q
+ S IEN=$O(@IMGREF@(210,"B",UID,""))
  I 'IEN D  ; Allocate node
  . S X=$G(@IMGREF@(210,0)) I X="" S X="^2005.05A^^",^(0)=X
  . S IEN=$P(X,U,3)+1,T=$P(X,U,4)+1,$P(X,U,3)=IEN,$P(X,U,4)=T
@@ -107,7 +107,7 @@ PSINITZ Q
 SAVPS(LINE) ; Save a line of PS data
  ; input = line of free-text data
  N PSCT,PSCTRL
- L +(@IMGREF@(210,PSIEN))
+ L +(@IMGREF@(210,PSIEN)):5
  S PSCTRL=$G(@IMGREF@(210,PSIEN,1,0))
  S PSCT=+$P(PSCTRL,U,4)+1
  S @IMGREF@(210,PSIEN,1,PSCT,0)=LINE
@@ -127,7 +127,7 @@ SAVKIMG(IMGIEN,UIDSEQ,TYPE,NEWIMG) ; store a Key image & Interp images w/ PS ref
  S UID=$P(UIDSEQ,U),SEQNUM=$P(UIDSEQ,U,2)
  S KIEN=$O(@STUDYREF@(1,"B",IMGIEN,""))
  I 'KIEN D
- . L +@STUDYREF@(1,0)
+ . L +@STUDYREF@(1,0):5
  . S X=$G(@STUDYREF@(1,0)) I X="" S X="^2005.031P^^",^(0)=X
  . S KIEN=$P(X,U,3)+1,T=$P(X,U,4)+1,$P(X,U,3)=KIEN,$P(X,U,4)=T
  . S @STUDYREF@(1,0)=X,@STUDYREF@(1,"B",IMGIEN,KIEN)=""
@@ -141,7 +141,7 @@ SAVKIMG(IMGIEN,UIDSEQ,TYPE,NEWIMG) ; store a Key image & Interp images w/ PS ref
  I UID]"" D
  . N IEN S IEN=$O(@STUDYREF@(1,KIEN,1,"B",UID,""))
  . I 'IEN D
- . . L +@STUDYREF@(1,KIEN,1,0)
+ . . L +@STUDYREF@(1,KIEN,1,0):5
  . . S X=$G(@STUDYREF@(1,KIEN,1,0)) I X="" S X="^2005.311^^",^(0)=X
  . . S IEN=$P(X,U,3)+1,T=$P(X,U,4)+1,$P(X,U,3)=IEN,$P(X,U,4)=T
  . . S @STUDYREF@(1,KIEN,1,0)=X,@STUDYREF@(1,KIEN,1,"B",UID,IEN)=""
@@ -165,7 +165,7 @@ STUDYID(IEN,RARPT,READONLY,INITSTDY) ; return Study_IEN for input ImgIEN or RARP
  I $D(^MAG(2005.001,"ASTUDY",74,RARPT)) S STIEN=$O(^(RARPT,"")) D
  . I INITSTDY="INIT_STUDY" K ^MAG(2005.001,STIEN,1) ; init for Key/Interp PS updates (full replacement)
  E  D:'READONLY  ; create Study structure
- . L +^MAG(2005.001,0)
+ . L +^MAG(2005.001,0):5
  . S X=^MAG(2005.001,0),STIEN=$P(X,U,3)+1,T=$P(X,U,4)+1,$P(X,U,3)=STIEN,$P(X,U,4)=T,^(0)=X
  . L -^MAG(2005.001,0)
  . S ^MAG(2005.001,STIEN,0)=RARPT_U_74,^MAG(2005.001,"ASTUDY",74,RARPT,STIEN)="",^MAG(2005.001,"B",RARPT,STIEN)=""

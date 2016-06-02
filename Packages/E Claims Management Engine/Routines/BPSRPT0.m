@@ -1,5 +1,5 @@
 BPSRPT0 ;BHAM ISC/BEE - ECME REPORTS ;14-FEB-05
- ;;1.0;E CLAIMS MGMT ENGINE;**1,5,7**;JUN 2004;Build 46
+ ;;1.0;E CLAIMS MGMT ENGINE;**1,5,7,10,11**;JUN 2004;Build 27
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  Q
@@ -13,6 +13,7 @@ BPSRPT0 ;BHAM ISC/BEE - ECME REPORTS ;14-FEB-05
  ;                          5 = Recent Transactions
  ;                          6 = Totals By Date
  ;                          7 = Closed Claims
+ ;                          8 = Spending Account Report
  ;                          
  ; Passed variables - The following local variables are passed around the BPSRPT* routines
  ;                    and are not passed as parameters but are assumed to be defined:
@@ -24,8 +25,8 @@ EN(BPRTYPE) N %,BPACREJ,BPAUTREV,BPBEGDT,BPCCRSN,BPDRGCL,BPDRUG,BPENDDT,BPEXCEL,
  N BPREJCD,BPRLNRL,BPRPTNAM,BPRTBCK,BPSCR,BPSUMDET,CODE,POS,STAT,X,Y,BPINS,BPARR,BPELIG,BPOPCL
  ;
  ;Verify that a valid report has been requested
- I ",1,2,3,4,5,6,7,"'[(","_$G(BPRTYPE)_",") W "<Invalid Menu Definition - Report Undefined>" H 3 Q
- S BPRPTNAM=$S(BPRTYPE=1:"PAYABLE CLAIMS",BPRTYPE=2:"REJECTED CLAIMS",BPRTYPE=3:"SUBMIT,NOT RELEASED CLAIMS",BPRTYPE=4:"REVERSED CLAIMS",BPRTYPE=5:"RECENT TRANSACTIONS",BPRTYPE=6:"TOTALS",BPRTYPE=7:"CLOSED CLAIMS",1:"")
+ I ",1,2,3,4,5,6,7,8,"'[(","_$G(BPRTYPE)_",") W "<Invalid Menu Definition - Report Undefined>" H 3 Q
+ S BPRPTNAM=$P("PAYABLE CLAIMS^REJECTED CLAIMS^SUBMIT,NOT RELEASED CLAIMS^REVERSED CLAIMS^RECENT TRANSACTIONS^TOTALS^CLOSED CLAIMS^SPENDING ACCOUNT REPORT","^",BPRTYPE)
  ;
  ;Get current Date/Time
  D NOW^%DTC S Y=% D DD^%DT S BPNOW=Y
@@ -47,8 +48,8 @@ EN(BPRTYPE) N %,BPACREJ,BPAUTREV,BPBEGDT,BPCCRSN,BPDRGCL,BPDRUG,BPENDDT,BPEXCEL,
  ;Returns (A-ALL,M-Mail,W-Window,C-CMOP)
  S BPMWC=$$SELMWC^BPSRPT3("A") I BPMWC="^" G EXIT
  ;
- ;Prompt to Display (R)ealTime Fills or (B)ackbills or (A)LL (Default to ALL)
- ;Returns (1-ALL,2-RealTime Fills,3-Backbills)
+ ;Prompt to Display (R)ealTime Fills or (B)ackbills or (P)RO Option or (A)LL (Default to ALL)
+ ;Returns (1-ALL,2-RealTime Fills,3-Backbills,4-PRO Option)
  S BPRTBCK=$$SELRTBCK^BPSRPT3(1) I BPRTBCK="^" G EXIT
  ;
  ;Prompt to Display Specific (D)rug or Drug (C)lass or (A)ll (Default to ALL)
@@ -65,14 +66,14 @@ EN(BPRTYPE) N %,BPACREJ,BPAUTREV,BPBEGDT,BPCCRSN,BPDRGCL,BPDRUG,BPENDDT,BPEXCEL,
  ;
  ;Prompt to select Date Range
  ;Returns (Start Date^End Date)
- I (",1,2,3,4,5,6,7,")[BPRTYPE S BPBEGDT=$$SELDATE^BPSRPT3(BPRTYPE) D  I BPBEGDT="^" G EXIT
+ I (",1,2,3,4,5,6,7,8,")[BPRTYPE S BPBEGDT=$$SELDATE^BPSRPT3(BPRTYPE) D  I BPBEGDT="^" G EXIT
  .I BPBEGDT="^" Q
  .S BPENDDT=$P(BPBEGDT,U,2)
  .S BPBEGDT=$P(BPBEGDT,U)
  ;
  ;Prompt to Include (R)ELEASED or (N)OT RELEASED or (A)LL (Default to RELEASED)
  ;Returns (1-ALL,2-RELEASED,3-NOT RELEASED)
- S BPRLNRL=$S(BPRTYPE=3:3,1:1) I (",1,2,4,6,7,")[BPRTYPE S BPRLNRL=$$SELRLNRL^BPSRPT4(2) I BPRLNRL="^" G EXIT
+ S BPRLNRL=$S(BPRTYPE=3:3,1:1) I (",1,2,4,6,7,8,")[BPRTYPE S BPRLNRL=$$SELRLNRL^BPSRPT4(2) I BPRLNRL="^" G EXIT
  ;
  ;Prompt to Include (S)pecific Reject Code or (A)LL (Default to ALL)
  ;Returns (0-ALL,ptr-Pointer to Selected Reject Code in #9002313.93)
@@ -90,9 +91,9 @@ EN(BPRTYPE) N %,BPACREJ,BPAUTREV,BPBEGDT,BPCCRSN,BPDRGCL,BPDRUG,BPENDDT,BPEXCEL,
  ;Returns (0-All,ptr-Pointer to #356.8)
  S BPCCRSN=0 I (",7,")[BPRTYPE S BPCCRSN=$$SELCCRSN^BPSRPT4(0) I BPCCRSN="^" G EXIT
  ;
- ;Prompt for Eligibility Indicator for rejected claims report
- ;Returns (V=Veteran,T=TRICARE,0=All)
- S BPELIG=0 I (",2,")[BPRTYPE S BPELIG=$$SELELIG^BPSRPT3(1) I BPELIG="^" G EXIT
+ ;Prompt for Eligibility Indicator for payable, rejected, reversed and closed claims report
+ ;Returns (V=VETERAN,T=TRICARE,C=CHAMPVA,0=All)
+ S BPELIG=0 I (",1,2,4,7,")[BPRTYPE S BPELIG=$$SELELIG^BPSRPT3(1) I BPELIG="^" G EXIT
  ;
  ;Prompt for Open/Closed/All claims
  ;Returns (1=Closed,2=Open,0=All)

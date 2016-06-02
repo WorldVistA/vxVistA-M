@@ -1,5 +1,5 @@
 IBCEF11 ;ALB/TMP - FORMATTER SPECIFIC BILL FUNCTIONS - CONT ;30-JAN-96
- ;;2.0;INTEGRATED BILLING;**51,137,155,309,335,348,349,371**;21-MAR-94;Build 57
+ ;;2.0;INTEGRATED BILLING;**51,137,155,309,335,348,349,371,432,447,473**;21-MAR-94;Build 29
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
 BOX24D(A,IB) ; Returns the lines for boxes 19-24 of the CMS-1500 display
@@ -50,6 +50,8 @@ OUTPT(IBIFN,IBPRINT) ; Returns an array of service line data from
  ;      -- AND --
  ;   IBXDATA(n,"AUX")='AUX' node of the procedure entry
  ;
+ ; Also returns IBXDATA(n,"CPLNK") = soft link to corresponding entry in PROCEDURES multiple of file 399
+ ;
  N IB,IBI,IBJ,IBFLD,IBDXI,IBXIEN,Z,IBXTRA,IBRX,IBRX0,IBRX1,Z0,Z1
  ;
  K ^TMP($J,"IBITEM")
@@ -66,7 +68,7 @@ OUTPT(IBIFN,IBPRINT) ; Returns an array of service line data from
  ; Returns IBFLD(24) = begin date^end date^pos^tos^
  ;     proc/bedsection/revenue code^dx pointer^unit charge^
  ;     units^modifiers^ purchased charge amount ^anesthesia minutes^
- ;     emergency indicator ^ AND
+ ;     emergency indicator ^ soft pointer to PROCEDURES multiple in file 399 AND
  ;         IBFLD(24,n,type,item)=""
  ;         IBFLD(24,n_"A") = revenue code abbreviation if no procedure
  ;         IBFLD(24,n,"AUX") = 'AUX' node of line item 
@@ -78,22 +80,25 @@ OUTPT(IBIFN,IBPRINT) ; Returns an array of service line data from
  I IBRX S IBRX="" F  S IBRX=$O(IBRX(IBRX)) Q:IBRX=""  S IBRX0=0 F  S IBRX0=$O(IBRX(IBRX,IBRX0)) Q:'IBRX0  D
  . N IBRXH
  . S IBRXH=IBRX(IBRX,IBRX0)
- . S IBRX1(+IBRXH)=IBRX_U_$P(IBRXH,U,2)_U_$P(IBRXH,U,5)_U_$P(IBRXH,U,7)_U_IBRX0_U_$P(IBRXH,U,4)_U_$P(IBRXH,U,3)_U_$P(IBRXH,U,6)_U_+IBRXH_U_$P(IBRXH,U,8)
+ . ; **IB*2.0*432** added _U_$P(IBRXH,U,9) (Rx Date) to Output Formatter
+ . S IBRX1(+IBRXH)=IBRX_U_$P(IBRXH,U,2)_U_$P(IBRXH,U,5)_U_$P(IBRXH,U,7)_U_IBRX0_U_$P(IBRXH,U,4)_U_$P(IBRXH,U,3)_U_$P(IBRXH,U,6)_U_+IBRXH_U_$P(IBRXH,U,8)_U_$P(IBRXH,U,9)
  K IBRX
  ;
  ; for EDI, remove any $0 line items from the IBFLD array before 
  ; dropping down into the next loop (IB*2*371)
- I '$G(IBPRINT) D
- . NEW IBZ,IBI,Z
- . M IBZ=IBFLD K IBFLD
- . S (IBI,Z)=0
- . F  S IBI=$O(IBZ(24,IBI)) Q:IBI'=+IBI  D
- .. I $P(IBZ(24,IBI),U,7)*$P(IBZ(24,IBI),U,8)'>0 Q
- .. S Z=Z+1
- .. M IBFLD(24,Z)=IBZ(24,IBI)
- .. S IBFLD(24)=Z
- .. Q
- . Q
+ ; Start IB*2.0*447 BI - Code removed to allow 0 dollars to print.
+ ;I '$G(IBPRINT) D
+ ;. NEW IBZ,IBI,Z
+ ;. M IBZ=IBFLD K IBFLD
+ ;. S (IBI,Z)=0
+ ;. F  S IBI=$O(IBZ(24,IBI)) Q:IBI'=+IBI  D
+ ;.. I $P(IBZ(24,IBI),U,7)*$P(IBZ(24,IBI),U,8)'>0 Q
+ ;.. S Z=Z+1
+ ;.. M IBFLD(24,Z)=IBZ(24,IBI)
+ ;.. S IBFLD(24)=Z
+ ;.. Q
+ ;. Q
+ ; End IB*2.0*447 BI
  ;
  S IBI=0
  F  S IBI=$O(IBFLD(24,IBI)) Q:IBI'=+IBI  D
@@ -124,7 +129,10 @@ OUTPT(IBIFN,IBPRINT) ; Returns an array of service line data from
  .. Q
  . ;
  . I $G(IBPRINT) D
- .. I '$P(IBXDATA(IBI),U,8),'$G(IBXDATA(IBI,"RX")) D  Q
+ .. ; START IB*2.0*447 BI ZERO DOLLAR CHANGES
+ .. ; I '$P(IBXDATA(IBI),U,8),'$G(IBXDATA(IBI,"RX")) D  Q
+ .. I $P(IBXDATA(IBI),U,8)="",'$G(IBXDATA(IBI,"RX")) D  Q
+ ... ; END IB*2.0*447 BI ZERO DOLLAR CHANGES
  ... I $G(IBNOSHOW) Q    ; don't show errors/warnings
  ... S IBXDATA(IBI,"TEXT")="Warning:** REV CODE UNITS < #PROCEDURES, THEY MUST BE ="
  ... I $D(IBXDATA(IBI,"AUX")) S $P(IBXDATA(IBI,"AUX"),U,9)=""
@@ -146,7 +154,7 @@ OUTPT(IBIFN,IBPRINT) ; Returns an array of service line data from
  ... S $P(IBXDATA(IBI,"AUX"),U,9)="N4"   ; service line comment qualifier for RX's
  ... Q
  .. Q
- . ;
+ . S IBXDATA(IBI,"CPLNK")=$P(IBFLD(24,IBI),U,13)
  . I '$G(IBPRINT) D COBLINE^IBCEU6(IBIFN,IBI,.IBXDATA,,.IBXTRA)
  . Q
  ;
@@ -196,3 +204,31 @@ BATCH() ; Sets up record for and stores/returns the next batch number
  L -^IBA(364.1,0)
 BATCHQ Q NUM
  ;
+GETLDAT(IBXIEN) ; Extract data for 837 transmission LDAT record
+ ; IBXIEN - ien in file 399
+ ; Sets up IBXSAVE("LDAT",n) array:
+ ; Attachment report type ^ Attachment report transmission code ^ Attachment control number ^ 
+ ; OB Anesthesia Additional Units ^ Purchase Service Provider ID ^ Purchase Service Amount ^
+ N CPIEN,FTYPE,IBXDATA,IDS,IBIDS,NODE1,PSAMNT,PSPID,Z,PCE1,LINE
+ I '+$G(IBXIEN) Q
+ K IBXSAVE("LDAT")
+ S FTYPE=$$FT^IBCEF(IBXIEN)
+ I FTYPE=2 D OUTPT(IBXIEN,0)
+ I FTYPE=3 D HOS^IBCEF2(IBXIEN)
+ D ALLIDS^IBCEFP(IBXIEN,.IDS,1)
+ S (PSPID,PSAMNT)=""
+ ; IB*2.0*473/TAZ - Convert PROVIDER code to function call to PSID^IBCEFP
+ I $$SUB1OK^IBCEP8A(IBXIEN),(FTYPE=2) D
+ . D PSID^IBCEFP(IBXIEN,.IDS,.IBIDS)
+ . S PSPID=$G(IBIDS(0)) I PSPID="" S PSPID=$P($G(IBIDS(1)),U,1)
+ ;IB*2.0*473/TAZ - END
+ S Z=0 F  S Z=$O(IBXDATA(Z)) Q:'Z  D
+ . S CPIEN=+$G(IBXDATA(Z,"CPLNK")) ;I 'CPIEN Q
+ . I FTYPE=2,$$SUB1OK^IBCEP8A(IBXIEN) S PSAMNT=$$DOLLAR^IBCEFG1($P($G(IBXDATA(Z)),U,11))
+ . S (PCE1,NODE1)=""
+ . I CPIEN D
+ .. S NODE1=$G(^DGCR(399,IBXIEN,"CP",CPIEN,1))
+ .. S PCE1=$$GET1^DIQ(399.0304,CPIEN_","_IBXIEN_",",71)
+ . S IBXSAVE("LDAT",Z)=PCE1_U_$P(NODE1,U,3)_U_$P(NODE1,U)_U_$P(NODE1,U,5)_U_$G(PSPID)_U_$G(PSAMNT)
+ . Q
+ Q

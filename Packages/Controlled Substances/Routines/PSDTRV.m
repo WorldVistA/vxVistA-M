@@ -1,7 +1,8 @@
 PSDTRV ;BIR/JPW-Transfer CS Drugs between Vaults ; 10 Aug 94
- ;;3.0; CONTROLLED SUBSTANCES ;;13 Feb 97
+ ;;3.0; CONTROLLED SUBSTANCES ;**71**;13 Feb 97;Build 29
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- I '$D(^XUSEC("PSJ RPHARM",DUZ)) W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to transfer",!,?12,"controlled substances between dispensing sites.",!!,"PSJ RPHARM security key required.",! Q
+ I '$D(^XUSEC("PSJ RPHARM",DUZ))&('$D(^XUSEC("PSD TECH ADV",DUZ))) D  Q
+ .W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to transfer",!,?12,"controlled substances between dispensing sites.",!!,"PSJ RPHARM or PSD TECH ADV security key required.",!
  I $P($G(^VA(200,DUZ,20)),U,4)']"" N XQH S XQH="PSD ESIG" D EN^XQH Q
  S PSDUZ=DUZ,PSDUZN=$P($G(^VA(200,PSDUZ,0)),"^")
  N X,X1 D SIG^XUSESIG G:X1="" END

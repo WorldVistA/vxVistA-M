@@ -1,5 +1,5 @@
 LRUER ;AVAMC/REG/CYM - ERROR TRACKING ;2/18/98  07:03 ;
- ;;5.2;LAB SERVICE;**201,290**;Sep 27, 1994;Build 25
+ ;;5.2;LAB SERVICE;**201,290**;Sep 27, 1994;Build 35
 ASK W !!?5,"Find accessions with comments containing",!?20,"1. reported incorrectly as",!?20,"2. specimen rejected",!?5,"Select 1 or 2: " R X:DTIME G:X=""!(X[U) END I +X'=X!(X<1)!(X>2) G ASK
  S LRC(2)="",LRC(1)=$S(X=1:"reported incorrectly as",X=2:"specimen rejected",1:"") W !!,"List accessions with deleted comments " S %=2 D YN^LRU G:%<1 END S:%=1 LRC(2)=1
  D B^LRU G:Y<0 END S LRS=LRSDT-.01,LRE=LRLDT+.99,LRLDT=9999998-LRLDT,LRSDT=9999999-LRSDT

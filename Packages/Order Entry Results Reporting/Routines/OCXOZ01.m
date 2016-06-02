@@ -1,4 +1,4 @@
-OCXOZ01 ;SLC/RJS,CLA - Order Check Scan ;MAR 19,2013 at 14:13
+OCXOZ01 ;SLC/RJS,CLA - Order Check Scan ;JAN 7,2016 at 10:59
  ;;3.0;ORDER ENTRY/RESULTS REPORTING;**32,221,243**;Dec 17,1997;Build 242
  ;;  ;;ORDER CHECK EXPERT version 1.01 released OCT 29,1998
  ;
@@ -16,7 +16,7 @@ OCXOZ01 ;SLC/RJS,CLA - Order Check Scan ;MAR 19,2013 at 14:13
  ;
  ;               Raw Data Logging: OFF
  ; Compiler mode:  ON
- ;   Compiled by: VISTA,DBA  (DUZ=1)
+ ;   Compiled by: ZDSSJEAN-PHILIPPE,BRIAN  (DUZ=66)
  Q
  ;
 LOG() ; Returns the number of days to keep the Raw Data Log or 0 if logging is disabled.
@@ -78,6 +78,7 @@ GETDF ;This subroutine loads the OCXDF data field array from variables in the en
  ; OCXDF(82) ---> Data Field: PHARMACY LOCAL ORDERABLE ITEM TEXT (FREE TEXT)
  ; OCXDF(113) --> Data Field: LAB TEST ID (NUMERIC)
  ; OCXDF(152) --> Data Field: LAB SPECIMEN ID (NUMERIC)
+ ; OCXDF(160) --> Data Field: CONTROL REASON (FREE TEXT)
  ;
  ;      Local Extrinsic Functions
  ; DT2INT( ----------> CONVERT DATE FROM FILEMAN FORMAT TO OCX FORMAT
@@ -98,6 +99,7 @@ GETDF ;This subroutine loads the OCXDF data field array from variables in the en
  S OCXDF(82)=$P($G(OCXODATA("RXO",1)),"^",5)
  S OCXDF(113)=$P($G(OCXODATA("OBX",3)),"^",4)
  S OCXDF(152)=$P($P($G(OCXODATA("OBR",15)),"^",4),";",1)
+ S OCXDF(160)=$P($G(OCXODATA("ORC",16)),"^",5)
  Q
  ;
 SWAPOUT(NAME,ARRAY) ;

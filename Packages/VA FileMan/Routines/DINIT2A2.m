@@ -1,6 +1,10 @@
-DINIT2A2 ;SFISC/MKO-KEY AND INDEX FILES ;8:42 AM  4 Jun 1999
- ;;22.0;VA FileMan;**1**;Mar 30, 1999
- ;Per VHA Directive 10-93-142, this routine should not be modified.
+DINIT2A2 ;SFISC/MKO-KEY AND INDEX FILES ;11:29 AM  19 Nov 2012
+ ;;22.2;MSC Fileman;;Jan 05, 2015;
+ ;;Submitted to OSEHRA 5 January 2015 by the VISTA Expertise Network.
+ ;;Based on Medsphere Systems Corporation's MSC Fileman 1051.
+ ;;Licensed under the terms of the Apache License, Version 2.0.
+ ;;GFT;**1,167**
+ ;
  F I=1:2 S X=$T(Q+I) Q:X=""  S Y=$E($T(Q+I+1),4,999),X=$E(X,4,999) S:$A(Y)=126 I=I+1,Y=$E(Y,2,999)_$E($T(Q+I+1),5,99) S:$A(Y)=61 Y=$E(Y,2,999) S @X=Y
  G ^DINIT2A3
 Q Q
@@ -17,7 +21,7 @@ Q Q
  ;;^DD(.11,2.1,21,4,0)
  ;;=LOGIC.
  ;;^DD(.11,2.1,21,5,0)
- ;;= 
+ ;;=
  ;;^DD(.11,2.1,21,6,0)
  ;;=Assume the DA array describes the record to be cross-referenced, and that
  ;;^DD(.11,2.1,21,7,0)
@@ -27,7 +31,7 @@ Q Q
  ;;^DD(.11,2.1,21,9,0)
  ;;=also equals X(order#) of the lowest order number.
  ;;^DD(.11,2.1,21,10,0)
- ;;= 
+ ;;=
  ;;^DD(.11,2.1,21,11,0)
  ;;=When fields that make up a cross-reference are edited and the kill and set
  ;;^DD(.11,2.1,21,12,0)
@@ -89,7 +93,7 @@ Q Q
  ;;^DD(.11,2.4,21,8,0)
  ;;=also equals X(order#) of the lowest order number.
  ;;^DD(.11,2.4,21,9,0)
- ;;= 
+ ;;=
  ;;^DD(.11,2.4,21,10,0)
  ;;=When fields that make up a cross-reference are edited and the kill and set
  ;;^DD(.11,2.4,21,11,0)
@@ -113,15 +117,29 @@ Q Q
  ;;^DD(.11,2.5,21,0)
  ;;=^^4^4^2980911^
  ;;^DD(.11,2.5,21,1,0)
- ;;=This is kill statement that can be executed to remove an entire index for
+ ;;=This is a kill statement that can be executed to remove an entire index for
  ;;^DD(.11,2.5,21,2,0)
  ;;=all records in a file. When an entire file is reindexed, FileMan executes
  ;;^DD(.11,2.5,21,3,0)
  ;;=this code instead of looping through all the entries in a file and
  ;;^DD(.11,2.5,21,4,0)
  ;;=executing the kill logic once for each entry.
- ;;^DD(.11,2.5,"DT")
- ;;=2970117
+ ;;^DD(.11,666,0)
+ ;;=RE-INDEXING^SI^1:NO RE-INDEXING ALLOWED;0:ALLOW REINDEXING^NOREINDEX;1
+ ;;^DD(.11,666,3)
+ ;;=Should the re-indexing of this cross reference be prohibited?
+ ;;^DD(.11,666,21,0)
+ ;;=^^5^5
+ ;;^DD(.11,666,21,1,0)
+ ;;=If you answer '1', this cross reference will not be re-indexed during a
+ ;;^DD(.11,666,21,2,0)
+ ;;=general re-indexing of this file, whether it's done via API or
+ ;;^DD(.11,666,21,3,0)
+ ;;=interactively. If you answer '0', which is the default, it will.
+ ;;^DD(.11,666,21,4,0)
+ ;;=A 'NO RE-INDEXING' cross-reference will ONLY be re-indexed
+ ;;^DD(.11,666,21,5,0)
+ ;;=if it is specifically named in an API call
  ;;^DD(.11,11.1,0)
  ;;=CROSS-REFERENCE VALUES^.114IA^^11.1;0
  ;;^DD(.11,11.1,"DT")
@@ -185,6 +203,6 @@ Q Q
  ;;^DD(.111,1,21,3,0)
  ;;=logic must invoke the additional code stored in this overflow node.
  ;;^DD(.111,1,21,4,0)
- ;;= 
+ ;;=
  ;;^DD(.111,1,21,5,0)
  ;;=The M code can assume that DIXR contains the internal entry number of the

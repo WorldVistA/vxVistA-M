@@ -1,5 +1,6 @@
-MAGVCHK ;WOIFO/EdM - Checksums of Imaging Routines ; 08/22/2005  10:58
- ;;3.0;IMAGING;**51**;26-August-2005
+MAGVCHK ;WOIFO/EdM - Checksums of Imaging Routines ; 01/08/2007 10:39
+ ;;3.0;IMAGING;**51,54**;03-July-2009;;Build 1424
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGVCHK ;WOIFO/EdM - Checksums of Imaging Routines ; 08/22/2005  10:58
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -16,7 +16,6 @@ MAGVCHK ;WOIFO/EdM - Checksums of Imaging Routines ; 08/22/2005  10:58
  ;; +---------------------------------------------------------------+
  ;;
  Q
- ;
  ; The entry below is called from ET-Phone-Home
  ;
 GATEWAY(ZTSK,MAGDBB) ; RPC = MAG VISTA CHECKSUMS
@@ -44,11 +43,15 @@ CHECK ; Collect checksums for Imaging Routines
  Q:$G(MAGDBB)'["@"  ; Must be valid e-mail address
  D DT^DICRW
  D
- . N DATE,I,MAGDATA,MSG,N,PKG,PKT,PV
+ . N D1,D2,DATE,I,MAGDATA,MSG,N,PKG,PKT,PV
  . S CUR=$$VERSION^XPDUTL("IMAGING")
  . D LIST^DIC(9.7,,".01;2I;51I","K","*","MAG","MAG*","B",,,"MAGDATA","MSG")
  . S I="" F  S I=$O(MAGDATA("DILIST",2,I)) Q:I=""  D
  . . S I(+$G(MAGDATA("DILIST","ID",I,2)),I)=""
+ . . S X=$G(MAGDATA("DILIST","ID",I,.01)) Q:X=""
+ . . S D1=$G(MAGDATA("DILIST","ID",I,51)) Q:D1=""
+ . . S D2=$G(MAGDATA("DILIST","ID",I,2))
+ . . S CUR(X)=D1_"^"_D2
  . . Q
  . S N=0,DATE="" F  S DATE=$O(I(DATE)) Q:DATE=""  D
  . . S I="" F  S I=$O(I(DATE,I)) Q:I=""  D
@@ -75,6 +78,9 @@ CHECK ; Collect checksums for Imaging Routines
  S I=I+1,^TMP("MAG",$J,"CHECKSUM",I)="DT="_DT
  S I=I+1,^TMP("MAG",$J,"CHECKSUM",I)="IP=VistA"
  S I=I+1,^TMP("MAG",$J,"CHECKSUM",I)="BLD="_CUR
+ S CUR="" F  S CUR=$O(CUR(CUR)) Q:CUR=""  D
+ . S I=I+1,^TMP("MAG",$J,"CHECKSUM",I)="PAT="_CUR_"^"_CUR(CUR)
+ . Q
  S I=I+1,^TMP("MAG",$J,"CHECKSUM",I)="TTL="_SITE
  S I=I+1,^TMP("MAG",$J,"CHECKSUM",I)="PHY=VistA"
  S R="MAG" F  S R=$O(^$R(R)) Q:$E(R,1,3)'="MAG"  D
@@ -87,7 +93,8 @@ CHECK ; Collect checksums for Imaging Routines
  S XMY(XMID)=""
  S XMY(MAGDBB)=""
  D SENDMSG^XMXAPI(XMID,XMSUB,$NAME(^TMP("MAG",$J,"CHECKSUM")),.XMY,,.XMZ,)
- I $G(XMERR) M XMERR=^TMP("XMERR",$J) S $EC=",U13-Cannot send MailMan message,"
+ I $G(XMERR) M XMERR=^TMP("XMERR",$J) S $EC="" ;,U13-Cannot send MailMan message,"
+ K ^TMP("MAG",$J,"CHECKSUM")
  Q
  ;
 CHK1(R) N K,X,Y

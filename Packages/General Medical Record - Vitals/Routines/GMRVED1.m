@@ -1,5 +1,5 @@
 GMRVED1 ;HIRMFO/RM,YH-VITAL SIGNS EDIT SHORT FORM (cont.) ;3/14/99  15:11
- ;;4.0;Vitals/Measurements;**1,6,7,11**;Apr 25, 1997
+ ;;4.0;Vitals/Measurements;**1,6,7,11**;Apr 25, 1997;Build 8
 EN2 ; ENTRY FROM GMRVED0 TO ENTER THE DATA FOR A PATIENT DEFINED BY DFN
  D DSPOV^GMRVED4 I GMRSTR(0)=";" W:GMRENTY<5 !,$C(7) Q
 CHANGE S (GMRHELP,GMRPRMT,GMRHELP(1),GREASON)="" F GMRX=2:1:$L(GMRSTR(0),";")-1 D SETPRMT^GMRVED2
@@ -67,9 +67,18 @@ WOK ;
  . I GMRDAT(GMRX)=10 W GMRDAT(GMRX)_" - Worst imaginable pain" Q
  . W GMRDAT(GMRX) Q
  I GMRX="T" W GMRVX(0)_" F  ("_$J(+GMRVX(0)-32*5/9,0,1)_" C)"
- I GMRX="WT" W GMRVX(0)_" LB  ("_$J(GMRVX(0)/2.2,0,2)_" KG)"
- I GMRX="HT" W $S(GMRVX(0)\12:GMRVX(0)\12_" FT ",1:"")_$S(GMRVX(0)#12:GMRVX(0)#12_" IN",1:"")_" ("_$J(GMRVX(0)*2.54,0,2)_" CM)"
- I GMRX="CG" W GMRVX(0)_" IN ("_$J(+GMRVX(0)/.3937,0,2)_" CM)"
+ ;DSS/SMP - BEGIN MODS
+ N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
+ I GMRX="WT" D
+ .I VFD W GMRVX(0)_" LB  ("_$$LB2KG^VFDXLF(GMRVX(0),2)_" KG)" Q
+ .W GMRVX(0)_" LB  ("_$J(GMRVX(0)/2.2,0,2)_" KG)"
+ I GMRX="HT" D
+ .I VFD W $S(GMRVX(0)\12:GMRVX(0)\12_" FT ",1:"")_$S(GMRVX(0)#12:GMRVX(0)#12_" IN",1:"")_" ("_$$IN2CM^VFDXLF(GMRVX(0),2)_" CM)" Q
+ .W $S(GMRVX(0)\12:GMRVX(0)\12_" FT ",1:"")_$S(GMRVX(0)#12:GMRVX(0)#12_" IN",1:"")_" ("_$J(GMRVX(0)*2.54,0,2)_" CM)"
+ I GMRX="CG" D
+ .I VFD W GMRVX(0)_" IN ("_$$IN2CM^VFDXLF(+GMRVX(0),2)_" CM)" Q
+ .W GMRVX(0)_" IN ("_$J(+GMRVX(0)/.3937,0,2)_" CM)"
+ ;DSS/SMP - END MODS
  I GMRX="CVP" W GMRVX(0)_" cmH2O ("_$J(GMRVX(0)/1.36,0,1)_" mmHg)"
  I GMRX="PO2" W GMRVX(0)_"%"_$S(GMRO2(GMRX)'="":" with supplemental O2 "_$S(GMRO2(GMRX)["l/min":$P(GMRO2(GMRX)," l/min")_"L/min",1:"")_$S(GMRO2(GMRX)["l/min":$P(GMRO2(GMRX)," l/min",2),1:GMRO2(GMRX)),1:"")
  W $S('$D(GMRVX(1)):"",'GMRVX(1):"",1:"*") K GMRVX S GTXT=""

@@ -1,6 +1,6 @@
-RCXFMSPR ;WISC/RFJ-print revenue source codes ;1 Oct 97
- ;;4.5;Accounts Receivable;**90,96,101,156,170,203**;Mar 20, 1995
- ;;Per VHA Directive 10-93-142, this routine should not be modified.
+RCXFMSPR ;WISC/RFJ-print revenue source codes ; 8/31/10 11:34am
+ ;;4.5;Accounts Receivable;**90,96,101,156,170,203,273**;Mar 20, 1995;Build 3
+ ;;Per VHA Directive 2004-038, this routine should not be modified.
  W !,"This option will print out a list of the revenue source codes sent from"
  W !,"the VISTA system to FMS."
  ;
@@ -23,7 +23,7 @@ DQ ;  queue starts here
  ;
  ;  for now, column 1 is always 8 and column 4 is always Z
  S COLUMN1=8,COLUMN4="Z"
- F COLUMN2=1:1:9,"A","B","C","D","E","F","G","H","I","J","K","L","M" D  Q:$G(RCSTFLAG)
+ F COLUMN2=1:1:9,"A","B","C","D","E","F","G","H","I","J","K","L","M","Q","R","S","T" D  Q:$G(RCSTFLAG)
  .   S COL2DESC=$P($T(@("A"_COLUMN2)),";",3)
  .   ;
  .   S COLUMN3=$S(COLUMN2=5:"*",1:"Z")
@@ -65,7 +65,7 @@ GETDESC(RSC) ;  return the description for the revenue source code
  I RSC=8048 Q "Marshal Fee and Court Cost"
  S DESC="UNKNOWN"
  S COLUMN2=$E(RSC,2)
- I "123456789ABCDEFGHIJKLM"[COLUMN2 S DESC=$P($T(@("A"_COLUMN2)),";",3)
+ I "123456789ABCDEFGHIJKLMQRST"[COLUMN2 S DESC=$P($T(@("A"_COLUMN2)),";",3)
  ; HSIF reference disabled by patch 203
  ; I RSC="8B1Z"!(RSC="8C1Z") S DESC=DESC_" (HSIF)"
  I COLUMN2'=5 Q DESC
@@ -132,6 +132,10 @@ AJ ;;Respite Care-Non-Institutional (LTC)
 AK ;;Geriatric Eval-Institutional (LTC)
 AL ;;Geriatric Eval-Non-Institutional (LTC)
 AM ;;Nursing Home Care-Long Term Care (LTC)
+AQ ;;Pharmacy No Fault Auto Acc
+AR ;;Pharmacy Reimburs Health Ins
+AS ;;Pharmacy Tort Feasor
+AT ;;Pharmacy Workman's Comp
  ;
  ;
  ;  this is a listing for the type of care, first 2 binary digits

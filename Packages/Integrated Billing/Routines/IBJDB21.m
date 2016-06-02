@@ -1,5 +1,6 @@
 IBJDB21 ;ALB/RB - REASONS NOT BILLABLE REPORT (COMPILE) ;19-JUN-00
- ;;2.0;INTEGRATED BILLING;**123,159,185,399**;21-MAR-94;Build 8
+ ;;2.0;INTEGRATED BILLING;**123,159,185,399,437,458**;21-MAR-94;Build 4
+ ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
 EN ; - Entry point from IBJDB2.
  K ^TMP("IBJDB2",$J),IB,IBE,ENCTYP,EPIEN,IBADMDT,RELBILL
@@ -87,7 +88,7 @@ AMOUNT(EPS,CLM) ; Return the Amount not billed
  ;        CLM - Pointer to Claim Tracking File (#356)
  ;Output: AMOUNT not billed
  ;
- N ADM,ADMDT,AMOUNT,BLBS,BLDT,CPT,CPTLST,DA,DR,DCHD,DFN,DIC,DIQ,DIV,DRG
+ N ADM,ADMDT,AMOUNT,BLBS,BLDT,CPT,CPTLST,DA,DR,DCHD,DFN,DIC,DIQ,DIV,DRG,SPCLTY
  N IBRX,ENC,ENCDT,EPDT,PFT,PRST,PTF,RIMB,VCPT,TTCST,X
  ;
  S AMOUNT=0,X=$G(^IBT(356,CLM,0))
@@ -117,14 +118,20 @@ AMT1 ; - Inpatient Charges
  S BLDT=""
  F  S BLDT=$O(^TMP($J,"IBCRC-INDT",BLDT)) Q:BLDT=""  D
  .S X=^TMP($J,"IBCRC-INDT",BLDT)
- .S BLBS=$P(X,U,2),DRG=$P(X,U,4),DIV=$P(X,U,5)
+ .S BLBS=$P(X,U,2),DRG=$P(X,U,4),DIV=$P(X,U,5),SPCLTY=$P(X,U,6)
  .;
  .; - Tort Liable Charge (prior to 09/01/99)
  .I BLDT<2990901 D  Q
  ..S AMOUNT=AMOUNT+$$BICOST^IBCRCI(RIMB,1,BLDT,"INPATIENT BEDSECTION STAY",BLBS)
  .;
  .; - Reasonable Charges (on 09/01/99 or later)
- .S AMOUNT=AMOUNT+$$BICOST^IBCRCI(RIMB,1,BLDT,"INPATIENT DRG",DRG,"",DIV,"",1)
+ .I $$NODRG^IBCRBG2(SPCLTY)["Observation" Q
+ .I $$NODRG^IBCRBG2(SPCLTY)["Nursing Home Care" D  Q
+ ..S BLBS=$$MCCRUTL^IBCRU1("SKILLED NURSING CARE",25)
+ ..S AMOUNT=AMOUNT+$$BICOST^IBCRCI(RIMB,1,BLDT,"INPATIENT BEDSECTION STAY",BLBS,"",DIV,"",1)
+ .;
+ .S BLBS=$$BSUPD^IBCRBG2(+SPCLTY,BLDT,1)
+ .S AMOUNT=AMOUNT+$$BICOST^IBCRCI(RIMB,1,BLDT,"INPATIENT DRG",DRG,"",DIV,"",1,BLBS)
  ;
  ; - Add the Professional Average Amount per Episode (Reason.Chg only)
  I EPDT'<2990901 S AMOUNT=AMOUNT+$$AVG(EPDT)
@@ -153,10 +160,42 @@ AMT3 ; Prosthetic Charges
  G QAMT
  ;
 AMT4 ; - Prescription Charges 
+ ;
+ ; Protect Rx internal entry # before RXAMT call switches to RX number
+ N IBRXIEN S IBRXIEN=IBRX
+ ;
  ; - Tort Liable Charge & Reasonable Charge (same source)
  S AMOUNT=$$RXAMT^IBTUTL5(EPDT,IBRX) G:AMOUNT=0 QAMT
  ;
- S AMOUNT=+$$BICOST^IBCRCI(RIMB,3,EPDT,"PRESCRIPTION FILL")
+ ; Patch 437 update to call charge master with enough information
+ ; to lookup actual cost of prescription 
+ ;
+ N IBBI,IBRSNEW
+ ;
+ ; check charge master for the type of billing--VA Cost or not
+ S IBBI=$$EVNTITM^IBCRU3(+RIMB,3,"PRESCRIPTION FILL",EPDT,.IBRSNEW)
+ ;
+ S DFN=$$FILE^IBRXUTL(IBRXIEN,2)
+ I $G(DFN)>0&(IBBI["VA COST") D
+ .  N IBQTY,IBCOST,IBRFNUM,IBSUBND,IBFEE,IBRXNODE
+ .;  if this is a refill look up the refill info for cost and quantity
+ .  S IBRFNUM=$$RFLNUM^IBRXUTL(IBRXIEN,EPDT,"")
+ .  I IBRFNUM>0 D
+ ..    S IBSUBND=$$ZEROSUB^IBRXUTL(DFN,IBRXIEN,IBRFNUM)
+ ..    S IBQTY=$P($G(IBSUBND),U,4)
+ ..    S IBCOST=$P($G(IBSUBND),U,11)
+ .;
+ .;  if this was an original fill look up zero node for Rx info 
+ .  E  D
+ ..    S IBRXNODE=$$RXZERO^IBRXUTL(DFN,IBRXIEN)
+ .     S IBQTY=$P($G(IBRXNODE),U,7)
+ .     S IBCOST=$P($G(IBRXNODE),U,17)
+ .;
+ .  S IBRSNEW=+$O(IBRSNEW($P(IBBI,";"),0))
+ .  S AMOUNT=$J(+$$RATECHG^IBCRCC(+IBRSNEW,IBQTY*IBCOST,EPDT,.IBFEE),0,2)
+ E  D
+ .  S AMOUNT=+$$BICOST^IBCRCI(RIMB,3,EPDT,"PRESCRIPTION FILL")
+ ;
  ;
 QAMT I AMOUNT<0 S AMOUNT=0
  Q AMOUNT

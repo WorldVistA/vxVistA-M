@@ -1,10 +1,11 @@
 PSDEA41 ;BIR/BJW/DJE-Destroyed CS Drugs DEA 41 Report ; 15 JAN 96
- ;;3.0; CONTROLLED SUBSTANCES ;**12**;13 Feb 97
+ ;;3.0; CONTROLLED SUBSTANCES ;**12,71**;13 Feb 97;Build 29
  ;
- ; Reference to PSDRUG( DBIA # 221-A
+ ; Reference to PSDRUG( DBIA # 221
  ;
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- I '$D(^XUSEC("PSJ RPHARM",DUZ)) W !!,"Please contact your Pharmacy Coordinator for access to",!,"the pending Controlled Substances destruction data.",!!,"PSJ RPHARM security key required.",! G END
+ I '$D(^XUSEC("PSJ RPHARM",DUZ))&('$D(^XUSEC("PSD TECH ADV",DUZ))) D  G END
+ .W !!,"Please contact your Pharmacy Coordinator for access to",!,"the pending Controlled Substances destruction data.",!!,"PSJ RPHARM or PSD TECH ADV security key required.",!
 ASKD ;ask disp location
  S PSDS=$P(PSDSITE,U,3),PSDSN=$P(PSDSITE,U,4)
 ASKV ;ask vault(s),added 8/9/95

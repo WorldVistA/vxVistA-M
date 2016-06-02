@@ -1,14 +1,13 @@
-PXRMEXLI ; SLC/PKR - List Manager routines for repository entry install. ;03/30/2009
- ;;2.0;CLINICAL REMINDERS;**6,12**;Feb 04, 2005;Build 73
- ;
- ;================================================
-EXIT ;Cleanup ^TMP arrays.
- K ^TMP("PXRMEXLC",$J),^TMP("PXRMEXTMP",$J),^TMP("PXRMEXFND",$J)
- Q
+PXRMEXLI ; SLC/PKR - List Manager routines for repository entry install. ;08/08/2007
+ ;;2.0;CLINICAL REMINDERS;**6**;Feb 04, 2005;Build 164
  ;
  ;================================================
 INSALL ;Install all components in a repository entry.
  N IND,INSTALL
+ ;DSS/PDW - BEGIN MODS - previous version initialized here
+ S:'$D(^TMP("PXRMEXIA",$J,"DT")) ^(DT)=$$NOW^XLFDT
+ S:'$D(^TMP("PXRMEXIA",$J,"TYPE")) ^(TYPE)="INTERACTIVE"
+ ;DSS/PDW - END MODS
  ;Initialize the name change storage.
  K PXRMNMCH
  S (IND,INSTALL,PXRMDONE)=0
@@ -30,14 +29,13 @@ INSCOM(IND,INSTALL) ;Install component IND.
  N NEWNAME,NEWPT01,PT01,RTN,START,TEMP,TEMP0
  S TEMP=^TMP("PXRMEXLC",$J,"SEL",IND)
  S FILENUM=$P(TEMP,U,1)
- S IND120=$P(TEMP,U,2)
- S JND120=$P(TEMP,U,3)
  S EXISTS=$P(TEMP,U,4)
  ;Dialogs use their own installation screen.
  I FILENUM=801.41 D  Q
- . D DBUILD^PXRMEXLB(PXRMRIEN,IND120,JND120)
  . D START^PXRMEXLD
  . S VALMBCK="R"
+ S IND120=$P(TEMP,U,2)
+ S JND120=$P(TEMP,U,3)
  S TEMP=^PXD(811.8,PXRMRIEN,120,IND120,1,JND120,0)
  S START=$P(TEMP,U,2)
  S END=$P(TEMP,U,3)
@@ -95,8 +93,6 @@ INSSEL ;Get a list of components to install.
  ;If there is no list quit.
  I '$D(VALMY) Q
  ;
- K ^TMP("PXRMEXIA",$J),^TMP("PXRMEXIAD",$J)
- ;
  ;Initialize the name change storage.
  K PXRMNMCH
  S (IND,INSTALL)=0
@@ -111,12 +107,15 @@ INSSEL ;Get a list of components to install.
  ;
  ;================================================
 INSTALL ;Install the repository entry PXRMRIEN.
- N CLOK,IEN,IND,VALMY
+ N IEN,IND,VALMY
  ;Make sure the component list exists for this entry. PXRMRIEN is
  ;set in INSTALL^PXRMEXLR.
- S CLOK=1
- I '$D(^PXD(811.8,PXRMRIEN,120)) D CLIST^PXRMEXCO(PXRMRIEN,.CLOK)
- I 'CLOK Q
+ I '$D(^PXD(811.8,PXRMRIEN,120)) D CLIST^PXRMEXU1(.PXRMRIEN)
+ I PXRMRIEN=-1 Q
+ K ^TMP("PXRMEXIA",$J),^TMP("PXRMEXIAD",$J)
+ ;Set the install date and time and type.
+ S ^TMP("PXRMEXIA",$J,"DT")=$$NOW^XLFDT
+ S ^TMP("PXRMEXIA",$J,"TYPE")="INTERACTIVE"
  ;Format the component list for display.
  D CDISP^PXRMEXLC(PXRMRIEN)
  S VALMCNT=$O(^TMP("PXRMEXLC",$J,"IDX"),-1)
@@ -147,6 +146,9 @@ XSEL ;PXRM EXCH SELECT COMPONENT validation
  D ORDER^PXRMEXLC(.SELECT,1)
  ;
  K ^TMP("PXRMEXIA",$J),^TMP("PXRMEXIAD",$J)
+ ;Set the install date and time and type.
+ S ^TMP("PXRMEXIA",$J,"DT")=$$NOW^XLFDT
+ S ^TMP("PXRMEXIA",$J,"TYPE")="INTERACTIVE"
  ;
  ;Install selected component
  N INSTALL
@@ -163,4 +165,3 @@ XSEL ;PXRM EXCH SELECT COMPONENT validation
  ;Clear any renames made in the last session
  K PXRMNMCH
  Q
- ;

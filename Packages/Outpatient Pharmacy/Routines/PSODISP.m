@@ -1,5 +1,5 @@
-PSODISP ;BIR/SAB,PWC-MANUAL BARCODE RELEASE FUNCTION ;03/02/93
- ;;7.0;OUTPATIENT PHARMACY;**15,71,131,156,185,148,247,200**;DEC 1997;Build 7
+PSODISP ;BIR/SAB,PWC - MANUAL BARCODE RELEASE FUNCTION ;03/02/93
+ ;;7.0;OUTPATIENT PHARMACY;**15,71,131,156,185,148,247,200,385,391**;DEC 1997;Build 13
  ;Reference to $$SERV^IBARX1 supported by DBIA 2245
  ;Reference to ^PSD(58.8 supported by DBIA 1036
  ;Reference to ^PS(55 supported by DBIA 2228
@@ -35,9 +35,6 @@ BC ;
  W !?7,$C(7),$C(7),$C(7),"   IMPROPER BARCODE FORMAT" G BC
 BC1 ;
  D ICN^PSODPT(+$P(^PSRX(RXP,0),"^",2))
- I +$P($G(^PSRX(+RXP,"PKI")),"^") D  Q:$G(POERR)  G BC
- .I $G(SPEED) W !!?7,$C(7),$C(7),"Rx# "_$P(^PSRX(RXP,0),"^") S PSOLIST=4
- .W !!,?7,"UNABLE TO RELEASE - THIS ORDER MUST BE RELEASED THROUGH THE OUTPATIENT",!,?7,"RX'S [PSD OUTPATIENT] OPTION IN THE CONTROLLED SUBSTANCE MENU"
  I +$P($G(^PSRX(+RXP,"STA")),"^")=13!(+$P($G(^PSRX(+RXP,0)),"^",2)=0) W !?7,$C(7),$C(7),"    PRESCRIPTION IS A DELETED PRESCRIPTION NUMBER" Q:$G(POERR)  D DCHK G BC
  I +$P($G(^PSRX(+RXP,"STA")),"^"),$S($P(^("STA"),"^")=2:0,$P(^("STA"),"^")=5:0,$P(^("STA"),"^")=11:0,$P(^("STA"),"^")=12:0,$P(^("STA"),"^")=14:0,$P(^("STA"),"^")=15:0,1:1) D STAT^PSODISPS Q:$G(POERR)  D DCHK G BC
  ;drug stocked in Drug Acct Location?
@@ -78,6 +75,7 @@ UPDATE I $G(ISUF) W $C(7),!!?7,"Prescription "_$P(^PSRX(RXP,0),"^")_" - Original
  N BFILL S BFILL=0
  S PSOCPRX=$P(^PSRX(RXP,0),"^") D CP^PSOCP
  W !?7,"Prescription Number "_$P(^PSRX(RXP,0),"^")_" Released"
+ I $$STATUS^PSOBPSUT(RXP)]"",$$WINFILL^PSODISPS(RXP) D SIGMSG^PSODISPS
  ;initialize bingo board variables
  I $G(LBLP),$P(^PSRX(RXP,0),"^",11)["W" S BINGRO="W",BINGNAM=$P(^PSRX(RXP,0),"^",2),BINGDIV=$P(^PSRX(RXP,2),"^",9)
  I $G(PSODISP)=2.4 D    ;HL7 v2.4 dispensing machines

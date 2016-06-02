@@ -1,6 +1,21 @@
-RORX014A ;HOIFO/BH,SG - REGISTRY MEDS REPORT (QUERY & SORT) ; 11/25/05 5:52pm
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORX014A ;HOIFO/BH,SG,VAC - REGISTRY MEDS REPORT (QUERY & SORT) ;4/7/09 2:09pm
+ ;;1.5;CLINICAL CASE REGISTRIES;**8,13,19,21**;Feb 17, 2006;Build 45
  ;
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                 --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*8    MAR 2010    V CARR       Modified to handle ICD9 filter for
+ ;                                      'include' or 'exclude'.
+ ;ROR*1.5*13   DEC 2010    A SAUNDERS   User can select specific patients,
+ ;                                      clinics, or divisions for the report.
+ ;ROR*1.5*19   FEB 2012    J SCOTT      Support for ICD-10 Coding System.
+ ;ROR*1.5*21   SEP 2013    T KOPP       Added ICN as last report column if
+ ;                                      additional identifier option selected
+ ;******************************************************************************
+ ;******************************************************************************
  Q
  ;
  ;***** ADDS THE DRUG COMBINATION TO THE REPORT
@@ -21,9 +36,9 @@ ADD(RXLST,PATIEN) ;
  . S ^TMP("RORX014",$J,"RXC",RXCIEN,1)=RXLST
  . S ^TMP("RORX014",$J,"RXC","B",RXCNDX,RXCIEN)=""
  ;--- Add new patient
- S ^("P")=$G(^TMP("RORX014",$J,"RXC",RXCIEN,"P"))+1
+ S ^("P")=$G(^TMP("RORX014",$J,"RXC",RXCIEN,"P"))+1 ;naked reference: ^TMP("RORX014",$J,"RXC",RXCIEN,"P")
  D VADEM^RORUTL05(PATIEN,1)
- S TMP=VA("BID")_U_VADM(1)_U_$$DATE^RORXU002(VADM(6)\1)
+ S TMP=VA("BID")_U_VADM(1)_U_$$DATE^RORXU002(VADM(6)\1)_U_$S($$PARAM^RORTSK01("PATIENTS","ICN"):$$ICN^RORUTL02(PATIEN),1:"")
  S ^TMP("RORX014",$J,"RXC",RXCIEN,"P",PATIEN)=TMP
  Q
  ;
@@ -41,6 +56,10 @@ QUERY(FLAGS) ;
  N RORXDST       ; Descriptor for pharmacy search API
  ;
  N CNT,DRGIEN,ECNT,NAME,PATIEN,RC,RORIEN,RXFLAGS,STR,TMP,XREFNODE
+ N RCC,FLAG
+ N RORCDLIST     ; Flag to indicate whether a clinic or division list exists
+ N RORCDSTDT     ; Start date for clinic/division utilization search
+ N RORCDENDT     ; End date for clinic/division utilization search
  ;
  S XREFNODE=$NA(^RORDATA(798,"AC",+RORREG))
  S RORPTN=$$REGSIZE^RORUTL02(+RORREG)  S:RORPTN<0 RORPTN=0
@@ -55,17 +74,32 @@ QUERY(FLAGS) ;
  S:$$PARAM^RORTSK01("PATIENTS","OUTPATIENT") RXFLAGS=RXFLAGS_"O"
  Q:RXFLAGS="E" 0
  ;
+ ;=== Set up Clinic/Division list parameters
+ S RORCDLIST=$$CDPARMS^RORXU001(.RORTSK,.RORCDSTDT,.RORCDENDT)
+ ;
  ;--- Browse through the registry records
  S RORIEN=0
+ S FLAG=$G(RORTSK("PARAMS","ICDFILT","A","FILTER"))
  F  S RORIEN=$O(@XREFNODE@(RORIEN))  Q:RORIEN'>0  D  Q:RC<0
  . S TMP=$S(RORPTN>0:CNT/RORPTN,1:"")
  . S RC=$$LOOP^RORTSK01(TMP)  Q:RC<0
  . S CNT=CNT+1
+ . ;--- Get patient DFN
+ . S PATIEN=$$PTIEN^RORUTL01(RORIEN)  Q:PATIEN'>0
+ . ;check for patient list and quit if not on list
+ . I $D(RORTSK("PARAMS","PATIENTS","C")),'$D(RORTSK("PARAMS","PATIENTS","C",PATIEN)) Q
  . ;--- Check if the patient should be skipped
  . Q:$$SKIP^RORXU005(RORIEN,FLAGS,RORSDT,ROREDT)
+ . ;--- Check the patient against the ICD Filter
+ . S RCC=0
+ . I FLAG'="ALL" D
+ . . S RCC=$$ICD^RORXU010(PATIEN)
+ . I (FLAG="INCLUDE")&(RCC=0) Q
+ . I (FLAG="EXCLUDE")&(RCC=1) Q
+ . ;--- End of ICD check
  . ;
- . ;--- Get the patient IEN (DFN)
- . S PATIEN=$$PTIEN^RORUTL01(RORIEN)  Q:PATIEN'>0
+ . ;--- Check for Clinic or Division list and quit if not in list
+ . I RORCDLIST,'$$CDUTIL^RORXU001(.RORTSK,PATIEN,RORCDSTDT,RORCDENDT) Q
  . ;
  . ;--- Search for pharmacy data
  . S TMP=$$RXSEARCH^RORUTL14(PATIEN,RORXL,.RORXDST,RXFLAGS,RORSDT,ROREDT1)
@@ -155,4 +189,5 @@ STORE(REPORT,NRXC) ;
  . . . D ADDVAL^RORTSK11(RORTSK,"NAME",$P(BUF,U,2),ITEM,1)
  . . . D ADDVAL^RORTSK11(RORTSK,"LAST4",$P(BUF,U),ITEM,2)
  . . . D ADDVAL^RORTSK11(RORTSK,"DOD",$P(BUF,U,3),ITEM,1)
+ . . . I $$PARAM^RORTSK01("PATIENTS","ICN") D ADDVAL^RORTSK11(RORTSK,"ICN",$P(BUF,U,4),ITEM,1)
  Q 0

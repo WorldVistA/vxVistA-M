@@ -1,5 +1,9 @@
-ECUERPC1 ;ALB/JAM;Event Capture Data Entry Broker Util ; 5/21/01 7:30pm
- ;;2.0; EVENT CAPTURE ;**25,33,42,46,47,54,72**;8 May 96
+ECUERPC1 ;ALB/JAM - Event Capture Data Entry Broker Util ;1/24/12  16:19
+ ;;2.0;EVENT CAPTURE;**25,33,42,46,47,54,72,76,110,112,114**;8 May 96;Build 20
+ ;
+ ; Reference to $$SINFO^ICDEX supported by ICR #5747
+ ; Reference to $$ICDDX^ICDEX supported by ICR5747
+ ;
 PATINF(RESULTS,ECARY) ;
  ;Broker entry point to get various types of data from EVENT CAPTURE 
  ;PATIENT FILE #721
@@ -26,15 +30,21 @@ PATDXS(ECIEN) ;
  ;INPUTS   ECIEN - Event Capture Patient ien
  ;
  ;OUTPUTS  RESULTS - Array of Event Capture Patient file contains
- ;          721 IEN^secondary dx ien #80^secondary dx code^dx description
+ ;          721 IEN^secondary dx ien #80^secondary dx code^dx description (ICD Code Set)
  ;
- N DXS,DXSIEN,DXSD,CNT
+ N CNT,DXS,DXSIEN,DXSD,ECCS,ECDT
  I '$D(^ECH(ECIEN,"DX")) Q
  K ^TMP($J,"ECDXS")
  S (CNT,DXS)=0 F  S DXS=$O(^ECH(ECIEN,"DX",DXS)) Q:'DXS  D
  . S DXSIEN=$G(^ECH(ECIEN,"DX",DXS,0)) I DXSIEN="" Q
- . S DXSD=$$ICDDX^ICDCODE(DXSIEN,$P($G(^ECH(ECIEN,0)),U,3))
- . S DXSD=$P(DXSD,U,2)_"   "_$P(DXSD,U,4)
+ . ; ICD10 Changes
+ . S ECDT=$P($G(^ECH(ECIEN,0)),U,3) ; DATE/TIME OF PROCEDURE field (#2)
+ . ; Determine Active Coding System Based on Date of Interest
+ . S ECCS=$$SINFO^ICDEX("DIAG",ECDT)
+ . ; Load the ICD code info
+ . S DXSD=$$ICDDX^ICDEX(DXSIEN,ECDT,+ECCS,"I") ; Supported by ICR 5747
+ . S ECCS=$P(ECCS,U,2),ECCS=" ("_$P(ECCS,"-",1)_$P(ECCS,"-",2)_")"
+ . S DXSD=$P(DXSD,U,2)_" "_$P(DXSD,U,4)_ECCS
  . S CNT=CNT+1,^TMP($J,"ECDXS",CNT)=ECIEN_U_DXSIEN_U_DXSD
  S RESULTS=$NA(^TMP($J,"ECDXS"))
  Q
@@ -57,23 +67,23 @@ PATMOD(ECIEN) ;
  S RESULTS=$NA(^TMP($J,"ECMOD"))
  Q
 PATCLASS(ECIEN) ;
- ;Returns to broker a patient classification & eligibility data from 
+ ;Returns to broker a patient classification & eligibility data from
  ;EVENT CAPTURE PATIENT FILE #721
  ; INPUTS   ECIEN - Event Capture Patient ien
  ; OUTPUTS  RESULTS - Array of procedure modifiers
  ;  721 IEN^agent orange^radiation exposure^service connect^environmental
- ;  contaminants^military sexual trauma^eligibility code #8^eligibility
- ;  description^head/neck cancer^combat veteran
+ ;  contaminants/SWAC^military sexual trauma^eligibility code #8^
+ ;  eligibility description^head/neck cancer^combat veteran^P112/SHAD
  ;
- N CLA,ELIG,ELCOD,ECAO,ECIR,ECEC,ECSC,ECMST,STR,ECHNC,ECCV
+ N CLA,ELIG,ELCOD,ECAO,ECIR,ECEC,ECSC,ECMST,STR,ECHNC,ECCV,ECSHAD
  I '$D(^ECH(ECIEN,"P")),'$D(^ECH(ECIEN,"PCE")) Q
  K ^TMP($J,"ECLASS")
  S ELIG=$P($G(^ECH(ECIEN,"PCE")),"~",17),ELCOD="",CLA=$G(^ECH(ECIEN,"P"))
  S:ELIG'="" ELCOD=$P($G(^DIC(8,ELIG,0)),U)
  S ECAO=$P(CLA,U,3),ECIR=$P(CLA,U,4),ECEC=$P(CLA,U,5),ECSC=$P(CLA,U,6)
- S ECMST=$P(CLA,U,9),ECHNC=$P(CLA,U,10),ECCV=$P(CLA,U,11)
+ S ECMST=$P(CLA,U,9),ECHNC=$P(CLA,U,10),ECCV=$P(CLA,U,11),ECSHAD=$P(CLA,U,12)
  S STR=ECIEN_U_ECAO_U_ECIR_U_ECSC_U_ECEC_U_ECMST
- S STR=STR_U_ELIG_U_ELCOD_U_ECHNC_U_ECCV,^TMP($J,"ECLASS",1)=STR
+ S STR=STR_U_ELIG_U_ELCOD_U_ECHNC_U_ECCV_U_ECSHAD,^TMP($J,"ECLASS",1)=STR
  S RESULTS=$NA(^TMP($J,"ECLASS"))
  Q
 PATOTH(ECIEN) ;
@@ -81,14 +91,14 @@ PATOTH(ECIEN) ;
  ;PATIENT FILE #721
  ;INPUTS   ECIEN - Event Capture Patient ien
  ;
- ;OUTPUTS  RESULTS - 
+ ;OUTPUTS  RESULTS - Array of procedure modifiers
  ;          721 IEN^procedure reason
  ;
  N REAS,ECX
  K ^TMP($J,"ECOTH")
  S ECX=^ECH(ECIEN,0)
- S REAS=$$GET1^DIQ(721,ECIEN,34,"E")
- S ^TMP($J,"ECOTH",1)=REAS
+ D GETS^DIQ(721,ECIEN_",","34;43;44","E","REAS") ;112
+ S ^TMP($J,"ECOTH",1)=$G(REAS(721,ECIEN_",",34,"E"))_"^"_$G(REAS(721,ECIEN_",",43,"E"))_"^"_$G(REAS(721,ECIEN_",",44,"E")) ;112
  S RESULTS=$NA(^TMP($J,"ECOTH"))
  Q
 PATCLAST(RESULTS,ECARY) ;
@@ -101,21 +111,26 @@ PATCLAST(RESULTS,ECARY) ;
  ;OUTPUTS  RESULTS - Patient status and classifications delimited by (^)
  ;         Patient Status: I for inpatient or O for outpatient
  ;         Classification: 2- Agent Orange, 3- Ionizing Radiation
- ;          4- SC Condition, 5- Environmental Contaminants 6- Military
+ ;          4- SC Condition, 5- Environment Contaminants/SWAC 6- Military
  ;          Sexual Trauma    7- Head/Neck Cancer 8- Combat Veteran
+ ;          9- Project 112/SHAD
  ;         Data after the '~' refers to those class. that must be asked 
  ;         by Delphi appl. when the answer to SC=No.
- ;         Data after "~"  1- Agent Orange  2- Ionizing Radi. 3- Env Cont
- N ECDFN,ECDT,ECX,I,ECCLARY,SCDAT,PATSTAT
+ ;         Data after "~"  1- Agent Orange  2- Ionizing Radi. 3- Env Cont/SWAC
+ N ECDFN,ECDT,ECX,I,ECCLARY,SCDAT,PATSTAT,% ;112
  D SETENV^ECUMRPC
  S ECDFN=$P(ECARY,U),ECD=$P(ECARY,U,2),ECDT=$P(ECARY,U,3) Q:ECDFN=""
  I ECDT="" D NOW^%DTC S ECDT=%
  S PATSTAT=$$INOUTPT^ECUTL0(ECDFN,ECDT),RESULTS="^^^^^^",SCDAT=";;;"
- I PATSTAT="I" D  Q  ;added to be consistent w roll-n-scroll 11/25/03 JAM
- .S RESULTS=PATSTAT_"^"_RESULTS_$S(SCDAT'="":"~"_SCDAT,1:"")
+ ;
+ ; Removed in EC*110 so inpatient data can be answered for transmission to Austin
+ ; This was to be consistent with VHA Directive 2009-002
+ ;
+ ; I PATSTAT="I" D  Q
+ ; .S RESULTS=PATSTAT_"^"_RESULTS_$S(SCDAT'="":"~"_SCDAT,1:"") 
  I '$$CHKDSS^ECUTL0(+$G(ECD),PATSTAT) D  Q
  .S RESULTS=PATSTAT_"^"_RESULTS_$S(SCDAT'="":"~"_SCDAT,1:"")
- D CL^SDCO21(ECDFN,ECDT,"",.ECCLARY) F ECX=3,1,2,4,5,6,7 D
+ D CL^SDCO21(ECDFN,ECDT,"",.ECCLARY) F ECX=3,1,2,4,5,6,7,8 D
  .I ECX=1,$P($G(^DPT(ECDFN,.321)),"^",2)'="Y" Q
  .I ECX=2,$P($G(^DPT(ECDFN,.321)),"^",3)'="Y" Q
  .I ECX=4,$P($G(^DPT(ECDFN,.322)),"^",13)'="Y",'$$EC^SDCO22(ECDFN,"") Q
@@ -135,20 +150,28 @@ ENCDXS(RESULTS,ECARY) ;
  ;         EC4   - Clinic ien
  ;
  ;OUTPUTS  RESULTS - array of patient encounter diagnosis
- ;         primary/secondary flag^DX ien^DX code  DX description.
+ ;         primary/secondary flag^(ICD Code Set) DX ien^DX code  DX description.
  ;
- N ECDFN,ECDT,ECL,EC4,ECPDX,ECDX,ECDXN,ECDXS,CNT,STR,ECPDX,SDXCNT
+ N ECDFN,ECDT,ECL,EC4,ECPDX,ECDX,ECDXN,ECDXS,CNT,STR,ECPDX,SDXCNT,% ;112
+ N ECCS,ECICD
  D SETENV^ECUMRPC
  K ^TMP($J,"ECENCDXS")
  S ECDFN=$P(ECARY,U),ECDT=+$P(ECARY,U,2),ECL=$P(ECARY,U,3)
  S EC4=$P(ECARY,U,4) I ECDT="" D NOW^%DTC S ECDT=%
  I ECDFN=""!(ECL="")!(EC4="") Q
  S (ECDX,ECDXN)="",ECPDX=$$PDXCK^ECUTL2(ECDFN,ECDT,ECL,EC4) I ECDX="" Q
- S IEN="",STR=1_U_ECDX_U_ECDXN_"   "_$P($$ICDDX^ICDCODE(ECDX,ECDT),U,4)
+ ; Changes for ICD10
+ ; Determine Active Coding System Based on Date of Interest
+ S ECCS=$$SINFO^ICDEX("DIAG",ECDT) ; Supported by ICR 5747
+ ; Load the ICD code info
+ S ECICD=$$ICDDX^ICDEX(ECDX,ECDT,+ECCS,"I") ; Supported by ICR 5747
+ S ECCS=$P(ECCS,U,2),ECCS=" ("_$P(ECCS,"-",1)_$P(ECCS,"-",2)_")"
+ S IEN="",STR=1_U_ECDX_U_ECDXN_" "_$P(ECICD,U,4)_ECCS
  S CNT=1,^TMP($J,"ECENCDXS",CNT)=STR
  ;*ACS concat description to 2nd diag code, in the order entered by the user
  F  S IEN=$O(ECDXS(IEN)) Q:IEN=""  D
- . S CNT=CNT+1,^TMP($J,"ECENCDXS",CNT)=0_U_ECDXS(IEN)_U_IEN_"   "_$P($$ICDDX^ICDCODE(ECDXS(IEN),ECDT),U,4)
+ . S ECICD=$$ICDDX^ICDEX(ECDXS(IEN),ECDT,+ECCS,"I") ; Supported by ICR 5747
+ . S CNT=CNT+1,^TMP($J,"ECENCDXS",CNT)=0_U_ECDXS(IEN)_U_IEN_" "_$P(ECICD,U,4)_ECCS
  S RESULTS=$NA(^TMP($J,"ECENCDXS"))
  Q
  ;
@@ -165,10 +188,11 @@ PROCBAT(RESULTS,ECARY) ;
  ;          ECED  - End Date
  ;
  ;OUTPUTS  RESULTS - Array of Event Capture Patient data containing:-
- ;          721 IEN^Patient name^Procedure Date/Time^Primary Dx
+ ;          721 IEN^Patient name^Procedure Date/Time^(Primary Dx Code set) Primary Dx
  ;          ^Ordering Section^Associated Clinic
- ;^SSN^DOB^Procedure Date and Time
- N IEN,CNT,ECLOC,ECUNT,NODE,DATA,PXDT,ECV,ECC,ECP,ECSD,ECED,DATE,DFN
+ ;          ^SSN^DOB^Procedure Date and Time
+ ;
+ N IEN,CNT,ECCS,ECLOC,ECUNT,NODE,DATA,PXDT,ECV,ECC,ECP,ECSD,ECED,DATE,DFN
  N CAT,ECI,VADM,ORC,ASC,ECDX
  S ECV="ECLOC^ECUNT^ECC^ECP^ECSD^ECED"
  D PARSE^ECUERPC(ECV,ECARY)
@@ -182,8 +206,13 @@ PROCBAT(RESULTS,ECARY) ;
  . . S NODE=$G(^ECH(IEN,0))  Q:NODE=""  Q:$P(NODE,U,7)'=ECUNT
  . . Q:$P(NODE,U,8)'=ECC  Q:$P(NODE,U,9)'=ECP
  . . S ECDX=$P($G(^ECH(IEN,"P")),U,2) I ECDX'="" D
- . . . S ECDX=$$ICDDX^ICDCODE(ECDX,DATE)
- . . . S ECDX=$P(ECDX,U,2)_"  "_$P(ECDX,U,4)
+ . . . ; Updates for ICD10
+ . . . ; Load the ICD code info
+ . . . S ECCS=$$SINFO^ICDEX("DIAG",DATE) ; Supported by ICR 5747
+ . . . ; Load the ICD code info
+ . . . S ECDX=$$ICDDX^ICDEX(ECDX,DATE,+ECCS,"I") ; Supported by ICR 5747
+ . . . S ECCS=$P(ECCS,U,2),ECCS=" ("_$P(ECCS,"-",1)_$P(ECCS,"-",2)_")"
+ . . . S ECDX=$P(ECDX,U,2)_" "_$P(ECDX,U,4)_ECCS
  . . S ASC=$P(NODE,U,19) S:ASC'="" ASC=$$GET1^DIQ(44,ASC,.01,"I")
  . . S ORC=$P(NODE,U,12) S:ORC'="" ORC=$$GET1^DIQ(723,ORC,.01,"I")
  . . S Y=DATE X ^DD("DD") S PXDT=Y,DFN=$P(NODE,U,2) D DEM^VADPT

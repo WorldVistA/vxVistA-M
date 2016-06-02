@@ -1,9 +1,14 @@
-RASTED ;HISC/CAH,FPT,GJC,SS AISC/TMP,TAC,RMO-Edits for status tracking ;6/2/98  15:43
- ;;5.0;Radiology/Nuclear Medicine;**1,10,18,28,45,71,82**;Mar 16, 1998;Build 8
+RASTED ;HISC/CAH,FPT,GJC,SS AISC/TMP,TAC,RMO-Edits for status tracking ;05/22/09  12:30
+ ;;5.0;Radiology/Nuclear Medicine;**1,10,18,28,45,71,82,99**;Mar 16, 1998;Build 5
  ;last modif by SS for P18 JUN 19,2000
  ;02/10/2006 BAY/KAM RA*5*71 Add ability to update exam data to V/R
  ; *** 'RASTED' is called from the routine; 'CASE^RASTEXT1'. ***
  ;last modification by SS May 12,2000
+ ;
+ ;Supported IA #10040 reference to ^SC
+ ;Supported IA #1367 reference to LKUP^XPDKEY
+ ;Supported IA #2056 reference to GET1^DIQ
+ ;Supported IA #10060 reference to ^VA(200
  S RAL=X F I2=1:1 S X=$P(RAL,",",I2) Q:X=""  S RAVW="" W !!,"Case # being tracked: ",X D SEL^RACNLU D:'RACNT KEY D START:RACNT&((X'="^")&(X'=""))
  K RAL,RAI,RAPRI,I2,I3,RAVW,RAEND,RANME,RAPRC,RARPT,RADTE,RADT0,RANEXT,RANXT72,RASK,RACN,RACN0,RADFN,RADUZ,RAPOP,RAST,RAST0,RAFL,RAFST,RAIX,RASSN,RACOMP,X Q
  ;RACOMP defined if [RA STATUS CHANGE] was processed completely
@@ -37,6 +42,14 @@ CHANGE W !!,"Name: ",RANME,?40,"Case #  : ",RACN,!,"Division : ",$S($D(^DIC(4,+$
  W ?40,"Location: ",$S('$D(^RA(79.1,+$P(RADT0,"^",4),0)):"",$D(^SC(+^(0),0)):$P(^(0),"^"),1:"")
  W !,"Procedure: ",RAPRC
  D PRCCPT^RAPROD
+ ;p99: get sex and display pregnancy data if available for female pt.
+ I $$PTSEX^RAUTL8(RADFN)="F" D
+ .N RAORD0,RAPCOMM S RAORD0=$P(RACN0,U,11)
+ .S RAPCOMM=$G(^RADPT(RADFN,"DT",RADTI,"P",RACNI,"PCOMM"))
+ .W !,"PREGNANT AT TIME OF ORDER ENTRY: ",?22,$$GET1^DIQ(75.1,RAORD0_",",13)
+ .W:$P(RACN0,U,32)'="" !,"PREGNANCY SCREEN: ",$S($P(RACN0,"^",32)="y":"Patient answered yes",$P(RACN0,"^",32)="n":"Patient answered no",$P(RACN0,"^",32)="u":"Patient is unable to answer or is unsure",1:"")
+ .W:$P(RACN0,U,32)'="n"&$L(RAPCOMM) !,"PREGNANCY SCREEN COMMENT: ",RAPCOMM
+ ;end p99
  W !,"   ***** Old Status: ",$P(RAST0,"^"),!,"   ***** New Status: ",$P(RANEXT,"^")
  I RAPRC="Unknown" W !!?5,$C(7),"This record is corrupted -- the procedure is missing,",!?5,"please contact your ADPAC or IRM",! K DIR S DIR(0)="E",DIR("A")="Press RETURN to Continue" D ^DIR K DIR,DIROUT,DIRUT,DTOUT,DUOUT Q
 ASK R !,"Do you wish to continue? YES// ",X1:DTIME S:X1="" X1="Y" Q:'$T!(X1["^")!("nN"[X1)

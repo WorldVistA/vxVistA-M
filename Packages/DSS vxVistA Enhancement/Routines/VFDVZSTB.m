@@ -1,6 +1,6 @@
 VFDVZSTB ;DSS/SGM - CLEAN UP ROUTINE ;16 Sep 2009 21:26
- ;;2.0;DSS,INC VXVISTA OPEN SOURCE;;29 Jul 2011;Build 92
- ;Copyright 1995-2011,Document Storage Systems Inc. All Rights Reserved
+ ;;2.0;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 103
+ ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  ;This routine should only be invoked via VFDVZST
  ;

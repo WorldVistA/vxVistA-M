@@ -1,5 +1,5 @@
 LRVRPOC ;DALOI/JMC - POINT OF CARE VERIFICATION ;05/11/10  16:48
- ;;5.2;LAB SERVICE;**290,350**;Sep 27, 1994;Build 230
+ ;;5.2;LAB SERVICE;**290,350**;Sep 27, 1994;Build 2
  ;
  ; Reference to DIVSET^XUSRB2 supported by DBIA #4055
  ; Reference to ADM^VADPT2 supported by DBIA #325
@@ -55,7 +55,12 @@ END ; Clean up and quit
 LOOK ; Check for data
  K LRDFN,LRERR
  S LRODT=DT,(LREND,LRERR)=0
- S DFN=$$GETDFN^LRVRPOCU(LASSN)
+ ;DSS/RAF - BEGIN MOD - use MRN if vxVistA system  11/12/2013 
+ ;S DFN=$$GETDFN^LRVRPOCU(LASSN)
+ I $G(^%ZOSF("ZVX"))["VX" D
+ . S DFN=$$DFN^VFDDFN(LASSN,,"MRN"),SSN(2)=LASSN
+ I +$G(DFN)'>0 S DFN=$$GETDFN^LRVRPOCU(LASSN),SSN(2)=LASSN  ;original line with condition added and SSN(2) set
+ ;DSS/RAF - END MOD
  I 'DFN D  Q
  . S LRERR=$$CREATE^LA7LOG(101,1)
  . D SENDACK^LRVRPOCU
@@ -69,7 +74,11 @@ LOOK ; Check for data
  . D SENDACK^LRVRPOCU
  S LRDFN=$$FNLRDFN(LADFN)
  I $S(LREND:1,LRDFN<1:1,1:0) Q
- S LRSSN=$S($G(^LAH(LRLL,1,LAIEN,.1,"PID","SSN")):^("SSN"),1:"???")
+ ;DSS/RAF - BEGIN MOD - added '="" to $Select to stop 106 error when MRN is not numeric
+ I $G(^%ZOSF("ZVX"))["VX" D
+ . S LRSSN=$S($G(^LAH(LRLL,1,LAIEN,.1,"PID","SSN"))'="":^("SSN"),1:"???")
+ E  S LRSSN=$S($G(^LAH(LRLL,1,LAIEN,.1,"PID","SSN")):^("SSN"),1:"???")
+ ;DSS/RAF - END MOD
  I LRSSN'=$G(SSN(2)) D  Q
  . S LRERR=$$CREATE^LA7LOG(106,1)
  . D SENDACK^LRVRPOCU
@@ -186,6 +195,9 @@ DPT(DFN) ;
  ; Get location abbreviation
  S LRLLOC=$$GET1^DIQ(44,LROLLOC_",",1,"I")
  I LRLLOC="" S LRLLOC="NO ABRV "_LROLLOC
+ ;DSS/RAF - BEGIN MOD - add patient check 3/20/2014
+ I $$VX D VFD
+ ;DSS/RAF - END MOD
  Q
  ;
  ;
@@ -303,3 +315,22 @@ DATA(LRLL,LAIEN) ;Extract results into LROT(
  ; Send application ack back to POC interface
  D SENDACK^LRVRPOCU
  Q
+ ;DSS/RAF - BEGIN MOD - needed for checking patient in file 2 with patient info in ^LAH from ORU msg
+VFD ; set up patient variables for call to DFNCHK^VFDDFN
+ I $$GET^XPAR("SYS","VFD LAB POC PATIENT CHK",1,"I"),$T(DFNCHK^VFDDFN)]"" D 
+ . N DATA,NAME
+ . S DATA("DFN")=$G(^LAH(LRLL,1,LAIEN,.1,"PID","DFN"))
+ . S NAME=$G(^LAH(LRLL,1,LAIEN,.1,"PID","PNM"))
+ . S DATA("LN")=$P(NAME,","),DATA("FN")=$P($P(NAME,",",2)," ")
+ . S DATA("DOB")=$G(^LAH(LRLL,1,LAIEN,.1,"PID","DOB"))
+ . S DATA("SEX")=$G(^LAH(LRLL,1,LAIEN,.1,"PID","SEX"))
+ . S X=$$DFNCHK^VFDDFN(.DATA)
+ . I X'>0 D
+ . . S LRERR=$$CREATE^LA7LOG(112,1)
+ . . D SENDACK^LRVRPOCU
+ Q
+VX(RTN) ; vxVistA check
+ I $G(^%ZOSF("ZVX"))'["VX" Q 0
+ Q:$G(RTN)="" 1
+ S:$E(RTN)'=U RTN=U_RTN Q $T(@RTN)'=""
+ ;;2013.1;VENDOR - DOCUMENT STORAGE SYS;**16**;11 DEC 2014

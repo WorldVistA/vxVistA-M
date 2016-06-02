@@ -1,5 +1,5 @@
-GMVGGR2 ;HOIFO/YH,FT-SET ^TMP($J) GLOBAL ;9/30/02  14:58
- ;;5.0;GEN. MED. REC. - VITALS;**3**;Oct 31, 2002;Build 153
+GMVGGR2 ;HOIFO/YH,FT-SET ^TMP($J) GLOBAL ;6/6/07
+ ;;5.0;GEN. MED. REC. - VITALS;**3,23**;Oct 31, 2002;Build 8
  ;CONTINUTATION OF GMVGGR1
  ;
  ; This routine uses the following IAs:
@@ -26,14 +26,15 @@ GRAPH ;
  Q
 SETV ;Set patient data in ^TMP($J,"GMRK" global
  D DEM^VADPT,INP^VADPT
- S GN=1,^TMP($J,GN)=$S(VADM(1)'="":VADM(1),1:"         ")_"  "_$S(VADM(2)'="":$P(VADM(2),"^",2),1:" ")_"  "_$S($D(VADM(3)):$P(VADM(3),"^",2),1:" ")_"  "_$S($D(VADM(4)):VADM(4),1:" ")_" (Yrs)"
+ S GN=1,^TMP($J,GN)=$S(VADM(1)'="":VADM(1),1:"         ")_"  "_$S(VADM(2)'="":$E($P(VADM(2),"^",2),8,11),1:" ")_"  "_$S($D(VADM(3)):$P(VADM(3),"^",2),1:" ")_"  "_$S($D(VADM(4)):VADM(4),1:" ")_" (Yrs)"
  S ^TMP($J,GN)=^(GN)_"  "_$S($D(VADM(5)):$P(VADM(5),"^",2),1:" ")
  S GN=2,^TMP($J,GN)="Unit: "_$P($G(VAIN(4)),"^",2)_"   Room: "_$P($G(VAIN(5)),"-",1,2)
  I '$D(GMRVHLOC) S GMRVHLOC=$$HOSPLOC^GMVUTL1(+$G(VAIN(4)))
  S GN=3,^TMP($J,GN)="Division: "_$$DIVISION^GMVUTL1(+GMRVHLOC)
  S GN=4,^TMP($J,GN)=GSTRFIN
  Q
-DATE S:GMR=0 $P(^TMP($J,GN),"^")=$E(GDT,4,5)_"-"_$E(GDT,6,7)_"-"_$E(GDT,2,3)
+DATE ;
+ S:GMR=0 $P(^TMP($J,GN),"^")=$E(GDT,4,5)_"-"_$E(GDT,6,7)_"-"_$E(GDT,2,3)
  S:GMR=0 Y=$E($P(GDT,".",2)_"000000",1,6),$P(^TMP($J,GN),"^",2)=$E(Y,1,2)_":"_$E(Y,3,4)_":"_$E(Y,5,6)
  Q
 SETA ;Store measurements in ^TMP($J, global
@@ -41,6 +42,7 @@ SETA ;Store measurements in ^TMP($J, global
  S GMVNODE=$G(^TMP($J,"GMRVG",GDT,GI,GK))
  S $P(^TMP($J,GN),"^",22)=$P(GMVNODE,U,5)
  S $P(^TMP($J,GN),"^",23)=$P(GMVNODE,U,6)
+ S $P(^TMP($J,GN),"^",24)=$P(GMVNODE,U,7)
  S GK(1)=GK
  I GK(1)="Unavailable" S GK(1)="Unavail"
  I GI="I" S:GMR=0 $P(^TMP($J,GN),"^",17)=GK(1) Q
@@ -51,7 +53,11 @@ SETA ;Store measurements in ^TMP($J, global
  . S GMRSITE(1)=$P(GMVNODE,U,1),GMRVJ=$P(GMVNODE,U,2),GINF=$P(GMVNODE,U,4)
  . I GMRSITE(1)'="" D SYNOARY^GMVLGQU
  I GI="R" S $P(^TMP($J,GN),"^",5)=GK(1)_$S(GMRVJ=1:"*",1:"")_"- "_GMRSITE Q
+ ;DSS/SMP - BEGIN MODS
+ N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
  I GI="H" D  Q
+ . I VFD D  Q
+ . . S $P(^TMP($J,GN),"^",11)=GK(1)_"- "_GMRSITE,$P(^TMP($J,GN),"^",12)=$S(GK(1)>0:$$IN2CM^VFDXLF(GK(1),2),1:"") S:GK(1)>0 GMRHT=$$IN2M^VFDXLF(GK(1))
  . S $P(^TMP($J,GN),"^",11)=GK(1)_"- "_GMRSITE,$P(^TMP($J,GN),"^",12)=$S(GK(1)>0:$J(GK(1)*2.54,0,2),1:"") S:GK(1)>0 GMRHT=(GK(1)*2.54)/100
  I GI="PO2" D  Q
  . S (GINF(1),GINF(2))="" I GINF'="" D PO2^GMVLGQU(.GINF)
@@ -60,15 +66,22 @@ SETA ;Store measurements in ^TMP($J, global
  . S $P(^TMP($J,GN),"^",15)=$S(GK(1)>0!(GK(1)<0):$J(GK(1),0,1),1:GK(1))_$S(GMRVJ=1:"*",1:"")
  . S $P(^TMP($J,GN),"^",16)=$S(GK(1)>0!(GK(1)<0)!($E(GK(1))="0"):$J(GK(1)/1.36,0,1),1:"")_$S(GMRVJ=1:"*",1:"")
  I GI="CG" D  Q
+ . I VFD D  Q
+ . . S $P(^TMP($J,GN),"^",13)=GK(1)_"- "_GMRSITE,$P(^TMP($J,GN),"^",14)=$S(GK(1)>0:$$IN2CM^VFDXLF(GK(1),2),1:"")
  . S $P(^TMP($J,GN),"^",13)=GK(1)_"- "_GMRSITE,$P(^TMP($J,GN),"^",14)=$S(GK(1)>0:$J(GK(1)/.3937,0,2),1:"")
  I GI="B",GK(1)'="" S $P(^TMP($J,GN),"^",7)=GK(1)_$S(GMRVJ=1:"*",1:"")_"- "_GMRSITE
- I GI="W" S $P(^TMP($J,GN),"^",8)=GK(1)_"- "_GMRSITE,$P(^(GN),"^",9)=$S(GK(1)>0:$J(GK(1)*.45359237,0,2),1:"")
+ I GI="W" D
+ . I VFD D  Q
+ . . S $P(^TMP($J,GN),"^",8)=GK(1)_"- "_GMRSITE,$P(^(GN),"^",9)=$S(GK(1)>0:$$LB2KG^VFDXLF(GK(1),2),1:"")
+ . S $P(^TMP($J,GN),"^",8)=GK(1)_"- "_GMRSITE,$P(^(GN),"^",9)=$S(GK(1)>0:$J(GK(1)*.45359237,0,2),1:"")
+ ;DSS/SMP - END MODS
  I GK(1)>0,GI="W" D  Q
   . S GHOLD=GI,GMRBMI="",GMRBMI(1)=GDT,GMRBMI(2)=GK(1) D CALBMI^GMVBMI(.GMRBMI) S GI=GHOLD
   . S $P(^TMP($J,GN),"^",10)=GMRBMI K GMRBMI
  I GI="T" S $P(^TMP($J,GN),"^",3)=GK(1)_$S(GMRVJ=1:"*",1:"")_"- "_GMRSITE Q
  I GI="P" S $P(^TMP($J,GN),"^",4)=GK(1)_$S(GMRVJ=1:"*",1:"")_"- "_GMRSITE
  ;DSS/LM - Begin insert to include added vitals
+ Q:'VFD  ;OSHERA check - Only vxVistA vitals below this line
  ;7/30/2010 - Place LMP, EDD, and LEN on "^"pieces 26, 27, and 28
  ;I GI="LMP"!(GI="EDD") S $P(^TMP($J,GN),"^",4)=$$FMTE^XLFDT(GK(1),"5D")_"~"_GI
  I GI="LMP" S $P(^TMP($J,GN),"^",26)=$$FMTE^XLFDT(GK(1),"5D")_"~"_GI

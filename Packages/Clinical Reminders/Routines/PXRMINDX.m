@@ -1,5 +1,5 @@
-PXRMINDX ; SLC/PKR - Routines for utilizing the index. ;02/22/2010
- ;;2.0;CLINICAL REMINDERS;**4,6,12,17**;Feb 04, 2005;Build 102
+PXRMINDX ;SLC/PKR - Routines for utilizing the index. ;01/07/2013
+ ;;2.0;CLINICAL REMINDERS;**4,6,12,17,18,26**;Feb 04, 2005;Build 404
  ;Code for patient findings.
  ;================================================================
 EVALFI(DFN,DEFARR,ENODE,FIEVAL) ;General finding evaluator.
@@ -54,6 +54,7 @@ FIEVAL(FILENUM,SNODE,DFN,ITEM,PFINDPA,FIEVAL) ;
  N SAVE,SDIR,SSFIND,STATOK,STATUSA,UCIFS,USESTRT,VSLIST
  ;Set the finding search parameters.
  D SSPAR^PXRMUTIL(PFINDPA(0),.NOCC,.BDT,.EDT)
+ I $G(PXRMDEBG) S FIEVAL("BDTE")=BDT,FIEVAL("EDTE")=EDT
  D SCPAR^PXRMCOND(.PFINDPA,.CASESEN,.COND,.UCIFS,.ICOND,.VSLIST)
  S SDIR=$S(NOCC<0:+1,1:-1)
  S NOCC=$S(NOCC<0:-NOCC,1:NOCC)
@@ -76,7 +77,7 @@ FIEVAL(FILENUM,SNODE,DFN,ITEM,PFINDPA,FIEVAL) ;
  .;If this is a Mental Health finding attach the scale to DAS.
  . I PFINDPA(0)["YTT(601.71" S DAS=DAS_"S"_$P(PFINDPA(0),U,12)
  . D GETDATA^PXRMDATA(FILENUM,DAS,.FIEVD)
- . I INVFD D GETDATA^PXRMVSIT(FIEVD("VISIT"),.FIEVD,0)
+ . I INVFD,$D(FIEVD("VISIT")) D GETDATA^PXRMVSIT(FIEVD("VISIT"),.FIEVD,0)
  . S FIEVD("DATE")=$P(FLIST(IND),U,2)
  .;If there is a status list make sure the finding has one on the list.
  . S STATOK=$S($D(STATUSA):$$STATUSOK(.STATUSA,.FIEVD),1:1)

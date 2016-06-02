@@ -1,5 +1,5 @@
-MAGGTUX ;WIOFO/GEK Imaging utility to validate INDEX values.
- ;;3.0;IMAGING;**59**;Nov 27, 2007;Build 20
+MAGGTUX ;WIOFO/GEK/SG - Imaging utility to validate INDEX values. ; 2/5/09 1:58pm
+ ;;3.0;IMAGING;**59,93**;Dec 02, 2009;Build 163
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -65,8 +65,8 @@ START(COMMIT,MAGN,QUEUED) ;Start here.
  . Q
  N DOT,N0,N40,OL40,N2,MDFN,IXT,IXP,IXS,IXO,ST,ET,NORG,ISGRP,X,J,RADCT,RADCR,CDT,IEN,INDXD
  N PKG,SD,TIM,TITLE,TIUDA,TTLDA,MRY,LNT,LNI,X1,STTIME,ENDTIME,ELSP,%H,%
- N GRINT,NI,NOPAT,NOZ,INVG,CRCT,INVO,GRINI,NT,CT,STOP,LN,GO1,GO0,ORG,OFX,NOMERG,OKMERG,FIX
- S (GRINT,NI,NOPAT,NOZ,INVG,CRCT,INVO,GRINI,NT,CT,STOP,LN,GO1,GO0,ORG,OFX,NOMERG,OKMERG,FIX)=0
+ N GRINT,NI,NOPAT,NOZ,INVG,CRCT,INVO,GRINI,NT,CT,CTALL,STOP,LN,GO1,GO0,ORG,OFX,NOMERG,OKMERG,FIX
+ S (GRINT,NI,NOPAT,NOZ,INVG,CRCT,INVO,GRINI,NT,CT,CTALL,STOP,LN,GO1,GO0,ORG,OFX,NOMERG,OKMERG,FIX)=0
  ; Write 200 lines to screen.
  S DOT=$P(($P(^MAG(2005,0),"^",4)/200),".",1)
  S IEN="A"
@@ -100,6 +100,8 @@ START(COMMIT,MAGN,QUEUED) ;Start here.
  . . S STOP=1
  . . I 'QUEUED W ! D MES^XPDUTL(" Function interrupted. ")
  . . Q
+ . S CTALL=CTALL+1
+ . Q:$$ISDEL^MAGGI11(IEN)
  . S ISGRP=0
  . S N0=$G(^MAG(2005,IEN,0))
  . S N2=$G(^MAG(2005,IEN,2))
@@ -220,9 +222,9 @@ EST() ;Estimate time remaining.
  Q:'$G(ST) ""    ; we didn't start yet.
  N ET,EST,PS             ; Elapsed Time, Estimate Time, Number Per Second.
  S ET=$P($H,",",2)-ST I ET<2 Q "" ; Elapsed Time (seconds)
- I (CT/ET)<1 Q ""
- S PS=$P(CT/ET,".") ; number Per second
- S EST=$P(((TIM-CT)/PS),".") ;remaining/ (num/sec) = seconds remaining
+ I (CTALL/ET)<1 Q ""
+ S PS=$P(CTALL/ET,".") ; number Per second
+ S EST=$P(((TIM-CTALL)/PS),".") ;remaining/ (num/sec) = seconds remaining
  S %H=$P($H,",")_","_EST D YMD^%DTC
  Q $P($$FMTE^XLFDT(X_%),"@",2)
  ;

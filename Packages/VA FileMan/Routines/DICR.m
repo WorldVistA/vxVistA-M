@@ -1,8 +1,17 @@
-DICR ;SFISC/GFT-RECURSIVE CALL FOR X-REFS ON TRIGGERED FLDS ;10:01 AM  14 May 2001
- ;;22.0;VA FileMan;**11,88**;Mar 30, 1999
- ;Per VHA Directive 10-93-142, this routine should not be modified.
- Q:'$O(^DD(DIH,DIG,1,0))&'$D(^DD("IX","F",DIH,DIG))
+DICR ;SFISC/GFT-RECURSIVE CALL FOR X-REFS ON TRIGGERED FLDS ;6DEC2004
+ ;;22.2;MSC Fileman;;Jan 05, 2015;
+ ;;Submitted to OSEHRA 5 January 2015 by the VISTA Expertise Network.
+ ;;Based on Medsphere Systems Corporation's MSC Fileman 1051.
+ ;;Licensed under the terms of the Apache License, Version 2.0.
+ ;;GFT;**11,88,157**
  ;
+ ;From a TRIGGER on field DIH,DIG
+ ;DIU is old value, DIV new
+AUDIT I $P(^DD(DIH,DIG,0),U,2)["a" D  ;NOIS ISB-1102-31285
+ .N DIANUM,DIIX,C,DP
+ .I DIU]"" S X=DIU,DIIX=2_U_DIG,DP=DIH D AUDIT^DIET
+ .I DIV]"",^DD(DIH,DIG,"AUDIT")'="e"!(DIU]"") S X=DIV,DIIX=3_U_DIG,DP=DIH D AUDIT^DIET ;Don't audit NEW if there's no OLD and mode is EDIT ONLY
+ Q:'$O(^DD(DIH,DIG,1,0))&'$D(^DD("IX","F",DIH,DIG))
  N DICRIENS,DICRBADK
  I $D(^DD("KEY","F",DIH,DIG)) D  Q:$G(DICRBADK)
  . N DICRFDA,DICRMSG,DIERR
@@ -65,7 +74,7 @@ CONV ;
  K %,%1,Y
  Q
 SD ;
- S DIV(0)=DA D U K DA,DIH,DIG,DIV Q
+ S DIV(0)=DA D U:DA>0 K DA,DIH,DIG,DIV Q
  ;
 TRIG(DICRLIST,DICROUT) ;Modify the trigger logic of fields that trigger fields
  ;in DICRLIST so that they call ^DICR unconditionally.

@@ -1,6 +1,6 @@
-MAGJUTL4 ;WIRMFO/JHC VistARad subroutines for RPC calls ; 15 Jul 2004  4:34 PM
- ;;3.0;IMAGING;**18,76**;Jun 22, 2007;Build 19
- ;;Per VHA Directive 2004-038, this routine should not be modified.
+MAGJUTL4 ;WIRMFO/JHC - VistARad subroutines for RPC calls ; 9 Sep 2011  4:05 PM
+ ;;3.0;IMAGING;**18,76,101,90,120**;Mar 19, 2002;Build 27;May 23, 2012
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -8,7 +8,6 @@ MAGJUTL4 ;WIRMFO/JHC VistARad subroutines for RPC calls ; 15 Jul 2004  4:34 PM
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -18,7 +17,10 @@ MAGJUTL4 ;WIRMFO/JHC VistARad subroutines for RPC calls ; 15 Jul 2004  4:34 PM
  ;;
  Q
  ;
-CPTGRP(MAGGRY,DATA) ; RPC: MAGJ CPTMATCH
+ ;***** Return matching CPT's based on grouping criteria.
+ ; RPC: MAGJ CPTMATCH
+ ;
+CPTGRP(MAGGRY,DATA) ;
  ; FOR INPUT cpt code, return matching cpt's based on grouping criteria:
  ; INPUT in DATA: CPT Code ^ Criteria
  ; Criteria:
@@ -32,25 +34,33 @@ CPTGRP(MAGGRY,DATA) ; RPC: MAGJ CPTMATCH
  ;
  N $ETRAP,$ESTACK S $ETRAP="G ERR1^MAGJUTL4"
  N REPLY,DIQUIET,CPT,CRIT,CT,MAGLST,NOD,NODLST
- N MATCHGRP,INDXLST,AND,RET,CPTGLB,CPTIN,CPTIEN,TCPT
+ N MATCHGRP,INDXLST,AND,RET,CPTGLB,CPTIN,CPTIEN,TCPT,CPTFILIEN,CPTFILDAT,IEN
  ;
  ; <*> Issue: Unable get specific body part for some non-specific CPTs (e.g., 75774-ANGIO SELECT EA ADD VESSEL-S)
  ;         --> For these, could just return matching CPTs (or equivalent CPT?)
- ; 
+ ;
  ; Produce List of cptiens for each INDX of interest
  ; AND with next list of cptiens; repeat until no more INDXs
  ; build output list of CPT codes (w/ short names [optional])
+ ; 
  S DIQUIET=1 D DT^DICRW
  S CT=0,MAGLST="MAGJCPT"
  K MAGGRY S MAGGRY=$NA(^TMP($J,MAGLST)) K @MAGGRY  ; assign MAGGRY value
- S CPTIN=$P(DATA,U),CRIT=$P(DATA,U,2)
+ S CPTIN=$P(DATA,U),CRIT=$P(DATA,U,2),CPTIEN=""
  S REPLY="0^Getting matching CPT info."
  S:'CRIT CRIT=1 ; default equivalent
+ I '(CRIT=1!(CRIT=2)!(CRIT=3)!(CRIT=10)) S REPLY="0^Invalid cpt lookup criteria ("_DATA_")." G CPTGRPZ
  I CPTIN="" S REPLY="0^Invalid CPT code ("_DATA_")." G CPTGRPZ
- I '(CRIT=1!(CRIT=2)!(CRIT=3)!(CRIT=10)) S REPLY="0^Invalid criteria ("_DATA_")." G CPTGRPZ
+ S CPTFILDAT=$$CPT^ICPTCOD(CPTIN)
+ I +CPTFILDAT=-1 S CPTFILDAT=""
+ S CPTFILIEN=$P(CPTFILDAT,U)
  S CPTGLB=$NA(^MAG(2006.67))
- S CPTIEN=$O(@CPTGLB@("B",CPTIN,""))
- I 'CPTIEN S REPLY="0^Input CPT code ("_CPTIN_") not defined in CPT Match table." G CPTGRPZ
+ I CPTFILIEN S CPTIEN=$O(@CPTGLB@("B",CPTFILIEN,""))
+ I 'CPTIEN D  G CPTGRPZ
+ . ; if no entry in CPTGLB, return same CPT
+ . S CT=CT+1,@MAGGRY@(CT)=CPTIN_U_$P(CPTFILDAT,U,3)
+ . I CPTFILIEN S REPLY=CT_U_"1~ "_CT_" CPT name returned for "_CPTIN
+ . E  S REPLY=CT_U_"1~ "_CT_" record returned--no value found for "_CPTIN
  S X=@CPTGLB@(CPTIEN,0),MATCHGRP=+$P(X,U,4)
  ;CPTMATCH^BODYPART^MDL
  I CRIT=2!(CRIT=3) D
@@ -65,7 +75,7 @@ CPTGRP(MAGGRY,DATA) ; RPC: MAGJ CPTMATCH
  I '$D(RET(CPTIEN)) S RET(CPTIEN)="" ; always report back input cpt
  S IEN=0 F  S IEN=$O(RET(IEN)) Q:'IEN  D
  . N LIN S X=$G(@CPTGLB@(IEN,0))
- . Q:'(X]"")  S TCPT=$P(X,U),LIN=TCPT_U_$P($$CPT^ICPTCOD(TCPT),U,3) ; _U_$$BODPART(IEN,"~")_U_$$MDLLST(IEN,"~")
+ . Q:'(X]"")  S TCPT=$P(X,U),LIN=$P($$CPT^ICPTCOD(TCPT),U,2,3)
  . S CT=CT+1,@MAGGRY@(CT)=LIN
  S REPLY=CT_U_"1~ "_CT_" CPT Matches returned for "_CPTIN
 CPTGRPZ ;
@@ -105,8 +115,165 @@ MDLLST(CPTIEN,DLM) ; return DLM-delimited list of modality values for this CPT
  F  S NOD=$O(@CPTGLB@(CPTIEN,2,NOD)) Q:'NOD  S X=$P(^(NOD,0),U) I X]"" S LIST=LIST_DLM_X
  Q:$Q $E(LIST,2,999)  Q
  ;
-STATCHK(MAGGRY,DATA) ;
+ ;***** Returns server data to display in new "Image Display" window (P101.31).
+ ; RPC: MAGJ MAGDATADUMP
+ ;
+ ;  DATA         REQUEST ^ PARAM1 | PARAM2
+ ;
+ ;  ..... REQUEST determines format:
+ ;
+ ;  ^01:  REQUEST           Literal string: [ CPT, FLDS, GLB ]
+ ;
+ ;  ^02:  if REQUEST="CPT":
+ ;
+ ;        |01:  PARAM1      CPT Code
+ ;        |02:  [PARAM2]    ""
+ ;
+ ;  ^02:  if REQUEST="FLDS" or "GLB":
+ ;
+ ;        |01:  [PARAM1]    FileMan GETS^DIQ Flags (only if REQUEST="FLDS") *OR*
+ ;        |02:  PARAM2      ImageIEN or Case_ID_String
+ ;
+ ;  Return Values:
+ ;        0:N lines to display (Internal Imaging or CPT Match data).
+ ;
+DATADUMP(MAGGRY,DATA) ;
+ ;
+ ; Initialize. <*> Do NOT change name of EP
+ ;   Also called as subroutine from INCPT^MAGJMN3
+ ;   
+ N $ETRAP,$ESTACK S $ETRAP="G ERR1^MAGJUTL4"
+ N CT,CPT,CPTFILIEN,CPTNAM,DIQUIET,IMGIEN,INVALID,PARAM1,PARAM2,REQUEST
+ S DIQUIET=1 D DT^DICRW
+ K MAGGRY S MAGGRY=$NA(^TMP($J,"MAGJDATA")) K @MAGGRY
+ ;
+ ; Validate input.
+ S INVALID=$$DDMPVLD8()
+ ;
+ ; Process then Exit, REPLYing with data or error code.
+ I 'INVALID D
+ . D DDMPROCS S REPLY=CT_U_"1~ "_CT_" lines of text returned for "_DATA
+ . M @MAGGRY=XMM K XMM
+ E  S REPLY="0^Invalid image data request: "_""""_DATA_""""_" (ck"_INVALID_")."
+ S @MAGGRY@(0)=REPLY
+ Q
+ ;
+ ;+++++ Process according to REQUEST. Called by DATADUMP.
+ ; 
+ ; Calls: GETS^MAGGTSYS, MAG^MAGGTSY1.
+ ;
+ ; Local array MM structures multiple calls' output for centralized processing.
+ ; The array is re-subscripted by converting "," to "." allowing a single MERGE
+ ; to the broker output global.
+ ;   
+ ;   MM(.1:.99) ... Header information.
+ ;   MM(1) ........ CPT (similar) match(es).
+ ;   MM(2) ........ CPT (BodyPart and Modality) match(es).
+ ;   MM(3) ........ FLDS output data.
+ ;   MM(4) ........ GLB output data.
+ ;
+DDMPROCS ;
+ ;
+ ; Initialize.
+ S REPLY="0^Retrieving imaging internal data ..."
+ ;
+ ; Process. CPT request via MAG RAD CPT MATCHING File (#2006.67).
+ I REQUEST="CPT" D DDMPRCPT(CPTFILIEN)
+ I REQUEST="FLDS" D GETS^MAGGTSYS(.M,IMGIEN,PARAM1) M MM(3)=@M K M
+ I REQUEST="GLB" D MAG^MAGGTSY2(.M,IMGIEN) M MM(4)=@M K M
+ ;
+ ; Re-subscript array MM into XMM to simplify MERGE to broker output global.
+ S CT=0,MMX=$NA(MM(0))
+ F  S MMX=$Q(@MMX) Q:MMX=""  S CT=CT+1,XMM(CT)=@MMX
+ K MM,MMX
+ Q
+ ;
+ ;+++++ Process a CPT request. Called by DDMPROCS
+ ;
+ ; Calls CPT^ICPTCOD for CPT Description.
+ ;
+DDMPRCPT(CPTFILIEN) ; 
+ ;
+ ; Initialize.
+ N FN,FN1,NDX,NOD,SS,X
+ ;
+ ; Set section headers.
+ S MM(.1)="Input CPT Code ........... "_CPT_"  ("_CPTNAM_")"
+ S MM(.2)="          Body Part(s) ... "
+ S MM(.3)="          Modality(s) .... "
+ ;
+ ; Set primary CPT bodyPart & modality.
+ S FN=2006.67,FN1=2006.671,NDX=$O(^MAG(FN,"B",CPTFILIEN,""))
+ S NOD=$NA(^MAG(FN,NDX,0)) F  S NOD=$Q(@NOD) Q:$QS(NOD,2)>NDX  I $QS(NOD,4)="B" D
+ . I $QS(NOD,3)=1 S MM(.2)=MM(.2)_$G(^MAG(FN1,$QS(NOD,5),0))_"; "
+ . I $QS(NOD,3)=2 S MM(.3)=MM(.3)_$P($G(^RAMIS(73.1,$QS(NOD,5),0)),U)_"; "
+ . Q
+ ;
+ ; Strip dangling concatenators.
+ F SS=.2,.3 S MM(SS)=$$ZRUPUNCT(MM(SS),"; ","")
+ ;
+ ; Fetch CPTs matching on CPT.
+ D CPTGRP(.M,CPT_"^1") M MM(1)=@M K M
+ S MM(1,0)=$P(MM(1,0),"~ ",2)
+ S MM(1,0)=$J(+$P(MM(1,0)," "),3)_" matching CPT(s) via Similar CPT:"
+ ;
+ ; Fetch CPTs matching on BodyPart & Modality.
+ D CPTGRP(.M,CPT_"^3") M MM(2)=@M K M
+ S MM(2,0)=$P(MM(2,0),"~ ",2)
+ S MM(2,0)=$J(+$P(MM(2,0)," "),3)_" matching CPT(s) via BODY PART and MODALITY:"
+ ;
+ ; Re-format. [Not modular -- should provide for leaving as-is.]
+ S MMX=$NA(MM(.99)) F  S MMX=$Q(@MMX) Q:MMX=""  I @MMX["^" S @MMX="     "_$TR(@MMX,"^"," ")
+ Q
+ ;
+ ;+++++ Validate. Called by DATADUMP.
+ ;
+DDMPVLD8() ;
+ ;
+ ; ... DATA string format or exit invalid (code 1).
+ Q:'$D(DATA) 1
+ Q:DATA="" 1
+ Q:DATA'["^"!(DATA'["|") 1
+ ;
+ ; Initialize.
+ N GO,RACNI,RADFN,RADTI,RARPT S REPLY="0^Validating input parameters ..."
+ S REQUEST=$P(DATA,U),PARAM1=$P($P(DATA,U,2),"|"),PARAM2=$P(DATA,"|",2)
+ ;
+ ; ... DATA string's REQUEST piece or exit (invalid: code 2).
+ Q:"^CPT^FLDS^GLB^"'[(U_REQUEST_U) 2
+ ;
+ ; ... PARAM1 if REQUEST="CPT" or exit (invalid: code 3).
+ I REQUEST="CPT" D  I 'GO Q 3
+ . S GO=PARAM1]"" Q:'GO
+ . S X=$$CPT^ICPTCOD(PARAM1),CPTFILIEN=$P(X,U),CPT=$P(X,U,2),CPTNAM=$P(X,U,3)
+ . I CPTFILIEN,$D(^MAG(2006.67,"B",CPTFILIEN))
+ . E  S GO=0
+ ;
+ ; ... PARAM1 if REQUEST="FLDS" or re-set to null. External call will set defaults.
+ ; .......... only validate format of FileMan flags.
+ I REQUEST="FLDS"&(PARAM1'?1U.U) S PARAM1=""
+ ; 
+ ; ... PARAM2 if REQUEST=("FLDS" or "GLB") or exit (invalid: code 4).
+ I REQUEST="FLDS"!(REQUEST="GLB") S IMGIEN="" D  Q:IMGIEN="" 4
+ . ;
+ . ; Case 1: PARAM2 holds IMGIEN.
+ . I PARAM2?1N.N,$D(^MAG(2005,PARAM2)) S IMGIEN=PARAM2 Q
+ . ;
+ . ; Case 2: PARAM2 holds RARPT in piece 4, set IMGIEN via back-pointer in File #74.
+ . I $L(PARAM2,U)=4 S RARPT=$P(PARAM2,U,4),IMGIEN=$O(^RARPT(RARPT,2005,"B",""))
+ . I IMGIEN'="",$D(^MAG(2005,IMGIEN)) Q
+ . ;
+ . ; Case 3: PARAM2 holds RADFN^RADTI^RACNI in pieces 1:3.
+ . S RADFN=+PARAM2,RADTI=$P(PARAM2,U,2),RACNI=$P(PARAM2,U,3)
+ . I RADFN,RADTI,RACNI D
+ . . S RARPT=$P(^RADPT(RADFN,"DT",RADTI,"P",RACNI,0),U,17)
+ . . I RARPT'="",$D(^RARPT(RARPT,2005,"B"))>1 S IMGIEN=$O(^RARPT(RARPT,2005,"B",""))
+ Q 0
+ ;
+ ;***** Check Exam Status.
  ; RPC: MAGJ RADSTATUSCHECK
+ ;
+STATCHK(MAGGRY,DATA) ;
  ; This may also be accessed by subroutine call. <*> do not change name of EP
  ; Exam Status check RPC and subroutine: determine if the exam has been Tech-Verified (at least).
  ; Images are assumed to be verified if Exam Status is Examined, or higher status.
@@ -145,10 +312,12 @@ STATCHKZ ;
  S MAGGRY=REPLY
  Q
  ;
-REMSCRN(MAGGRY,DATA) ; User set/clear flag to show/not show remote exams only
+ ;***** User set/clear flag to show/not show remote exams only.
  ; RPC: MAGJ REMOTESCREEN
- ;       ; Input in DATA: 1/0 1=show remote only; 0=show all exams
- ;   Return: Reply^Code~msg
+ ;
+REMSCRN(MAGGRY,DATA) ;
+ ; Input in DATA: 1/0 1=show remote only; 0=show all exams
+ ; Return: Reply^Code~msg
  ;    Reply -- 0=Problem; 1=Success
  ;    Code -- 4=Error; 1=ok
  ;    msg -- display text if error
@@ -178,4 +347,88 @@ ERR3 N ERR S ERR=$$EC^%ZOSV S MAGGRY="0^4~"_ERR
 ERR D @^%ZOSF("ERRTN")
  Q:$Q 1  Q
  ;
-END Q  ; 
+END Q  ;
+ ;
+ ;***** Identify if mammogram via CPT Code. Called by OPENCASE^MAGJEX1.
+ ;
+ ; Calls ZRUMDLST, $$CPT^ICPTCOD (which may return "-1^NO SUCH ENTRY").
+ ;
+ ; CPT     CPT Code
+ ;
+ ; Return Value:
+ ;      0  NOT a mammogram.
+ ;      1  IS  a mammogram.
+ ;
+ZRUMAMMO(CPT) ;
+ N CPTCATIEN,YN S YN=0
+ S CPTCATIEN=$P($$CPT^ICPTCOD(CPT),U,4) Q:CPTCATIEN="" YN Q:+CPTCATIEN<0 YN
+ ;
+ ; Criterion (1A): CPT Category (cf., ^DIC(81.1,240,0)=BREAST MAMMOGRAPHY^s^4^77051^77059^C).
+ I $P(^DIC(81.1,CPTCATIEN,0),U)="BREAST MAMMOGRAPHY" S YN=1 D
+ . ;
+ . ; Criterion (1B): CPT "Modality" (using MAGS array's modalities via ZRUMDLST).
+ . N MODALITY
+ . D ZRUMDLST(.MAGS) I '$D(MAGMDLST) S YN=1 Q
+ . F MODALITY="MR","OCT","US" S:$D(MAGMDLST(MODALITY)) YN=0
+ ;
+ ; Criterion (2) -- Deprecated mammography CPTs.
+ E  D
+ . N CPTMAM F CPTMAM=76082,76083,76085:1:76092 I CPT=CPTMAM S YN=1 Q
+ Q YN
+ ;
+ ;+++++ Array any unique MAGS' piece 3 modalities. Called by ZRUMAMMO.
+ ;
+ ; .MAGS      Array of individual image data (cf. JBFETCH^MAGJUTL2).
+ ; 
+ ; Sets array MAGMDLST(modality).
+ ; 
+ZRUMDLST(MAGS) ;
+ K MAGMDLST
+ I $D(MAGS),MAGS N MD0,X F X=1:1:MAGS D
+ . S MD0=$P(MAGS(X),U,3) I MD0'="",'$D(MAGMDLST(MD0)) S MAGMDLST(MD0)=""
+ Q
+ ;
+ ;+++++ Strip IN's trailing elements & append REPL.
+ ;
+ ; IN       String to operate on.
+ ; REPL     String to place at right end.
+ ; STRIP    String to remove from right end.
+ ;
+ ; Returns:
+ ;      IN_REPL
+ ;
+ZRUPUNCT(IN,STRIP,REPL) ;
+ Q:'$D(IN)!('$D(STRIP))!('$D(REPL))  F  Q:STRIP'[$E(IN,$L(IN))  S IN=$E(IN,1,$L(IN)-1)
+ Q IN_REPL
+ ;
+ ; ***** Query to modify existing annotations. Called by OPENCASE^MAGJEX1
+ ; 
+ ; DUZ      Kernel internal user identifier.
+ ; RACNI    RAD/NUC Med Patient File (#70) Case Number Index
+ ; RADFN    "                              Patient DFN
+ ; RADTI    "                              Study Internal Date
+ ; 
+ ; Return Value:
+ ;      0   NOT authorized to annotate.
+ ;      1   AUTHORIZED     "".
+ ; 
+ZRUREVAN(RADFN,RADTI,RACNI) ;
+ ;
+ ; Initialize. Exit if RAxxx pointers fail.
+ N EXAMSTAT,EXMSTSPT,RADNOD,RIST1,RIST2,YN
+ S YN=0,RADNOD=$G(^RADPT(RADFN,"DT",RADTI,"P",RACNI,0))
+ Q:RADNOD="" YN
+ ;
+ ; Collect data about ...
+ S RIST1=$P(RADNOD,U,12) ; .. PRIMARY INTERPRETING RESIDENT [12P:200]
+ S RIST2=$P(RADNOD,U,15) ; .. PRIMARY INTERPRETING STAFF [15P:200]
+ S EXMSTSPT=$P(RADNOD,U,3) ;. EXAM STATUS [3P:72]
+ S EXAMSTAT=$P($G(^RA(72,EXMSTSPT,0)),U,9) ; VISTARAD CATEGORY (#9)
+ ;
+ I EXAMSTAT="D"!(EXAMSTAT="T") D
+ . ;
+ . ; 'Yes' if CurrentUser=Primary Interpreting Radiologist.
+ . I DUZ=RIST1!(DUZ=RIST2) S YN=1
+ . E  I RIST1'="",$D(^VA(200,"ARC","S",+DUZ)) S YN=1 ; 'Yes' if (Primary Interpreting Radiologist is Resident) & (CurrentUser is Staff)
+ . Q
+ Q YN

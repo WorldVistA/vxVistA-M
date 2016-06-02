@@ -1,5 +1,5 @@
-PRCHLO ;WOIFO/RLL-EXTRACT ROUTINE CLO REPORT SERVER ;5/17/09  23:40
- ;;5.1;IFCAP;**83,104,130**;Oct 20, 2000;Build 25
+PRCHLO ;WOIFO/RLL-EXTRACT ROUTINE CLO REPORT SERVER ;12/30/10  14:34
+ ;;5.1;IFCAP;**83,104,130,154**;Oct 20, 2000;Build 5
  ; Per VHA Directive 2004-038, this routine should not be modified
  ; 
  ; PRCHLO* routines are used to build the extract files from
@@ -136,6 +136,7 @@ GPARM ; Get parameters for monthly extract
  D GET410^PRCHLO6
  D GET424^PRCHLO6
  ;     PRC*5.1*130 end
+ D INVCOMPL^PRCHLO7 ;Compile Invoice Tracking
  Q
 EXTR ; Extract the data, create files
  ;

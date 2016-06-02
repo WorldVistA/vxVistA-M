@@ -1,6 +1,10 @@
-DIT1 ;SFISC/GFT,TKW-TRANSFER DD'S ;7:22 AM  24 Oct 2000
- ;;22.0;VA FileMan;**6,63**;Mar 30, 1999
- ;Per VHA Directive 10-93-142, this routine should not be modified.
+DIT1 ;SFISC/GFT,TKW-TRANSFER DD'S ;30JAN2010
+ ;;22.2;MSC Fileman;;Jan 05, 2015;
+ ;;Submitted to OSEHRA 5 January 2015 by the VISTA Expertise Network.
+ ;;Based on Medsphere Systems Corporation's MSC Fileman 1051.
+ ;;Licensed under the terms of the Apache License, Version 2.0.
+ ;;GFT;**6,63,163**
+ ;
  K A W !! S A=+Y,E=A
 CHK F V=0:0 S V=$O(^DD(A,"SB",V)) Q:'V  S A(V)=0,L(V)=V#1+DHIT
  S A=$O(A(0)),B=A#1+DHIT I A'="" K A(A) G P:$P(DHIT,".")+1'>B,CHK:'$D(^DD(B)),P:DHIT["." S X=$P(^(B,0),U) S:$D(^DIC(B,0)) X=$P(^(0),U)_" FILE" W $P(^DD(A,0),U)_" WOULD COLLIDE WITH "_X,$C(7),! K L,A Q
@@ -28,7 +32,7 @@ MOVEFLD S W=$G(^DD(L,V,0)),D=$P(W,U,2),%Z=0,%A="" Q:W=""
  .F DITN=9.01,9.02 S W=$G(^DD(L,V,DITN)) I W]"" D Y S ^DD(Y,V,DITN)=W
  .S DITN=9.15 F  S DITN=$O(^DD(L,V,DITN)) Q:DITN=""  I $D(^(DITN))#2 S ^DD(Y,V,DITN)=$$DITRPL(^(DITN))
 MULFLD I D S L(+D)=D#1+DHIT,W=$P(W,U)_U_L(+D)_$P(D,+D,2,9)_U_$P(W,U,3,99)
- E  X A D Y
+ E  X A ;D Y ;DO NOT REPLACE NUMBERS IN THE '0' NODE --GFT 1/30/2010
  S ^DD(Y,V,0)=W,%B=0
 N S %B=$O(@("^DD(L,V,"_%A_"%B)")) G:((%B=5)&(%A="")) N I %B="" Q:'%Z  S @("%B="_$P(%A,",",%Z)),%Z=%Z-1,%A=$P(%A,",",1,%Z)_$E(",",%Z>0) G N
  I @("$D(^DD(L,V,"_%A_"%B))#2") S W=^(%B) D D S @("^DD(Y,V,"_%A_"%B)=W")
@@ -38,7 +42,7 @@ N S %B=$O(@("^DD(L,V,"_%A_"%B)")) G:((%B=5)&(%A="")) N I %B="" Q:'%Z  S @("%B="_
 DITRPL(W) S W=$$REPLACE(W,"Y("_L_","_V_",","DIT(") D D Q W
  ;
 D X A
-Y ;
+Y ;REPLACE THE NUMBERS; CALLED FROM DIT2
  N O
  F O=0:0 S O=$O(L(O)) Q:'O  S W=$$REPLACE(W,O,L(O))
  Q
@@ -81,12 +85,12 @@ ADJ ; Change data to contain new file number and global reference.
  F  S DIG=$Q(@DIG),X=$QS(DIG,2) Q:X'=DITOD0  D
  . S X=@DIG,I=0
  . I DIFRGBL'=DITOGBL F  S I=$F(X,DIFRGBL,I) Q:'I  D
- . . S $E(X,I-DIL1,I-1)=DITOGBL Q
+ . . S $E(X,I-DIL1,I-1)=DITOGBL,I=I+$L(DITOGBL)-DIL1
  . Q:DIFRN=DITON  N DIF,DIT
  . F DIF=0:0 S DIF=$O(DIFRN(DIF)) Q:'DIF  S DIT=DIFRN(DIF),DIL2=$L(DIF),I=0 F  D  Q:'I
  . . S I=$F(X,DIF,I) Q:'I  Q:$E(X,I,999)
  . . I DIL3,$E(X,(I-DIL3+1),(I-DIL1+DIL3-1))=DIFRPRT Q
- . . S $E(X,I-DIL2,I-1)=DIT Q
+ . . S $E(X,I-DIL2,I-1)=DIT,I=I+$L(DIT)-DIL2
  . S @DIG=X Q
  Q
  ;

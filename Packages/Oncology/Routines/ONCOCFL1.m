@@ -1,7 +1,7 @@
-ONCOCFL1 ;Hines OIFO/GWB - LAB CASEFINDING  ;8/11/93
- ;;2.11;ONCOLOGY;**25,26,27,28,29,32,33,43,44,46**;Mar 07, 1995;Build 39
+ONCOCFL1 ;Hines OIFO/GWB - [CF Automatic Casefinding-Lab Search] ;10/21/11
+ ;;2.2;ONCOLOGY;**1**;Jul 31, 2013;Build 8
  ;
-EN ;Start Date/End Date
+EN ;Start Date default
  S SDDEF=$P(^ONCO(160.1,OSP,0),U,5)
  I SDDEF="" S SDDEF=DT
  S SDDEF=$E(SDDEF,4,5)_"-"_$E(SDDEF,6,7)_"-"_($E(SDDEF,1,3)+1700)
@@ -14,7 +14,7 @@ SD ;Start Date
  S DIR("B")=SDDEF
  D ^DIR
  G EX:(Y="")!(Y[U)
- I (Y>DT) W *7,"  Future dates not allowed" G SD
+ I (Y>DT) W "  Future dates not allowed" G SD
  S (LRSDT,X)=Y D DD^%DT W "  ",Y
  ;
 ED ;End Date
@@ -23,8 +23,8 @@ ED ;End Date
  S DIR("A")="            End Date"
  D ^DIR
  G EX:(Y="")!(Y[U)
- I (Y<LRSDT) W *7,"  Invalid date sequence" G SD
- I (Y>DT) W *7,"  Future dates not allowed" G ED
+ I (Y<LRSDT) W "  Invalid date sequence" G SD
+ I (Y>DT) W "  Future dates not allowed" G ED
  S $P(^ONCO(160.1,OSP,0),U,5)=Y
  S (LRLDT,X)=Y D DD^%DT W "  ",Y
  S Y=LRSDT D D^ONCOLRU S LRSTR=Y
@@ -37,25 +37,48 @@ ED ;End Date
  D ^DIR
  G EX:(Y="")!(Y[U)
  G EN:'Y
+ ;Include Squamous and Basal cell neoplasms (Y/N?)
+ W !
+ S SBCIND="NO"
+ K DIR
+ S DIR(0)="Y"
+ S DIR("A")="          Include Squamous and Basal cell neoplasms"
+ S DIR("B")="Yes"
+ S DIR("?")=" "
+ S DIR("?",1)=" Answer 'YES' if you want to include squamous and basal cell neoplasms."
+ S DIR("?",2)=" Answer  'NO' if you want to exclude these neoplasms."
+ D ^DIR
+ G EX:(Y="")!(Y[U)
+ S:Y=1 SBCIND="YES"
+ K DIR
+ ;
  S ONCO("SD")=LRSDT,ONCO("ED")=LRLDT
  S LRSDT=LRSDT-.01,LRLDT=LRLDT+.99
  F X=8,9 F Y=1,2,3,6,9 S Z=X_"***"_Y,LRM(Z)=5,LRN(Z)=Z
  S LRM(69760)=5,LRN(69760)=69760
+ S LRM(74000)=5,LRN(74000)=74000
+ S LRM(74006)=5,LRN(74006)=74006
+ S LRM(74007)=5,LRN(74007)=74007
+ S LRM(74008)=5,LRN(74008)=74008
  W !!?10,"This option will search for ICD-O morphology codes 800-998.",!
+ W !?10,"It will also search for High Grade Dysplasia of Stomach, Colon"
+ W !?10,"and Esophagus cases.",!
  W !?10,"Exceptions to the above search criteria:",!
  W !?10,"Behavior Code /0 (Benign) codes will be excluded."
- W !?10,"Squamous cell neoplasms (805-808) of the skin will be excluded."
- W !?10,"Basal cell neoplasms (809) will be excluded."
+ W:SBCIND="NO" !?10,"Squamous cell neoplasms (805-808) of the skin will be excluded."
+ W:SBCIND="NO" !?10,"Basal cell neoplasms (809) will be excluded."
  W !?10,"Benign tumors of the central nervous system will be included."
  W !
- K IO("Q") S %ZIS="Q" D ^%ZIS I POP G EX
+ S %ZIS="Q" D ^%ZIS I POP G EX
  I '$D(IO("Q")) D SER^ONCOCFL1 G EX
- S ZTRTN="SER^ONCOCFL1",ZTSAVE("LR*")="",ZTSAVE("ONCO*")=""
+ S ZTRTN="SER^ONCOCFL1",ZTSAVE("LR*")="",ZTSAVE("ONCO*")="",ZTSAVE("SBCIND")=""
  S ZTDESC="ONCOLOGY LAB SEARCH"
  D ^%ZTLOAD
+ K ZTDESC,ZTRTN,ZTSAVE
  G EX
  ;
 SER ;Search LAB DATA (63) file
+ ;Supported by IA #525
  S AFFDIV=$G(DUZ(2)),ONCDIVSP=$O(^ONCO(160.1,"C",AFFDIV,""))
  I ONCDIVSP="" W !!,"User does not have an associated DIVISION.",!! G EX
  F Z=0:0 S Z=$O(^ONCO(160.1,ONCDIVSP,6,Z)) Q:Z'>0  S AFFDIV=AFFDIV_U_$G(^ONCO(160.1,ONCDIVSP,6,Z,0))
@@ -65,13 +88,13 @@ SER ;Search LAB DATA (63) file
  S ^TMP("ONCO",$J,0)=0
  F LRSS="SP","CY","EM","AU" S LRXR="A"_LRSS,LRSDT=ONSDT,LRLDT=ONLDT D LOOP
  S LRDFN=0
- F  S LRDFN=$O(^TMP($J,LRDFN)) G RPT:LRDFN="" S LRSDT=0 F  S LRSDT=$O(^TMP($J,LRDFN,LRSDT)) Q:LRSDT'>0  S LD=^(LRSDT),LRSS=$P(LD,U),LRI=$P(LD,U,6),XDT=$S(LRSS="AU":$P(^LR(LRDFN,LRSS),U),1:$P(^LR(LRDFN,LRSS,LRI,0),U,10)),XDT=$P(XDT,".",1) D CK
+ F  S LRDFN=$O(^TMP($J,LRDFN)) G RPT:LRDFN="" S LRSDT=0 F  S LRSDT=$O(^TMP($J,LRDFN,LRSDT)) Q:LRSDT'>0  S LD=^(LRSDT),LRSS=$P(LD,U),LRI=$P(LD,U,6),XDT=$S(LRSS="AU":$P(^LR(LRDFN,LRSS),U),1:$P(^LR(LRDFN,LRSS,LRI,0),U,1)) S XDT=$P(XDT,".",1) D CK
  ;
 CK ;Check ONCOLOGY PATIENT (160) file
  D DIV Q:DVMTCH=0
  S XD1=^LR(LRDFN,0) Q:$P(XD1,U,2)'=2  S X=$P(XD1,U,3) Q:'$D(^DPT(X))
  S X=X_";DPT(",XD0=$O(^ONCO(160,"B",X,0)),ONCIEN=XD0
- I XD0="" S D="B",DIC="^ONCO(160,",DIC(0)="Z" D FILE^DICN S ONCIEN=+Y D SET Q
+ I XD0="" K DO S D="B",DIC="^ONCO(160,",DIC(0)="Z" D FILE^DICN K DO S ONCIEN=+Y D SET Q
  I XD0'="" S ONCDIVS="",ONCS="" F  S ONCS=$O(^ONCO(160,XD0,"SUS","C",ONCS)) Q:ONCS'>0  S ONCDIVS=ONCDIVS_U_ONCS
  I ONCDIVS[DUZ(2) Q
  G SET:'$D(^ONCO(165.5,"C",ONCIEN)) S XD2=0 F  S XD2=$O(^ONCO(165.5,"C",ONCIEN,XD2)) Q:XD2=""  I $$DIV^ONCFUNC(XD2)=DUZ(2) S XDX=$P($G(^ONCO(165.5,+XD2,0)),U,16) Q:XDT=XDX  I $P($G(^ONCO(165.5,+XD2,1)),U,10)=XDT Q
@@ -81,7 +104,7 @@ SET ;Create SUSPENSE (160.075) record
  K DD,DO
  S DA(1)=ONCIEN,DIC="^ONCO(160,"_DA(1)_",""SUS"","
  S DIC(0)="L",DIC("P")=$P(^DD(160,75,0),U,2),X=XDT
- D FILE^DICN
+ D FILE^DICN K DO
  S ^TMP("ONCO",$J,0)=^TMP("ONCO",$J,0)+1
  K DIE S DA(1)=ONCIEN,DIE="^ONCO(160,"_DA(1)_",""SUS"","
  S (ONCSUB,DA)=+Y,SR="L"_$E(LRSS),$P(^ONCO(160,ONCIEN,0),U,2)=LRDFN
@@ -111,7 +134,8 @@ M S M=0 F  S M=$O(^LR(LRDFN,LRSS,LRI,2,T,2,M)) Q:'M  S X=^(M,0),LRD=+X,LRM=$P(X,
  ..S ^TMP($J,LRDFN,LRSDT)=LRSS_U_U_LRT_U_DZMORP_U_TIS_U_LRI_U_DZPTR
  Q
  ;
-MX Q:'$D(^LAB(61.1,LRD,0))  S W=^(0),X=$P(W,U,2),Y=0 F Z=1:1 S Y=$O(LRN(Y)) Q:Y=""  S Y(1)=LRM(Y),Y(2)=LRN(Y) D Y I I S ^TMP($J,LRDFN,LRSDT)=LRSS_U_LRD_U_LRT_U_X_U_TIS_U_LRI
+MX Q:'$D(^LAB(61.1,LRD,0))
+ S W=^LAB(61.1,LRD,0),X=$P(W,U,2),Y=0 F Z=1:1 S Y=$O(LRN(Y)) Q:Y=""  S Y(1)=LRM(Y),Y(2)=LRN(Y) D Y I I S ^TMP($J,LRDFN,LRSDT)=LRSS_U_LRD_U_LRT_U_X_U_TIS_U_LRI
  Q
  ;
 AU ;AUTOPSY
@@ -123,23 +147,23 @@ AUM S M=0 F  S M=$O(^LR(LRDFN,"AY",T,2,M)) Q:'M  S X=^(M,0),LRD=+X,LRM=$P(X,U,2)
  ;
 Y ;Check for eligible cases
  ;Basal cell carcinomas
- I (X=80901)!(X=80903)!(X=80913)!(X=80923)!(X=80933)!(X=80943)!(X=80953) S I=0 Q
+ I SBCIND="NO",$E(X,1,3)=809 S I=0 Q
  ;Benign brain tumors
  I SNOMED'="",($E(SNOMED,1,2)?1"X"1N)!($D(BBT(SNOMED))),$E(X,1)>7 S I=1 Q
  ;Squamous cell neoplasms of the skin
- I ($E(X,1,3)=805)!($E(X,1,3)=806)!($E(X,1,3)=807)!($E(X,1,3)=808),($E(SNOMED,1,2)="01")!($E(SNOMED,1,2)="02") S I=0 Q
- I $E(X,1,5)=Y(2) S I=1 Q
+ I SBCIND="NO",($E(X,1,3)=805)!($E(X,1,3)=806)!($E(X,1,3)=807)!($E(X,1,3)=808),($E(SNOMED,1,2)="01")!($E(SNOMED,1,2)="02") S I=0 Q
+ I $E(X,1,5)=Y(2) D  Q 
+ .S I=1
+ .I (X=74000)!(X=74006)!(X=74007)!(X=74008),($E(SNOMED,1,2)'=62)&($E(SNOMED,1,2)'=63)&($E(SNOMED,1,2)'=67) S I=0
  S I=1 F I(1)=1:1:Y(1) S I(2)=$E(Y(2),I(1)) I I(2)'="*",I(2)'=$E(X,I(1)) S I=0 Q
  Q
  ;
 RPT ;Report
+ N ONCOST,ONCOEN
  S ONCOST="L",ONCOEN="LS" G RPT^ONCOCFL
  ;
-EX ;Exit
- D ^%ZISC
- Q
- ;
 DIV ;Check division
+ ;Supported by IA #5343
  S DVMTCH=1,INST=""
  I LRSS="AU" D
  .S LBACC=$P($G(^LR(LRDFN,LRSS)),U,6)
@@ -178,4 +202,14 @@ SNOMED ;Build SNOMED array for benign brain tumors
  S BBT(45523)=""
  S BBT(45524)=""
  S BBT(45525)=""
+ Q
+ ;
+EX ;KILL variables
+ D ^%ZISC
+ K %ZIS
+ K ACCIEN,AFFDIV,BBT,D,DA,DIC,DIE,DIR,DR,DVMTCH,DZCODE,DZMORP,DZPTR,DZX
+ K I,INST,LBACC,LBAREA,LBNUM,LBYEAR,LD,LRD,LRDFN,LRI,LRLDT,LRLST,LRM,LRN
+ K LRSDT,LRSS,LRSTR,LRT,LRXR,M,ONCDIVS,ONCDIVSP,ONCIEN,ONCMRPH,ONCO,ONCS
+ K ONCSUB,ONLDT,ONSDT,OSP,POP,SDDEF,SNOMED,SR,T,TIS,W,X,XD0,XD1,XD2,XDT
+ K XDX,Y,Z,SBCIND
  Q

@@ -1,5 +1,5 @@
 GMRVER0 ;HIRMFO/RM,YH-REPORT OF VITALS ENTERED IN ERROR FOR A PATIENT ;2/6/99
- ;;4.0;Vitals/Measurements;**7**;Apr 25, 1997
+ ;;4.0;Vitals/Measurements;**7**;Apr 25, 1997;Build 8
 EN1 ; ENTRY FROM OPTION GMRV ERROR PRINT
  K ^TMP($J) S DIC="^DPT(",DIC(0)="AEQM" D ^DIC K DIC Q:+Y'>0  S DFN=+Y
 DTS S %DT="AET",%DT("A")="Start with DATE (TIME optional): ",%DT("B")="T-7" D ^%DT K %DT I +Y'>0 G Q
@@ -24,12 +24,17 @@ WRTDAT(TYPE,DATA) ;
  I '((TYPE="BP")!(TYPE="P")!(TYPE="R")),DATA>0 D @TYPE
  Q DATA
 T S DATA=DATA_" F  ("_$J(+DATA-32*5/9,0,1)_" C)" Q
-WT S DATA=DATA_" lb  ("_$J(DATA/2.2,0,2)_" kg)" Q
-HT S DATA=$S(DATA\12:DATA\12_" ft ",1:"")_$S(DATA#12:DATA#12_" in",1:"")_" ("_$J(DATA*2.54,0,2)_" cm)" Q
-CG S DATA=DATA_" in ("_$J(+DATA/.3937,0,2)_" cm)" Q
+ ;DSS/SMP - BEGIN MODS
+WT S DATA=DATA_" lb  ("_$S($$VFD:$$LB2KG^VFDXLF(DATA,2),1:$J(DATA/2.2,0,2))_" kg)" Q
+HT S DATA=$S(DATA\12:DATA\12_" ft ",1:"")_$S(DATA#12:DATA#12_" in",1:"")_" ("_$S($$VFD:$$IN2CM^VFDXLF(DATA,2),1:$J(DATA*2.54,0,2))_" cm)" Q
+CG S DATA=DATA_" in ("_$S($$VFD:$$IN2CM^VFDXLF(+DATA,2),1:$J(+DATA/.3937,0,2))_" cm)" Q
 CVP S DATA=DATA_" cmH2O ("_$J(DATA/1.36,0,1)_" mmHg)" Q
 PO2 S DATA=DATA_"%" Q
 PN I DATA=0 S DATA=DATA_" No pain " Q
  I DATA=99 S DATA=DATA_" Unable to respond " Q
  I DATA=10 S DATA=DATA_" Worst imaginable pain " Q
  Q
+ ;
+VFD() ; Check for vxVistA
+ Q $G(^%ZOSF("ZVX"))["VX"
+ ;DSS/SMP - END MODS

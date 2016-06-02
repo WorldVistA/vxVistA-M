@@ -1,5 +1,5 @@
-SDAMWI1 ;ALB/MJK - Walk-Ins (cont.) ; 31 Dec 99  6:30 PM
- ;;5.3;Scheduling;**94,167,206,168**;Aug 13, 1993
+SDAMWI1 ;ALB/MJK - Walk-Ins (cont.) ; 6/17/09 4:00pm
+ ;;5.3;Scheduling;**94,167,206,168,544**;Aug 13, 1993;Build 11
  ;
 MAKE(DFN,SDCL,SDT) ; -- set globals for appt
  ;    input:     DFN ; SDCL := clinic# ; SDT := appt d/t
@@ -9,7 +9,7 @@ MAKE(DFN,SDCL,SDT) ; -- set globals for appt
  S SC=SDCL,X=SDT,SDINP=$$INP^SDAM2(DFN,SDT)
  S SD=SDT D EN1^SDM3
  S:'$D(^DPT(DFN,"S",0)) ^(0)="^2.98P^^"
- S ^DPT(DFN,"S",SDT,0)=SC_"^"_$$STATUS^SDM1A(SC,SDINP,SDT)_"^^^^^4^^^^^^^^^"_SDAPTYP_"^^^"_DT_"^^^^^"_$G(SDXSCAT)_"^W^0"
+ S ^DPT(DFN,"S",SDT,0)=SC_"^"_$$STATUS^SDM1A(SC,SDINP,SDT)_"^^^^^4^^^^^^^^^"_SDAPTYP_"^^"_$G(DUZ)_"^"_DT_"^^^^^"_$G(SDXSCAT)_"^W^0"
  ;xref DATE APPT. MADE field
  D
  .N DIV

@@ -1,6 +1,35 @@
-RORUTL11 ;HCIOFO/SG - ACCESS AND SECURITY UTILITIES ; 7/21/03 10:28am
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORUTL11 ;HCIOFO/SG - ACCESS AND SECURITY UTILITIES ;15 Aug 2013  11:31 AM
+ ;;1.5;CLINICAL CASE REGISTRIES;**13,14,15,17,18,20,19,21**;Feb 17, 2006;Build 45
  ;
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                 --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*13   DEC  2010   A SAUNDERS   Added tag VERSRV to return an associated
+ ;                                      version to the GUI during RPC call ROR
+ ;                                      GET M VERSION
+ ;ROR*1.5*14   APR  2011   A SAUNDERS   Updated version in tag VERSRV
+ ;
+ ;ROR*1.5*15   JUN 2011    C RAY        Updated version
+ ;
+ ;ROR*1.5*17   DEC 2011    C RAY        Updated version 
+ ;
+ ;ROR*1.5*18   MAY 2012    C RAY        Updated version 
+ ;
+ ;ROR*1.5*20   DEC 2012    C RAY        Updated version
+ ;
+ ;ROR*1.5*19   APR 2012    K GUPTA      Updated version
+ ;                                    
+ ;ROR*1.5*21   AUG 2013    T KOPP       Updated version                                    
+ ;******************************************************************************
+ ; This routine uses the following IAs:
+ ;
+ ; #2055   $$ROOT^DILFD (supported)
+ ; #10013  ENALL^DIK (supported)
+ ;         
+ ;******************************************************************************
  Q
  ;
  ;***** REBUILDS THE "ACL" CROSS-REFERENCE (USER ACCESS)
@@ -50,3 +79,22 @@ RPCHECK(RPCNAME,REGIEN,FLAGS) ;
  ;---
  D ACVIOLTN^RORLOG(X,$G(REGIEN),RPCNAME)
  Q 1
+ ;
+ ;***** RETURNS SERVER VERSION
+ ;REMOTE PROCEDURE: ROR GET M VERSION
+ ;
+ ;The purpose of this RPC is to catch when the GUI executable has been
+ ;upgraded AND REQUIRES an associated M patch, but the M patch has not
+ ;been installed yet.
+ ;
+ ; VAL n.n.n represents the CCR package version and the m patch number that
+ ; contains the associated M changes that the GUI is expecting.
+ ;
+ ;NOTE TO CCR MAINTENANCE TEAM: For M changes made by the maintenance team,
+ ;the server version below should not be modified.  The only time the server
+ ;version should be modified is if the GUI was changed AND there were
+ ;associated M changes needed for it.
+ ;
+VERSRV(VAL) ;
+ S VAL="1.5.21"
+ Q

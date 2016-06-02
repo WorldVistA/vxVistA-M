@@ -1,5 +1,5 @@
-PSDOPT1 ;BIR/JPW,LTL-Outpatient Rx Entry (cont'd) ; 20 July 94
- ;;3.0; CONTROLLED SUBSTANCES ;**30,66**;13 Feb 97;Build 3
+PSDOPT1 ;BIR/JPW,LTL - Outpatient Rx Entry (cont'd) ;20 July 94
+ ;;3.0;CONTROLLED SUBSTANCES;**30,66,71**;13 Feb 97;Build 29
  ;Reference to PS(52.5 supported by DBIA #786
  ;References to ^PSD(58.8 are covered by DBIA #2711
  ;References to file 58.81 are covered by DBIA #2808
@@ -27,6 +27,8 @@ DIE I '$D(^PSD(58.8,+PSDS,1,PSDR,4,0)) S ^(0)="^58.800119PA^^"
  I '$D(^PSD(58.8,+PSDS,1,PSDR,5,$E(DT,1,5)*100,0)) K DA,DIC S DIC="^PSD(58.8,"_+PSDS_",1,"_PSDR_",5,",DIC(0)="LM",DLAYGO=58.8,(X,DINUM)=$E(DT,1,5)*100,DA(2)=+PSDS,DA(1)=PSDR D ^DIC K DA,DIC,DINUM,DLAYGO
  K DA,DIE,DR S DIE="^PSD(58.8,"_+PSDS_",1,"_PSDR_",5,",DA(2)=+PSDS,DA(1)=PSDR,DA=$E(DT,1,5)*100,DR="9////^S X=$P($G(^(0)),""^"",6)+QTY" D ^DIE K DA,DIE,DR
  W "done."
+ ;check if user has access to release
+ D CHKEY^PSDOPT I $G(PSDOUT) Q
  ;PSD*3*30 (Dave B) Check for already released
  I $G(PSDREL)'="" Q
  I $G(PSDRTS)=1 K PSDRTS Q

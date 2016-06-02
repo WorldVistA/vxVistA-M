@@ -1,5 +1,5 @@
-PSGEUD ;BIR/CML3-EXTRA UNITS DISPENSED ;17 SEP 97 /  1:41 PM
- ;;5.0; INPATIENT MEDICATIONS ;**31,41,50,111,150,164**;16 DEC 97
+PSGEUD ;BIR/CML3-EXTRA UNITS DISPENSED ; 27OCT2014
+ ;;5.0; INPATIENT MEDICATIONS ;**31,41,50,111,150,164**;16 DEC 97;Build 11
  ;
  ; Reference to ^PSDRUG( is supported by DBIA 2192.
  ; Reference to ^PS(50.7 is supported by DBIA 2180.
@@ -13,6 +13,12 @@ GP ;
  S PSGP="",DFN=""
  D ENDPT^PSGP G:(PSGP'>0)&(DFN'>0)!('$D(PSJPAD)) DONE S:PSGP<1 PSGP=DFN I '$O(^PS(55,PSGP,5,"AUS",+PSJPAD)) W $C(7),!,"(Patient has NO active or old orders.)" G GP
  D ENL^PSGOU G:"^N"[PSGOL GP S PSGPTMP=0,PPAGE=1 D ^PSGO G:'PSGON GP S PSGLMT=PSGON,(PSGONC,PSGONR)=0
+ ;DSS/SMH - Start mods Capture NDC
+ ; Collect drugs using a custom routine if we want the NDC's. We call R as a callback down there.
+ ; R gets the variable VFDNDC which is sent to PSGAMSA via the symbol table to be filed in the dispense multiple (node 11)
+ I $T(^VFDPSNDC)]"",$T(^VFDPSJND)]"",$$IPON^VFDPSNDC() D  G GP  ; If NDC Capture is on (Fill on request or ALL) do scan
+ . F  D IPSCAN^VFDPSJND($T(+0)) Q:X=U  ; Quit if ^
+ ;DSS/SMH - End mods
  F  W !!,"Select ORDER",$E("S",PSGON>1)," 1-",PSGON,": " R X:DTIME W:'$T $C(7) S:'$T X="^" Q:"^"[X  D:X?1."?" H I X'?1."?" D ENCHK^PSGON W:'$D(X) $C(7),"  ??" Q:$D(X)
  G:"^"[X GP F PSGRET=1:1:PSGODDD F PSGRET1=1:1 S PSGRET2=$P(PSGODDD(PSGRET),",",PSGRET1) Q:'PSGRET2  S PSGORD=^TMP("PSJON",$J,PSGRET2) D R G:$D(DTOUT) GP
  G GP
@@ -29,12 +35,47 @@ R ;
  .W !!,"No Dispense drugs have been entered for this order. At least one Dispense drugs",!,"must be associated with an order before dispensing information may be entered.",!!
  .N DIR S DIR(0)="E" D ^DIR S Y=$S(Y:0,1:1)
  S PSGEUD=0,WG=$O(^PS(57.5,"AB",+PSJPWD,0)) F DRG=0:0 S DRG=$O(^PS(55,PSGP,5,+PSGORD,1,DRG)) Q:'DRG  S X=$G(^(DRG,0)) I X D  Q:$D(DTOUT)
+ .; DSS/SMH - BEGIN MODS Quit if scanned NDC doesn't match the current drug.
+ .; This line is confusing. If the user scanned something in the scanner
+ .; code that calls this, and this is not the drug which has been scanned,
+ .; skip this one and try the next one. This should never be an issue for
+ .; single drug orders.
+ .I $D(VFDNDCBYDRUG),'$D(VFDNDCBYDRUG(+PSGORD,DRG)) QUIT
+ .; DSS/SMH - END MODS
+ .;
  .S UD=$P(X,"^",2),DRGN=$$ENDDN^PSGMI(+X) Q:DRGN=""  S:'$D(^PSDRUG(+X,212,"AC",+WG)) WG=""
  .I ($P(X,"^",3)?7N)&($P(PSGDT,".")'<$P(X,"^",3)) W !!,"Dispense drug: ",DRGN," **ORDER INACTIVE**" Q
  .I ($G(^PSDRUG(+X,"I"))?7N)&($P(PSGDT,".")'<$G(^PSDRUG(+X,"I"))) W !!,"Dispense drug: ",DRGN," **DRUG INACTIVE**" Q
  .W !!,"Dispense drug: ",DRGN,"  (U/D: ",$S('UD:1,1:UD),")"
+ .; BEGIN MODS DSS/ASF - Add dispense Unit to vxVISTA (new line)
+ .I $D(^%ZOSF("ZVX")) W " Dispense Unit: ",$$GET1^DIQ(50,+X_",",14.5) ;ASF 08/18/14
+ .; END MODS DSS/ASF,DSS/SMH
+ .;
+ .; BEGIN MODS DSS/SMH - Grab NDC
+ .; -- DSS/SMH -- Also kill Y for label print (need a clean output from DIE)
+ .; Now alas I have to use the words ugly hack.
+ .; B/c, now that we moved the collection of the NDC's here, we need to cater
+ .; to the case where we already collected the NDC already via a scan at the
+ .; profile prompt.
+ .; If VFDNDCBYDRUG is passed in the symbol table, I use it to construct VFDNDC
+ .; else, I ask for the NDC. It stays in the ST after/before the match, so that
+ .; the user will be asked for extra units dispensed only for the drug that
+ .; they scanned. The option exits after that.
+ .; ZEXCEPT: VFDNDCBYDRUG
+ .new VFDNDC,POP
+ .I $T(^VFDPSNDC)]"",$T(^VFDPSJND)]"",$$IPON^VFDPSNDC() D
+ ..if $data(VFDNDCBYDRUG(+PSGORD,DRG)) S VFDNDC(+PSGORD)=VFDNDCBYDRUG(+PSGORD,DRG)
+ ..else  D GRABNDC^VFDPSJND(+PSGORD,DRG,.VFDNDC,.POP)
+ .I $G(POP) W !,"Cancelling this dispense drug...",! QUIT  ; --> loop for next drug if there is one.
+ .K Y
+ .; END MODS
+ .;
  .K DA,DR S DA=+DRG,DA(2)=PSGP,DA(1)=+PSGORD,DIE="^PS(55,"_PSGP_",5,"_+PSGORD_",1,",DR=.11 S:$P($G(^PS(55,PSGP,5,+PSGORD,1,DA,0)),"^",11) $P(^(0),"^",11)=""
  .D ^DIE S PSGEUD=PSGEUD+$P($G(^PS(55,PSGP,5,+PSGORD,1,DA,0)),U,11)
+ .; DSS/SMH BEGIN MOD - Print labels for each drug. Conditionalized using parameter.
+ .; $D(Y) is to detect whether the user ^ out. See FM Programmer's manual
+ .I $P($G(^PS(55,PSGP,5,+PSGORD,1,DA,0)),U,11),'$D(Y),$$GET^XPAR("ALL","VFD PSJ EUD LBL PRINT") D PRT^VFDPSJPX($NAME(^PS(55,PSGP,5,+PSGORD,1,DA,0)))
+ .; DSS/SMH END MOD
  I PSGEUD,WG D QS
  Q
  ;
@@ -71,3 +112,4 @@ QSH ;
 H ;
  W !!?2,"Select the orders (by number) for which you want to enter extra units",!,"dispensed." D:X'="?" H2^PSGON
  Q
+ ;

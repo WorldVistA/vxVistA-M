@@ -1,5 +1,5 @@
 LRX ;DALOI/STAFF - UTILITY ROUTINES -- PREVIOUSLY ^LAB("X","...") ;03/31/09  11:39
- ;;5.2;LAB SERVICE;**65,153,201,217,290,360,350**;Sep 27, 1994;Build 7
+ ;;5.2;LAB SERVICE;**65,153,201,217,290,360,350**;Sep 27, 1994;Build 2
  ;
  ;
 PT ; Patient info
@@ -32,11 +32,8 @@ PT ; Patient info
  . S SSN=VA("PID"),SSN(1)=VA("BID"),LRWRD=$P(VAIN(4),U,2)
  . S LRWRD(1)=+VAIN(4),LRRB=VAIN(5),LRPRAC=+VAIN(2)
  . S:VAIN(3) LRTREA=+VAIN(3)
- ;DSS/RAF BEGIN MOD FOR USING MRN
- I $T(VX^VFDI0000)'="",$$VX^VFDI0000["VX",$G(VA("MRN"))]"" D  Q
- .N LEN
- .S LEN=$L(VA("MRN"))
- .S SSN=VA("MRN"),SSN(1)=$E(VA("MRN"),LEN-4,LEN),SSN(2)=VA("MRN")
+ ;DSS/RAF BEGIN MOD FOR USING MRN 11/12/2013
+ I $G(^%ZOSF("ZVX"))["VX" D VFD Q
  ;DSS/RAF END MOD FOR MRN
  ;
  D SSNFM^LRU
@@ -64,6 +61,9 @@ DEM ; Call DEM^VADPT instead of OERR used above
  . S PNM=VADM(1),SEX=$P(VADM(5),U),DOD=$P(VADM(6),U)
  . S DOB=$P(VADM(3),U),SSN=VA("PID"),SSN(1)=VA("BID")
  . S AGE=VADM(4),AGE(2)=$$AGE2(DOB,$G(LRCDT))
+ ;DSS/RAF BEGIN MOD FOR USING MRN 11/12/2013
+ I $G(^%ZOSF("ZVX"))["VX" D VFD Q
+ ;DSS/RAF END MOD FOR MRN
  ;
  D SSNFM^LRU
  Q
@@ -138,7 +138,13 @@ STAMP ;time stamp
  ;
  ;
 KEYCOM ;key to result flags
- D EQUALS W !!,"  ------------------------------  COMMENTS  ------------------------------",!,"  Key:  'L' = reference Low,  'H' = reference Hi, '*' = critical range"
+ ;DSS/RAF - BEGIN MOD - 8/10/2014 ARRA II and HL7 v2.5.1 compatibility
+ ;D EQUALS W !!,"  ------------------------------  COMMENTS  ------------------------------",!,"  Key:  'L' = reference Low,  'H' = reference Hi, '*' = critical range"
+ I $G(^%ZOSF("ZVX"))["VX" D
+ . D EQUALS W !!,"  ------------------------------  COMMENTS  ------------------------------",!
+ . W !,"Key: 'A' = Abnormal, 'L' = Abnormal Low, 'H' = Abnormal High, 'AA,LL,HH,L*,H*' = Critical values, 'N' =Normal"
+ E  D EQUALS W !!,"  ------------------------------  COMMENTS  ------------------------------",!,"  Key:  'L' = reference Low,  'H' = reference Hi, '*' = critical range"
+ ;DSS/RAF - END MOD
  Q
  ;
  ;
@@ -227,7 +233,12 @@ OADPT ;Returns VAOA( Patient data
 INPPT ;Returns VAIN( Patient data
  N X,I,N,Y D INP^VADPT Q
 IN5PT ;Returns VAIP( Patient data
+ ;DSS/RAF - BEGIN MOD - replace SSN with MRN if vxVistA system 11/12/2013
+ ;N X,I,N,Y D IN5^VADPT Q  ;original line commented out
+ I $G(^%ZOSF("ZVX"))["VX" D  Q
+ . N X,I,N,Y D OERR^VADPT,IN5^VADPT,VFD Q
  N X,I,N,Y D IN5^VADPT Q
+ ;DSS/RAF - END MOD
 PIDPT ;Returns VA("PID") and VA("BID") Patient Identifier
  N X,I,N,Y D PID^VADPT Q
  ;
@@ -281,3 +292,11 @@ CALC ;Calculate timeframe based on difference between DOB and collection
  I X>30 S X=X\30_"mo" Q X  ;over 30 days---pass in months
  E  S X=X_"dy" Q X  ;under 31 days---pass in days
  Q "99yr"
+ ;DSS/RAF - BEGIN MOD - replace SSN with MRN 11/12/2013
+VFD ;this call is used to set up MRN identifiers needed for Lab functions
+ ;
+ I $G(VA("MRN"))]"" D
+ .N LEN
+ .S LEN=$L(VA("MRN"))
+ .S SSN=VA("MRN"),SSN(1)=$E(VA("MRN"),LEN-4,LEN),SSN(2)=VA("MRN")
+ Q

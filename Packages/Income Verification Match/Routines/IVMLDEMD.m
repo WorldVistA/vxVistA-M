@@ -1,5 +1,5 @@
-IVMLDEMD ;ALB/PJR/PHH - IVM DEMOGRAPHIC UPLOAD FILE DATE OF DEATH FIELDS ; 7/1/08 9:22am
- ;;2.0;INCOME VERIFICATION MATCH;**102,108,131**; 21-OCT-94;Build 2
+IVMLDEMD ;ALB/PJR/PHH/BLD - IVM DEMOGRAPHIC UPLOAD FILE DATE OF DEATH FIELDS ; 7/20/05 9:22am
+ ;;2.0;INCOME VERIFICATION MATCH;**102,108,131,148**; 21-OCT-94;Build 34
  ;;Per VHA Directive 10-93-142, this routine should not be modified.
  ;
  ;
@@ -126,16 +126,26 @@ AUTODOD(DFN) ;
  S IVMDA1=$O(^IVM(301.5,IVMDA2,"IN","B",IVMDA1,""),-1)
  I 'IVMDA1 G DODQ
  ;
- D CKAUTO I CKDEL D AUTODEL,DEM5,BULL(+^IVM(301.5,IVMDA2,0)) G DODQ
- I CKADD D CKDUZ,AUTOADD,DEM5 G DODQ
- I $$CKINPAT^IVMLDEMB($G(DFN)) D
+ ;added for IVM*2*131
+ I $$CKINPAT^IVMLDEMB($G(DFN)) D  G DODQ
  .N DODREJDT
  .; DEMBULL^IVMPREC6 already set up the IVMTEXT array so we don't want
  .; to send it if the message is to be deleted
  .; EN^IVMPREC6 will send a message if IVMCNTR
  .I $G(IVMCNTR),$G(XMSUB)["IVM - DEMOGRAPHIC UPLOAD for ",$G(IVMTEXT(1))["Updated demographic information has been received from the",$G(IVMTEXT(2))["Health Eligibilty Center.  Please select the 'Demographic Upload'" S IVMCNTR=0 K IVMTEXT
- .D AUTOREJ^IVMLDEMB,SNDBULL^IVMLDEMB
+ .D AUTOREJ^IVMLDEMB,SNDBULL^IVMLDEMB ;bld 3/15/2011 for Date of Death Changes IVM*2*148
+ I $P(IVMSEG,"^",9)="""""" D CKAUTO I CKDEL D AUTODEL,DEM5,BULL(+^IVM(301.5,IVMDA2,0)) G DODQ
+ I $P(IVMSEG,"^",31)'=3,$P($G(^DPT(DFN,.35)),"^",1)="" D
+ .D CKAUTO I CKDEL D AUTODEL,DEM5,BULL(+^IVM(301.5,IVMDA2,0)) ;G DODQ
+ .I CKADD D CKDUZ,AUTOADD,DEM5 ;G DODQ
+ I $P(IVMSEG,"^",31)=3,$P($G(^DPT(DFN,.35)),"^",1)'="" D
+ .D CKAUTO I CKDEL D AUTODEL,DEM5,BULL(+^IVM(301.5,IVMDA2,0)) ;G DODQ
+ .I CKADD D CKDUZ,AUTOADD,DEM5 G DODQ
+ I $P(IVMSEG,"^",31)=3,$P($G(^DPT(DFN,.35)),"^",1)="" D
+ .D CKDUZ,AUTOADD,DEM5
+ ;
  G DODQ
+ ;
 AUTOADD ;
  S DGDAUTO=1
  ; - loop through DOD fields
@@ -145,11 +155,9 @@ AUTOADD ;
  ..;
  ..; - check for data node in (#301.511) sub-file
  ..S IVMNODE=$G(^IVM(301.5,IVMDA2,"IN",IVMDA1,"DEM",IVMJ,0)) Q:'(+IVMNODE)
- ..I DODFIELD="ZPD31",$P(IVMNODE,"^",2)=""!($P(IVMNODE,"^",2)<1)!($P(IVMNODE,"^",2)>9) S $P(IVMNODE,"^",2)="@"
- ..I DODFIELD'="ZPD31",$P(IVMNODE,"^",2)=""!($E($P(IVMNODE,"^",2),1,7)'?1.7N) S $P(IVMNODE,"^",2)="@"
  ..;
  ..;   load Date of Death field rec'd from IVM into DHCP (#2) file
- ..I DODFIELD'="ZPD09" D UPLOAD(+DFN,$P($G(^IVM(301.92,+IVMNODE,0)),"^",5),$P(IVMNODE,"^",2)) S IVMFLAG=1
+ ..D UPLOAD(+DFN,$P($G(^IVM(301.92,+IVMNODE,0)),"^",5),$P(IVMNODE,"^",2)) S IVMFLAG=1
  ..; - remove entry from (#301.511) sub-file
  ..D DELENT^IVMLDEMU(IVMDA2,IVMDA1,IVMJ)
  ;
@@ -169,7 +177,14 @@ AUTODEL ;
  .; - remove entry from (#301.511) sub-file
  .D DELENT^IVMLDEMU(IVMDA2,IVMDA1,IVMJ)
  ;
- I IVMFLAG D UPLOAD(+DFN,.355,.5)
+ I IVMFLAG D
+ .D NOW^%DTC
+ .D UPLOAD(+DFN,.355,.5)
+ .D UPLOAD(+DFN,.354,%)
+ .N DA,DIE,DR
+ .S DIE="^DPT(",DA=DFN,DR=".352////@"
+ .D ^DIE
+ Q
  D CLEAN(IVMDA2)
  Q
 DEM5 ;

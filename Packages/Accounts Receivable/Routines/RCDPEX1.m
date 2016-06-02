@@ -1,5 +1,5 @@
 RCDPEX1 ;ALB/TMK - ELECTRONIC EOB MESSAGE EXCEPTIONS PROCESS ;02-MAY-96
- ;;4.5;Accounts Receivable;**173**;Mar 20, 1995
+ ;;4.5;Accounts Receivable;**173,262**;Mar 20, 1995;Build 4
  ;;Per VHA Directive 10-93-142, this routine should not be modified.
  ;
 EN ; Main entry point
@@ -75,13 +75,13 @@ HDR ;
  ;
 DIQ3445(DA,DR) ; DIQ call to retrieve data for DR fields in file 344.5
  N %I,D0,DIC,DIQ,DIQ2,YY
- K RCDPDATA(344.5,DA)
+ K RCDPDATA(344.5)
  S DIQ(0)="EI",DIC="^RCY(344.5,",DIQ="RCDPDATA" D EN^DIQ1
  Q
  ;
 DIQ3444(DA,DR) ; DIQ call to retrieve data for DR fields in file 344.5
  N %I,D0,DIC,DIQ,DIQ2,YY
- K RCDPDATA(344.4,DA)
+ K RCDPDATA(344.4)
  S DIQ(0)="EI",DIC="^RCY(344.4,",DIQ="RCDPDATA" D EN^DIQ1
  Q
  ;

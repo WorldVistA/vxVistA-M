@@ -1,5 +1,5 @@
-HLOUSR3 ;ALB/CJM/RBN -ListManager Screen for viewing messages(continued);12 JUN 1997 10:00 am ;07/21/2008
- ;;1.6;HEALTH LEVEL SEVEN;**126,134,138**;Oct 13, 1995;Build 34
+HLOUSR3 ;ALB/CJM/RBN -ListManager Screen for viewing messages(continued);12 JUN 1997 10:00 am ;03/26/2012
+ ;;1.6;HEALTH LEVEL SEVEN;**126,134,138,139,147,158**;Oct 13, 1995;Build 14
  ;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  ;
@@ -73,7 +73,9 @@ ASK(PARMS) ; Ask for parameter values.
  Q:PARMS("EVENT")=-1 0
  S PARMS("DIR")=$$ASKDIR()
  Q:PARMS("DIR")=-1 0
- S PARMS("DIR")=$S(PARMS("DIR")="I":"IN",1:"OUT")
+ ;** P139 START CJM
+ S PARMS("DIR")=$S(PARMS("DIR")="I":"IN",PARMS("DIR")="i":"IN",1:"OUT")
+ ;** P139 END CJM
  S PARMS("MAX")=$$ASKMAX()
  Q:'(PARMS("MAX")>-1) 0
  Q 1
@@ -144,7 +146,7 @@ SETPURGE ; Set a message up for purging.
  S DIR(0)="D^"_DT_":"_$$FMADD^XLFDT(DT,+45)_":E"
  S DIR("A")="When should the message be purged?"
  D ^DIR
- D:Y SETPURGE^HLOAPI3(+MSGIEN,Y),DISPLAY^HLOUSR1
+ D:Y SETPURGE^HLOUSR7(+MSGIEN,Y),DISPLAY^HLOUSR1
  Q
 SCREEN() ;  Screen for message purge status.
  N TRUE
@@ -164,7 +166,7 @@ RESEND ; If outbound message has been sent, resends it.
  D OWNSKEY^XUSRB(.CONF,"HLOMGR",DUZ)
  I CONF(0)'=1 D  Q
  . W !,"**** You are not authorized to use this option ****" D PAUSE^VALM1 Q
- Q:$$VERIFY^HLOQUE1()=-1
+ ;Q:$$VERIFY^HLOQUE1()=-1
  N MSG,DIR,ERROR,FLG,OLDIEN,SYS
  S OLDIEN=MSGIEN
  I $G(OPT1DIS) D  K OPT1DIS Q
@@ -174,13 +176,14 @@ RESEND ; If outbound message has been sent, resends it.
  Q:'$$GETMSG^HLOMSG(+MSGIEN,.MSG)
  I MSG("DIRECTION")'="OUT" W !,"Message is not an outbound message" D PAUSE^VALM1 Q
  I MSG("STATUS")="",'MSG("DT/TM") W !,"Message has not been sent!" D PAUSE^VALM1 Q
+ Q:'$$ASKYESNO^HLOUSR2("Are you SURE you want to resend MsgID: "_MSG("ID"),"NO")
  S MSGIEN=$$RESEND^HLOAPI3(+MSGIEN,.ERROR)
  I $G(ERROR) W ERROR D PAUSE^VALM1 Q
  W !,"The message has been copied to MsgID ",MSGIEN," which will be displayed next"
  I $$ASKYESNO^HLOUSR2("Do you want the original message purged?","NO") D
  . D SYSPARMS^HLOSITE(.SYS)
- . S HLOPURDT=$$FMADD^XLFDT($$NOW^XLFDT,0,SYS("ERROR PURGE"),0,0)
- . S FLG=$$SETPURGE^HLOAPI3(OLDIEN,HLOPURDT)
+ . S HLOPURDT=$$FMADD^XLFDT($$NOW^XLFDT,SYS("ERROR PURGE"))
+ . S FLG=$$SETPURGE^HLOUSR7(OLDIEN,HLOPURDT)
  S FLG=$$GETMSG^HLOMSG(+MSGIEN,.MSG)
  D DISPLAY^HLOUSR1
  Q
@@ -191,7 +194,7 @@ REPROC ; If inbound message has been processed, reprocesses it.
  D OWNSKEY^XUSRB(.CONF,"HLOMGR",DUZ)
  I CONF(0)'=1 D  Q
  . W !,"**** You are not authorized to use this option ****" D PAUSE^VALM1 Q
- Q:$$VERIFY^HLOQUE1()=-1
+ ;Q:$$VERIFY^HLOQUE1()=-1
  N MSG,DIR,ERROR,SYSPARM
  I $G(OPT2DIS) D  K OPT2DIS Q
  . W !,"Sorry that option is not available for this message." D PAUSE^VALM1 Q
@@ -200,13 +203,14 @@ REPROC ; If inbound message has been processed, reprocesses it.
  Q:'$$GETMSG^HLOMSG(+MSGIEN,.MSG)
  I MSG("DIRECTION")'="IN" W !,"Message is not an inbound message" D PAUSE^VALM1 Q
  I MSG("STATUS")="",'MSG("STATUS","APP HANDOFF") W !,"Message has not been processed" D PAUSE^VALM1 Q
+ Q:'$$ASKYESNO^HLOUSR2("Are you SURE you want to reprocess MsgID: "_MSG("ID"),"NO")
  I '$$PROCNOW^HLOAPI3(+MSGIEN,"",.ERROR) W ERROR D PAUSE^VALM1 Q
  W !,"Done!  The message has been reprocessed by the application."
  S DIR(0)="D^"_DT_":"_$$FMADD^XLFDT(DT,+45)_":E"
  I '$$ASKYESNO^HLOUSR2("Do you want to purge the message?","NO") D
  . D SYSPARMS^HLOSITE(.SYSPARM)
- . S HLOPURDT=$$FMADD^XLFDT($$NOW^XLFDT,0,SYSPARM("ERROR PURGE"),0,0)
- . S FLG=$$SETPURGE^HLOAPI3(MSGIEN,HLOPURDT)
+ . S HLOPURDT=$$FMADD^XLFDT($$NOW^XLFDT,SYSPARM("ERROR PURGE"))
+ . S FLG=$$SETPURGE^HLOUSR7(MSGIEN,HLOPURDT)
  Q
  ;
 MSGPREP ; Enable or disable menu options
@@ -221,3 +225,4 @@ MSGPREP ; Enable or disable menu options
  S VALMBCK="R"
  Q
  ;;**End Patch HL*1.6*138 **
+ ;

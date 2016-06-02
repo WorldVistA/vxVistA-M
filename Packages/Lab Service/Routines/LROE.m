@@ -1,5 +1,5 @@
 LROE ;DALOI/CJS/FHS-LAB ORDER ENTRY AND ACCESSION ;8/11/97
- ;;5.2;LAB SERVICE;**100,121,201,221,263,286,360**;Sep 27, 1994;Build 25
+ ;;5.2;LAB SERVICE;**100,121,201,221,263,286,360,423,432**;Sep 27, 1994;Build 18
  K LRORIFN,LRNATURE,LREND,LRORDRR
  S LRLWC="WC"
  D ^LRPARAM
@@ -40,7 +40,7 @@ NEXT ;from LROE1
  S DIR("B")="Yes"
  D ^DIR K DIR
  I $D(DIRUT)!(Y'=1) K LRSN G NEXT
- L +^LRO(69,"C",LRORD):1
+ L +^LRO(69,"C",LRORD):$G(DILOCKTM,3)
  I '$T W !?5,"Someone else is editing this Order",!!,$C(7) G NEXT
  K %DT
  S LRSTATUS="C",%DT("B")=""
@@ -63,7 +63,11 @@ MORE I M9>1 K DIR S DIR("A")="Do you have the entire order",DIR(0)="Y" D ^DIR K 
  ;
  ;
 LROE2 ;
- I $D(^LRO(69,LRODT,1,DA,1)),$P(^(1),U,4)="C" S LRNONE=2,LRCHK=LRCHK+1
+ I '$D(^LRO(69,LRODT,1,DA,0)) Q
+ I $D(^LRO(69,LRODT,1,DA,1)) D
+ . I $P(^LRO(69,LRODT,1,DA,1),U,4)="C" S LRNONE=2,LRCHK=LRCHK+1 Q
+ . I $P(^LRO(69,LRODT,1,DA,0),U,4)="LC",$P(^LRO(69,LRODT,1,DA,1),U,4)="" S LRNONE=2,LRCHK=LRCHK+1
+ ;
  K LRSN
  S (LRSN,LRSN(DA))=+DA
  I '$D(^LRO(69,LRODT,1,LRSN,0)) Q
@@ -75,7 +79,7 @@ LROE2 ;
  .W !,?30,"DOB: "_$P($G(VADM(3)),U,2) S LRWRDS=LRWRD
  E  W !,PNM,?30,SSN S LRWRDS=LRWRD
  ;DSS/RAF - END MOD
- W !,"Requesting location: ",$P(LRZX,U,7) S Y=$P(LRZX,U,5) D DD^LRX W !,"Date/Time Ordered: ",Y,?45,"By: ",$S($D(^VA(200,+$P(LRZX,U,2),0)):$P(^(0),U),1:"")
+ W ?45,"Requesting location: ",$P(LRZX,U,7) S Y=$P(LRZX,U,5) D DD^LRX W !,"Date/Time Ordered: ",Y,?45,"By: ",$S($D(^VA(200,+$P(LRZX,U,2),0)):$P(^(0),U),1:"")
  S LRSVSN=LRSN D ORDER^LROS S LRSN=LRSVSN
  Q
  ;
@@ -120,6 +124,10 @@ TIME ;from LROE1, LRORD1
  I X["@U",$P(X,"@U",2)="" S X=$P(X,"@U",1) D ^%DT G TIME:Y<1 S LRCDT=+Y_"^1" Q
  S:X="U" LRCDT=DT_"^1"
  I X'="U" D ^%DT D:X'["?" TIME1 G TIME:X["?" S LRCDT=+Y_"^" G TIME:Y'["."
+ ;DSS/RAF - BEGIN MOD - add prompt for Collected By and store results.
+ I $G(^%ZOSF("ZVX"))["VX",$$GET^XPAR("SYS","VFD LAB ASK COLLECTING PERSON") D
+ . D VFD
+ ;DSS/RAF - END MOD
  Q
  ;
 TIME1 S X1=X,Y1=Y D TIME2 S X=X1,Y=Y1 K X1,Y1
@@ -156,4 +164,17 @@ GOT(ORD,ODT) ;See if all tests have been canceled
  ;
 UNL69 ;
  L -^LRO(69,"C",+$G(LRORD))
+ Q
+ ;DSS/RAF - BEGIN MOD - adding subroutine to handle collection person prompt
+VFD ;collected by capture depending on VFD LAB ASK COLLECTION PERSON parameter value
+ ; if parameter is set to YES the collected by prompt will be displayed and 
+ ; the DUZ of the person entered will be stored in files 69,68 and 63
+ ;
+ N DIR,Y
+ K VFDCDUZ
+ S DIR(0)="PAR^200:AEQM",DIR("A")="Collecting Person: "
+ D ^DIR
+ I $D(DTOUT)!$D(DUOUT)!$D(DIRUT)!$D(DIROUT) S LRCDT=0 Q
+ I '$$ACTIVE^XUSER(+Y) W !,"Not currently an active user." G VFD
+ S VFDCDUZ=+Y
  Q

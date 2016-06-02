@@ -1,6 +1,6 @@
 XOBVRPCI ;; ld,mjk/alb - VistaLink Interface Implementation for RPCs; 07/27/2002  13:00
- ;;1.5;VistALink;;Sep 09, 2005
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.0.026]
+ ;;1.6;VistALink;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
  ;
 CALLBACK(CB) ; -- init callbacks implementation
  SET CB("STARTELEMENT")="ELEST^XOBVRPCI"
@@ -8,7 +8,7 @@ CALLBACK(CB) ; -- init callbacks implementation
  SET CB("CHARACTERS")="CHR^XOBVRPCI"
  QUIT
  ;
-READER(XOBUF,XOBDATA) ; -- propriatary format reader implementation
+READER(XOBUF,XOBDATA) ; -- proprietary format reader implementation
  DO START^XOBVRPCX(.XOBUF,.XOBDATA)
  QUIT
  ;

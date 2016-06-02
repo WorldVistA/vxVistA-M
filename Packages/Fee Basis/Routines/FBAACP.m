@@ -1,6 +1,6 @@
-FBAACP ;AISC/CMR-C&P PAYMENT DRIVER ;7/13/2003
- ;;3.5;FEE BASIS;**4,38,55,61,77**;JAN 30, 1995
- ;;Per VHA Directive 10-93-142, this routine should not be modified.
+FBAACP ;AISC/CMR - C&P PAYMENT DRIVER ;10/31/12 3:08pm
+ ;;3.5;FEE BASIS;**4,38,55,61,77,108,143,139**;JAN 30, 1995;Build 127
+ ;;Per VA Directive 6402, this routine should not be modified.
  K FBAAOUT,FBPOP S FBCNP=1 ;C&P flag
  D SITE^FBAACO G Q:$G(FBPOP) D BT^FBAACO G Q:$G(FBAAOUT)
 1 K FBAR,FBAAOUT,FBDL,FBAAMM D GETVEN1^FBAACO1:$D(FB583),GETVEN^FBAACO1:'$D(FB583) G CLN:$G(FBAAOUT)
@@ -24,10 +24,16 @@ MULT ;begin unique patient entry
  W:FBINTOT>0 !,"Invoice: "_FBAAIN_" Totals: $ "_FBINTOT
  K FBAAOUT,FBDL S (DFN,FTP)="" D SITE^FBAACO G Q:$G(FBPOP) W !!
  I '$D(FB583) K FBDL D GETVET^FBAAUTL1 G CLN:'DFN K FBDMRA D GETAUTH^FBAAUTL1 G MULT:FTP']""
- K FBAAOUT D  G Q:$G(FBAAOUT)
- . N ICDVDT S ICDVDT=$G(FBAADT)
- . F  D  Q:$G(FBAAOUT)  Q:($$INPICD9^FBCSV1(+$G(Y),"",$G(FBAADT))=0)
- . . S I=28,DIR(0)="PO^80:EMQZ",DIR("A")="PRIMARY DIAGNOSIS" D DIR
+ ; check contract
+ I $G(FBAAPTC)'="R",'$D(FB583),$$UCFA^FBUTL7($G(FBV),$G(FBVEN),$G(FBCNTRA)),FBCNTRP'=FBCNTRA D  G MULT
+ . W !,"ERROR: Contract specified for payments (",$S(FBCNTRP:$P($G(^FBAA(161.43,FBCNTRP,0)),U),1:""),") doesn't"
+ . W !,"match contract specified by this authorization (",$S(FBCNTRA:$P($G(^FBAA(161.43,FBCNTRA,0)),U),1:""),")."
+ ; FB*3.5*139 JLG/JAS ICD-10 remediation
+ K FBAAOUT
+ N FBISYS S FBISYS=10 S:FBAADT<$$IMPDATE^FBCSV1("10D") FBISYS=9
+ D:FBISYS=9 ICD9 G Q:$G(FBAAOUT)
+ D:FBISYS=10 ICD10 G Q:$G(FBAAOUT)
+ ; end 139
  D PAT^FBAACO W !! D FILEV^FBAACO5(DFN,FBV) I $G(FBAAOUT) G Q:$D(FB583),CLN
  ;check for payments against all linked vendors
  S DA=+Y D CHK^FBAACO4 K FBAACK1,FBAAOUT,DA,X,Y
@@ -45,10 +51,12 @@ Q ;kill variables and exit
  D Q^FBAACO
  Q
 AMTPD ;get amount paid
+ ; FB*3.5*143 - Added FB1725 as a parameter, to prevent inaccurate
+ ; pricing of "Mill-Bill" claims with 75th percentile rates.
  N FBX
  S FBFY=FY-1
  S (FBAMTPD,FBFSAMT,FBFSUSD)=""
- S FBX=$$GET^FBAAFS($$CPT^FBAAUTL4(FBAACP),$$MODL^FBAAUTL4("FBMODA","E"),FBAADT,$G(FBZIP),$$FAC^FBAAFS($G(FBHCFA(30))),$G(FBTIME))
+ S FBX=$$GET^FBAAFS($$CPT^FBAAUTL4(FBAACP),$$MODL^FBAAUTL4("FBMODA","E"),FBAADT,$G(FBZIP),$$FAC^FBAAFS($G(FBHCFA(30))),$G(FBTIME),$G(FB1725))
  ;
  I '$G(FBAAMM1) D
  . S FBFSAMT=$P(FBX,U),FBFSUSD=$P(FBX,U,2)
@@ -66,7 +74,7 @@ AMTPD ;get amount paid
  . W !!?2,"Units Paid = ",FBUNITS
  . Q:FBFSAMT'>0
  . N FBFSUNIT
- . ; determine if fee schedule can be multipled by units
+ . ; determine if fee schedule can be multiplied by units
  . S FBFSUNIT=$S(FBFSUSD="R":1,FBFSUSD="F"&(FBAADT>3040930):1,1:0)
  . I FBFSUNIT D
  . . S FBFSAMT=$J(FBFSAMT*FBUNITS,0,2)
@@ -96,16 +104,52 @@ DIR ;generic DIR call for HCFA
 CLN G Q:$D(FB583)
  D Q G FBAACP
  Q
+ICD9 ;get ICD-9 primary diagnosis - JAS - Patch 139 ICD-10 remediation
+ N FBPD,EDATE,FBXSP K FBAAOUT
+ S EDATE=FBAADT ; edate is the date of interest for ICD9 diagnosis code lookup
+ S FBXSP="PRIMARY DIAGNOSIS"
+ F  D  Q:$G(FBAAOUT)!(FBPD>0)
+ . S FBPD=$$ENICD9^FBICD9(EDATE,FBXSP,"Y")
+ . S:FBPD="^" FBAAOUT=-1
+ Q:$G(FBAAOUT)!(FBPD'>0)
+ S FBHCFA(28)=+FBPD
+ Q
+ICD10 ;get ICD-10 primary diagnosis FB*3.5*139 JLG ICD-10 remediation
+ N FBPD,EDATE K FBAAOUT
+ S EDATE=FBAADT
+ S:'$D(DA) DA=0 ;must be defined prior to running ASF
+ S:'$D(DP) DP=0 ;must be defined prior to running ASF
+ F  D  Q:$G(FBAAOUT)!(FBPD>0)
+ . S FBPD=$$ASKICD10^FBASF("PRIMARY DIAGNOSIS","","Y")
+ . S:FBPD=-3 FBAAOUT=-1
+ Q:$G(FBAAOUT)!(FBPD'>0)
+ S FBHCFA(28)=FBPD
+ Q
 MMPPT ;money management/prompt pay type for multiple payment entry
  ; input
- ;   FBAAPTC
+ ;   FBAAPTC = payment type code, "R" when patient reimbursement
+ ;   FBV     = vendor being paid (ien)
+ ;   when called from FBAAMP additional variables will be available
+ ;     FBCNTRA = contract ien from authorization
+ ;     FBVEN   = vendor from authorization
+ ;     FB583   = defined when unauthorized claim
  ; output
- ;   FBAAMM
- ;   FBAAMM1
- ;   FBAAOUT
+ ;   FBAAMM  = prompt payment, =1 to ask
+ ;   FBAAMM1 = prompt payment type for line
+ ;   FBAAOUT = (optional), = 1 to quit
+ ;   FBCNTRP = contract for line item (ien)
  ;
- S (FBAAMM,FBAAMM1)=""
- I $G(FBAAPTC)'="R" D
+ S (FBAAMM,FBAAMM1,FBCNTRP)=""
+ I $G(FBAAPTC)'="R",'$D(FB583) D
+ . ;
+ . ; check if contract required by authorization
+ . I '$D(FB583),$$UCFA^FBUTL7($G(FBV),$G(FBVEN),$G(FBCNTRA)) D  Q
+ . . W !,"All lines items on this invoice will be considered as contracted services"
+ . . W !,"under Contract ",$P($G(^FBAA(161.43,FBCNTRA,0)),U)," from the authorization."
+ . . S (FBAAMM,FBAAMM1)=1
+ . . S FBCNTRP=FBCNTRA
+ . ;
+ . ; when not forced by authorization ask if contracted service
  . W !,"The answer to the following will apply to all payments entered via this option."
  . S DIR(0)="Y"
  . S DIR("A")="Are payments for contracted services"
@@ -116,4 +160,14 @@ MMPPT ;money management/prompt pay type for multiple payment entry
  . S DIR("?")="Enter either 'Y' or 'N'."
  . D ^DIR K DIR I $D(DIRUT) S FBAAOUT=1 Q
  . S (FBAAMM,FBAAMM1)=$S(Y:1,1:"")
+ . Q:FBAAMM1=""
+ . ;
+ . ; if contracted service, ask contract
+ . S DIR(0)="PO^161.43:AQEM"
+ . S DIR("A")="CONTRACT"
+ . S DIR("?",1)="If the line item is under a contract then select it."
+ . S DIR("?")="Contract must be active and applicable for the vendor."
+ . S DIR("S")="I $P($G(^(0)),""^"",2)'=""I"",$$VCNTR^FBUTL7($G(FBV),+Y)"
+ . D ^DIR K DIR I $D(DTOUT)!$D(DUOUT) S FBAAOUT=1 Q
+ . S:Y>0 FBCNTRP=+Y
  Q

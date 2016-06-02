@@ -1,5 +1,5 @@
 VFDVOHU1 ;DSS/LM - Utilities ; 4/7/2013 21:20
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013
+ ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 13
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ; (c) Document Storage Systems, Inc. 2005
  ;

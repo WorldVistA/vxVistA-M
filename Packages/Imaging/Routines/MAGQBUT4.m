@@ -1,6 +1,6 @@
-MAGQBUT4 ;WOIFO/RMP - BP Utilities  ;19 Nov 2001 1:23 PM
- ;;3.0;IMAGING;**7,8,48,20,81**;May 17, 2007
- ;;  Per VHA Directive 2004-038, this routine should not be modified.
+MAGQBUT4 ;WOIFO/RMP - BP Utilities ; 27 Jun 2012 5:45 PM
+ ;;3.0;IMAGING;**7,8,48,20,81,39,121,135**;Mar 19, 2002;Build 5238;Jul 17, 2013
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -47,12 +47,41 @@ MRGMULT(ARR,RT,RTDSC,CT) ;Merge the FM formatted array into a FM File
 DDLF(RESULTS,FILE,FIELD,FLAGS,ATTR) ;[MAG FLD ATT]
  S X="ERR^MAGQBTM",@^%ZOSF("TRAP")
  K X
+ N I
  D FIELD^DID(FILE,FIELD,FLAGS,ATTR,"RESULTS","RESULTS")
+ S I=0 F  S I=I+1 Q:'$D(RESULTS(ATTR,I))  M RESULTS(I)=RESULTS(ATTR,I)
  Q
 DDFA(RESULTS) ;[MAG ATT LST]
  S X="ERR^MAGQBTM",@^%ZOSF("TRAP")
  K X
  D FIELDLST^DID(RESULTS)
+ Q
+DVAL(RESULTS,FILE,IENS,FIELD,FLAGS,VALUE) ;[MAG FIELD VALIDATE]
+ S X="ERR^MAGQBTM",@^%ZOSF("TRAP")
+ K X
+ I FLAGS']"" S FLAGS="EHU"
+ D VAL^DIE(FILE,IENS,FIELD,FLAGS,VALUE,.RESULT,"","MSG")
+ I RESULT=U S RESULTS="-1^"_$G(MSG("DIERR","1","TEXT","1"))
+ E  S RESULTS=1_U_RESULT_U_$G(RESULT(0))
+ Q
+KVAL(RESULTS,FLAGS,FDA) ;[MAG KEY VALIDATE]
+ N TMP,DDRFDA
+ S X="ERR^MAGQBTM",@^%ZOSF("TRAP")
+ K X
+ D FDASET(.FDA,.DDRFDA)
+ S TMP=$$KEYVAL^DIE(FLAGS,"DDRFDA","MSG")
+ S RESULTS=$S(TMP=1:1,1:"-1^"_$G(MSG("DIERR","1","TEXT","1")))
+ K DDRFDA,MSG
+ Q
+FDASET(DDRROOT,DDRFDA) ;
+ N DDRFILE,DDRIEN,DDRFIELD,DDRVAL,DDRERR,I
+ S I=0
+ F  S I=$O(DDRROOT(I)) Q:'I  S X=DDRROOT(I) D
+ . S DDRFILE=$P(X,U)
+ . S DDRFIELD=$P(X,U,2)
+ . S DDRIEN=$P(X,U,3)
+ . S DDRVAL=$P(X,U,4,99)
+ . D FDA^DILF(DDRFILE,DDRIEN_$S($E(DDRIEN,$L(DDRIEN))'=",":",",1:""),DDRFIELD,"",DDRVAL,"DDRFDA","DDRERR")
  Q
 DHRPC(RESULTS,FNAME,FLOC) ;[MAG DIRHASH]
  N TMP
@@ -66,7 +95,7 @@ GPACHX(PV) ; Get Package File Install History of Imaging
  S LCNT=0
  S PV(0)="Version^Install Date"
  F PKG="IMAGING" D
- . N J,K,L,VERS,DATE,X,Y,%DT
+ . N J,K,L,VERS,DATE,X,Y
  . S J=$O(^DIC(9.4,"B",PKG,"")) Q:'J
  . S VERS="" F  S VERS=$O(^DIC(9.4,J,22,"B",VERS)) Q:VERS=""  D
  . . N MSG,TAR
@@ -76,8 +105,8 @@ GPACHX(PV) ; Get Package File Install History of Imaging
  . . S L=0 F  S L=$O(TAR("DILIST","ID",L)) Q:'L  D
  . . . S LCNT=LCNT+1
  . . . S PV(LCNT)=VERS_"P"_$P(TAR("DILIST","ID",L,".01"),"^",1)
- . . . S X=$P(TAR("DILIST","ID",L,".02"),"^",1) D ^%DT S DATE=$$FMTE^XLFDT(Y,2)
- . . . S PV(LCNT)=PV(LCNT)_"^"_$S(DATE["-1":"",1:DATE)
+ . . . S X=$P($P(TAR("DILIST","ID",L,".02"),"^",1),"@",1)
+ . . . S PV(LCNT)=PV(LCNT)_"^"_$S(X["-1":"",1:X)
  . . . Q
  . . Q
  . Q
@@ -85,6 +114,7 @@ GPACHX(PV) ; Get Package File Install History of Imaging
  ;
 VOKR(RESULT,VER) ; RPC for VOK [MAGQ VOK]
  N CVERS,PNUM,SLINE
+ S VER="3.0P"_($$TRIM($P(VER,"P",2)))
  S X="ERR^MAGQBTM",@^%ZOSF("TRAP")
  S SLINE=$T(+2)
  S PNUM=$$TRIM($P(SLINE,"**",2)),PNUM=$$TRIM($P(PNUM,",",$L(PNUM,",")))
@@ -98,14 +128,21 @@ TRIM(X) ; remove both leading and trailing blanks
  F J=$L(X):-1:I Q:$E(X,J)'=" "
  Q $S($E(X,I,J)=" ":"",1:$E(X,I,J))
  ;
-QCNT(RESULT,PLC,QUE) ; [MAGQ QCNT]
+QCNT(RESULT,PLC,QUE) ; [MAGQ QCNT] Called from MagQueManSet.pas and MagSiteParameters.pas
+ N CNT,DA,CQ,IA,X
  S X="ERR^MAGQBTM",@^%ZOSF("TRAP")
- N CNT,DA,CQ,IA
- S (NODE,IA)="",RESULT=0
+ ;CQ=Current Queue Pointer(#2006.03) 
+ ;QP=Queue file pointer(#2006.031)
+ ;CNT=Queue type total, IA=Not failed total
+ S IA="",RESULT=0
  S (CNT,IA)=0,DA=""
  S QP=$S($D(^MAGQUEUE(2006.031,"C",PLC,QUE)):$O(^MAGQUEUE(2006.031,"C",PLC,QUE,"")),1:"")
  S CQ=$S('QP:0,1:$P($G(^MAGQUEUE(2006.031,QP,0)),U,2))
- F  S DA=$O(^MAGQUEUE(2006.03,"C",PLC,QUE,DA)) Q:'DA  S CNT=CNT+1 I CQ<DA S IA=IA+1
+ F  S DA=$O(^MAGQUEUE(2006.03,"C",PLC,QUE,DA)) Q:'DA  D
+ . I '$D(^MAGQUEUE(2006.03,DA,0)) K ^MAGQUEUE(2006.03,"C",PLC,QUE,DA) Q 
+ . S CNT=CNT+1
+ . I CQ<DA S IA=IA+1
+ . Q
  D QPUP(PLC,QUE,CNT,CQ,IA,QP) Q
  Q
  ;
@@ -168,21 +205,6 @@ CNSP(GL,IEN,NMSP,NSC) ;  Check NameSPace
  Q:NMSPC="" ""
  S INSTIEN=$S($D(NMSP(NMSPC)):$O(NMSP(NMSPC,"")),1:"")
  Q INSTIEN
-ACQUD(LIMIT) ;
- N I,TMP,CNT
- S (I,CNT)=0
- F  S I=$O(^TMP($J,"CHANGE_IEN",I)) Q:I=""  D
- . S TMP=$G(^TMP($J,"CHANGE_IEN",I))
- . D DFNIQ^MAGQBPG1("","Original Acquisition Site at IEN: "_$P(TMP,U,3)_" Value: "_$P(TMP,U)_" New value: "_$P(TMP,U,2),0)
- . S CNT=CNT+1
- . I (CNT+1)>LIMIT D
- . . D DFNIQ^MAGQBPG1("Post Install Acquisition Site field Updates","",1)
- . . S CNT=0
- . . Q
- . Q
- D DFNIQ^MAGQBPG1("Post Install Acquisition Site field Updates","",1)
- K ^TMP($J,"CHANGE_IEN"),TMP
- Q
 NMSP(TMPA) ;
  N IEN,INS,TMP,I,J
  S INS="" F  S INS=$O(^MAG(2006.1,"B",INS)) Q:INS=""  S IEN="" D
@@ -220,20 +242,23 @@ ADDRPC(RPCNAME,OPTNAME) ;
  . D MES^XPDUTL("RPC: """_RPCNAME_""" is already a member of """_OPTNAME_""".")
  . Q
  S DIC=DIC_DA(1)_",""RPC"","
- S DIC(0)="L" ; LAYGO should be allowed here
+ S DIC(0)="L",DLAYGO="19" ; LAYGO should be allowed here
  S X=RPCNAME
  D ^DIC
+ K DIC,D0,DLAYGO
  I Y<0 D  Q
  . D MES^XPDUTL("Cannot add RPC: """_RPCNAME_""" to Option: """_OPTNAME_""".")
  . D MES^XPDUTL("Cannot find RPC: """_RPCNAME_""".")
  . Q
  Q
 INS(XP,DUZ,DATE,IDA) ;
- N CT,CNT,COM,D,D0,D1,D2,DDATE,DG,DIC,DICR,DIW,MAGMSG,ST,XMID,XMY
+ N CT,CNT,COM,D,D0,D1,D2,DDATE,DG,DIC,DICR,DIW,MAGMSG,ST,XMID,XMY,PLACE,XMSUB,XMZ
+ S PLACE=$O(^MAG(2006.1,"B",$$KSP^XUPARAM("INST"),""))
  D GETENV^%ZOSV
  S CNT=0
  S CNT=CNT+1,MAGMSG(CNT)="PACKAGE INSTALL"
  S CNT=CNT+1,MAGMSG(CNT)="SITE: "_$$KSP^XUPARAM("WHERE")
+ S CNT=CNT+1,MAGMSG(CNT)=" Production Account: "_$$PROD^XUPROD("1")
  S CNT=CNT+1,MAGMSG(CNT)="PACKAGE: "_XP
  S CNT=CNT+1,MAGMSG(CNT)="Version: "_$$VER^XPDUTL(XP)
  S ST=$$GET1^DIQ(9.7,IDA,11,"I")
@@ -252,10 +277,20 @@ INS(XP,DUZ,DATE,IDA) ;
  S XMSUB=XP_" INSTALLATION"
  S XMID=$G(DUZ) S:'XMID XMID=.5
  S XMY(XMID)=""
- S XMY("G.MAG SERVER")=""
  S:$G(MAGDUZ) XMY(MAGDUZ)=""
  S XMSUB=$E(XMSUB,1,63)
+ D:$$PROD^XUPROD("1") ADDMG^MAGQBUT5(XMSUB,.XMY,PLACE)
  D SENDMSG^XMXAPI(XMID,XMSUB,"MAGMSG",.XMY,,.XMZ,)
- I $G(XMERR) M XMERR=^TMP("XMERR",$J) S $EC=",U13-Cannot send MailMan message," K XMERR
+ I $G(XMERR) M XMERR=^TMP("XMERR",$J) K XMERR
+ K MAGMSG
+ Q
+TEST ;
+ N FDA
+ S FDA(4)="2006.8^.01^+1,^BP1"
+ S FDA(1)="2006.8^.04^+1,^1"
+ S FDA(3)="2006.8^50^+1,^ISW-PRICER"
+ S FDA(2)="2006.8^11^+1,^1"
+ D KVAL(.RESULTS,"Q",.FDA)
+ W !,"RESULTS: "_RESULTS
  Q
  ;

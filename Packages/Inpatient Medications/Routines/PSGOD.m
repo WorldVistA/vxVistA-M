@@ -1,14 +1,17 @@
 PSGOD ;BIR/CML3-CREATES NEW ORDER FROM OLD ONE ;22 SEP 97 / 2:56 PM 
- ;;5.0; INPATIENT MEDICATIONS ;**67,58,111,133**;16 DEC 97
+ ;;5.0;INPATIENT MEDICATIONS;**67,58,111,133,181,286**;16 DEC 97;Build 1
  ;
  ; Reference to ^PS(55 is supported by DBIA 2191.
  ;
+ ;*286 - Do not allow copied Unit Dose orders for outpatients
+ D INP^VADPT I 'VAIN(4) W !,"You cannot copy Unit Dose orders for this patient!" H 2 Q
  I $P($G(^PS(55,PSGP,5,+PSJORD,0)),"^",22) D  Q
  .W !,"This order is marked 'Not To Be Given' and can't be copied!" H 2
  F  W !!,"Do you want to copy this order" S %=2 D YN^DICN Q:%  D CH
  G:%'=1 DONE
  ;
  W !!,"...copying..." N OLDON
+ K PSGORQF
  N PSGPDRG
  S PSGOEPR=$P($G(^PS(55,PSGP,5.1)),"^",2),OLDON=PSGORD
  ;K PSGODN S F=$S((PSGORD["N")!(PSGORD["P"):"^PS(53.1,"_+PSGORD_",",1:"^PS(55,"_PSGP_",5,"_+PSGORD_",") F N=0,.2,2,6 S PSGODN(N)=$G(@(F_N_")"))
@@ -37,7 +40,7 @@ PSGOD ;BIR/CML3-CREATES NEW ORDER FROM OLD ONE ;22 SEP 97 / 2:56 PM
  ..W ! K DIR S DIR(0)="FOA",DIR("A")="   WARNING - Admin times are required for DAY OF WEEK schedules    " D ^DIR K DIR
  S PSGSD=PSGNESD,PSGFD=PSGNEFD
  K PSJACEPT S VALMBCK="Q" D:$D(Y) EN^VALM("PSJU LM ACCEPT")
- I $G(PSJACEPT)=1 S VALMBCK="",PSJNOO=$$ENNOO^PSJUTL5("N")
+ I $G(PSJACEPT)=1 D OC S:$D(PSGORQF) PSJACEPT=0 S:$G(PSJACEPT)=1 VALMBCK="",PSJNOO=$$ENNOO^PSJUTL5("N")
  I '$G(PSJACEPT)!($G(PSJNOO)<0) W !!,"Order not copied." D PAUSE^VALM1 G ORIG
  S PSGNESD=PSGSD,PSGNEFD=PSGFD
  K PSGOEE D ^PSGOETO S PSJORD=PSGORD I PSGOEAV D
@@ -58,3 +61,16 @@ CH ;
  ;
 WH ;
  W !!?2,"Answer 'YES' to take action on this new order.  Enter 'NO' (or '^') to return",!,"to the original order now." Q
+ ;
+OC ;Perform order checks
+ NEW PSJDD,X,PSJALLGY
+ ;*286 - Order checks on current dispense drugs
+ F X=0:0 S X=$O(^PS(53.45,PSJSYSP,2,X)) Q:'X  D
+ . S PSJDD=$G(^PS(53.45,PSJSYSP,2,X,0))
+ . I +PSJDD S PSJALLGY(+PSJDD)=""
+ ;S X=+$O(PSGODN(1,0)) Q:'X  S PSJDD=+$G(PSGODN(1,X)) Q:'PSJDD
+ S PSJDD=+$O(PSJALLGY(0)) Q:'PSJDD
+ D FULL^VALM1
+ D ENDDC^PSGSICHK($G(PSGP),PSJDD) Q:$D(PSGORQF)
+ D IN^PSJOCDS($G(PSGORD),"UD",PSJDD)
+ Q

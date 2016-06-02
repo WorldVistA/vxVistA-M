@@ -1,5 +1,5 @@
 SRSDISP ;B'HAM ISC/MAM - SELECT GRAPH DISPLAY ; [ 04/03/00  1:33 PM ]
- ;;3.0; Surgery ;**50,94**;24 Jun 93
+ ;;3.0; Surgery ;**50,94,165**;24 Jun 93;Build 6
 PICK W @IOF,!!,"Display of Available Operating Room Time",!!,"1. Display Availability (12:00 AM - 12:00 PM)",!,"2. Display Availability (06:00 AM - 08:00 PM)",!,"3. Display Availability (12:00 PM - 12:00 AM)"
  W !,"4. Do Not Display Availability"
  W !!,"Select Number: 2//  " R X:DTIME I '$T!(X["^") S SRSOUT=1 Q
@@ -23,7 +23,7 @@ GRAPH ; set graph in ^SRS
  S ^SRS(SROR,"S",SRSDATE,0)=SRSDATE,^SRS(SROR,"SS",SRSDATE,0)=SRSDATE
  S X=$E(SRSDATE,4,5)_"-"_$E(SRSDATE,6,7)_"-"_$E(SRSDATE,2,3)
  S ^SRS(SROR,"S",SRSDATE,1)=X_"  |____|____|____|____|____|____|____|____|____|____|____|____|____|____|____|____|____|____|____|____|____|____|____|____|",^SRS(SROR,"SS",SRSDATE,1)=^SRS(SROR,"S",SRSDATE,1)
- D ^SRSBLOK
+ D DIS1^SRSBUTL  ;;3*165-RJS
  Q
 HELP W !!,"Enter the number corresponding to portion of the display graph of available",!,"operating room time that you want to view.  If you are scheduling a case"
  W !,"between the hours of 6:00 AM and 8:00 PM, enter '2'.  A display of available",!,"operating room time will then appear on your screen.  If you do not want to"

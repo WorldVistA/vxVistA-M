@@ -1,5 +1,5 @@
 RGEX03 ;BAY/ALS-LIST MANAGER FOR MPI/PD EXCEPTIONS ;10/13/99
- ;;1.0;CLINICAL INFO RESOURCE NETWORK;**3,12,19,23,27,30,38,39,43,44,48**;30 Apr 99;Build 3
+ ;;1.0;CLINICAL INFO RESOURCE NETWORK;**3,12,19,23,27,30,38,39,43,44,48,54,57**;30 Apr 99;Build 2
  ;
  ;Reference to START^VAFCPDAT supported by IA #3299
  ;Reference to ^DIA(2 supported by IA #2097
@@ -8,7 +8,8 @@ RGEX03 ;BAY/ALS-LIST MANAGER FOR MPI/PD EXCEPTIONS ;10/13/99
  ;Reference to CIRNEXC^MPIFQ0 supported by IA #2942
  ;Reference to VTQ^MPIFSAQ supported by IA #2941
  ;Reference to NOTICE^DGSEC4 and PTSEC^DGSEC4 supported by IA#3027
- ;Reference to POT^MPIFDUP supported by IA #4464
+ ;Reference to POT^MPIFDUP supported by IA #4464;**57 MPIC_1893 call obsolete; removed PMR
+ ;Reference to $$NCEDIT^DPTNAME supported by private IA #4116
  ;
 EN(DATA) ; -- main entry point for RG EXCPT ACTION
  D EN^VALM("RG EXCPT ACTION")
@@ -64,7 +65,7 @@ UPD ;
  .;**48 populating the date/time marked as processed and who marked it as processed
  .D NOW^%DTC S PROCDT=%
  .S IEN="",IEN2="",IEN=$P(DATA,"^",10),IEN2=$P(DATA,"^",11) L +^RGHL7(991.1,IEN):10
- .S DA(1)=IEN,DA=IEN2,DR="6///"_1_";7///"_PROCDT_";8///"_$G(DUZ),DIE="^RGHL7(991.1,"_DA(1)_",1," D ^DIE K DIE,DA,DR
+ .S DA(1)=IEN,DA=IEN2,DR="6///"_1_";7///"_PROCDT_";8////"_$G(DUZ),DIE="^RGHL7(991.1,"_DA(1)_",1," D ^DIE K DIE,DA,DR ;**57,MPIC_2024
  .L -^RGHL7(991.1,IEN) S $P(DATA,"^",9)=1
  .D INIT
  K DIR,DIRUT S VALMBCK="R"
@@ -85,9 +86,9 @@ DISP ; Display Only Query
  S VALMBCK="R" K MPIVAR
  Q
  ;
-POT ;Potential Match on MPI, Query MPI, resolve duplicate if needed. **43 Added this entry point
- D POT^MPIFDUP
- D INIT S VALMBCK="R" K PROCESS
+POT ;Potential Match on MPI, Query MPI, resolve duplicate if needed. **43;**57 MPIC_1893 OBSOLETE; remove PMR
+ ;D POT^MPIFDUP
+ ;D INIT S VALMBCK="R" K PROCESS
  Q
  ;
 REJ ;Primary View Reject. **44 Added entry point
@@ -153,16 +154,30 @@ REC ; Check if user is attempting to access own record
 DEATH ; Check for access to edit date of death
  I $D(^XUSEC("DG DETAIL",+DUZ)) D
  .K VADM,DIE,DA,DR
- .S DOD=""
+ .S (DOD1,DOD2,SRS)=""
  .D DEM^VADPT
- .S DOD=$P($G(VADM(6)),"^",2)
- .S DIE="^DPT(",DA=DFN,DR=".351//^S X=DOD"
- .L +^DPT(DFN):10
- .D ^DIE
- .L -^DPT(DFN)
+ .S DOD1=$P($G(VADM(6)),"^",2) ;DOD original value
+ .S DIC="2",DA=DFN,DR=".353",DIQ(0)="E" D EN^DIQ1 ;**54
+ .S SRS=$G(^UTILITY("DIQ1",$J,2,DA,.353,"E")) ;source of notification original value
+ .S DIE="^DPT(",DA=DFN,DR=".351//^S X=DOD1" D DIEC ;ask DOD, prompt with original value
+ .;was a change made to DOD?
+ .D DEM^VADPT
+ .S DOD2=$P($G(VADM(6)),"^",2) D  ;DOD value after DIE call
+ ..I DOD1="",DOD2="" Q  ;original and added DOD both null; don't prompt for .353
+ ..I DOD1'="",DOD2="" S DIE="^DPT(",DA=DFN,DR=".353////@" D DIEC Q  ;DOD now null - deleted; remove source field
+ ..;Else DOD added or changed; so prompt for source
+ ..I (DOD1=""&DOD2'="")!(DOD1'=DOD2) D
+ ...S DIE="^DPT(",DA=DFN,DR=".353//^S X=SRS" D DIEC Q
  E  W !!,"You do not have the proper security to edit date of death." D PAUSE^VALM1 D INIT S VALMBCK="R"
- K VADM,DIE,DA,DR,DOD
+ K VADM,DIE,DA,DR,DOD1,DOD2,SRS,X,Y
  Q
+ ;
+DIEC ;Do the ^DIE call from the DEATH module
+ L +^DPT(DFN):10
+ D ^DIE
+ L -^DPT(DFN)
+ Q
+ ;
 INQ ; Patient Inquiry
  S VALMBCK=""
  D FULL^VALM1 D EN^DGRPD D PAUSE^VALM1 D CLEAN^VALM10 D INIT

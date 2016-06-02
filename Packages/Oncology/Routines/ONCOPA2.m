@@ -1,6 +1,7 @@
-ONCOPA2 ;Hines OIFO/GWB - PRINT COMPLETE ABSTRACT (132c)...continued; 09/05/97
- ;;2.11;ONCOLOGY;**13,15,19,22,27,34,36,37,42,44,45,46**;Mar 07, 1995;Build 39
+ONCOPA2 ;Hines OIFO/GWB [PA Print Complete Abstract (132c)] continued ;10/05/11
+ ;;2.2;ONCOLOGY;**1**;Jul 31, 2013;Build 8
  ;
+ N TX
  S NAME="FIRST COURSE OF TREATMENT" D FORMAT^ONCOPA1
  W !!,TITLE
  W ! D P Q:EX=U
@@ -9,6 +10,7 @@ ONCOPA2 ;Hines OIFO/GWB - PRINT COMPLETE ABSTRACT (132c)...continued; 09/05/97
  W !,"   Surg Dx/Staging Proc @Fac:      ",ONCAB(165.5,IEN,58.4) D P Q:EX=U
  W !,"   Surg Dx/Staging Proc @Fac Date: ",ONCAB(165.5,IEN,58.5) D P Q:EX=U
  W ! D P Q:EX=U
+ W:DATEDX>3091231 !,"   Treatment Status:               ",ONCAB(165.5,IEN,235,"E") D P Q:EX=U
  W !,"   Date of no treatment:           ",ONCAB(165.5,IEN,124) D P Q:EX=U
  W ! D P Q:EX=U
  W !,"   Date First Surgical Procedure:  ",ONCAB(165.5,IEN,170) D P Q:EX=U
@@ -16,6 +18,7 @@ ONCOPA2 ;Hines OIFO/GWB - PRINT COMPLETE ABSTRACT (132c)...continued; 09/05/97
  W !,"   Most Definitive Surg Date:      ",ONCAB(165.5,IEN,50) D P Q:EX=U
  W !,"   Surgery of Primary @Fac (F):    ",ONCAB(165.5,IEN,58.7) D P Q:EX=U
  W !,"   Most Definitive Surg @Fac Date: ",ONCAB(165.5,IEN,50.3) D P Q:EX=U
+ W:DATEDX>3091231 !,"   Approach:                       ",ONCAB(165.5,IEN,234,"E") D P Q:EX=U
  W !,"   Surgical Margins:               ",ONCAB(165.5,IEN,59) D P Q:EX=U
  W !,"   Scope of LN Surgery (F):        ",ONCAB(165.5,IEN,138.4) D P Q:EX=U
  W !,"   Scope of LN Surgery Date:       ",ONCAB(165.5,IEN,138.2) D P Q:EX=U
@@ -33,6 +36,13 @@ ONCOPA2 ;Hines OIFO/GWB - PRINT COMPLETE ABSTRACT (132c)...continued; 09/05/97
  W !!,"   RX Text-Surgery: " F TX=0:0 S TX=$O(^ONCO(165.5,IEN,14,TX)) Q:TX'>0  W !?6,^ONCO(165.5,IEN,14,TX,0) D P Q:EX=U
  W !,"   CAP Protocol Review:            ",ONCAB(165.5,IEN,46,"E") D P Q:EX=U
  W:ONCAB(165.5,IEN,46,"I")=0 !,"   CAP Text:                       ",ONCAB(165.5,IEN,47,"E") D P Q:EX=U
+ W !,"   Tx Guidelines Discussion:       ",ONCAB(165.5,IEN,281,"E") D P Q:EX=U
+ W !,"   Treatment Guideline #1:         ",ONCAB(165.5,IEN,228,"E") D P Q:EX=U
+ W !,"   Treatment Guideline #2:         ",ONCAB(165.5,IEN,229,"E") D P Q:EX=U
+ W !,"   Treatment Guideline #3:         ",ONCAB(165.5,IEN,230,"E") D P Q:EX=U
+ W !,"   Treatment Guideline Location:   ",ONCAB(165.5,IEN,231,"E") D P Q:EX=U
+ W !,"   Treatment Guideline Doc Date:   ",ONCAB(165.5,IEN,232,"E") D P Q:EX=U
+ W !,"   Neoadjuvant therapy:            ",ONCAB(165.5,IEN,245,"E") D P Q:EX=U
  W ! D P Q:EX=U
  W !,"   Radiation:                      ",ONCAB(165.5,IEN,51.2) D P Q:EX=U
  W !,"   Date Radiation Started:         ",ONCAB(165.5,IEN,51) D P Q:EX=U
@@ -54,6 +64,11 @@ CHEM W !!,"   Chemotherapy:  ",ONCAB(165.5,IEN,53.2) D P Q:EX=U
  W !,"   Chemotherapy Date:  ",ONCAB(165.5,IEN,53) D P Q:EX=U
  W !,"   Chemotherapy @Fac:  ",ONCAB(165.5,IEN,53.3) D P Q:EX=U
  W !,"   Chemotherapy @Fac Date:  ",ONCAB(165.5,IEN,53.4) D P Q:EX=U
+ W !,"   Chemotherapeutic Agent #1:  ",ONCAB(165.5,IEN,1423,"E") D P Q:EX=U
+ W !,"   Chemotherapeutic Agent #2:  ",ONCAB(165.5,IEN,1423.1,"E") D P Q:EX=U
+ W !,"   Chemotherapeutic Agent #3:  ",ONCAB(165.5,IEN,1423.2,"E") D P Q:EX=U
+ W !,"   Chemotherapeutic Agent #4:  ",ONCAB(165.5,IEN,1423.3,"E") D P Q:EX=U
+ W !,"   Chemotherapeutic Agent #5:  ",ONCAB(165.5,IEN,1423.4,"E") D P Q:EX=U
  W !,"   RX Text-Chemo:  " F TX=0:0 S TX=$O(^ONCO(165.5,IEN,17,TX)) Q:TX'>0  W !?6,^ONCO(165.5,IEN,17,TX,0) D P Q:EX=U
 HT W !!,"   Hormone Therapy:  ",ONCAB(165.5,IEN,54.2) D P Q:EX=U
  W !,"   Hormone Therapy Date:  ",ONCAB(165.5,IEN,54) D P Q:EX=U
@@ -78,17 +93,19 @@ OTH W !!,"   Other Treatment:  ",ONCAB(165.5,IEN,57.2) D P Q:EX=U
  W !,"   RX Text-Other:  " F TX=0:0 S TX=$O(^ONCO(165.5,IEN,21,TX)) Q:TX'>0  W !?6,^ONCO(165.5,IEN,21,TX,0) D P Q:EX=U
 PES W !,"   Palliative Care:  ",ONCAB(165.5,IEN,12) D P Q:EX=U
  W !,"   Palliative Care @Fac:  ",ONCAB(165.5,IEN,13) D P Q:EX=U
+ W !,"   Clinical Trials Discussion:  ",ONCAB(165.5,IEN,279,"E") D P Q:EX=U
+ W !,"   Protocol Eligibility Status:  ",ONCAB(165.5,IEN,346) D P Q:EX=U
  W !,"   Protocol Participation:  ",ONCAB(165.5,IEN,560) D P Q:EX=U
  W !,"   Year Put on Protocol:  ",ONCAB(165.5,IEN,133) D P Q:EX=U
  ;
- I IOST?1"C".E W ! K DIR S DIR(0)="E",DIR("A")="Enter RETURN to continue with this abstract" D ^DIR Q:'Y  D HDR G PA2A
+ I $E(IOST,1,2)="C-" W ! K DIR S DIR(0)="E",DIR("A")="Enter RETURN to continue with this abstract" D ^DIR Q:'Y  D HDR G PA2A
  D P Q:EX=U
 PA2A D ^ONCOPA2A
  ; WILL CALL ONCOPA2A ROUTINE TO CONTINUE...
  Q
 P ;
  I ($Y'<(LINE-1)) D  Q:EX=U  W !
- .I IOST?1"C".E W ! K DIR S DIR(0)="E",DIR("A")="Enter RETURN to continue with this abstract" D ^DIR I 'Y S EX=U Q
+ .I $E(IOST,1,2)="C-" W ! K DIR S DIR(0)="E",DIR("A")="Enter RETURN to continue with this abstract" D ^DIR I 'Y S EX=U Q
  .D HDR Q
  Q
 HDR ; Header
@@ -96,3 +113,6 @@ HDR ; Header
  W CRA,!
  W ?5," Patient Name:  ",PATNAME,?84,"SSN:  ",SSAN,!
  Q
+ ;
+CLEANUP ;Cleanup
+ K CRA,DATEDX,EX,IEN,LINE,NAME,ONCAB,PATNAME,PG,SSAN,TITLE,Y

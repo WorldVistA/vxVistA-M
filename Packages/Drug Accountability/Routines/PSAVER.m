@@ -1,11 +1,12 @@
 PSAVER ;BIR/JMB-Verify Invoices ;9/6/97
- ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**60,65**; 10/24/97;Build 2
+ ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**60,65,71**; 10/24/97;Build 10
  ;This routine allows the user to verify processed invoices. The entire
  ;invoice may be verified with/without editing. After verification, the
  ;pharmacy location or master vault balances are incremented during a
  ;background job (PSAVER5).
  ;
  I '$D(^XUSEC("PSA ORDERS",DUZ)) W !,"You do not hold the key to enter the option." Q
+ I $D(^PSD(58.811,"ASTAT","L")) D LCKCHK^PSAVER4
  I '$D(^PSD(58.811,"ASTAT","P")) W !!,"There are no invoices that need to be verified." H 1 Q
  ;
  ;Creates a list of invoices that can be verified by the user. If the
@@ -46,7 +47,8 @@ ENTIRE ;Displays a list of all invoices the user can select to be verified.
  K PSASTOP W !,PSADLN
  S DIR(0)="LO^1:"_PSACNT,DIR("A")="Select invoices to verify",DIR("?",1)="Enter the number to the left of the invoice",DIR("?")="data to be verified or a range of numbers.",DIR("??")="^D SEL^PSAVER"
  W ! D ^DIR K DIR G:$G(DTOUT)!($G(DUOUT)) EXIT
- I Y="" D LOAD G EDIT
+ I Y="",$D(^PSD(58.811,"ASTAT","L")) D LCKCHK^PSAVER4,LOAD G EDIT
+ I Y="",'$D(^PSD(58.811,"ASTAT","L")) D LOAD G EDIT
  S PSASEL=Y
  ;
 OKAY ;Verifies correct invoices were selected.
@@ -95,12 +97,15 @@ BKGJOB K PSAVBKG W ! F PSAPC=1:1 S PSA=+$P(PSASEL,",",PSAPC) Q:'PSA!(PSAOUT)  D
  ..N PSATMP S PSATMP=PSASEL ;;<*65 RJS
  ..N PSASEL S PSASEL=PSA
  ..D VERUNLCK^PSAVER4  ;;*65 RJS>
+ ..S PSAOUT=0
  ;
  ;If the invoices selected are error free, send them to the background
  ;job to complete the invoice and increment inventory.
+ I $D(^PSD(58.811,"ASTAT","L")) D LCKCHK^PSAVER4
  D LOAD
  I $O(PSAVBKG(0)) D
  . K ZTSAVE S ZTDESC="Drug Acct. - Verify Prime Vendor Invoices",ZTIO="",ZTDTH=$H,ZTRTN="^PSAVER6",ZTSAVE("PSASEL")="",ZTSAVE("PSAVBKG(")="" D ^%ZTLOAD Q:$G(POP)
+ ;D ^PSAVER6
  K PSAVBKG G:'$O(PSAEDIT(0)) EXIT
 EDIT D EDIT^PSAVER1
  ;

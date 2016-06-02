@@ -1,13 +1,26 @@
-RAORD6 ;HISC/CAH - AISC/RMO-Print A Request Cont. ;2/2/98  15:28
- ;;5.0;Radiology/Nuclear Medicine;**5,10,15,18,27,45,41,75,85**;Mar 16, 1998;Build 4
+RAORD6 ;HISC/CAH - AISC/RMO-Print A Request Cont. ;05/20/09  07:28
+ ;;5.0;Radiology/Nuclear Medicine;**5,10,15,18,27,45,41,75,85,99**;Mar 16, 1998;Build 5
  ; 3-p75 10/12/2006 GJC RA*5*75 print Reason for Study
  ; 4-p75 10/12/2006 KAM RA*5*75 display the request print date in the header
  ; 5-p75 10/12/2006 KAM RA*5*75 update header "Age" to "Age at req"
  ; 6-p85 06/20/2007 KAM RA*5*85 Reason for Study/Bar Code print issue
  ;                              Remedy Call - 193859
+ ;Supported IA #10104 reference to ^XLFSTR
+ ;Supported IA #10060 reference to ^VA(200
  D HD Q:RAX["^"
- I $P(RADPT0,U,2)="F" D  ;display pregnancy status for females ptch 45
- .W !,"Pregnancy Status: ",?22,$S($P(RAORD0,"^",13)="y":"Patient is Pregnant",$P(RAORD0,"^",13)="n":"Patient not pregnant at time of order",1:"Unknown")
+ I $$PTSEX^RAUTL8(RADFN)="F" D  ;display pregnancy status for females ptch 45
+ .W !,"Pregnant at time of order entry: ",?22,$S($P(RAORD0,"^",13)="y":"YES",$P(RAORD0,"^",13)="n":"NO",1:"UNKNOWN")
+ .Q:'$D(RAOIFN)
+ .Q:'$D(^RADPT("AO",$G(RAOIFN),RADFN))
+ .N RAINVDT,RA5
+ .S RAINVDT=$O(^RADPT("AO",RAOIFN,RADFN,0))
+ .Q:'$G(RAINVDT)
+ .S RA5=$O(^RADPT("AO",RAOIFN,RADFN,RAINVDT,0))
+ .Q:'$G(RA5)
+ .N R3,RAPCOMM S R3=$G(^RADPT(RADFN,"DT",$G(RAINVDT),"P",$G(RA5),0))
+ .S RAPCOMM=$G(^RADPT(RADFN,"DT",+$G(RAINVDT),"P",+$G(RA5),"PCOMM"))
+ .W:$P(R3,U,32)'="" !,"Pregnancy Screen: ",$S($P(R3,"^",32)="y":"Patient answered yes",$P(R3,"^",32)="n":"Patient answered no",$P(R3,"^",32)="u":"Patient is unable to answer or is unsure",1:"")
+ .W:$P(R3,U,32)'="n"&$L(RAPCOMM) !,"Pregnancy Screen Comment: ",RAPCOMM
  .Q
  W:$P(RAORD0,"^",24)="y" !!?12,"*** Universal Isolation Precautions ***"
  W:$D(RA("VDT")) !!?8,"** Note Request Associated with Visit on ",RA("VDT")," **"

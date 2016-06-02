@@ -1,5 +1,6 @@
-MAGDIRVE ;WOIFO/PMK - Serious Fatal Image Processing Error Messages ; 09/08/2004  07:31
- ;;3.0;IMAGING;**11,30**;16-September-2004
+MAGDIRVE ;WOIFO/PMK - Serious Fatal Image Processing Error Messages ; 17 Sep 2008 7:42 AM
+ ;;3.0;IMAGING;**11,30,54**;03-July-2009;;Build 1424
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGDIRVE ;WOIFO/PMK - Serious Fatal Image Processing Error Messages ; 09/08/2004
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -19,7 +19,7 @@ MAGDIRVE ;WOIFO/PMK - Serious Fatal Image Processing Error Messages ; 09/08/2004
  ;
  ; new version for RPC client-server image processing error messages
  ;
-MAGZERO(RTN,LASTIEN,LASTIMG) ; from ^MAGDIR1B/^MAGDIR84 for bad ^MAG(2005)
+MAGZERO(RTN,LASTIEN,LASTIMG) ; from ^MAGDIR84 for bad ^MAG(2005)
  N TITLE
  K MSG
  S TITLE="DICOM IMAGE PROCESSING ERROR - IMAGE FILE CORRUPTION"
@@ -33,7 +33,7 @@ MAGZERO(RTN,LASTIEN,LASTIMG) ; from ^MAGDIR1B/^MAGDIR84 for bad ^MAG(2005)
  D BADERROR(RTN,TITLE,.MSG)
  Q
  ;
-ZERONODE(RTN,LASTIEN,LASTPTR,FILE,FILENAME) ; from ^MAGDIR1/^MAGDIR84
+ZERONODE(RTN,LASTIEN,LASTPTR,FILE,FILENAME) ; from ^MAGDIR84
  ; invoked for an arbitrary file corrupted value
  N TITLE,ZERONODE
  K MSG
@@ -49,7 +49,7 @@ ZERONODE(RTN,LASTIEN,LASTPTR,FILE,FILENAME) ; from ^MAGDIR1/^MAGDIR84
  D BADERROR(RTN,TITLE,.MSG)
  Q
  ;
-OBJECT(RTN,MAGGP) ; from ^MAGDIR2B/^MAGDIR9B
+OBJECT(RTN,MAGGP) ; from ^MAGDIR9B
  N TITLE
  K MSG
  S TITLE="DICOM IMAGE PROCESSING ERROR - WRONG GROUP OBJECT TYPE"
@@ -63,7 +63,7 @@ OBJECT(RTN,MAGGP) ; from ^MAGDIR2B/^MAGDIR9B
  D BADERROR(RTN,TITLE,.MSG)
  Q
  ;
-MISMATCH(RTN,DFN,MAGGP) ; from ^MAGDIR2B/E & ^MAGDIR9B/E for a patient mismatch
+MISMATCH(RTN,DFN,MAGGP) ; from ^MAGDIR9A/B/E for a patient mismatch
  N GROUPDFN,TITLE
  K MSG
  S TITLE="DICOM IMAGE PROCESSING ERROR - PATIENT MISMATCH PROBLEM"
@@ -81,17 +81,12 @@ MISMATCH(RTN,DFN,MAGGP) ; from ^MAGDIR2B/E & ^MAGDIR9B/E for a patient mismatch
  Q
  ;
 PATDEMO(DFN) ; display patient demographics
- N %,DISYS,DTIME,VA,VADM,X
- S X=""
- I 'DFN S X="<null DFN>"
- E  D
- . D DEM^VADPT
- . S X=$G(VADM(1))_"  |  "_$G(VA("PID")) ; name & id
- . S X=X_" | "_$P($G(VADM(5)),"^",2)_" | "_$P($G(VADM(3)),"^",2) ; sex & dob
- . Q
- Q X ; name | id | sex | dob
+ N %,%H,DISYS,DTIME,VA,VADM,VAERR
+ Q:'$G(DFN) "<null DFN>"
+ D DEM^VADPT
+ Q "("_$P($G(VADM(5)),"^",2)_" - "_$P($G(VADM(3)),"^",2)_")" ; sex & dob
  ;
-RADMISS(RTN,DFN,RARPT,RARPTDFN) ; from ^MAGDIR2A/^MAGDIR9A for a patient mismatch
+RADMISS(RTN,DFN,RARPT,RARPTDFN) ; from ^MAGDIR9A for a patient mismatch
  ; this is bad DFN value for the radiology report in ^RARPT
  N TITLE
  K MSG
@@ -108,7 +103,7 @@ RADMISS(RTN,DFN,RARPT,RARPTDFN) ; from ^MAGDIR2A/^MAGDIR9A for a patient mismatc
  D BADERROR(RTN,TITLE,.MSG)
  Q
  ;
-TIUMISS(RTN,DFN,TIUIEN,TIUDFN) ; from ^MAGDIR2E/^MAGDIR9E for a patient mismatch
+TIUMISS(RTN,DFN,TIUIEN,TIUDFN) ; from ^MAGDIR9E for a patient mismatch
  ; this is bad DFN value for the consult/procedure request note in ^TIU(8925)
  N TITLE
  K MSG
@@ -125,7 +120,7 @@ TIUMISS(RTN,DFN,TIUIEN,TIUDFN) ; from ^MAGDIR2E/^MAGDIR9E for a patient mismatch
  D BADERROR(RTN,TITLE,.MSG)
  Q
  ;
-TIUMISS2(RTN,TIUIEN1,TIUIEN2,TIUXDIEN,MAGGP) ; from ^MAGDIR2E/^MAGDIR9E - TIU mismatch
+TIUMISS2(RTN,TIUIEN1,TIUIEN2,TIUXDIEN,MAGGP) ; from ^MAGDIR9E - TIU mismatch
  ; mismatch between TIU, TIU External Data File, and the image group  
  N TITLE
  K MSG
@@ -139,7 +134,7 @@ TIUMISS2(RTN,TIUIEN1,TIUIEN2,TIUXDIEN,MAGGP) ; from ^MAGDIR2E/^MAGDIR9E - TIU mi
  D BADERROR(RTN,TITLE,.MSG)
  Q
  ;
-TMPMISS(RTN,PARENTFP,MAGGP) ; from ^MAGDIR2E/^MAGDIR9E
+TMPMISS(RTN,PARENTFP,MAGGP) ; from ^MAGDIR9E
  ; the image group does not have 2006.5839 for the PARENT FILE
  N TITLE
  K MSG
@@ -152,7 +147,7 @@ TMPMISS(RTN,PARENTFP,MAGGP) ; from ^MAGDIR2E/^MAGDIR9E
  D BADERROR(RTN,TITLE,.MSG)
  Q
  ;
-IMAGEPTR(RTN,IMAGEPTR,LASTIMG) ; from ^MAGDIR2B/^MAGDIR9B for a corrupted image pointer value
+IMAGEPTR(RTN,IMAGEPTR,LASTIMG) ; from ^MAGDIR9B for a corrupted image pointer value
  N TITLE
  K MSG
  S TITLE="DICOM IMAGE PROCESSING ERROR - IMAGE ENTRY NUMBER PROBLEM"
@@ -166,7 +161,7 @@ IMAGEPTR(RTN,IMAGEPTR,LASTIMG) ; from ^MAGDIR2B/^MAGDIR9B for a corrupted image 
  D BADERROR(RTN,TITLE,.MSG)
  Q
  ;
-GROUPPTR(RTN,MAGGP,LASTIMG) ; from ^MAGDIR2A/E & ^MAGDIR9A/E and ^MAGDMED3 for bad group pointer
+GROUPPTR(RTN,MAGGP,LASTIMG) ; from ^MAGDIR9A for bad group pointer
  N TITLE
  K MSG
  S TITLE="DICOM IMAGE PROCESSING ERROR - GROUP ENTRY NUMBER PROBLEM"

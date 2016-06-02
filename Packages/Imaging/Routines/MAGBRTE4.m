@@ -1,5 +1,5 @@
-MAGBRTE4 ;WOIFO/EdM - Process Routing Rule Evaluation Queue ; 12/15/2006 13:49
- ;;3.0;IMAGING;**11,30,51,85**;16-March-2007;;Build 1039
+MAGBRTE4 ;WOIFO/EdM - Process Routing Rule Evaluation Queue ; 27 Jun 2012 5:45 PM
+ ;;3.0;IMAGING;**11,30,51,85,54,39,135**;Mar 19, 2002;Build 5238;Jul 17, 2013
  ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -18,17 +18,19 @@ MAGBRTE4 ;WOIFO/EdM - Process Routing Rule Evaluation Queue ; 12/15/2006 13:49
  Q
  ;
 EVAL ;
- N ACTIVE ;- Switch that controls start/stop queue processor
- N ANY ;---- Flag: processed any rule
- N CONS ;--- Switch that indicates whether or not site has "consolidated" code
- N XMSG ;--- Message counter
+ N ACTIVE ;--- Switch that controls start/stop queue processor
+ N ANY ;------ Flag: processed any rule
+ N CONS ;----- Switch that indicates whether or not site has "consolidated" code
+ N KEYWORD ;-- Array with all keywords
+ N MAGFILE1 ;- Name of file
+ N XMSG ;----- Message counter
  ;
- K ^XTMP("MAGEVAL",ZTSK)
- D LOG("Started at "_$H)
+ F I="MAGEVAL","MAGEVALSTUDY" K ^XTMP(I,ZTSK)
+ D LOG^MAGBRTE5("Started at "_$H)
  S XMSG=1,CONS=$$CONSOLID^MAGBAPI()
  S PLACE=$S(CONS:$O(^MAG(2006.1,"B",LOCATION,"")),1:1)
  L +^MAGDICOM(2006.563,1,"EVAL",LOCATION):0 E  D  Q
- . D LOG("A rule evaluator is already running for "_$$GET1^DIQ(4,LOCATION,.01))
+ . D LOG^MAGBRTE5("A rule evaluator is already running for "_$$GET1^DIQ(4,LOCATION,.01))
  . Q
  S ^MAGDICOM(2006.563,1,"EVAL")=1
  ;
@@ -37,7 +39,7 @@ EVAL ;
  . S X=RULES(I),D0=$P(X,"^",1),Q1=$P(X,"^",2),L=$L(X,"^")
  . I L=3 S RULE(D0,Q1)=$P(X,"^",3) Q
  . I Q1="ACTION" S RULE(D0,Q1,$P(X,"^",3))=$P(X,"^",4,L) Q
- . I Q1'="CONDITION" D LOG("Rule "_D0_" has a qualifier """_Q1_""".") Q
+ . I Q1'="CONDITION" D LOG^MAGBRTE5("Rule "_D0_" has a qualifier """_Q1_""".") Q
  . I L=5 S RULE(D0,Q1,$P(X,"^",3),$P(X,"^",4))=$P(X,"^",5) Q
  . S RULE(D0,Q1,$P(X,"^",3),$P(X,"^",4),$P(X,"^",6),$P(X,"^",5))=$P(X,"^",7)
  . Q
@@ -46,7 +48,7 @@ EVAL ;
  S ACTIVE=1 F  D  Q:'ACTIVE
  . S ANY=0
  . S ACTIVE=+$G(^MAGDICOM(2006.563,1,"EVAL")) I 'ACTIVE D  Q
- . . D LOG("Stopped at "_$H)
+ . . D LOG^MAGBRTE5("Stopped at "_$H)
  . . Q
  . D
  . . N IMAGE,QPTR,QPTR2,STATUS,X
@@ -72,27 +74,18 @@ EVAL ;
  . . I IMAGE,$D(^MAG(2005,IMAGE,0)) D
  . . . S STATUS=$$RULES() Q:STATUS'<0
  . . . I STATUS["NO NETWORK LOCATION" D  Q
- . . . . D LOG("Image "_IMAGE_" has no files associated with it")
+ . . . . D LOG^MAGBRTE5("Image "_IMAGE_" has no files associated with it")
  . . . . Q
- . . . D LOG("*** EVAL queue error: "_STATUS_" ***")
+ . . . D LOG^MAGBRTE5("*** EVAL queue error: "_STATUS_" ***")
  . . . Q
- . . K ^MAGQUEUE(2006.03,QPTR)
- . . K:'CONS ^MAGQUEUE(2006.03,"B","EVAL",QPTR)
- . . K:CONS ^MAGQUEUE(2006.03,"C",PLACE,"EVAL",QPTR)
- . . S $P(^MAGQUEUE(2006.03,0),"^",4)=$P(^MAGQUEUE(2006.03,0),"^",4)-1
+ . . D:'CONS ADD^MAGBAPI(-1,"EVAL")
+ . . D:CONS ADD^MAGBAPI(-1,"EVAL",PLACE)
+ . . D DQUE^MAGQBUT2(QPTR)
  . . Q
  . H:'ANY 1
- . D:'$D(^XTMP("MAGEVAL",ZTSK)) XTINIT^MAGDRPC5,LOG("^XTMP was cleaned up.")
+ . D:'$D(^XTMP("MAGEVAL",ZTSK)) XTINIT^MAGDRPC5,LOG^MAGBRTE5("^XTMP was cleaned up.")
  . Q
  L -^MAGDICOM(2006.563,1,"EVAL",LOCATION)
- Q
- ;
-LOG(X) N D,H,I,M,T
- S I=$O(^XTMP("MAGEVAL",ZTSK," "),-1)+1
- S XMSG=$G(XMSG)+1 S:I>XMSG XMSG=I
- S D=$P("Thu Fri Sat Sun Mon Tue Wed"," ",$H#7+1)
- S T=$P($H,",",2),H=T\3600,M=T\60#60 S:H<10 H=0_H S:M<10 M=0_M
- S ^XTMP("MAGEVAL",ZTSK,XMSG)=D_" "_H_":"_M_" "_X
  Q
  ;
 RULES() ; To be called from above
@@ -107,6 +100,7 @@ RULES() ; To be called from above
  N O ;-------- Operator
  N OK ;------- Flag: indicates whether or not rule is met
  N RDT ;------ Current date (don't use DT, process might run over midnight)
+ N STUDYUID ;- Study UID
  N V ;-------- Value for property as specified in rule
  N VAL ;------ Actual value of property
  N VRS ;------ String of Queue Entry numbers when rule(s) are met
@@ -119,6 +113,10 @@ RULES() ; To be called from above
  D FILEFIND^MAGDFB(IMAGE,"FULL",0,0,.MAGFILE1)
  Q:MAGFILE1<0 MAGFILE1
  ;
+ S STUDYUID=$P($G(^MAG(2005,IMAGE,"PACS")),"^",1)
+ S X=$P($G(^MAG(2005,IMAGE,0)),"^",10)
+ S:X STUDYUID=$P($G(^MAG(2005,X,"PACS")),"^",1)
+ ;
  S RULE=0 F  S RULE=$O(RULE(RULE)) Q:'RULE  D
  . S METMSG=$G(RULE(RULE,"ACTION"))
  . S X=" (",C=0 F  S C=$O(RULE(RULE,"ACTION",C)) Q:'C  D
@@ -126,7 +124,8 @@ RULES() ; To be called from above
  . . Q
  . S:X'=" (" METMSG=METMSG_")"
  . S:METMSG="" METMSG="Rule #"_RULE
- . S OK=1,C=0 F  S C=$O(RULE(RULE,"CONDITION",C)) Q:'C  D  Q:'OK
+ . S OK=$G(^XTMP("MAGEVALSTUDY",ZTSK,STUDYUID,RULE))
+ . I OK="" S OK=1,C=0 F  S C=$O(RULE(RULE,"CONDITION",C)) Q:'C  D  Q:'OK
  . . S F=$G(RULE(RULE,"CONDITION",C,"KW")) Q:F=""
  . . S X=$G(KEYWORD("CONDITION",F),"^DICOM^MAGBRTE3(F,""OUT"",.VAL)")
  . . K VAL D @$P(X,"^",2,9)
@@ -140,7 +139,7 @@ RULES() ; To be called from above
  . . S DS=" "_D_" "
  . . D:" S CS DS IS LO LT OB OW PN SH ST "[DS
  . . . N WILD ;-- Wildcard to be matched
- . . . S WILD=$$WLDMATCH(VAL,V)
+ . . . S WILD=$$WLDMATCH^MAGBRTE5(VAL,V)
  . . . I O="=",'WILD S OK=0 Q
  . . . I O="!=",WILD S OK=0 Q
  . . . Q
@@ -150,7 +149,6 @@ RULES() ; To be called from above
  . . . N A ;--- Flag: indicates whether at least one time-frame matches
  . . . N B ;--- Begin date/time
  . . . N E ;--- End date/time
- . . . N %H ;-- FileMan API parameter value -- date
  . . . N I ;--- Loopcounter
  . . . N M ;--- Date/time mask
  . . . N N ;--- Loopcounter (time-frames)
@@ -180,13 +178,14 @@ RULES() ; To be called from above
  . . . S:'A OK=0
  . . . Q
  . . Q
+ . S ^XTMP("MAGEVALSTUDY",ZTSK,STUDYUID,RULE)=OK
  . S METMSG(OK,METMSG)=""
- . D NOW^%DTC S RDT=%\1
+ . S RDT=$$NOW^XLFDT()\1
  . Q:'OK
  . S ACTION=$G(RULE(RULE,"ACTION"))
  . Q:ACTION=""
  . I ACTION="SEND" D  Q
- . . N %,D,PRI,X
+ . . N D,PRI,X
  . . S X=$G(RULE(RULE,"ACTION",1))
  . . I X="" S METMSG(0,"No location for rule "_RULE)="" Q
  . . D VALDEST^MAGDRPC1(.D,X)
@@ -195,7 +194,7 @@ RULES() ; To be called from above
  . . S VRS=$$VRS^MAGBRTE5(VRS,$$SEND^MAGBRTE5(IMAGE,D,PRI,1,LOCATION))
  . . Q
  . I ACTION="DICOM" D  Q
- . . N %,D,PRI,X
+ . . N D,PRI,X
  . . S X=$G(RULE(RULE,"ACTION",1))
  . . I X="" S METMSG(0,"No location for rule "_RULE)="" Q
  . . S D=$O(^MAG(2006.587,"B",X,""))
@@ -221,11 +220,11 @@ RULES() ; To be called from above
  ; for a different rule.
  ;
  S X="" F  S X=$O(METMSG(1,X)) Q:X=""  D
- . D LOG("Image "_IMAGE_": "_X)
+ . D LOG^MAGBRTE5("Image "_IMAGE_": "_X)
  . K METMSG(0,X)
  . Q
  S X="" F  S X=$O(METMSG(0,X)) Q:X=""  D
- . D LOG("Image "_IMAGE_": Do not "_X)
+ . D LOG^MAGBRTE5("Image "_IMAGE_": Do not "_X)
  . Q
  Q VRS
  ;
@@ -242,25 +241,4 @@ PRI(PRI,IMAGE) N C,D0,D1,D2,O,P,R,X
  S O=$P($G(^RADPT(D0,"DT",D1,"P",D2,0)),"^",11) Q:'O PRI  ; IA 1172
  S X=$P($G(^RAO(75.1,O,0)),"^",6) ; IA 3074
  Q PRI+$S(X=1:20,X=2:10,1:0)
- ;
-WLDMATCH(VAL,WILD) ;
- ;
- ; Returns true if VAL=WILD (Val=Actual value, Wild=Wildcard)
- ;
- ; Wild characters are:
- ;   ?   matches any single character
- ;   *   matches any string of characters
- ;
- N I,M
- F  Q:VAL=""  Q:WILD=""  D
- . I $E(VAL,1)=$E(WILD,1) S VAL=$E(VAL,2,$L(VAL)),WILD=$E(WILD,2,$L(WILD)) Q
- . I $E(WILD,1)="?" S VAL=$E(VAL,2,$L(VAL)),WILD=$E(WILD,2,$L(WILD)) Q
- . I $E(WILD,1)="*" D  Q:M
- . . I WILD="*" S (VAL,WILD)="",M=1 Q
- . . S WILD=$E(WILD,2,$L(WILD)),M=0
- . . F I=1:1:$L(VAL) I $$WLDMATCH($E(VAL,I,$L(VAL)),WILD) S M=1,VAL=$E(VAL,I,$L(VAL)) Q
- . . Q
- . S VAL="!",WILD=""
- . Q
- Q:VAL'="" 0 Q:WILD'="" 0 Q 1
  ;

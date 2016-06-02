@@ -1,6 +1,6 @@
-VFDTIU1 ;DSS/ASF/SMP - TIU OBJECTS ; 08/24/2013 13:00
- ;;2011.1.3;DSS,INC VXVISTA OPEN SOURCE;**6**;16 Aug 2013;Build 4
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
+VFDTIU1 ;DSS/ASF/SMP - TIU OBJECTS ; 02/03/2015 13:45
+ ;;2013.1;DSS,INC VXVISTA OPEN SOURCE;**6,28**;16 Aug 2013;Build 1
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ; 
  ; Integration Agreements, etc.
  ; 
@@ -105,3 +105,42 @@ TABPIECE(X,PIECES,TABS) ; return pieces with withspace between them
  . S Y=Y_$P(X,U,APIECE)
  . F J=$L(Y):1:+$P(TABS,",",I) S Y=Y_" "
  Q Y
+ ;
+RXBRIEFA(DFN,TYPE) ; returns a brief listing of active medications
+ ; TYPE = "OP" for outpatient only
+ ;        "???" for inpatient only
+ ;        "???" for OTC medications
+ ; This object utilizes the ACTIVE^ORWPS broker call used by the CPRS
+ ; MEDS tab to return active medications. It strips out all but
+ ; the drug/dosage and sig for a brief listing
+ K ^TMP("VFDTIU1",$J)
+ D ACTIVE^ORWPS(.VFDRXLST,DFN,DUZ,1,0)
+ ; pre-sort to a more usable array
+ N LIST
+ F I=0:2 S I=$O(VFDRXLST(I)) Q:'I  D
+ . S LIST(I,1)=$G(VFDRXLST(I)),LIST(I,2)=$G(VFDRXLST(I+1))
+ . S LIST(I,3)=$G(VFDRXLST(I+2))
+ ; pull out just drug/dosage and sig for breif display
+ S SUB=2
+ S I=0 F  S I=$O(LIST(I)) Q:'I  I $P(LIST(I,1),U)[TYPE D
+ . S X=$G(LIST(I,2))
+ . D SETTMP(X,SUB)
+ . S X=$G(LIST(I,3)),SUB=SUB+1
+ . D SETTMP(X,SUB) S SUB=SUB+1
+ . S X=" "
+ . D SETTMP(X,SUB) S SUB=SUB+1
+ K SUB
+ I '$D(^TMP("VFDTIU1",$J)) S ^TMP("VFDTIU1",$J,1,0)="No Active medications orders found"
+ E  S ^TMP("VFDTIU1",$J,1,0)=" "
+ Q "~@^TMP(""VFDTIU1"","_$J_")"
+ ;
+SIGBKTLE(DUZ) ; return the users signature block title
+ ;
+ N DIERR,VFDERR
+ Q $$GET1^DIQ(200,DUZ_",",20.3,"E","VFDERR")
+ ;
+SETTMP(VAL,SUB) ;
+ S VAL=$G(VAL)
+ S SUB=$G(SUB)
+ S ^TMP("VFDTIU1",$J,SUB,0)=VAL
+ Q

@@ -1,7 +1,6 @@
 XOBVRPCX ;; mjk/alb - VistaLink RPC Formatter Sink ; 07/27/2002  13:00
- ;;1.5;VistALink;;Sep 09, 2005
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.0.026]
- ;
+ ;;1.6;VistALink;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
  QUIT
  ;
  ; -- unwrap stream
@@ -112,7 +111,7 @@ V1 ; -- set up security compatibility for VL v1.0 client
  SET XOBDATA("XOB RPC","SECURITY","DIV")=""
  SET XOBDATA("XOB RPC","SECURITY","STATE")="authenticated"
  QUIT
- ; ---------------------   RPC Paramter Processing  -----------------
+ ; ---------------------   RPC Parameter Processing  -----------------
 PARMS ;
  ;
  ; -- get how many parameters to expect

@@ -1,6 +1,6 @@
-VFDPSORR ;DSS/WLC - VXVISTA RX COMPLETE/RENEWALS ; 4/5/2013 18:40
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
+VFDPSORR ;DSS/WLC/SMP - VXVISTA RX COMPLETE/RENEWALS ; 10/30/2015 14:15
+ ;;15.0;DSS,INC VXVISTA OPEN SOURCE;**12**;29 May 2015;Build 8
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ; This routine is only invoked from VFDPSOR
  ; Pharmacy Renewals
  ;
@@ -19,15 +19,15 @@ EN ; Mark old Rx as Discontinued, generate new Rx Number for Renewal
  I '$D(^OR(100,+VFDORG)) Q  ; No IEN defined - nothing left to do
  S $P(^OR(100,VFDORG,3),U,3)=1  ; discontinue original order
  S PSOORG=$G(^OR(100,VFDORG,4))
- I 'PSOORG!(PSOORG'=+PSOORG)!($G(^PSRX(+PSOORG,0))="") K PSOORG S VFDMSG="Unable to RENEW from original order" Q
+ I 'PSOORG!(PSOORG'=+PSOORG)!($G(^PSRX(+PSOORG,0))="") K PSOORG S VFDMSG="-1^Unable to RENEW from original order" Q
  S PSONNUM=$P(^PSRX(PSOORG,0),U,1)
 EN1 ;
- S PSOX=$E(PSONNUM,$L(PSONNUM))
- ; save off new RX # to override auto-generate
- S PSOGEN=$S(PSOX?1N:PSONNUM_"A",1:PSONNUM_$C($A(PSOX)+1)),PSONRXN=PSOGEN
- ; check to see if already entered, need new suffix
- I $D(^PSRX("B",PSOGEN)) S PSONNUM=PSOGEN G EN1
- ;
+ N PSORENW
+ S PSORENW("ORX #")=PSONNUM,PSORENW("OIRXN")=PSOORG
+ D RXN^PSORENW0
+ S PSONRXN=PSORENW("NRX #")
+ I $D(^PSRX("B",PSONRXN)) S PSONNUM=PSONRXN K PSORENW("NRX #") G EN1
+ ;;
  ; Begin Update entries to old prescription
  ;
  L +^PSRX(PSOORG):3 Q:'$T

@@ -1,5 +1,5 @@
 ORCD ; SLC/MKB - Order Dialog utilities ;12/15/2006
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**8,38,68,94,161,141,195,215,243**;Dec 17,1997;Build 242
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**8,38,68,94,161,141,195,215,243**;Dec 17,1997;Build 10
  ;Per VHA Directive 2004-038, this routine should not be modified.
 INPT() ; -- Return 1 or 0, if patient/order sheet = inpatient
  N Y S Y=$S($G(ORWARD):1,$G(^DPT(+ORVP,.105)):1,1:0)
@@ -26,6 +26,10 @@ EXT(P,I,F) ; -- Returns external value of ORDIALOG(Prompt,Instance)
  . S IENS=+X_",",J=$L(PARAM,",") I J>2 F  S J=J-2 Q:J'>0  S Z=$P(PARAM,",",J),IENS=IENS_$S(Z:Z,1:+$P(Z,"(",2))_","
  . S:'+$G(F) F=.01 S Y=$$GET1^DIQ(FNUM,IENS,+F)
  . I Y="",F'=.01 S Y=$$GET1^DIQ(FNUM,IENS,.01)
+ ;DSS/SMP - BEGIN MOD
+ I $G(^%ZOSF("ZVX"))["VX",$P($G(^ORD(101.41,P,0)),U)="OR GTX ROUTING" D
+ .S PARAM="W:PRINT;M:MAIL;C:ADMINISTERED IN CLINIC;I:IN-HOUSE"
+ ;DSS/SMP - END MOD
  I TYPE="S" F J=1:1:$L(PARAM,";") S Z=$P(PARAM,";",J) I $P(Z,":")=X S Y=$S(+$G(F):X,1:$P(Z,":",2)) Q
  Q $G(Y)
  ;

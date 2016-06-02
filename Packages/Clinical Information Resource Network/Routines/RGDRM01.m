@@ -1,5 +1,5 @@
 RGDRM01 ;BAY/ALS-MPI/PD AWARE DUPLICATE RECORD MERGE ;02/22/00
- ;;1.0;CLINICAL INFO RESOURCE NETWORK;**6,10,12,29,36**;30 Apr 99
+ ;;1.0;CLINICAL INFO RESOURCE NETWORK;**6,10,12,29,36,51**;30 Apr 99;Build 2
  ;
  ;Reference to ^DPT( supported by IA #2070
  ;Reference to ^DPT("AICN" supported by IA #2070
@@ -7,36 +7,40 @@ RGDRM01 ;BAY/ALS-MPI/PD AWARE DUPLICATE RECORD MERGE ;02/22/00
  ;
 CKICNS(DFNFRM,DFNTO) ;Check ICN's and CMORs of FROM and TO records of
  ; duplicate record pair
- N CMORFRM,CMORTO,RETURN,ICNFRM,ICNTO,LOCFRM,LOCTO
+ N CMORFRM,CMORTO,RETURN,ICNFRM,ICNTO,LOCFRM,LOCTO,PICN,ERR
  S RETURN="1^OK to merge"
  I ($G(DFNFRM)'>0)!($G(DFNTO)'>0) S RETURN="0^DFN NOT PASSED" G EXIT
  S CMORFRM=$$GETVCCI^MPIF001(DFNFRM)
  S CMORTO=$$GETVCCI^MPIF001(DFNTO)
  S ICNFRM=$$GETICN^MPIF001(DFNFRM)
- ; If FROM record has no ICN quit
- I ICNFRM<0 G EXIT
+ ;DSS/RAC - BEGIN MOD - Bypass all ICN checks, vxVistA doesn't use them
+ I ^%ZOSF("ZVX")["VX" G EXIT
+ ;DSS/RAC - END MOD
  S ICNTO=$$GETICN^MPIF001(DFNTO)
  S LOCFRM=$$IFLOCAL^MPIF001(DFNFRM)
  S LOCTO=$$IFLOCAL^MPIF001(DFNTO)
+ S HOME=$$SITE^VASITE()
+ S PICN=ICNTO
+ I $E(ICNTO,1,3)=$E($P(HOME,"^",3),1,3)!(ICNTO<0) D
+ .;HAVE LOCAL ICN OR NO ICN AS TO ICN
+ .I ICNFRM>0,$E(ICNFRM,1,3)'=$E($P(HOME,"^",3),1,3) S PICN=ICNFRM ;FROM ICN IS NATIONAL ICN
+ ;**51 send A40 regardless of ICN status on TO or FROM record
+ S ERR=$$A40^MPIFA40(DFNTO,DFNFRM,PICN)
+ I $P(ERR,"^",1)=-1 S RETURN="0^CANNOT MERGE RECORDS "_DFNFRM_" AND "_DFNTO_", "_$P(ERR,"^",2) G EXIT
  ; If both records have local ICNs, delete FROM data, keep TO data 
  I (LOCFRM=1)&(LOCTO=1) S ICN=$P(ICNFRM,"V",1) D DEL D DEL^RGDRM03 G EXIT
- S HOME=$$SITE^VASITE()
- ; If both records have National ICNs, log an exception
- ;I ($E(ICNFRM,1,3)'=$E($P(HOME,"^",3),1,3)&(ICNFRM>0))&($E(ICNTO,1,3)'=$E($P(HOME,"^",3),1,3)&(ICNTO>0)) D  G EXIT
- ;. S RETURN="0^CANNOT MERGE RECORDS "_DFNFRM_" AND "_DFNTO_", both records have national ICNs assigned and must be resolved before merging."
- ; If both records have a national ICN, delete the FROM data and call A40^MPIFA40 to trigger messaging to MPI and TFs
- I ($E(ICNFRM,1,3)'=$E($P(HOME,"^",3),1,3)&(ICNFRM>0))&($E(ICNTO,1,3)'=$E($P(HOME,"^",3),1,3)&(ICNTO>0)) D
- . S ERR=$$A40^MPIFA40(DFNTO,DFNFRM)
- . I $P(ERR,"^",1)=-1 S RETURN="0^CANNOT MERGE RECORDS "_DFNFRM_" AND "_DFNTO_", "_$P(ERR,"^",2)
- . I $P(RETURN,"^",1)>0 S ICN=$P(ICNFRM,"V",1) D DEL D DEL^RGDRM03
+ ; If both records have a national ICN, delete the FROM data
+ I ($E(ICNFRM,1,3)'=$E($P(HOME,"^",3),1,3)&(ICNFRM>0))&($E(ICNTO,1,3)'=$E($P(HOME,"^",3),1,3)&(ICNTO>0)) D  G EXIT
+ .S ICN=$P(ICNFRM,"V",1) D DEL D DEL^RGDRM03
+ ; If both records have local ICNs, delete FROM data, keep TO data 
+ I (LOCFRM=1)&(LOCTO=1) S ICN=$P(ICNFRM,"V",1) D DEL D DEL^RGDRM03 G EXIT
  ; If FROM record is local and TO record is null, merge
  I (LOCFRM=1)&(ICNTO<0) D MRGICN D MRGCMOR^RGDRM03
- ; If FROM record is National and TO record is local, merge
- E  I ($E(ICNFRM,1,3)'=$E($P(HOME,"^",3),1,3)&(ICNFRM>0))&(LOCTO=1) D MRGICN D MRGCMOR^RGDRM03
- ; If FROM record is National and TO record is null, merge
- E  I ($E(ICNFRM,1,3)'=$E($P(HOME,"^",3),1,3)&(ICNFRM>0))&(ICNTO<1) D MRGICN D MRGCMOR^RGDRM03
+ ; If FROM record is National and TO record is local OR null, merge
+ I $E(ICNFRM,1,3)'=$E($P(HOME,"^",3),1,3),ICNFRM>0 D  G EXIT
+ .I LOCTO=1!(ICNTO<1) D MRGICN D MRGCMOR^RGDRM03
  ; If FROM record is local and TO record is National, delete FROM data, keep TO data
- E  I (LOCFRM=1)&(LOCTO=0)&(ICNTO>0) S ICN=$P(ICNFRM,"V",1) D DEL D DEL^RGDRM03 G EXIT
+ I (LOCFRM=1)&(LOCTO=0)&(ICNTO>0) S ICN=$P(ICNFRM,"V",1) D DEL D DEL^RGDRM03
  ;
 EXIT ;
  Q RETURN

@@ -1,5 +1,5 @@
 PSOCLO1 ;BHAM ISC/SAB - clozaril rx lockout routine ; 20 Apr 1999  10:50 AM
- ;;7.0;OUTPATIENT PHARMACY;**1,23,37,222**;DEC 1997;Build 12
+ ;;7.0;OUTPATIENT PHARMACY;**1,23,37,222**;DEC 1997;Build 29
  ;External reference YSCLTST2 supported by DBIA 4556
  ;External reference ^PS(55 supported by DBIA 2228
  ;MH package will authorize dispensing of the Clozapine drugs
@@ -18,7 +18,12 @@ PSOCLO1 ;BHAM ISC/SAB - clozaril rx lockout routine ; 20 Apr 1999  10:50 AM
  S X=$S(CLOZPAT=2:84,CLOZPAT=1:42,1:21)
  D CL1^YSCLTST2(DFN,X)
  I $D(^TMP($J,"PSO")) G CHECK
-OV1 I $$OVERRIDE^YSCLTST2(DFN) S ANQRE=7 W !!,"Permission to dispense clozapine has been authorized by NCCC",! G OVRD
+ ;DSS/RBN/SMP - BEGIN MOD
+OV1 I $$OVERRIDE^YSCLTST2(DFN) S ANQRE=7 D  G OVRD
+ .I $$VX D  Q
+ ..W !!,"Permission to dispense clozapine has been authorized",!
+ .W !!,"Permission to dispense clozapine has been authorized by NCCC",!
+ ;DSS/RBN/SMP - END MOD
  D MSG4,MSG3,MH G QU
  Q
 CHECK ;
@@ -62,6 +67,9 @@ MSG3 ;
  W "2000/mm3 with no signs of infection.",!
  Q
 MSG4 ;
+ ;DSS/SMP -BEGIN MOD
+ I $$VX D VFDMSG4 Q
+ ;DSS/SMP - END MOD
  W !!,"Permission to dispense clozapine has been denied. If the results of the latest"
  W !,"Lab Test drawn in the past 7 days show WBC>3000/mm3 and ANC>1500/mm3 and"
  W !,"you wish to dispense outside the FDA and VA protocol WBC/ANC limits, document"
@@ -69,6 +77,9 @@ MSG4 ;
  W !,"(Phone: 214-857-0068 Fax: 214-857-0339) for a one-time override permission."
  Q
 MSG5 ;
+ ;DSS/SMP -BEGIN MOD
+ I $$VX D VFDMSG5 Q
+ ;DSS/SMP - END MOD
  W !!,"Permission to dispense clozapine has been denied. Please contact the"
  W !,"Director of the VA National Clozapine Coordinating Center"
  W !,"(Phone: 214-857-0068 Fax: 214-857-0339)."
@@ -97,4 +108,18 @@ QU S ANQX=1 D DIR
 4 ;;3 SEQ. WBC DECREASE
 5 ;;LAST ANC RESULT < 2000
 6 ;;3 SEQ. ANC DECREASE
-7 ;;NCCC AUTHORIZED
+ ;
+ ;DSS/SMP - BEG MODS
+7 ;;AUTHORIZED
+ ;
+VX() Q $G(^%ZOSF("ZVX"))["VX"
+ ;
+VFDMSG4 ;
+ W !!,"Permission to dispense clozapine has been denied. The results of the latest"
+ W !,"Lab Test drawn in the past 7 days show WBC<3000/mm3 and ANC<1500/mm3 is outside"
+ W !,"the FDA protocol WBC/ANC limits"
+ Q
+VFDMSG5 ;
+ W !!,"Permission to dispense clozapine has been denied."
+ Q
+ ;

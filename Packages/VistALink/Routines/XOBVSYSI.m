@@ -1,7 +1,6 @@
-XOBVSYSI ;; ld,mjk/alb - VistaLink Interface Implementation ; [7/20/06 10:51am]
- ;;1.5;VistALink;**1**;Sep 09, 2005;Build 3
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.1.001]
- ;
+XOBVSYSI ;; ld,mjk/alb - VistaLink Interface Implementation ; 07/27/2002  13:00
+ ;;1.6;VistALink;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
 CALLBACK(CB) ; -- init callbacks implementation
  SET CB("STARTELEMENT")="ELEST^XOBVSYSI"
  QUIT
@@ -41,7 +40,7 @@ REQHDLR(XOBDATA) ; -- request handler implementation
  ; --  system info request 
  IF TYPE="systemInfo" DO SYSINFO(.TYPE) GOTO REQHDLRQ
  ;
- ; -- failue if processing get here
+ ; -- failure if processing get here
  DO RESPONSE(.TYPE,"failure")
  ;
 REQHDLRQ ;
@@ -52,7 +51,8 @@ ENV ; -- set env variable
  QUIT
  ;
 PSTANUM ; -- set primary station number
- SET XOBSYS("PRIMARY STATION#")=+$$STA^XUAF4($$KSP^XUPARAM("INST"))
+ SET XOBSYS("PRIMARY STATION#")=$$TRUNCCH($$STA^XUAF4($$KSP^XUPARAM("INST")))
+ ; note: AAC 200M is truncated to 200
  QUIT
  ;
 INIT(TYPE) ; -- handle initialize request
@@ -152,7 +152,7 @@ SYSINFO(TYPE) ; -- build system info response
  ;
  SET XOBINTRO=$GET(XOBINFO("introductoryText"))
  ;
- ; -- build and send complate message
+ ; -- build and send complete message
  DO PRE^XOBVSKT
  DO WRITE^XOBVSKT($$VLHDR^XOBVLIB(4))
  DO WRITE^XOBVSKT("<Response type="""_$GET(TYPE)_""" status=""success"" >")
@@ -172,7 +172,7 @@ GETSINFO(XOBINFO) ; -- gather system info into array
  SET XOBINFO("version")=$PIECE($TEXT(XOBVSYSI+1),";",3)
  ;
  ; -- get build number
- SET XOBINFO("build")=$PIECE($PIECE($TEXT(XOBVSYSI+2),"Build: ",2),"]")
+ SET XOBINFO("build")=$PIECE($TEXT(XOBVSYSI+1),";",7)
  ;
  ; -- get application server connection timeout
  SET XOBINFO("appServerTimeout")=$$GETASTO^XOBVLIB()
@@ -225,3 +225,10 @@ RPC(XOBY) ;
  . SET XOBY(XOBLINE)=XOBX_"~"_XOBARR(XOBX)
  QUIT
  ;
+TRUNCCH(XOBSTR) ; truncate before first non-numeric char
+ NEW XOBI,XOBSTOP,XOBSTR1
+ SET XOBSTOP=0,XOBSTR1=""
+ FOR XOBI=1:1:$L(XOBSTR) QUIT:XOBSTOP  DO
+ . IF "0123456789"'[$E(XOBSTR,XOBI) SET XOBSTOP=1 QUIT
+ . SET XOBSTR1=XOBSTR1_$E(XOBSTR,XOBI)
+ QUIT XOBSTR1

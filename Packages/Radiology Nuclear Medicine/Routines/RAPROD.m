@@ -1,9 +1,12 @@
-RAPROD ;HISC/FPT,GJC AISC/MJK-Detailed Exam View ;8/1/97  11:13
- ;;5.0;Radiology/Nuclear Medicine;**10,35,45,56**;Mar 16, 1998;Build 3
+RAPROD ;HISC/FPT,GJC AISC/MJK-Detailed Exam View ; 5/9/13 2:02pm
+ ;;5.0;Radiology/Nuclear Medicine;**10,35,45,56,99,47,110**;Mar 16, 1998;Build 2
  ;Supported IA #2056 GET1^DIQ
  ;Supported IA #2053 UPDATE^DIE
  ;Supported IA #10040 ^SC(
  ;Supported IA #10060 ^VA(200
+ ;
+ ;05/09/2013 Patch RA*5*110 Rem Ticket 321499 eliminate subscript err
+ ;
 START S RADI=^RADPT(RADFN,"DT",RADTI,0) S:$D(^("P",RACNI,"COMP")) RA("COMP")=^("COMP") S RA("REA")=$S($D(^("R")):^("R"),1:"")
  S RA("TECH")=$O(^RADPT(RADFN,"DT",RADTI,"P",RACNI,"TC",0)) I RA("TECH") S RA("TECH")=$S($D(^VA(200,+^(RA("TECH"),0),0)):$P(^(0),"^"),1:"")
  S X=$P(Y(0),"^",4),RA("CAT")=$S(X="I":"INPATIENT",X="O":"OUTPATIENT",X="S":"SHARING",X="C":"CONTRACT",X="R":"RESEARCH",X="E":"EMPLOYEE",1:"UNKNOWN")
@@ -20,7 +23,10 @@ VIEW W @IOF S X="",$P(X,"=",80)="" W X K X
  W !?2,"Division    : ",$E(RA("DIV"),1,20),?40,"Category     : ",RA("CAT")
  W !?2,"Location    : ",$S($D(^SC(+RA("LOC"),0)):$P(^(0),"^"),1:"Unknown"),?40,"Ward         : ",$E(RA("WRD"),1,24)
  W !?2,"Exam Date   : ",RADATE,?40,"Service      : ",$E(RA("SERV"),1,24)
- W !?2,"Case No.    : ",RACN W ?40,"Bedsection   : ",$E(RA("BED"),1,24)
+ N RASSAN,RACNDSP S RASSAN=$$SSANVAL^RAHLRU1(RADFN,RADTI,RACNI)
+ S RACNDSP=$S((RASSAN'=""):RASSAN,1:RACN)
+ I $$USESSAN^RAHLRU1() W !?2,"Case No.    : ",RACNDSP W ?40,"Bedsection   : ",$E(RA("BED"),1,24)
+ I '$$USESSAN^RAHLRU1() W !?2,"Case No.    : ",RACN W ?40,"Bedsection   : ",$E(RA("BED"),1,24)
  W !?40,"Clinic       : ",$E(RA("CL"),1,24)
  S Y=$E(RA("CAT")) I "CSR"[Y W !?40,$E($S("C"=Y:"Contract     : "_RA("CONT"),"S"=Y:"Sharing      : "_RA("CONT"),"R"=Y:"Research     : "_RA("REA"),1:""),1,38)
  W:$X>1 ! S X="",$P(X,"-",80)="" W X K X
@@ -32,9 +38,13 @@ VIEW W @IOF S X="",$P(X,"=",80)="" W X K X
  W !?2,"Pre-Verified  : ",$E($S($D(^VA(200,RAPREVER,0)):$P(^(0),"^",1),1:"NO"),1,20),?40,"Cam/Equip/Rm : ",$E(RA("RM"),1,20) K RAPREVER
  W !?2,"Int'g Staff   : ",$E(RA("STAFF"),1,20),?40,"Diagnosis    : ",$E(RA("DIA"),1,24)
  W !?2,"Technologist  : ",$E(RA("TECH"),1,20),?40,"Complication : ",$E(RA("CMP"),1,24)
- I $D(RA("COMP")) W !?2,"Comment       : " F I=1:60 Q:$E(RA("COMP"),I,I+59)']""  W ?18,$E(RA("COMP"),I,I+59),!
- W:$X>1 !
- K RAFL W ?40,"Films        :" F I=0:0 S I=$O(^RADPT(RADFN,"DT",RADTI,"P",RACNI,"F",I)) Q:I'>0  I $D(^(I,0)) S X=^(0) W ?55,$S($D(^RA(78.4,+$P(X,"^"),0)):$P(^(0),"^"),1:"Unknown")," - ",+$P(X,"^",2),!
+ I $D(RA("COMP")) W !?2,"Comment       : " F I=1:60 Q:$E(RA("COMP"),I,I+59)']""  W ?18,$E(RA("COMP"),I,I+59)
+ ;W:$X>1 !
+ W !
+ I $$PTSEX^RAUTL8(RADFN)="F" D  ;get pt sex and display pregnancy status for females, ptch #99
+ .N RAOR751 S RAOR751=$P($G(^RADPT(RADFN,"DT",RADTI,"P",RACNI,0)),U,11)
+ .W ?2,"Pregnant at time of order entry: ",$$GET1^DIQ(75.1,$G(RAOR751)_",",13)
+ K RAFL W ?47,"Films :" F I=0:0 S I=$O(^RADPT(RADFN,"DT",RADTI,"P",RACNI,"F",I)) Q:I'>0  I $D(^(I,0)) S X=^(0) W ?55,$S($D(^RA(78.4,+$P(X,"^"),0)):$P(^(0),"^"),1:"Unknown")," - ",+$P(X,"^",2),!
  W:$X>1 ! S X="",$P(X,"-",34)="" W X
  W "Modifiers" W $E(X,1,32) K X
  W !?2,"Proc Modifiers:" D MODS^RAUTL2 F I=1:1 Q:$P(Y,", ",I)']""  W ?18,$P(Y,", ",I),!
@@ -123,6 +133,9 @@ CDIS ; set up RACDIS array to store 1st non-duplicate proc+pmod+cptmod
  S N1=0
  F  S N1=$O(^RADPT(RADFN,"DT",RADTI,"P",N1)) Q:'N1  S R1=$G(^(N1,0)) D:R1]""
  . S RA71=$P(R1,U,2),RACNI=N1
+ . ; 05/09/2013 Patch RA*5*110 Rem Ticket 321499
+ . ; Added next line to emliminate a subscript error in CPRS
+ . Q:RA71=""
  . D MODS^RAUTL2
  . S RACDIS("B",RA71,Y,Y(1),N1)=""
  . S N2=$O(RACDIS("B",RA71,Y,Y(1),0))

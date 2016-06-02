@@ -1,6 +1,10 @@
-DIWP ;SFISC/GFT-ASSEMBLE WP LINE ;10JUN2005
- ;;22.0;VA FileMan;**46,152**;Mar 30, 1999;Build 10
- ;Per VHA Directive 2004-038, this routine should not be modified.
+DIWP ;SFISC/GFT-ASSEMBLE WP LINE ;24APR2012
+ ;;22.2;MSC Fileman;;Jan 05, 2015;
+ ;;Submitted to OSEHRA 5 January 2015 by the VISTA Expertise Network.
+ ;;Based on Medsphere Systems Corporation's MSC Fileman 1051.
+ ;;Licensed under the terms of the Apache License, Version 2.0.
+ ;;GFT;**46,152,169**
+ ;
  ;The DIWF variable contains a string of one-letter codes to control W-P output.
  ;"|" in DIWF means that "|"-windows are not to be evaluated, but are to be printed as
  ;     they stand.
@@ -34,7 +38,7 @@ DIW ;from RCR+5^DIWW
  S X=$P(DIWX,DIW,1) I $P(X,"TAB",1)="" D TAB G N
  I X="TOP" D PUT S ^("X")="S DIFF=1 X:$D(^UTILITY($J,1)) ^(1)" D NEW G N
  I DIWF'[DIW G U:X="_" D PUT,RCR^DIWW G N:$D(X)
- S X=DIW_$P(DIWX,DIW,1)_DIW D C
+ S X=DIW_$P(DIWX,DIW,1) S:DIWX[DIW!(DIWF'[DIW) X=X_DIW D C ;DO NOT PUT GRATUITOUS "|" AT END, IF DIWF["|"
 N K X S DIWX=$P(DIWX,DIW,2,99) I DIWX]"" D ST:$D(DIWP) G DIW
 D K DIWP D PUT,PRE:DIWTC S:DIWTC DIWI="" Q
  ;

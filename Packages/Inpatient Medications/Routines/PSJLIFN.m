@@ -1,5 +1,5 @@
 PSJLIFN ;BIR/MV-IV FINISH USING LM ;13 Jan 98 / 11:32 AM
- ;;5.0; INPATIENT MEDICATIONS ;**1,29,34,37,42,47,50,56,94,80,116,110**;16 DEC 97
+ ;;5.0;INPATIENT MEDICATIONS ;**1,29,34,37,42,47,50,56,94,80,116,110,181,261,252**;16 DEC 97;Build 69
  ;
  ; Reference to ^PS(51.2 is supported by DBIA #2178.
  ; Reference to ^PS(52.6 supported by DBIA #1231.
@@ -13,16 +13,23 @@ PSJLIFN ;BIR/MV-IV FINISH USING LM ;13 Jan 98 / 11:32 AM
  ;
 EN ; Display order with numbers.
  L +^PS(53.1,+PSJORD):1 I '$T W !,$C(7),$C(7),"This order is being edited by another user. Try later." D PAUSE^VALM1 Q
- D PENDING K PSJREN
+ NEW PSJOCFG
+ S PSJOCFG="FN IV"
+ D PENDING K PSJREN,PSJOCFG
  L -^PS(53.1,+PSJORD)
  Q
 PENDING ; Process pending order.
- ;* PSIVFN1 is use so it will dipslay the AC/Edit screen
+ ;* PSIVFN1 is used so it will display the AC/Edit screen
  ;* instead of go to the "IS this O.K." prompt
  ;* PSIVACEP only when accept the order. Original screen won't redisp.
  ;* PSJLMX is defined in WRTDRG^PSIVUTL and it was being call in PSJLIVMD & PSJLIVFD
  ;*        to count # of AD/SOL 
- NEW PSIVFN1,PSIVACEP,PSJLMX,PSIVOI
+ NEW PSIVFN1,PSIVACEP,PSJLMX,PSIVOI,PSJOCCHK,PSJFNDS
+ K PSJIVBD ;This variable was left over from the new backdoor order entry.
+ ; PSJOCCHK is set so if EDIT was use instead of FN to finish order the OC is triggered
+ S PSJOCCHK=1
+ ;* PSJFNDS is set so dosing is trigger during finishing without changes to the add/sol
+ S PSJFNDS=1
  S PSIVAC="CF" S (P("PON"),ON)=+PSJORD_"P",DFN=PSGP
  S PSIVUP=+$$GTPCI^PSIVUTL D GT531^PSIVORFA(DFN,ON)
  D:'$D(P("OT")) GTOT^PSIVUTL(P(4))
@@ -61,17 +68,18 @@ FINISH ; Prompt for missing data
  ;*          list(ORDCHK^PSJLMUT1)
  ;* PSGORQF defined means cancel the order due to order check.
  ;Q:'$$LS^PSSLOCK(DFN,PSJORD)
- N PSJCOM S PSJCOM=+$P($G(^PS(53.1,+PSJORD,.2)),"^",8)
- K PSJIVBD,PSGRDTX
- N FIL,PSIVS,DRGOC,PSIVXD,DRGTMP,PSIVOCON,PSGORQF,ON55,NSFF S NSFF=1
+ N PSJCOM,PSIVEDIT S PSJCOM=+$P($G(^PS(53.1,+PSJORD,.2)),"^",8)
+ K PSJIVBD,PSGRDTX,PSIVEDIT
+ N FIL,PSIVS,DRGOC,PSIVXD,DRGTMP,PSIVOCON,PSGORQF,ON55,NSFF K PSGORQF S NSFF=1
  S (ON,PSIVOCON,ON55,PSGORD)=PSJORD Q:PSJORD'=PSJMAI  I $G(PSJLYN)]"" Q:PSJORD'=PSJLYN
  D UDVARS^PSJLIORD
  I $G(PSJPROT)=3,'$$ENIVUD^PSGOEF1(PSJORD) K NSFF Q
  D HOLDHDR^PSJOE
+ ;PRE UAT group requested to not show the second screen since FDB OC has more text and provider override reason appears after 2nd screen 
  ; force the display of the second screen if CPRS order checks exist
- I $O(^PS(53.1,+PSJORD,12,0))!$O(^PS(53.1,+PSJORD,10,0)) D
- .Q:$G(PSJLMX)=1   ;no second screen to display
- .S VALMBG=16 D RE^VALM4,PAUSE^VALM1 S VALMBG=1
+ ;I $O(^PS(53.1,+PSJORD,12,0))!$O(^PS(53.1,+PSJORD,10,0)) D
+ ;.Q:$G(PSJLMX)=1   ;no second screen to display
+ ;.S VALMBG=16 D RE^VALM4,PAUSE^VALM1 S VALMBG=1
  S P("OPI")=$$ENPC^PSJUTL("V",+PSIVUP,60,P("OPI"))
  ;I $E(P("OT"))="I" D GTDATA Q:P(4)=""
  ;I $E(P("OT"))="I",'$D(DRG("AD")),('$D(DRG("SOL"))) D
@@ -81,24 +89,39 @@ FINISH ; Prompt for missing data
  I P(4)="" D RE^VALM4 Q
  I $E(P("OT"))="I" D GTDATA  D
  . I '$D(DRG("AD")),('$D(DRG("SOL"))) S DNE=0 D GTIVDRG^PSIVORC2 S P(3)="" D ENSTOP^PSIVCAL
- . D ORDCHK
  S VALMBG=1
- I $E(P("OT"))="F" S DNE=0 D ORDCHK I $G(PSGORQF) D RE^VALM4 Q
- I $D(PSGORQF) S VALMBCK="R",P(4)="" K DRG Q
- S PSIVOK="1^3^10^25^26^39^57^58^59^63^64" D CKFLDS^PSIVORC1 D:EDIT]"" EDIT^PSIVEDT
+ I $E(P("OT"))="F" S DNE=0 I $G(PSGORQF) D RE^VALM4 Q
+ I $G(PSGORQF) S VALMBCK="R",P(4)="" K DRG Q
+ S PSIVEDIT=""
+ S PSIVOK="1^3^10^25^26^39^57^58^59^63^64" D CKFLDS^PSIVORC1 I EDIT]"" D EDIT^PSIVEDT
+ ;S PSIVOK="1^3^10^25^26^39^57^58^59^63^64" D CKFLDS^PSIVORC1 I EDIT]"" S PSIVEDIT=EDIT D EDIT^PSIVEDT
+ ;I $G(EDIT)="" D OC^PSIVOC D:'$G(PSGORQF) IN^PSJOCDS($G(ON),"IV","") Q:$G(PSGORQF)
+ I $D(PSIVEDIT) D OC^PSIVOC
+ ;PSJ*5*261 - Remedy #490875 PSPO 2040 
+ D ENSTOP^PSIVCAL
+ ;D:'$G(PSGORQF) IN^PSJOCDS($G(ON),"IV","")
+ I $G(PSGORQF) D GT531^PSIVORFA(DFN,ON) Q
  I $G(DONE) S VALMBCK="R" Q
+ ;* PSJFNDS is set so dosing is trigger during finishing without changes to the add/sol
+ ;S PSJFNDS=1
  D COMPLTE^PSIVORC1
  S:$G(PSIVACEP) VALMBCK="Q"
+ ;Reset PSJFNDS so if FN again, the dosing check is triggered.
+ S:'$G(PSIVACEP) PSJFNDS=1
  I $G(PSGORQF) S VALMBG=1 D RE^VALM4
  K NSFF
  Q
 ORDCHK ;* Do order check for Inpatient Meds IV.
  ; PSGORQF is defined (CONT^PSGSICHK) if not log an intervention
+ ; No longer use after PSJ*5*181
  K PSGORQF
- NEW DRGOC
- D OCORD Q:$G(PSGORQF) 
+ Q
+ ;NEW DRGOC
+ ;D OCORD Q:$G(PSGORQF) 
  ;D GTIVDRG^PSIVORC2 S P(3)="" D ENSTOP^PSIVCAL
-ORDCHKA ;* Do order check agaist existing orders on the profile
+ORDCHKA ;* Do order check against existing orders on the profile
+ ;No longer use as of PSJ*5*181
+ Q
  F PSIVAS="AD","SOL" Q:$G(PSGORQF)  S FIL=$S(PSIVAS="AD":52.6,1:52.7) D
  . F PSIVX=0:0 S PSIVX=$O(DRG(PSIVAS,PSIVX)) Q:'PSIVX!($G(PSGORQF))  D
  .. S DRGTMP=DRG(PSIVAS,PSIVX)
@@ -110,6 +133,8 @@ ORDCHKA ;* Do order check agaist existing orders on the profile
  K PSJADTMP
  Q
 OCORD ;* Do order check for each drug against the drugs within the order.
+ ;OCORD was called by ORDCHK.  This entry point is no longer use as of PSJ*5*181
+ Q
  NEW X,Y,DDRUG,PSIVX,PSJAD,PSJSOL,TMPDRG
  D SAVEDRG^PSIVEDRG(.TMPDRG,.DRG)
  ; Find the corresponding DD for the additive within the order

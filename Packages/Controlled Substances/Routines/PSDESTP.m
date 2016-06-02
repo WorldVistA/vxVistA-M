@@ -1,9 +1,10 @@
 PSDESTP ;BIR/BJW-Destroyed CS Drugs Report ; 28 Feb 98
- ;;3.0; CONTROLLED SUBSTANCES ;**8,62**;13 Feb 97;Build 3
+ ;;3.0; CONTROLLED SUBSTANCES ;**8,62,71**;13 Feb 97;Build 29
  ;**Y2K compliance**,"P" added to date input string 2/9/98
  ;*Y2K* chg to print four digit year in body of report
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- I '$D(^XUSEC("PSJ RPHARM",DUZ)) W !!,"Please contact your Pharmacy Coordinator for access to",!,"the pending Controlled Substances destruction data.",!!,"PSJ RPHARM security key required.",! G END
+ I '$D(^XUSEC("PSJ RPHARM",DUZ))&('$D(^XUSEC("PSD TECH ADV",DUZ))) D  G END
+ .W !!,"Please contact your Pharmacy Coordinator for access to",!,"the pending Controlled Substances destruction data.",!!,"PSJ RPHARM or PSD TECH ADV security key required.",!
 ASKD ;ask disp location
  S PSDS=$P(PSDSITE,U,3),PSDSN=$P(PSDSITE,U,4)
 ASKV ;ask vault(s)

@@ -1,6 +1,6 @@
-MAGGSIU2 ;WOIFO/GEK - Utilities for Image Add/Modify ; [ 12/27/2000 10:49 ]
- ;;3.0;IMAGING;**7,8,85,59**;Nov 27, 2007;Build 20
- ;;Per VHA Directive 2004-038, this routine should not be modified.
+MAGGSIU2 ;WOIFO/GEK/NST - Utilities for Image Add/Modify ; 20 May 2010 1:42 PM
+ ;;3.0;IMAGING;**7,8,85,59,108**;Mar 19, 2002;Build 1738;May 20, 2010
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -8,7 +8,6 @@ MAGGSIU2 ;WOIFO/GEK - Utilities for Image Add/Modify ; [ 12/27/2000 10:49 ]
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -47,10 +46,17 @@ MAKEFDA(MAGGFDA,MAGARRAY,MAGACT,MAGCHLD,MAGGRP,MAGGWP) ;
  ;  ACQUISITION DEVICE file entry, if needed. 
  I $D(MAGACT("107")) S MAGACT("ACQD")=MAGACT("107") K MAGACT("107")
  I $D(MAGGFDA(2005,"+1,",107)) S MAGACT("ACQD")=MAGGFDA(2005,"+1,",107) K MAGGFDA(2005,"+1,",107)
+ ; Patch 108 - workaround for not compiling BP
+ ; Since field 17th equals 0 we are going to create a new TIU note
+ ; when we link the image to a TIU note - FILE^MAGGNTI
+ ;  so kill the 16th and 17th fields data (linked package)
+ I ($G(MAGGFDA(2005,"+1,",16))="8925"),($G(MAGGFDA(2005,"+1,",17))="0") D
+ . K MAGGFDA(2005,"+1,",16)
+ . K MAGGFDA(2005,"+1,",17)
  Q
 REQPARAM() ;Do required parameters have values. Called from MAGGSIUI
  ; VARIABLES ARE SET AND KILLED IN THAT ROUTINE.  
- N CT
+ N CT,MAGOUT,TXT
  S CT=0
  S MAGRY(0)="1^Checking for Required parameter values..."
  I IDFN="" S CT=CT+1,MAGRY(CT)="DFN is Required. !"
@@ -59,9 +65,27 @@ REQPARAM() ;Do required parameters have values. Called from MAGGSIUI
  I (PXPKG=""),(DOCCTG=""),(IXTYPE="") S CT=CT+1,MAGRY(CT)="Procedure or Category or Index Type is Required. !"
  I (PXPKG'=""),(DOCCTG'="") S CT=CT+1,MAGRY(CT)="Procedure OR Document Category. Not BOTH. !"
  ;
- I (PXPKG'=""),(PXIEN="") S CT=CT+1,MAGRY(CT)="Procedure IEN is Required. !"
+ I (PXPKG'=""),(PXIEN=""),(PXNEW'=1) S CT=CT+1,MAGRY(CT)="Procedure IEN is Required. !"
  I (PXPKG=""),(PXIEN'="") S CT=CT+1,MAGRY(CT)="Procedure Package is Required. !"
  I (PXPKG'=""),(PXDT="") S CT=CT+1,MAGRY(CT)="Procedure Date is Required. !"
+ ; Patch 108
+ I (PXNEW=1),(PXPKG'=8925),(PXPKG'="TIU") S CT=CT+1,MAGRY(CT)="Only creating a new TIU note is implemented! PXPKG = 8925 or TIU"
+ I (PXNEW=1),(PXIEN>0) S CT=CT+1,MAGRY(CT)="Procedure IEN or Procedure New. Not BOTH!"
+ I ((PXNEW=0)!(PXNEW="")) D
+ . I PXSGNTYP'="" S CT=CT+1,MAGRY(CT)="Signature Type is not allowed with existing Package!"
+ . I PXTIUTTL'="" S CT=CT+1,MAGRY(CT)="TIU Title is not allowed with existing Package!"
+ . Q
+ I (PXPKG="TIU")!(PXPKG=8925) D
+ . I (PXNEW=1),(PXSGNTYP'=0),(PXSGNTYP'=1) S CT=CT+1,MAGRY(CT)="Signature Type Unsigned (0) or Electronically Filed (1) Only!"
+ . I (PXNEW=1),(PXTIUTTL="") S CT=CT+1,MAGRY(CT)="TIU Title is Required!"
+ . D ADTTLOK^MAGGSIU2(.MAGOUT,PXNEW,PXIEN,PXTIUTTL,IXTYPE)  ; DOCCTG is blank
+ . I 'MAGOUT S CT=CT+1,MAGRY(CT)="TIU ADVANCE DIRECTIVE check: "_$P(MAGOUT,U,2)
+ . Q
+ ; If we don't link the image then Type Index cannot be ADVANCE DIRECTIVE
+ I (PXPKG'="TIU"),(PXPKG'=8925) D
+ . S TXT=$$TYPIXTXT^MAGGSIU2(IXTYPE,DOCCTG)  ; Get Type Index text value
+ . I TXT="ADVANCE DIRECTIVE" S CT=CT+1,MAGRY(CT)="ADVANCE DIRECTIVE Type Index is not allowed"
+ . Q
  ;
  ;Patch 8 index field check... could be using Patch 7 or Patch 8.
  ;  We're this far, so either PXIEN or DOCCTG is defined
@@ -85,3 +109,61 @@ REQPARAM() ;Do required parameters have values. Called from MAGGSIUI
  I (TRKID'="") I ($L(TRKID,";")<2) S MAGRY(0)="0^Tracking ID Must have "";"" Delimiter"
  ;
  Q MAGRY(0)
+ ; 
+ ;***** We are forcing any IMAGE that has INDEX TYPE = ADVANCE DIRECTIVE
+ ; to be associated with a Progress Note of Doc Class ADVANCE DIRECTIVE
+ ; And any Note that is an ADVANCE DIRECTIVE to have an INDEX TYPE of ADVANCE DIRECTIVE
+ ;
+ ; Input Parameters
+ ; ================
+ ; PXNEW - Flag if we are creating a new TIU Note 1- YES, 0 - NO  
+ ; PXIEN - Existing TIU Note (IEN in file #8925)
+ ; PXTIUTTL - TIU Title in file #8925.1 - Could be Integer (IEN) or text
+ ; IXTYPE - Image Index Type IEN or Text - file #2005.83
+ ;  
+ ; Return Values
+ ; =============
+ ; if check did not passed
+ ;   MAGOUT = "0^Error message"
+ ; if check passed
+ ;   MAGOUT    = "1"
+ ;
+ADTTLOK(MAGOUT,PXNEW,PXIEN,PXTIUTTL,IXTYPE) ;
+ ; if index type is not set for existing note don't check for advance directive
+ I (PXNEW'=1),(IXTYPE="") S MAGOUT=1 Q
+ ;
+ N TIEN,ADVTITLE,TYPETXT
+ I PXNEW=1 D  Q:'MAGOUT
+ . S TIEN=""
+ . I '$$GETTIUDA^MAGGSIV(.MAGOUT,PXTIUTTL,.TIEN) Q
+ . D ISDOCCL^MAGGNTI(.ADVTITLE,+TIEN,8925.1,"ADVANCE DIRECTIVE")
+ . Q
+ I PXNEW'=1 D
+ . D ISDOCCL^MAGGNTI(.ADVTITLE,+PXIEN,8925,"ADVANCE DIRECTIVE")
+ . Q
+ ; Get Index Type Text
+ S TYPETXT=$S(IXTYPE?1.N:$$GET1^DIQ(2005.83,IXTYPE_",",.01),1:IXTYPE)
+ ;
+ I +ADVTITLE D  Q  ; Index Type must be ADVANCE DIRECTIVE
+ . I TYPETXT="ADVANCE DIRECTIVE" S MAGOUT=1 Q
+ . S MAGOUT="0^Index Type must be ADVANCE DIRECTIVE" Q
+ . Q
+ ; TIU Title is not ADVANCE DIRECTIVE - Check the index
+ I TYPETXT="ADVANCE DIRECTIVE" D  Q
+ . I (PXIEN'="")!(PXTIUTTL'="") S MAGOUT="0^TIU Note must be ADVANCE DIRECTIVE" Q
+ . S MAGOUT="0^ADVANCE DIRECTIVE Type Index is not allowed"
+ . Q
+ ;
+ S MAGOUT=1 ; Image Type Index is not ADVANCE DIRECTIVE
+ Q
+ ; 
+ ; IXTYPE - Type Index - IEN or text
+ ; DOCCTG - Document Category IEN or text 
+TYPIXTXT(IXTYPE,DOCCTG) ; Get Type Index Text 
+ N MAGR
+ I IXTYPE?1.N  Q $$GET1^DIQ(2005.83,IXTYPE_",",.01)
+ I IXTYPE="",DOCCTG="" Q ""
+ I DOCCTG?1.N Q $$GET1^DIQ(2005.81,DOCCTG_",",42)  ; return external value of field 42
+ D CHK^DIE(2005,100,"E",DOCCTG,.MAGR,"MAGMSG")
+ I MAGR="^" Q ""
+ Q $$GET1^DIQ(2005.81,MAGR_",",42)  ; return external value of field 42

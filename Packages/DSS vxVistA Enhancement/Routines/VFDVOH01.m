@@ -1,6 +1,6 @@
 VFDVOH01 ;DSS/SGM - MESSAGE FORWARDER FILTERS ; 09 Apr 2013  10:33 AM
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
+ ;;2013.1;DSS,INC VXVISTA OPEN SOURCE;**45**;29 May 2015;Build 16
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ;
  ; This routine should only be invoked via the ^VFDVOH routine
  ;
@@ -94,7 +94,7 @@ GETFLD(SEG,PIECE) ; get one field value from HL7 message
  ;          or -ERR (this should never happen)
  Q $$GET1^VFDVOHU(.VFDVMSG,$G(SEG),$G(PIECE))
  ;
-PARM(ENT,PARM) S:$G(ENT)="" ENT="SYS" Q $$GET^XPAR(ENT,PARM)
+PARM(ENT,PARM,INST) S:$G(ENT)="" ENT="SYS" Q $$GET^XPAR(ENT,PARM,INST)
  ;
 PSAUTO(VFDA) ; check to see if AUTO-COMPLETE of OP order to be done
  ; .VFDA - req - VFDORD() from VFDVOH
@@ -102,14 +102,15 @@ PSAUTO(VFDA) ; check to see if AUTO-COMPLETE of OP order to be done
  ; RETURN: 0: auto-complete not to be done
  ;         1: auto-complete to be done in foreground
  ;    <null>: parameter has no value set
- N I,J,X,Y,Z,RET,VFDIV
- S RET=$$PARM("SYS","VFDVOH PSO AUTO")
+ N I,J,X,Y,Z,RET,VFDIV,INST
+ S INST=$$GETINST(+VFDORD) I INST<1 S VFDA("PSAUTO")=0,VFDA("TASK")=0 Q
+ S RET=$$PARM("SYS","VFDVOH PSO AUTO",INST)
  I $G(VFDA) D
  . ; get division to see if division overrides
  . S X=$$GET1(100,+VFDA,6) I X'?1.N1";SC(" Q  ; order has no location
  . S Y=$$GET1(44,+X,3)
  . I 'Y S Y=$$GET1(44,+X,"3.5:.07") I 'X Q  ;   loc has no division
- . S VFDIV=Y,Y=$$PARM("DIV.`"_(+Y),"VFDVOH PSO AUTO")
+ . S VFDIV=Y,Y=$$PARM("DIV.`"_(+Y),"VFDVOH PSO AUTO",INST)
  . I Y'="" S RET=Y
  . Q
  S VFDA("PSAUTO")=RET
@@ -117,3 +118,13 @@ PSAUTO(VFDA) ; check to see if AUTO-COMPLETE of OP order to be done
  Q
  ;
 RTN(R) Q $T(@R)'=""
+GETINST(VFDORD) ; 
+ N RET1,VFDPUI,VFDPU S RET1=0
+ ; Check Pick-up
+ S VFDPUI=$O(^OR(100,VFDORD,4.5,"ID","PICKUP",""))
+ I VFDPUI S VFDPU=$G(^OR(100,VFDORD,4.5,VFDPUI,1))
+ Q:'$D(VFDPU) 0
+ I VFDPU="W" Q 1
+ I VFDPU="I" I $$ISIMM^VFDPXIM1(VFDORD) Q 2
+ E  Q 0
+ Q RET1

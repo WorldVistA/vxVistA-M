@@ -1,5 +1,5 @@
 FHSPED ; HISC/REL/NCA - Enter/Cancel Standing Orders ;7/22/94  13:59
- ;;5.5;DIETETICS;**5,8**;Jan 28, 2005;Build 28
+ ;;5.5;DIETETICS;**5,8,17**;Jan 28, 2005;Build 9
 EN1 ; Enter Standing Orders for Patient
  D NOW^%DTC S NOW=%
 ASK K DIC,X,DFN,FHDFN,FHPTNM,Y S ADM="",FHALL=1 D ^FHOMDPA
@@ -43,7 +43,7 @@ N3 W !!,"ADD this Order? Y// " R YN:DTIME G:'$T!(YN="^") KIL S:YN="" YN="Y" S X=
  I C1'="^^" S OLD=$P(P(LN,SP),"^",1),$P(^FHPT(FHDFN,"A",ADM,"SP",OLD,0),"^",6,7)=NOW_"^"_DUZ K ^FHPT("ASP",FHDFN,ADM,OLD) S EVT="S^C^"_OLD D ^FHORX
  S $P(P(LN,SP),"^",2,4)="^^",$P(P(LN,SP),"^",2,4)=$P(P(LN,SP),"^",5,7),$P(P(LN,SP),"^",5,7)="^^"
 ADD ; Add Standing Order
- L +^FHPT(FHDFN,"A",ADM,"SP",0)
+ L +^FHPT(FHDFN,"A",ADM,"SP",0):$S($G(DILOCKTM)>0:DILOCKTM,1:3)
  I '$D(^FHPT(FHDFN,"A",ADM,"SP",0)) S ^FHPT(FHDFN,"A",ADM,"SP",0)="^115.08^^"
  S X=^FHPT(FHDFN,"A",ADM,"SP",0),NO=$P(X,"^",3)+1,^(0)=$P(X,"^",1,2)_"^"_NO_"^"_($P(X,"^",4)+1)
  L -^FHPT(FHDFN,"A",ADM,"SP",0) I $D(^FHPT(FHDFN,"A",ADM,"SP",NO)) G ADD
@@ -54,7 +54,7 @@ EN2 ; Standing Order Inquiry
  ;S ALL=0 D ^FHDPA G:'DFN KIL G:'FHDFN KIL S NO=0 D LIS G EN2
  S (FHSOFG,WARD)="" I $G(DFN)'="" S WARD=$G(^DPT(DFN,.1))
  G:'FHDFN KIL S NO=0 D:$G(DFN) LIS
- I $D(^FHPT("ASPO",FHDFN)) D OUT,LIS^FHSP
+ I $D(^FHPT("ASPO",FHDFN)) D OUT
  G EN2
 EN3 ; Cancel Standing Order
  S NO=$P($G(P(LN,SP)),"^",1) Q:'NO
@@ -118,6 +118,7 @@ OUT ;ask for Recurring Meal Entry
  S DIC("?")="Select a Date, '^' to exit"
  S DIC("A")="Select the Outpatient Date :" D ^DIC K DIC Q:(Y'>0)!$D(DTOUT)
  S ADM=+Y
+ D LIS^FHSP
  Q
 CHK ;ENTER DATES.
  K FHDT1,FHDT2

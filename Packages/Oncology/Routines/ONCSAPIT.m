@@ -1,5 +1,5 @@
-ONCSAPIT ;Hines OIFO/SG - COLLABORATIVE STAGING (TABLES)  ; 12/7/06 11:26am
- ;;2.11;ONCOLOGY;**40,41,47**;Mar 07, 1995;Build 19
+ONCSAPIT ;Hines OIFO/SG - COLLABORATIVE STAGING (TABLES) ;06/23/10
+ ;;2.2;ONCOLOGY;**1**;Jul 31, 2013;Build 8
  ;
  ;--- STRUCTURE OF THE RESPONSE
  ;
@@ -8,7 +8,7 @@ ONCSAPIT ;Hines OIFO/SG - COLLABORATIVE STAGING (TABLES)  ; 12/7/06 11:26am
  ;   xmlns:soap="http://www.w3.org/2001/12/soap-envelope"
  ;   soap:encodingStyle="http://www.w3.org/2001/12/soap-encoding">
  ;   <soap:Body>
- ;     <CS-RESPONSE xmlns="http://vista.med.va.gov/oncology">
+ ;     <CS-RESPONSE xmlns="http://vista.domain.ext/oncology">
  ;       <SCHEMA>...</SCHEMA>
  ;       <TABLE>
  ;         <NUMBER>...</NUMBER>
@@ -166,11 +166,12 @@ GETCSTBL(ONCSAPI,SITE,HIST,TABLE) ;
  S ONCXML=$NA(^XTMP("ONCSAPI","TABLES"))
  S ONCXML("XSITE")=$S(SITE'="":SITE,1:" ")
  S ONCXML("XHIST")=$S(HIST'="":HIST,1:" ")
+ S ONCXML("XDISC")=$S(DISCRIM'="":DISCRIM,1:" ")
  ;
  ;--- Check if the schema number is available
- S SCHEMA=+$G(@ONCXML@("SH",ONCXML("XSITE"),ONCXML("XHIST")))
+ S SCHEMA=+$G(@ONCXML@("SH",ONCXML("XSITE"),ONCXML("XHIST"),ONCXML("XDISC")))
  I SCHEMA'>0  D  Q:SCHEMA<0 SCHEMA
- . S SCHEMA=+$$SCHEMA^ONCSAPIS(.ONCSAPI,SITE,HIST)
+ . S SCHEMA=+$$SCHEMA^ONCSAPIS(.ONCSAPI,SITE,HIST,DISCRIM)
  ;
  ;--- Check if the table is available
  S ONCTBIEN=+$G(@ONCXML@("ST",SCHEMA,TABLE))
@@ -317,3 +318,6 @@ WW(TXT,DIWR) ;
  . S X=$E(TXT,(I+ONCI1)\2,ONCI2-1-CR-LF)
  . D ^DIWP
  Q
+ ;
+CLEANUP ;Cleanup
+ K DISCRIM

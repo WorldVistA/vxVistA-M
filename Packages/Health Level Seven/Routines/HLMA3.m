@@ -1,5 +1,6 @@
-HLMA3 ;OIFO-O/RJH-API TO LOGICAL LINK FILE ;12/29/04  17:03
- ;;1.6;HEALTH LEVEL SEVEN;**126**;Oct 13, 1995
+HLMA3 ;OIFO-O/RJH-API TO LOGICAL LINK FILE ;05/30/08  16:05
+ ;;1.6;HEALTH LEVEL SEVEN;**126,142**;Oct 13, 1995;Build 17
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  Q
  ;
 IEDOMAIN() ;
@@ -118,7 +119,8 @@ IP(DA,HLIP) ;
  S HLTEMP("IP-COUNT")=$L($G(HLIP),",")
  F HLI=1:1:HLTEMP("IP-COUNT") D  Q:HLTEMP("IP-VALID")
  . S HLTEMP("IP")=$P(HLIP,",",HLI)
- . D CALL^%ZISTCP(HLTEMP("IP"),HLTEMP("PORT"))
+ . I '$G(HLTCPLNK("TIMEOUT")) S HLTCPLNK("TIMEOUT")=5
+ . D CALL^%ZISTCP(HLTEMP("IP"),HLTEMP("PORT"),HLTCPLNK("TIMEOUT"))
  . I 'POP D
  .. D CLOSE^%ZISTCP
  .. S HLTEMP("IP-VALID")=HLTEMP("IP")
@@ -215,4 +217,79 @@ FACILITY(LINK,DELIMITR) ;
  . ; set domain to the 2nd and 3rd pieces of the result
  . S HLLINK("RESULT")=HLLINK("RESULT")_DELIMITR_HLCDOM_DELIMITR_"DNS"
  Q HLLINK("RESULT")
+ ;
+VIEDOMNM() ;
+ ; API for generating the domain of site's local Interface Engine
+ ; if it could be generated based on the VISN, Station number, and
+ ; the site's multi-listener, named beginning with "VA".  It returns
+ ; null string if this API is executed in 'test' account.
+ ;
+ ; The real DNS Domain of the VIE server should be the one registered
+ ; in the DNS service.
+ ; The Domain gernerated by this API should not be used if it is not
+ ; the same one gegistered in DNS.
+ ; 
+ ; no input
+ ; output:
+ ; return DNS domain if available, else return null string.
+ ;
+ ;retrieve data from HL Communication Server Parameter file (#869.3)
+ ; - Default Processing Id (#.03) 
+ ; - Institution (#.04)
+ ;
+ N HLPARAM
+ N HLSITE,INSIEN,NODEIEN,FLAG
+ ;
+ S HLPARAM=$$PARAM^HLCS2
+ S HLSITE("DEFAULT-PROCESSING-ID")=$P(HLPARAM,"^",3)
+ ;
+ ; ien of "Institution" (#4) file
+ S INSIEN=$P(HLPARAM,"^",4)
+ ;
+ ; if this is a production accout and found the ien in the
+ ; "Institution" file
+ I HLSITE("DEFAULT-PROCESSING-ID")="P",INSIEN D
+ . S FLAG=0
+ . S NODEIEN=0
+ . F  D  Q:('NODEIEN)!(FLAG=1)
+ .. ;
+ .. ; find the node ien of file #870
+ .. S NODEIEN=$O(^HLCS(870,"C",INSIEN,NODEIEN))
+ .. Q:'NODEIEN
+ .. ;
+ .. ; check if multi-listener
+ .. Q:'$D(^HLCS(870,"E","M",NODEIEN))
+ .. ;
+ .. ; get node name
+ .. S HLSITE("NODE")=$P(^HLCS(870,NODEIEN,0),"^")
+ .. ;
+ .. ; check first 2 characters of node name
+ .. Q:$E(HLSITE("NODE"),1,2)'["VA"
+ .. ;
+ .. ; chech the port number if it is 5000
+ .. Q:$P(^HLCS(870,NODEIEN,400),"^",2)'=5000
+ .. ;
+ .. S FLAG=1
+ . ;
+ . Q:'FLAG
+ . ;
+ . ; get station number
+ . S HLSITE("STATION")=$P($$NNT^XUAF4(INSIEN),"^",2)
+ . ;
+ . Q:'HLSITE("STATION")
+ . ;
+ . ; find the VISN number
+ . D PARENT^XUAF4("HLSITE",HLSITE("STATION"),"VISN")
+ . S HLSITE("VISN-IEN")=$O(HLSITE("P",0))
+ . Q:'HLSITE("VISN-IEN")
+ . ;
+ . S HLSITE("VISN-NAME")=$G(HLSITE("P",+HLSITE("VISN-IEN")))
+ . S HLSITE("VISN-NUMBER")=+$P(HLSITE("VISN-NAME")," ",2)
+ . Q:'HLSITE("VISN-NUMBER")
+ . ;
+ . I $L(HLSITE("VISN-NUMBER"))=1 D
+ .. S HLSITE("VISN-NUMBER")="0"_HLSITE("VISN-NUMBER")
+ . S HLSITE("DOMAIN")="VHA"_$E(HLSITE("NODE"),3,5)_"VIEV1.V"_HLSITE("VISN-NUMBER")_".MED.VA.GOV"
+ ;
+ Q $G(HLSITE("DOMAIN"))
  ;

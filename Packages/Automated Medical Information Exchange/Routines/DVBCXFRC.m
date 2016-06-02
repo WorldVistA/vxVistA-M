@@ -1,5 +1,6 @@
 DVBCXFRC ;ALB/GTS-557/THM-PROCESS TRANSFER-IN MAIL MESSAGE ; 10/4/91  9:26 AM
- ;;2.7;AMIE;**1,6,18,65**;Apr 10, 1995
+ ;;2.7;AMIE;**1,6,18,65,149**;Apr 10, 1995;Build 16
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  ;
 EN1 N XMB K OUT,CNT S (CNTA,OUT)=0 X XMREC I XMRG["TRANSFER OUT" G EN1^DVBCXFRS
  F DVBCI=0:0 X XMREC Q:XMER<0!(XMRG["$END")  S XLN=XMRG,SUB=$E(XLN,2,5),XLN=$E(XLN,7,245) D @SUB
@@ -12,7 +13,7 @@ EN1 N XMB K OUT,CNT S (CNTA,OUT)=0 X XMREC I XMRG["TRANSFER OUT" G EN1^DVBCXFRS
  I $D(DVBCNEW) S XMB="DVBA C NEW C&P VETERAN",XMB(1)=PNAM,XMB(2)=SSN,XMB(3)=$S($D(^VA(200,+DUZ,0)):$P(^(0),U),1:"Unknown user"),Y=DT X ^DD("DD") S XMB(4)=Y D ^XMB
  ;
 EXIT D DELSER^DVBCUTL4 ;deletes the server message
- K DGMSGF,TYPE,REASONS,DVBADMNM,EXMRS,XMORPV
+ K DGMSGF,TYPE,REASONS,DVBADMNM,EXMRS,XMORPV,DVBSBRCH,DVBDTYPE
  G KILL^DVBCUTIL
  ;
 DEM0 S PNAM=$E($P(XLN,U,1),1,28),DOB=$P(XLN,U,2),SEX=$P(XLN,U,3),SSN=$P(XLN,U,4)
@@ -29,7 +30,7 @@ DEM1 S ADR1=$P(XLN,U,1),ADR2=$P(XLN,U,2),ADR3=$P(XLN,U,3),CITY=$P(XLN,U,4),STATE
  Q
  ;
 ELIG S SRVCON=$P(XLN,U,1),SRVPCT=$P(XLN,U,2),CFLOC=$P(XLN,U,3),CNUM=$P(XLN,U,4),PDSRV=$P(XLN,U,5),SRVEDT=$P(XLN,U,6),SRVSDT=$P(XLN,U,7),ELIGCOD=$P(XLN,U,8),ELIGST=$P(XLN,U,9),ELIGSDT=$P(XLN,U,10),POWSTAT=$P(XLN,U,11),VETST=$P(XLN,U,12)
- S TYPE=$P(XLN,U,13),TYPEPTR=""
+ S TYPE=$P(XLN,U,13),DVBSBRCH=$P(XLN,U,14),DVBDTYPE=$P(XLN,U,15),TYPEPTR=""
  S:TYPE]"" TYPEPTR=$O(^DG(391,"B",TYPE,TYPEPTR))
  S ELIGCOD=$O(^DIC(8,"D",+ELIGCOD,0))
  S ELIGCOD=$S(ELIGCOD="":"",$D(^DIC(8,"D",+ELIGCOD)):$O(^DIC(8,"D",+ELIGCOD,0)),1:"")
@@ -68,7 +69,7 @@ REQEDIT ;  ** Add entry to file #396.3 (request)
  I OUT S DA=REQDA,DIK="^DVB(396.3," D ^DIK K DA,DIK
  Q
  ;
-PATEDIT ;  ** Add entry and/or update file #2 (patient)
+PATEDIT ;  ** Lookup and/or Add entry to file #2 (patient)
  N DVBCPT,DVBCARAY,DVBCERR,DVBCIENS,DOB2,NAME1,NAME2,BYEAR,X,Y
  K DVBCNEW S DVBCPT=$$FIND1^DIC(2,,"X",SSN,"SSN",,"DVBCERR")
  ;if error returned, send error msg
@@ -93,9 +94,7 @@ PATEDIT ;  ** Add entry and/or update file #2 (patient)
  ...S DOB2=DVBCARAY(2,DVBCIENS,.03,"I") S Y=DOB2 X ^DD("DD") S DOB2=Y
  ...S DVBCERR(2)="Name: "_DVBCARAY(2,DVBCIENS,.01,"I")_"   DOB: "_DOB2
  ...D BULL10^DVBCXFRD
- .;otherwise, update address info
  .S DFN=+DVBCPT K X,Y,DIC
- .D ADDEDIT
  ;if no match, then add record
  I +DVBCPT=0 D  Q
  .K DA,DR,DIC,DO,DD,X,Y S DVBCNEW=1
@@ -105,10 +104,14 @@ PATEDIT ;  ** Add entry and/or update file #2 (patient)
  .S DGMSGF=1 ;why is this variable needed?
  .D ADDEDIT
  .S DIE="^DPT(",DA=DFN
- .S DR(1,2,1)=".301////"_SRVCON_";.302////"_SRVPCT_";.314////"_CFLOC_";.313////"_CNUM_";.323////"_PDSRV_";.326////"_SRVEDT_";.327////"_SRVSDT_";.361////"_ELIGCOD
+ .S DR(1,2,1)=".301////"_SRVCON_";.302////"_SRVPCT_";.314////"_CFLOC_";.313////"_CNUM_";.323////"_PDSRV_$S('+$$VFILE^DILFD(2.3216):";.326////"_SRVEDT_";.327////"_SRVSDT,1:"")_";.361////"_ELIGCOD
  .S DR(1,2,2)=".3611////"_ELIGST_";.3612////"_ELIGSDT_";.525////"_POWSTAT_";1901////"_VETST
  .S:TYPEPTR]"" DR(1,2,3)="391////"_TYPEPTR
  .D ^DIE
+ .;MSE data now to be stored in .3216 subfile in the PATIENT File (2)
+ .;after Patch DG*5.3*797 has been installed. Editing of the fields
+ .;.326 and .327 above can be removed once DG*5.3*797 has been released.
+ .D:((+$$VFILE^DILFD(2.3216))&(SRVEDT]"")) CRTMSE
  Q
  ;
 SETVARS ;  ** Add entry to file #396.4 (exam) **
@@ -125,11 +128,19 @@ SETVARS ;  ** Add entry to file #396.4 (exam) **
  K DLAYGO,DIC,X,Y
  Q
  ;
-ADDEDIT ;  ** Edit Patient address (Always!) **
+ADDEDIT ;  ** Add Patient address **
  S DA=DFN,DIE="^DPT("
- S:ADR1="" ADR1="@" S:ADR2="" ADR2="@" S:ADR3="" ADR3="@"
- S:CITY="" CITY="@" S:STATE="" STATE="@" S:ZIP="" ZIP="@"
- S:CNTY="" CNTY="@" S:HOMPHON="" HOMPHON="@" S:BUSPHON="" BUSPHON="@"
- S DR=".111////"_ADR1_";.112////"_ADR2_";.113////"_ADR3_";.114////"_CITY_";.115////"_STATE_$S(ZIP4]"":";.1112////"_ZIP4,1:";.116////"_ZIP)_";.117////"_CNTY_";.131////"_HOMPHON_";.132////"_BUSPHON
+ S DR=".111////"_ADR1_";.112////"_ADR2_";.113////"_ADR3_";.114////"_CITY_";.115////"_STATE
+ S DR=DR_$S(ZIP4]"":";.1112////"_ZIP4,1:";.116////"_ZIP)_";.117////"_CNTY_";.131////"_HOMPHON_";.132////"_BUSPHON
  D ^DIE K DIE,DA
+ Q
+ ;
+CRTMSE ;create LAST MSE entry for patient in sub-file 2.3216
+ N DIC,X,Y,DA,DTOUT,DUOUT,DLAYGO
+ S DIC="^DPT("_DFN_",.3216,",DA(1)=DFN
+ S DIC(0)="FL",DLAYGO=2
+ S X=SRVEDT  ;.01 SERVICE ENTRY DATE
+ ;SERVICE SEPARATION DATE ; SERVICE BRANCH ; SERVICE DISCHARGE TYPE
+ S DIC("DR")=".02////"_SRVSDT_";.03///"_DVBSBRCH_";.06///"_DVBDTYPE
+ K DO D FILE^DICN K DLAYGO
  Q

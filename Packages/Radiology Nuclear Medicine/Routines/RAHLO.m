@@ -1,5 +1,5 @@
 RAHLO ;HIRMFO/GJC-Process data set from the bridge program ;11/18/97  12:13
- ;;5.0;Radiology/Nuclear Medicine;**4,8,27,55,66,84**;Mar 16, 1998;Build 13
+ ;;5.0;Radiology/Nuclear Medicine;**4,8,27,55,66,84,94,106**;Mar 16, 1998;Build 2
  ; 09/07/2005 Remedy call 108405 - KAM Allow Radiology to accept dx codes from Talk Technology
  ;
  ;Integration Agreements
@@ -10,17 +10,25 @@ EN1 ; Check the validity of the following data globals:
  ; Example: '^TMP("RARPT-REC",$J,RASUB,' where RASUB is a
  ; record in file 772.
  ;**************** Validates (if data present): ************************
- ; ^TMP("RARPT-REC",$J,RASUB,"RACNI")=case ien
- ; ^TMP("RARPT-REC",$J,RASUB,"RADATE")=date reported/entered/verified
- ; ^TMP("RARPT-REC",$J,RASUB,"RADFN")=patient ien
- ; ^TMP("RARPT-REC",$J,RASUB,"RADTI")=inverted exam date/time
+ ; ^TMP("RARPT-REC",$J,RASUB,"RACNI")=Case IEN
+ ; ^TMP("RARPT-REC",$J,RASUB,"RADATE")=Date reported/entered/verified
+ ; ^TMP("RARPT-REC",$J,RASUB,"RADFN")=Patient IEN
+ ; ^TMP("RARPT-REC",$J,RASUB,"RADTI")=Inverted Exam Date/Time
  ; ^TMP("RARPT-REC",$J,RASUB,"RADX",#)=Dx codes (could be more than 1)
  ; ^TMP("RARPT-REC",$J,RASUB,"RAESIG")=Verifier's E-Sig (if present)
  ; ^TMP("RARPT-REC",$J,RASUB,"RAHIST")=Additional Clinical History
  ; ^TMP("RARPT-REC",$J,RASUB,"RAIMP",#)=Impression Text
  ; ^TMP("RARPT-REC",$J,RASUB,"RALONGCN")=Long Case Number
  ; ^TMP("RARPT-REC",$J,RASUB,"RASSN")=Patient SSN
- ; ^TMP("RARPT-REC",$J,RASUB,"RASTAT")=A, F or R (amend, final or prelim)
+ ; ^TMP("RARPT-REC",$J,RASUB,"RASTAT")=A, C, F or R
+ ;    Note: we use 'F' for final and 'P' for preliminary as RESULT
+ ;          STATUS values for both the v2.3 & v2.4 HL7 interfaces.
+ ;          BUT: we use 'C' ('corrected') for the v2.4 interface &
+ ;                      'A' ('amended') for the v2.3 interface.
+ ; 
+ ;    Note: VAQ - added w/P106 study released back to VAMC
+ ;                for interpretation
+ ;
  ; ^TMP("RARPT-REC",$J,RASUB,"RATXT",#)=Report Text
  ; ^TMP("RARPT-REC",$J,RASUB,"VENDOR")=vendor
  ; ^TMP("RARPT-REC",$J,RASUB,"RAVERF")=Verifier ien
@@ -38,7 +46,7 @@ EN1 ; Check the validity of the following data globals:
  I '$D(^TMP("RARPT-REC",$J,RASUB,"RASSN")) S RAERR="Missing Patient ID" Q
  D CHECK ; check the validity of our data.
 XIT ; Kill and quit
- K A,B,DFN,K,RACNI,RADX,RADENDUM,RADFN,RADTI,RADUZ,RAIMGTY,RALONGCN,RAMDIV,RAMDV,RAMLC,RAQUIET,RADPIECE,RARPT,RARPTSTS,RASSN,RAVLDT,X,Y,RATRANSC
+ K A,B,DFN,K,RACNI,RADX,RADENDUM,RADFN,RADTI,RADUZ,RAIMGTY,RALONGCN,RAMDIV,RAMDV,RAMLC,RAQUIET,RARPT,RARPTSTS,RASSN,RAVLDT,X,Y,RATRANSC
  Q
 CHECK ; Check if our data is valid.
  S RACNI=$G(^TMP("RARPT-REC",$J,RASUB,"RACNI"))
@@ -49,7 +57,7 @@ CHECK ; Check if our data is valid.
  S RASSN=$G(^TMP("RARPT-REC",$J,RASUB,"RASSN"))
  S (RAVERF,RADUZ)=$G(^TMP("RARPT-REC",$J,RASUB,"RAVERF"))
  S RATRANSC=$G(^TMP("RARPT-REC",$J,RASUB,"RATRANSCRIPT"))
- S RASTAT=$G(^TMP("RARPT-REC",$J,RASUB,"RASTAT")) I RASTAT="A" S RADENDUM=""
+ S RASTAT=$G(^TMP("RARPT-REC",$J,RASUB,"RASTAT")) I RASTAT="A"!(RASTAT="C") S RADENDUM=""
  I $D(^TMP("RARPT-REC",$J,RASUB,"RAESIG")) S RAESIG=$G(^("RAESIG"))
  I $D(^TMP("RARPT-REC",$J,RASUB,"RAIMP")) D IMPTXT^RAHLO2
  I RADATE']"" S RAERR="Missing report date" Q
@@ -69,8 +77,12 @@ CHECK ; Check if our data is valid.
  I RARPT=2 S RAERR="Please use VISTA to edit CANCELLED printset cases." Q
  S RARPT=+$P(^RADPT(RADFN,"DT",RADTI,"P",RACNI,0),"^",17)
  I '$D(^RARPT(RARPT,0)),($D(RADENDUM)#2) S RAERR="Can't add addendum, no report" Q
- I $D(^RARPT(RARPT,0)),($P(^(0),"^",5)'="V"),($D(RADENDUM)#2) S RAERR="Can't add addendum to an unverified report" Q
- I $D(^RARPT(RARPT,0)),$P(^(0),"^",5)="V",('$D(RADENDUM)#2) S RAERR="Report already on file" Q
+ I $D(^RARPT(RARPT,0)),($P(^(0),"^",5)'="V"),($D(RADENDUM)#2)  D  Q
+ .S RAERR="Can't add addendum to a report that is not verified." Q  ;P94
+ ;
+ I $D(^RARPT(RARPT,0)),(($P(^(0),"^",5)="V")!($P(^(0),"^",5)="EF")),('$D(RADENDUM)#2) D  Q
+ .S RAERR="Report already on file" Q  ;P94
+ ;
  I ($D(RADENDUM)#2),'$O(^TMP("RARPT-REC",$J,RASUB,"RAIMP",0)),'$O(^TMP("RARPT-REC",$J,RASUB,"RATXT",0)) S RAERR="Missing addendum report/impression text" Q
  I $D(^RADPT(RADFN,"DT",RADTI,0)) S RAMDIV=^(0),RAMLC=+$P(RAMDIV,"^",4),RAMDIV=+$P(RAMDIV,"^",3),RAMDV=$S($D(^RA(79,RAMDIV,.1)):^(.1),1:""),RAMDV=$S(RAMDV="":RAMDV,1:$TR(RAMDV,"YyNn",1100))
  I '($D(RADENDUM)#2) I $P(RAMDV,"^",16),('$D(^TMP("RARPT-REC",$J,RASUB,"RAIMP"))) S RAERR="Missing Impression Text" Q  ; impression req'd for this division
@@ -118,10 +130,14 @@ CHECK ; Check if our data is valid.
  . S B=$$TEXT^RAHLO3(A)
  . S:'B RAERR=$$ERR^RAHLO2(A)
  . Q
- I $G(RATELE),$G(RARPT) D  Q:$D(RAERR)  ;PATCH 84
- .I $D(^RARPT(RARPT,0)) D LOCK^DILF($NA(^RARPT(RARPT))) E  S RAERR="Report: "_$P($G(^RARPT(RARPT,0)),"^")_" Locked on VISTA site" Q
- .L -^RARPT(RARPT)
+ ;
  I $G(RATELE),$L($G(RATELEPI)),RATELEPI'?10N S RAERR="Incorrect Teleradiologist's NPI: "_RATELEPI Q
  D RPTSTAT^RAHLO3 ; determine the status of the report
- D FILE^RAHLO1:'$D(RAERR)
+ ;
+ ;new w/P106
+ I RARPT,($T(EN^RARPTUT)'=""),(RASTAT="VAQ"),('($D(RAERR)#2)) D EN^RARPTUT QUIT
+ ;
+ ;new w/P94
+ D FILE^RAHLO1:'($D(RAERR)#2)
  Q
+ ;

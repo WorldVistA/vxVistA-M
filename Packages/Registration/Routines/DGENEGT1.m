@@ -1,5 +1,5 @@
-DGENEGT1 ;ALB/KCL,ISA/KWP,LBD,RGL,BRM,DLF - Enrollment Group Threshold API's ; 4/21/09 12:10pm
- ;;5.3;Registration;**232,417,454,491,513,451,564,672,717,688,803**;Aug 13, 1993;Build 31
+DGENEGT1 ;ALB/KCL,ISA/KWP,LBD,RGL,BRM,DLF,TDM - Enrollment Group Threshold API's ; 6/17/09 11:05am
+ ;;5.3;Registration;**232,417,454,491,513,451,564,672,717,688,803,754**;Aug 13, 1993;Build 46
  ;
  ;
 NOTIFY(DGEGT,OLDEGT) ;
@@ -175,7 +175,7 @@ OVRRIDE(DPTDFN,EGT) ;check for previous EGT override by HEC and new rules
  Q CE
  ;
 RULES(DPTDFN,EGTENR,EGT,DGPAT) ;check for new cont enrollment rules (DG*5.3*672)
- N RTN
+ N RTN,STAEXP
  ; If veteran ever had a verified enrollment with SC 10%+ and is now
  ; SC 0% non-compensable then cont. enroll
  I EGTENR("ELIG","VACKAMT")&(EGTENR("ELIG","SCPER")>9)&(DGPAT("SCPER")=0)&(DGPAT("VACKAMT")'>0) Q 1
@@ -183,13 +183,24 @@ RULES(DPTDFN,EGTENR,EGT,DGPAT) ;check for new cont enrollment rules (DG*5.3*672)
  ; eligibilities then cont. enroll:  AA, HB, VA Pension
  I EGTENR("ELIG","VACKAMT")&((EGTENR("ELIG","A&A")="Y")!(EGTENR("ELIG","HB")="Y")!(EGTENR("ELIG","VAPEN")="Y")) Q 1
  ; If AO Exposure Location = Korean DMZ prior to ESR implementation,
+ ; or AO Exposure Location = Vietnam prior to Special Treatment
+ ;    Authority (STA) termination
  ; then cont. enroll.
  ; **** NOTE: For patch DG*5.3*672 the ESR implementation date will
  ; be set to 12/29/2040.  This will be changed to the actual ESR
  ; implementation date in a later patch.
- ; DG*5.3*688 - Date changed to 10/1/2007
+ ; DG*5.3*688 - Date changed to 3/21/2009
  I DGPAT("AO")="Y" D  I $G(RTN) Q RTN
  .I $S($D(EGTENR("ELIG","AOEXPLOC")):EGTENR("ELIG","AOEXPLOC"),1:DGPAT("AOEXPLOC"))="K",EGTENR("EFFDATE"),EGTENR("EFFDATE")<3090321 S RTN=1
+ .I EGTENR("ELIG","AOEXPLOC")="V" D   ;Added with DG*5.3*754
+ ..S STAEXP=$$STAEXP^DGENELA4("AO") Q:STAEXP<1
+ ..I EGTENR("EFFDATE"),EGTENR("EFFDATE")<STAEXP S RTN=1
+ ; If SWAC/EC = YES prior to Special Treatment (STA) termination
+ ; then cont. enroll.
+ I DGPAT("EC")="Y" D  I $G(RTN) Q RTN   ;Added with DG*5.3*754
+ .Q:EGTENR("ELIG","EC")'="Y"
+ .S STAEXP=$$STAEXP^DGENELA4("EC") Q:STAEXP<1
+ .I EGTENR("EFFDATE"),EGTENR("EFFDATE")<STAEXP S RTN=1
  ; If combat vet end date is before application date, cont. enroll
  I $G(EGTENR("ELIG","CVELEDT"))'<ENRDT Q 1
  ; If veteran is enrolled due to MT status or Medicaid, cont. enroll

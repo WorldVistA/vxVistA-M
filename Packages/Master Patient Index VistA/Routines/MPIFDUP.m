@@ -1,43 +1,42 @@
-MPIFDUP ;BIRM/CMC-RESOLVE DUP ACTION ; 1/8/09 3:57pm
- ;;1.0; MASTER PATIENT INDEX VISTA ;**43,46,48**;30 Apr 99;Build 6
+MPIFDUP ;BIRM/CMC-RESOLVE DUP ACTION ;DEC 2, 2005
+ ;;1.0; MASTER PATIENT INDEX VISTA ;**43,46,48,53**;30 Apr 99;Build 18
  ;
-POT ;EXCEPTION HANDLER CALLS HERE
+POT ;EXCEPTION HANDLER CALLS HERE ;**53 MPIC_1853 The POT module is obsolete and is no longer being called.
  ;Potential Match on MPI, Query MPI, resolve duplicate if needed. **43 Added this entry point
  ; Only available when Exception Being Reviewed is Potential Match
- N PELV,PTEN
+ ;N PELV,PTEN
  ;S PTEN=$P(DATA,"^",10)
  ;I '$D(^RGHL7(991.1,"ADFN",218,DFN)) W !,"Potential Match Review Option is Only Available for Potential Match Exceptions" H 5 S VALMBCK="R" Q
  ;I $D(^RGHL7(991.1,"ADFN",218,DFN,PTEN)) S SUB=$O(^RGHL7(991.1,"ADFN",218,DFN,PTEN,"")) I $P($G(^RGHL7(991.1,PTEN,SUB,1,0)),"^",5)=1 W !,"Potential Match Review is Only Available for Exceptions still pending." H 5 S VALMBCK="R" Q
- S PTEN=$P(DATA,"^",10) ;IEN IN 991.1
- S PELV=$P(DATA,"^",11) ;IEN IN 991.12
- I $P($G(^RGHL7(991.1,PTEN,1,PELV,0)),"^",3)'=218 S VALMSG="Action is ONLY for POTENTIAL MATCH exceptions!",VALMBCK="R" Q
+ ;S PTEN=$P(DATA,"^",10) ;IEN IN 991.1
+ ;S PELV=$P(DATA,"^",11) ;IEN IN 991.12
+ ;I $P($G(^RGHL7(991.1,PTEN,1,PELV,0)),"^",3)'=218 S VALMSG="Action is ONLY for POTENTIAL MATCH exceptions!",VALMBCK="R" Q
  ; ^**46 changed check to ensure exception is Potential Match exception
- I $E($$GETICN^MPIF001(DFN),1,3)=$P($$SITE^VASITE,"^",3) W !,"Messaging outstanding please try again in a few minutes." H 5 Q
- S VALMBCK="",MPIFRES="",MPIFINT=""
- D FULL^VALM1
- D EXC
- D PAUSE^VALM1
- K MPIFRES,MPIFINT
- N X,Y,DIR,DIE,DA,DR,IEN,IEN2,PROCDT,%,X,%I,%H
- I '$D(PROCESS) D
- .S DIR("A")="Do you want to mark this exception as processed? ",DIR(0)="YA",DIR("B")="NO" D ^DIR K DIR(0),DIR("A")
- .I Y S PROCESS=1 K X,Y
- I $D(PROCESS) D
- .;**48 CAPTURE DATE/TIME AND WHO MARKED AS PROCESSED
- .D NOW^%DTC S PROCDT=%
- .S IEN="",IEN2="",IEN=$P(DATA,"^",10),IEN2=$P(DATA,"^",11)
- .L +^RGHL7(991.1,IEN):10
- .S DA(1)=IEN,DA=IEN2,DR="6///"_1_";7///"_PROCDT_";8///"_$G(DUZ),DIE="^RGHL7(991.1,"_DA(1)_",1," D ^DIE K DIE,DA,DR
- .L -^RGHL7(991.1,IEN)
- .S $P(DATA,"^",9)=1
- K PROCESS
+ ;I $E($$GETICN^MPIF001(DFN),1,3)=$P($$SITE^VASITE,"^",3) W !,"Messaging outstanding please try again in a few minutes." H 5 Q
+ ;S VALMBCK="",MPIFRES="",MPIFINT=""
+ ;D FULL^VALM1
+ ;D EXC
+ ;D PAUSE^VALM1
+ ;K MPIFRES,MPIFINT
+ ;N X,Y,DIR,DIE,DA,DR,IEN,IEN2,PROCDT,%,X,%I,%H
+ ;I '$D(PROCESS) D
+ ;.S DIR("A")="Do you want to mark this exception as processed? ",DIR(0)="YA",DIR("B")="NO" D ^DIR K DIR(0),DIR("A")
+ ;.I Y S PROCESS=1 K X,Y
+ ;I $D(PROCESS) D
+ ;.;**48 CAPTURE DATE/TIME AND WHO MARKED AS PROCESSED
+ ;.D NOW^%DTC S PROCDT=%
+ ;.S IEN="",IEN2="",IEN=$P(DATA,"^",10),IEN2=$P(DATA,"^",11)
+ ;.L +^RGHL7(991.1,IEN):10
+ ;.S DA(1)=IEN,DA=IEN2,DR="6///"_1_";7///"_PROCDT_";8///"_$G(DUZ),DIE="^RGHL7(991.1,"_DA(1)_",1," D ^DIE K DIE,DA,DR
+ ;.L -^RGHL7(991.1,IEN)
+ ;.S $P(DATA,"^",9)=1
+ ;K PROCESS
  Q
 EXC ; Exception Entry Point
- ;DSS/LM - Begin Mod - Disable connect to MPI
- G EXIT
- ;DSS/LM - Mod End
+ ;DSS/SMP - BEGIN MODS - Conditionally disable MPI connect
+ I $G(^%ZOSF("ZVX"))["VX" G EXIT
+ ;DSS/SMP - END MODS
  N LOCDATA ;Data Returned from GETDATA in ICN array
- G EXIT
  D GETDATA("^DPT(",DFN,"LOCDATA",".01;.02;.03;.09;.301;391;1901")
  S LOCDATA(2,DFN,991.01)=$P($$MPINODE^MPIFAPI(DFN),"^"),TSSN=LOCDATA(2,DFN,.09)
  S HLP("ACKTIME")=300,MPIQRYNM="POTENTIAL_DUP_RES"
@@ -182,13 +181,13 @@ RESEX(DFN,POT) ;look for any pv reject (234) exceptions and resolve them for thi
  .S DA(1)=IEN,DA=IEN2,DR="6///"_1_";7///"_PROCDT_";8///"_$G(DUZ),DIE="^RGHL7(991.1,"_DA(1)_",1," D ^DIE K DIE,DA,DR
  .L -^RGHL7(991.1,IEN)
  ;
- I $G(POT)=2 D
- .S IEN=0
- .F  S IEN=$O(^RGHL7(991.1,"ADFN",218,DFN,IEN)) Q:IEN=""  D
- ..S IEN2=$O(^RGHL7(991.1,"ADFN",218,DFN,IEN,""))
- ..Q:$P(^RGHL7(991.1,IEN,1,IEN2,0),"^",5)=1  ;**ALREADY MARKED AS PROCESSED
- ..D NOW^%DTC S PROCDT=%
- ..L +^RGHL7(991.1,IEN):10
- ..S DA(1)=IEN,DA=IEN2,DR="6///"_1_";7///"_PROCDT_";8///"_$G(DUZ),DIE="^RGHL7(991.1,"_DA(1)_",1," D ^DIE K DIE,DA,DR
- ..L -^RGHL7(991.1,IEN)
+ ;I $G(POT)=2 D  ;**53 MPIC_1853 Remove 218 references
+ ;.S IEN=0
+ ;.F  S IEN=$O(^RGHL7(991.1,"ADFN",218,DFN,IEN)) Q:IEN=""  D
+ ;..S IEN2=$O(^RGHL7(991.1,"ADFN",218,DFN,IEN,""))
+ ;..Q:$P(^RGHL7(991.1,IEN,1,IEN2,0),"^",5)=1  ;**ALREADY MARKED AS PROCESSED
+ ;..D NOW^%DTC S PROCDT=%
+ ;..L +^RGHL7(991.1,IEN):10
+ ;..S DA(1)=IEN,DA=IEN2,DR="6///"_1_";7///"_PROCDT_";8///"_$G(DUZ),DIE="^RGHL7(991.1,"_DA(1)_",1," D ^DIE K DIE,DA,DR
+ ;..L -^RGHL7(991.1,IEN)
  Q

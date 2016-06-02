@@ -1,5 +1,5 @@
 PSGL ;BIR/CML3-LABEL PRINT/REPRINT ;25 SEP 97 / 7:41 AM
- ;;5.0; INPATIENT MEDICATIONS ;**31,111**;16 DEC 97
+ ;;5.0; INPATIENT MEDICATIONS ;**31,111**;16 DEC 97;Build 8
  ;
  ; Reference to ^PS(55 is supported by DBIA# 2191
  ;
@@ -21,13 +21,34 @@ DONE ;
  K ORPV,ORSTOP,ORSTRT,ORSTS,P17 Q
  ;
 DEV ;
+ ; DSS/SMH BEGIN MODS Print more than one label.
+ I $D(^%ZOSF("ZVX")),$D(PSGODDD) N LBLQTY D ASKQTY
+ ; DSS/SMH END MODS
  K ZTSK,%ZIS,IOP,IO("Q") S PSGION=ION,%ZIS="Q",%ZIS("A")="Label Printing Device: ",%ZIS("B")=$P(PSJSYSL,"^",2) W ! D ^%ZIS K %ZIS I POP S IOP=PSGION D ^%ZIS K IOP S POP=1 W !?3,"(No device chosen for label print.)" Q
  D EN2^PSGLBA S POP=0 Q:'$D(IO("Q"))
  S ZTDESC="UD LABEL PRINT",PSGTIR=$S(PSGSS'="P":"EN"_PSGSS,1:"ENPLP")_"^PSGL" I PSGSS="G" F X="PSGLBLD","PSGLWG","PSGLWGN" S ZTSAVE(X)=""
  I PSGSS="W" F X="PSGLBLD","PSGLWD","PSGLWDN" S ZTSAVE(X)=""
  I PSGSS="P" F X="PSGP","PSGP(0)","PSJPAGE","PSJPDOB","PSJPDX","PSJPRB","PSJPSEX","PSJPSSN","PSJPWD","PSJPWDN","PSGODDD","PSGODDD(","VA(""PID"")","VA(""BID"")","^TMP(""PSJON"",$J," S ZTSAVE(X)=""
- W ! D ENTSK^PSGTI W !,"Labels ",$S($D(ZTSK):"",1:"NOT "),"queued!"
+ ;
+ ; DSS/SMH BEGIN MODS
+ I $D(^%ZOSF("ZVX")),$D(PSGODDD),$G(LBLQTY)>1 D
+ . F PSGPL1=1:1:PSGODDD D
+ . . N ORIG S ORIG=PSGODDD(PSGPL1)
+ . . N LBLNUM F LBLNUM=1:1:LBLQTY-1 S PSGODDD(PSGPL1)=PSGODDD(PSGPL1)_ORIG
+ . W ! S PSGTID=$H D ENTSK^PSGTI W !,"Labels ",$S($D(ZTSK):"",1:"NOT "),"queued!"
+ E  D
+ . W ! D ENTSK^PSGTI W !,"Labels ",$S($D(ZTSK):"",1:"NOT "),"queued!"
+ ; DSS/SMH END MODS
  Q
+ ;
+ ; DSS/SMH BEGIN MODS Ask for label quantity
+ASKQTY ; [Internal] Ask for label quantity
+ N DIR,X,Y,DA,DIRUT,DIROUT,DUOUT,DTOUT
+ S DIR(0)="NO^1:99",DIR("A")="Enter number of labels",DIR("B")=1
+ D ^DIR
+ S LBLQTY=+$G(Y,1) ; + just in case Y is empty
+ QUIT
+ ; DSS/SMH END MODS Ask for label quantity
  ;
 G ;
  K DIC S DIC="^PS(57.5,",DIC(0)="QEAMIZ",DIC("A")="Select WARD GROUP: " W ! D ^DIC K DIC D  Q

@@ -1,5 +1,5 @@
 LRSORA2 ;DALOI/KCM/DRH/RLM-SEARCH LAB DATA AND PRINT REPORT ;8/28/89  12:07
- ;;5.2;LAB SERVICE;**2,62,201,272,369**;Sep 27, 1994;Build 25
+ ;;5.2;LAB SERVICE;**2,62,201,272,369**;Sep 27, 1994;Build 1
  ; Reference to $$FMTE^XLFDT supported by IA #10103
  ; Reference to DD^%DT supported by IA #10003
  ; Reference to ^DIR supported by IA #10026
@@ -137,11 +137,11 @@ HDR1 ;
  S LRCHKSP=0
  Q
 HDR2 ;
- ;DSS/RAF - BEGIN MOD for MRN label and DOB
+ ;DSS/RAF - BEGIN MOD for MRN label and DOB 7/8/2015
  ;W !,PNM,?28,SSN,?61,$E(LRWRD,1,16),!
  I $G(VA("MRN"))]"" D
  .W !,PNM,?28,$G(VA("MRN",0))_": ",SSN
- .W !,?28,"DOB: ",$P($G(VADM(3)),U,2),?61,$E(LRWRD,1,16)
+ . w !,"DOB: ",$$VFDDOB(SSN),?28,"LOC: ",$E(LRWRD,1,16),!
  E  W !,PNM,?28,SSN,?61,$E(LRWRD,1,16),!
  ;DSS/RAF - END MOD
  Q
@@ -159,3 +159,18 @@ LEGEND ;
  . W $P(LRTST(%,2),U,3),"  Specimen: "
  . W $S($P(LRTST(%,2),U,2)'="":$E($P(LRTST(%,2),U,2),1,79-$X),1:"Any")
  Q
+ ;DSS/RAF - BEGIN MOD - 7/7/2015
+VFDDOB(VFDDFN) ; user MRN to find DOB and return in external format
+ ;
+ N IENS
+ I $E(VFDDFN)="*" S VFDDFN=$P(VFDDFN,"*",2) Q $$VFDGET1(2,VFDDFN_",",.03)
+ S VFDDFN=$$DFN^VFDDFN(VFDDFN,,,"MRN")
+ S IENS=VFDDFN_","
+ Q $$VFDGET1(2,IENS,.03)
+ ;
+VFDGET1(FILE,VIEN,FLD,FLG) ;
+ ; only optional parameter is FLG
+ N DIERR,VFDERR,X,Y,Z
+ I $G(VIEN)'="",$E(VIEN,$L(VIEN))'="," S VIEN=VIEN_","
+ Q $$GET1^DIQ(FILE,VIEN,FLD,$G(FLG),"VFDERR")
+ ;;2013.1;VENDOR - DOCUMENT STORAGE SYS;**60**;05 May 2014

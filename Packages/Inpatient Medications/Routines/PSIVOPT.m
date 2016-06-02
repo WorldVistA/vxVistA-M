@@ -1,5 +1,5 @@
-PSIVOPT ;BIR/PR,MLM-OPTION DRIVER ;06 Aug 98 / 2:17 PM
- ;;5.0; INPATIENT MEDICATIONS ;**17,27,58,88,104,110,155**;16 DEC 97
+PSIVOPT ;BIR/PR,MLM-OPTION DRIVER ; 1/4/12 7:36am
+ ;;5.0;INPATIENT MEDICATIONS;**17,27,58,88,104,110,155,181,271,252**;16 DEC 97;Build 69
  ;
  ; Reference to ^PS(55 is supported by DBIA# 2191
  ; Reference to ^PSDRUG is supported by DBIA# 2192        
@@ -20,8 +20,8 @@ UNLOCK ; Unlock order.
  ;E  L -^PS(55,DFN,"IV",+ON55)
  I ON["V" L -^PS(55,DFN,"IV",+ON55)
  ;
-K ; Kill variables.
- K %,DA,DIE,DIK,DLAYGO,DNE,DR,DRG,DRGI,DRGT,ERR,HELP,J,OD,P,P16,PSIVAL,PSIVC,PSIVLOG,PSIVNOL,PSIVOK,PSIVOPT,PSIVREA,SCRNPRO,TEX,XED
+K ; Kill variables. *271
+ K %,DA,DIE,DIK,DLAYGO,DNE,DR,DRG,DRGI,DRGT,ERR,HELP,J,OD,P,P16,PSIVAL,PSIVC,PSIVLOG,PSIVNOL,PSIVOK,PSIVOPT,PSIVREA,SCRNPRO,TEX,XED,ZZND
  Q
 ACT ; Prompt for order action.
  K PSJIVBD NEW PSGFDX,PSGSDX S (PSJORD,ON)=ON55
@@ -57,7 +57,10 @@ E ; Entry for Pharmacy edit
  Q
  ;
 R ; Renew order.
+ NEW PSJOCFG
+ S PSJOCFG="RENEW IV"
  D R^PSIVOPT2
+ K PSJOCFG
  Q
  ;
 H(DFN,ON,STAT,STOP)          ; Place order on hold.
@@ -101,7 +104,8 @@ ENARI(DFN,ON,PSGUOW,PSIVAL) ; Auto-reinstate IV orders if movement is deleted.
  I $G(PSGALO)'=18530,$G(PSGORNUM),$$IVDUPADD^PSIVOPT(PSGP,+PSGORNUM) S ^TMP("PSJNOTUNDC",$J,PSGP,+PSGORNUM_"V")="" Q
  N DA,DR,DIE,DIK,PSIVREA,PSIVALCK,PSIVOPT,PSIVALT,X,Y
  S X=$G(^PS(55,DFN,"IV",+ON,"ADC")) I X K ^PS(55,"ADC",X,DFN,+ON),^PS(55,DFN,"IV",+ON,"ADC")
- S PSIVACT=1,DR=$S(+$P($G(^PS(55,DFN,"IV",+ON,4)),U,18)=1:"100///H",+$P($G(^PS(55,DFN,"IV",+ON,0)),U,10)=1:"100///H",1:"100///A")_";.03////"_+$P($G(^PS(55,DFN,"IV",+ON,2)),U,7)_";109///@;116///@;121///@"
+ ;S PSIVACT=1,DR=$S(+$P($G(^PS(55,DFN,"IV",+ON,4)),U,18)=1:"100///H",+$P($G(^PS(55,DFN,"IV",+ON,0)),U,10)=1:"100///H",1:"100///A")_";.03////"_+$P($G(^PS(55,DFN,"IV",+ON,2)),U,7)_";109///@;116///@;121///@;157////@"
+ S PSIVACT=1,DR=$S(+$P($G(^PS(55,DFN,"IV",+ON,0)),U,10)=1:"100///H;157///HP",+$P($G(^PS(55,DFN,"IV",+ON,4)),U,18)=1:"100///H;157///@",1:"100///A;157///@")_";.03////"_+$P($G(^PS(55,DFN,"IV",+ON,2)),U,7)_";109///@;116///@;121///@"
  S DIE="^PS(55,"_DFN_",""IV"",",DA=+ON,DA(1)=DFN
  N CHKIT S CHKIT=$G(^PS(55,DFN,"IV",+ON,2)) I $P(CHKIT,U,6)["P",($P(CHKIT,U,9)="R") S DR=DR_";114///@;123///@"
  D ^DIE

@@ -1,12 +1,18 @@
-TIUPEVN1 ; SLC/JER - Event logger Cont'd ;21-OCT-1999 10:47:05
- ;;1.0;TEXT INTEGRATION UTILITIES;**81**;Jun 20, 1997
+TIUPEVN1 ; SLC/JER - Event logger Cont'd ;05/20/10  14:09
+ ;;1.0;TEXT INTEGRATION UTILITIES;**81,250**;Jun 20, 1997;Build 14
+ ;
+ ; ICR #10006    - ^DIC Routine & DIC, DLAYGO, X, & Y local vars
+ ;     #10018    - ^DIE Routine & DIE, DA, DR, DTOUT, & DUOUT local vars
+ ;     #10004    - EN^DIQ Routine & DIC, DA, X, & Y local vars
+ ;     #10015    - EN^DIQ1 Routine & DIC, DIQ, DA, & DR local vars
+ ;     #10081    - SETUP^XQALERT Routine & XQADATA, XQAID, XQAMSG, & XQAROU  local vars
  ;
 FIELDS(EVNTDA,MSG) ; ---- Log missing/incorrect field errors for
  ;                      specific fields in UPLOAD LOG file (#8925.4),
  ;                      in multiple fl. TIU*1*81 moved from TIUPEVNT
  N TIUI S TIUI=0
  F  S TIUI=$O(MSG("DIERR",TIUI)) Q:+TIUI'>0  D
- . N DA,DR,DIC,DIE,DLAYGO S DIC="^TIU(8925.4,"_EVNTDA_",1,",DIC(0)="L"
+ . N DA,DR,DIC,DIE,DLAYGO,X,Y S DIC="^TIU(8925.4,"_EVNTDA_",1,",DIC(0)="L"
  . I '$D(MSG("DIERR",TIUI,"PARAM","FILE")) Q
  . S ^TIU(8925.4,EVNTDA,1,0)="^8925.42^^",DA(1)=EVNTDA
  . S DLAYGO=8925.42,X=""""_MSG("DIERR",TIUI,"PARAM","FILE")_""""
@@ -18,7 +24,7 @@ FIELDS(EVNTDA,MSG) ; ---- Log missing/incorrect field errors for
 FLDALRT(EVNTDA,EVNTDA1,ERRMSG) ; ---- Send alerts for missing field errors
  ;                              TIU*1*81 moved from TIUPEVNT
  N XQA,XQAID,XQADATA,XQAMSG,XQAKILL,XQAROU,TIUI,TIUSUB,TYPE,EVNTDA10
- N NOTEDA
+ N NOTEDA,NOTE0
  ; ---- TIU*1*81 If this is a TIU docmt, get its title for TYPE
  S EVNTDA10=$G(^TIU(8925.4,EVNTDA,1,EVNTDA1,0))
  I $P(EVNTDA10,U)=8925 D
@@ -65,11 +71,15 @@ FLDISP ; ---- Alert follow-up action for missing field errors
  I '+$G(TIULINK) D ^DIE
  ; ---- If TIU Document, do post-filing action send signature alerts
  I DIE="^TIU(8925," D
- . N TIUREC,TIUPOST,DR,DIE,TYPE
+ . N TIUREC,TIUPOST,DR,DIE,TYPE,TIUD12,TIUD13,TIUEBY,TIUAU,TIUEC
  . S TYPE=$S(+$$ISADDNDM^TIULC1(DA):+$G(^TIU(8925,+$P(^TIU(8925,DA,0),U,6),0)),1:+$G(^TIU(8925,DA,0)))
  . S TIUPOST=$$POSTFILE^TIULC1(TYPE)
  . S TIUREC("#")=DA
  . I TIUPOST]"" X TIUPOST I 1
+ . ;if not entered by the author or expected cosigner record VBC Line Count
+ . S TIUD12=$G(^TIU(8925,DA,12)),TIUD13=$G(^(13))
+ . S TIUEBY=$P(TIUD13,U,2),TIUAU=$P(TIUD12,U,2),TIUEC=$P(TIUD13,U,8)
+ . I ((+TIUEBY>0)&(+TIUAU>0))&((TIUEBY'=TIUAU)&(TIUEBY'=TIUEC)) D LINES^TIUSRVPT(DA)
  . D SEND^TIUALRT(DA)
  S TIUFIX=$$FIXED(DIE,+DA,+DR)
  I +$G(TIUFIX)'>0 K XQAKILL Q

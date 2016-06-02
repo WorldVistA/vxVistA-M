@@ -1,5 +1,5 @@
 PSDORN ;BIR/JPW,LTL-Nurse CS Order Request Entry ;12/14/99  16:04
- ;;3.0; CONTROLLED SUBSTANCES ;**20**;13 Feb 97
+ ;;3.0; CONTROLLED SUBSTANCES ;**20,69**;13 Feb 97;Build 13
  ;
  ; Reference to PSD(58.8 supported by DBIA # 2711
  ; Reference to XUSEC( supported by DBIA # 10076
@@ -9,8 +9,8 @@ PSDORN ;BIR/JPW,LTL-Nurse CS Order Request Entry ;12/14/99  16:04
  ; Line tag EN^XQH supported by DBIA # 10074
  ;
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- S OK=$S($D(^XUSEC("PSJ RNURSE",DUZ)):1,$D(^XUSEC("PSJ RPHARM",DUZ)):2,$D(^XUSEC("PSJ PHARM TECH",DUZ)):2,1:0)
- I 'OK W $C(7),!!,?9,"** Please contact your Coordinator for access to order",!,?12,"narcotic supplies.",!!,"PSJ RNURSE, PSJ RPHARM, or PSJ PHARM TECH security key required.",! K OK Q
+ S OK=$S($D(^XUSEC("PSJ RNURSE",DUZ)):1,$D(^XUSEC("PSJ RPHARM",DUZ)):2,$D(^XUSEC("PSJ PHARM TECH",DUZ)):2,$D(^XUSEC("PSD TECH ADV",DUZ)):2,1:0)
+ I 'OK W $C(7),!!,?9,"** Please contact your Coordinator for access to order",!,?12,"narcotic supplies.",!!,"PSJ RNURSE, PSJ RPHARM, PSJ PHARM TECH or PSD TECH ADV security key required.",! K OK Q
  I $P($G(^VA(200,DUZ,20)),U,4)']"" N XQH S XQH="PSD ESIG" D EN^XQH G END
  G:OK=2 ^PSDORP
  S PSDUZ=DUZ,(MSG,MSG1)=0,Y=DT X ^DD("DD") S REQD=Y

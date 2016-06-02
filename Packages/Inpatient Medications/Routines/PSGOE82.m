@@ -1,5 +1,5 @@
 PSGOE82 ;BIR/CML3-NON-VERIFIED ORDER EDIT (CONT.) ;27 Jan 98 / 9:32 AM
- ;;5.0; INPATIENT MEDICATIONS ;**2,35,50,67,58,81,127,168**;16 DEC 97
+ ;;5.0;INPATIENT MEDICATIONS ;**2,35,50,67,58,81,127,168,181,276**;16 DEC 97;Build 3
  ;
  ; Reference to ^DD(53.1 is supported by DBIA #2256.
  ; Reference to ^VA(200 is supported by DBIA #10060.
@@ -41,6 +41,8 @@ A6 W !,"HOSPITAL SUPPLIED SELF MED: " W:PSGHSM]"" $P("NO^YES","^",PSGHSM+1),"// 
  W $C(7) D ENHLP^PSGOEM(53.1,6) G A6
  ;
 2 ; dispense drug multiple
+ ;*276 - Disallow unauthorized nurses from editing Dispense Drug
+ I '$P($G(PSJSYSU),";",4) W !,"You are not authorized to edit Dispense Drugs." D PAUSE^VALM1 Q
  S MSG=0,PSGF2=2,BACK="2^PSGOE82" K PSGOEEND
  N PSGX,PSGXX F PSGXX=0:0 S PSGX=PSGXX,PSGXX=$O(^PS(53.45,PSJSYSP,2,PSGXX)) Q:'PSGXX
  N PSJPNDRN I $G(PSGORD) I $E(PSGORD,$L(PSGORD))="P",$P($G(^PS(53.1,+PSGORD,0)),"^",24)="R" S PSJPNDRN=1 D
@@ -76,11 +78,13 @@ YN ; yes/no as a set of codes
  I X'?.U F Y=1:1:$L(X) I $E(X,Y)?1L S X=$E(X,1,Y-1)_$C($A(X,Y)-32)_$E(X,Y+1,$L(X))
  F Y="NO","YES" I $P(Y,X)="" W $P(Y,X,2) Q
  Q
-DDOC(PSGX) ; Order check on additional dispens drug for allergy and adv. reactions.
- N PSGY,PSGND1,PSGND3 S PSGY=0 F  S PSGX=$O(^PS(53.45,PSJSYSP,2,PSGX)) Q:'PSGX  S PSGY=$P($G(^PS(53.45,PSJSYSP,2,PSGX,0)),"^") Q:PSGY=""  D
+DDOC(PSGX) ; Order check on additional dispense drug for allergy and adv. reactions.
+ N PSGY,PSGND1,PSGND3,PSJALLGY
+ S PSGY=0 F  S PSGX=$O(^PS(53.45,PSJSYSP,2,PSGX)) Q:'PSGX  S PSGY=$P($G(^PS(53.45,PSJSYSP,2,PSGX,0)),"^") Q:PSGY=""  D
  . N INTERVEN,PSJDDI,PSJIREQ,PSJRXREQ,PSJDD,PSGORQF,PSJPDRG S PSJDD=PSGY
  . S Y=1,(PSJIREQ,PSJRXREQ,INTERVEN,X)=""
- . D IVSOL^PSGSICHK
+ . I '$G(PSJALGY1) S PSJALLGY(PSJDD)="" D ALLERGY^PSJOC
+ . ;D IVSOL^PSGSICHK
  . I ($D(PSGORQF)) D
  .. K ^PS(53.45,PSJSYSP,2,PSGX),^PS(53.45,PSJSYSP,2,"B",PSGY)
  Q

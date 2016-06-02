@@ -1,5 +1,5 @@
 PSAVER3 ;BIR/JMB-Verify Invoices - CONT'D ;9/5/97
- ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**3,19,21,64**; 10/24/97;Build 4
+ ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**3,19,21,64,70**; 10/24/97;Build 12
  ;This routine checks for verification errors, prints an error report,
  ;& changes data in DA ORDERS to verification if there are no errors.
  ;
@@ -40,6 +40,7 @@ SETLINE ;Set line as verified if all data is present.
  ;
 SUPPLY ;If it is a supply, automatically verify it.
  I '+$G(PSAERR),PSALNSU,'$G(PSAPRINT) D VERIFY,VERIFY1 Q
+ Q:$G(PSASUP)&(+$G(PSAERR))  ;; <PSA*3*70 RJS
  ;
 NEWDRUG ;Store in array if drug is new to location/vault
  I +PSADRG D

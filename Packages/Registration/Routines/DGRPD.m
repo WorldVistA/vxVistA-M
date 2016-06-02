@@ -1,5 +1,5 @@
 DGRPD ;ALB/MRL/MLR/JAN/LBD/EG/BRM/JRC/BAJ-PATIENT INQUIRY (NEW) ; 05/03/06
- ;;5.3;Registration;**109,124,121,57,161,149,286,358,436,445,489,498,506,513,518,550,545,568,585,677,703,688**;Aug 13, 1993;Build 153
+ ;;5.3;Registration;**109,124,121,57,161,149,286,358,436,445,489,498,506,513,518,550,545,568,585,677,703,688**;Aug 13, 1993;Build 3
  ;  *286*  Newing variables X,Y in OKLINE subroutine
  ;  *358*  If a patient is on a domiciliary ward, don't display MEANS
  ;         TEST required/Medication Copayment Exemption messages
@@ -8,6 +8,8 @@ DGRPD ;ALB/MRL/MLR/JAN/LBD/EG/BRM/JRC/BAJ-PATIENT INQUIRY (NEW) ; 05/03/06
  ;  *545*  Add death information near the remarks field
  ;  *677*  Added Emergency Response
  ;  *688*  Modified to display Country and Foreign Address
+ ;  S18223 Modified to display "Need Interpreter" if data in "Preferred Language" - kt - 20150114
+ ;
 SEL K DFN,DGRPOUT W ! S DIC="^DPT(",DIC(0)="AEQMZ" D ^DIC G Q:Y'>0 S DFN=+Y N Y W ! S DIR(0)="E" D ^DIR G SEL:$D(DTOUT)!($D(DUOUT)) D EN G SEL
 EN ;call to display patient inquiry - input DFN
  ;DSS/MKN - BEGIN MODS - Deveteranization flag VFDVX
@@ -67,18 +69,19 @@ EN ;call to display patient inquiry - input DFN
  I '$$OKLINE^DGRPD1(16) G Q
  ;display cv status #4156
  N DGCV S DGCV=$$CVEDT^DGCV(+DFN)
- ;DSS/MKN - BEGIN MODS - Deveteranization to remove Combat VET Status, 
- ;  Primary Eligibility and Other Eligibilities
+ ;DSS/MKN/SMP - BEGIN MODS - Deveteranization to remove Combat 
+ ;  VET Status, Primary Eligibility and Other Eligibilities
  ;  Original code in argumentless DO
  I 'VFDVX D
  .W !!,?2,"Combat Vet Status: "_$S($P(DGCV,U,3)=1:"ELIGIBLE",$P(DGCV,U,3)="":"NOT ELIGIBLE",1:"EXPIRED") I DGCV>0 W ?45,"End Date: "_$$FMTE^XLFDT($P(DGCV,U,2),"5DZ")
  .;display primary eligibility
  .S X1=DGRP(.36),X=$P(DGRP(.361),"^",1) W !,"Primary Eligibility: ",$S($D(^DIC(8,+X1,0)):$P(^(0),"^",1)_" ("_$S(X="V":"VERIFIED",X="P":"PENDING VERIFICATION",X="R":"PENDING REVERIFICATION",1:"NOT VERIFIED")_")",1:DGRPU)
  .W !,"Other Eligibilities: " F I=0:0 S I=$O(^DIC(8,I)) Q:'I  I $D(^DIC(8,I,0)),I'=+X1 S X=$P(^(0),"^",1)_", " I $D(^DPT("AEL",DFN,I)) W:$X+$L(X)>79 !?21 W X
- ;DSS/MKN - END MODS
  I '$$OKLINE^DGRPD1(16) G Q
  ;employability status
- W !?6,"Unemployable: ",$S($P(DGRP(.3),U,5)="Y":"YES",1:"NO")
+ I 'VFDVX D  ; Remove UNEMPLOYABLE
+ .W !?6,"Unemployable: ",$S($P(DGRP(.3),U,5)="Y":"YES",1:"NO")
+ ;DSS/SMP - End Mods
  ;display the catastrophic disability review date if there is one
  D CATDIS^DGRPD1
  I $G(DGPRFLG)=1 G Q:'$$OKLINE^DGRPD1(19) D
@@ -198,7 +201,10 @@ VFD(FLD) ;DSS/LM - Add Time of Birth and newline in RPC Broker context
  N X,Y,D0,D1,DA,DIERR,VFDER
  S X=$$GET1^DIQ(2,+DFN_",",FLD,,,"VFDER") Q:X=""  Q:$D(DIERR)
  I FLD=21601.01 W ?55," Time of birth: "_X,!
- I FLD=21601.02 W ?3,"Preferred language: "_X
+ ;I FLD=21601.02 W ?3,"Preferred language: "_X
+ I FLD=21601.02 W !,"Preferred language: "_X D  ; 20150109 - KT - changed "?3" to "!",added 'do' code
+ .W ?32,"Needs Interpreter: "
+ .S ANS=$$GET1^DIQ(2,+DFN_",",21601.05,,,"VFDER") S:ANS="" ANS="UNANSWERED" W ANS
  I FLD=21601.03 W ?5,"Preliminary cause of death: " W:$L(X)>55 ! W X
  I FLD=21601.04 W ?5,"Preliminary diagnosis of death: "_X
  Q
@@ -215,4 +221,5 @@ VFD2 ;DSS/LM - Add sub-file 21602 fields
  W !
  Q
  ;
-VX() Q:$T(VX^VFDI0000)="" 0 Q $$VX^VFDI0000["VX"
+VX() ;
+ Q $G(^%ZOSF("ZVX"))["VX"

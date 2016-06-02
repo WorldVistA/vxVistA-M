@@ -1,5 +1,5 @@
 ECSUM2 ;BIR/JLP,RHK-Category and Procedure Summary  (cont'd) ;20 Mar 96
- ;;2.0; EVENT CAPTURE ;**4,19,23**;8 May 96
+ ;;2.0; EVENT CAPTURE ;**4,19,23,104**;8 May 96;Build 7
  ;Prints Categories and Procedures for a DSS Unit
 START S ECPG=1,ECMORE=0 D HEADER I ECC="ALL" D CATS G END
  I 'ECJLP S ECC=0,ECCN="None"
@@ -31,7 +31,7 @@ SETP ;set procs
  S EC2="" I EC4 S EC2=$S($P($G(^SC(EC4,0)),"^")]"":$P(^(0),"^"),1:"NO ASSOCIATED CLINIC")
  S ECFILE=$P(ECP,";",2),ECFILE=$S($E(ECFILE)="I":81,$E(ECFILE)="E":725,1:"UNKNOWN")
  I ECFILE="UNKNOWN" S ECPN="UNKNOWN",NATN="UNKNOWN"
- I ECFILE=81 S ECPN=$S($P($G(^ICPT(+ECP,0)),"^",2)]"":$P(^(0),"^",2),1:"UNKNOWN"),NATN=$S($P($G(^ICPT(+ECP,0)),"^")]"":$P(^(0),"^"),1:"NOT LISTED")
+ I ECFILE=81 S ECPN=$P($$CPT^ICPTCOD(+ECP),"^",3),ECPN=$S(ECPN]"":ECPN,1:"UNKNOWN"),X=$P($$CPT^ICPTCOD(+ECP),"^",2),NATN=$S(X["NO SUCH ENTRY":"NOT LISTED",X="":"NOT LISTED",1:X)
  I ECFILE=725 S ECPN=$S($P($G(^EC(725,+ECP,0)),"^")]"":$P(^(0),"^"),1:"UNKNOWN"),NATN=$S($P($G(^EC(725,+ECP,0)),"^",2)]"":$P(^(0),"^",2),1:"NOT LISTED")
  S ECPN=$S(ECPSYN]"":ECPSYN,1:ECPN)
  W !,?3,"Procedure: ",$E(ECPN,1,30),"   (",$S(ECFILE=81:"CPT",1:"EC"),")",?52,"Nat'l No.: ",NATN

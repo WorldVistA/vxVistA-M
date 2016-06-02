@@ -1,5 +1,5 @@
 SDSCRP ;ALB/JAM - Restricted Stop Code Nonconforming Clinic Report; 07/24/03
- ;;5.3;Scheduling;**317**;Aug 13, 1993
+ ;;5.3;Scheduling;**317,547**;Aug 13, 1993;Build 17
  ;
 EN ;foreground entry point
  N ZTRTN,ZTDESC,ZTIO,ZTQUEUED,SDPCF,DIR,DIRUT,X,Y
@@ -53,11 +53,12 @@ PRN ;print line
  S SDF=1
  Q
  ;
-SCCHK(SCIEN,TYP) ;check stop code against file 40.7
- N SCN,RTY,CTY
+SCCHK(SCIEN,TYP) ;check stop code against file 40.7; var INACT added SD*547
+ N SCN,RTY,CTY,INACT
  K STR
  S CTY=$S(TYP="P":"^P^E^",1:"^S^E^")
- S SCN=$G(^DIC(40.7,SCIEN,0)),RTY=$P(SCN,U,6),SCN=$P(SCN,U,2)
+ S SCN=$G(^DIC(40.7,SCIEN,0)),RTY=$P(SCN,U,6),INACT=$P(SCN,U,3),SCN=$P(SCN,U,2)
+ I INACT S STR=SCN_" Inactivated "_$$FMTE^XLFDT(INACT,2) Q  ;SD*5.3*547
  I SCN="" D  Q
  .S STR=SCIEN_" Inv "_$S(TYP="P":"prim",1:"2nd")_" pointr"
  I RTY="" S STR=SCN_" No restriction type" Q

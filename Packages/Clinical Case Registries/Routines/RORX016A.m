@@ -1,11 +1,25 @@
-RORX016A ;HCIOFO/BH,SG - OUTPATIENT UTILIZATION (QUERY) ; 1/23/06 2:11pm
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORX016A ;HOIFO/BH,SG,VAC - OUTPATIENT UTILIZATION (QUERY) ;4/7/09 2:10pm
+ ;;1.5;CLINICAL CASE REGISTRIES;**8,13,19**;Feb 17, 2006;Build 43
  ;
  ; This routine uses the following IAs:
  ;
  ; #557          Read access to the file #40.7 (controlled)
- ; #2548         ACRP Interface Toolkit (supported)
+ ; #2548         APIs in routine SDQ: ACRP Interface Toolkit (supported)
+ ; #10103        FMADD^XLFDT (supported)
  ;
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                 --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*8    MAR 2010    V CARR       Modified to handle ICD9 filter for
+ ;                                      'include' or 'exclude'.
+ ;ROR*1.5*13   DEC 2010    A SAUNDERS   User can select specific patients
+ ;ROR*1.5*19   FEB 2012    J SCOTT      Support for ICD-10 Coding System
+ ;
+ ;******************************************************************************
+ ;******************************************************************************
  Q
  ;
  ;***** LOADS AND PROCESSES THE OUTPATIENT DATA
@@ -46,21 +60,31 @@ QUERY(FLAGS) ;
  N RORPTN        ; Number of patients in the registry
  ;
  N CNT,ECNT,IEN,IENS,PATIEN,RC,TMP,VA,VADM,XREFNODE
+ N RCC,FLAG
  S XREFNODE=$NA(^RORDATA(798,"AC",+RORREG))
  S RORPTN=$$REGSIZE^RORUTL02(+RORREG)  S:RORPTN<0 RORPTN=0
  S ROREDT1=$$FMADD^XLFDT(ROREDT,1)
  S (CNT,ECNT,RC)=0
  ;--- Browse through the registry records
  S IEN=0
+ S FLAG=$G(RORTSK("PARAMS","ICDFILT","A","FILTER"))
  F  S IEN=$O(@XREFNODE@(IEN))  Q:IEN'>0  D  Q:RC<0
  . S TMP=$S(RORPTN>0:CNT/RORPTN,1:"")
  . S RC=$$LOOP^RORTSK01(TMP)  Q:RC<0
  . S IENS=IEN_",",CNT=CNT+1
+ . ;--- Get the patient DFN
+ . S PATIEN=$$PTIEN^RORUTL01(IEN)  Q:PATIEN'>0
+ . ;--- Check for patient list and quit if not in list
+ . I $D(RORTSK("PARAMS","PATIENTS","C")),'$D(RORTSK("PARAMS","PATIENTS","C",PATIEN)) Q
  . ;--- Check if the patient should be skipped
  . Q:$$SKIP^RORXU005(IEN,FLAGS,RORSDT,ROREDT)
- . ;
- . ;--- Get the patient IEN (DFN)
- . S PATIEN=$$PTIEN^RORUTL01(IEN)  Q:PATIEN'>0
+ . ;--- Check the patient against the ICD Filter
+ . S RCC=0
+ . I FLAG'="ALL" D
+ . . S RCC=$$ICD^RORXU010(PATIEN)
+ . I (FLAG="INCLUDE")&(RCC=0) Q
+ . I (FLAG="EXCLUDE")&(RCC=1) Q
+ . ;--- End of ICD Filter check
  . ;
  . ;--- Get the patient's data
  . D VADEM^RORUTL05(PATIEN,1)
@@ -79,7 +103,7 @@ QUERY(FLAGS) ;
  ;***** CALLBACK ENTRY POINT FOR ACRP API
 SCAN(Y,Y0) ;
  N DTX,STOP,TMP
- ;--- Check the division
+ ;--- Check the division list
  S TMP=$$PARAM^RORTSK01("DIVISIONS","ALL")
  I 'TMP  Q:'$D(RORTSK("PARAMS","DIVISIONS","C",+$P(Y0,U,11)))
  ;--- Data comes from the OUTPATIENT ENCOUNTER file (409.68)

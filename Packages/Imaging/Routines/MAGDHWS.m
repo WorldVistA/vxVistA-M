@@ -1,5 +1,5 @@
-MAGDHWS ;WOIFO/PMK - Capture Consult/GMRC data ; 03/16/2007 12:48
- ;;3.0;IMAGING;**10,11,51,84,85**;16-March-2007;;Build 1039
+MAGDHWS ;WOIFO/PMK - Capture Consult/GMRC data ; 05/18/2007 11:23
+ ;;3.0;IMAGING;**10,11,51,84,85,54**;03-July-2009;;Build 1424
  ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -26,8 +26,8 @@ MAGDHWS ;WOIFO/PMK - Capture Consult/GMRC data ; 03/16/2007 12:48
  Q:$P($G(SDATA("AFTER","STATUS")),"^",3)=""  ; Not a valid appointment
  ;
  D INIT^MAGDHW0 ; initialize variables
- D NOW^%DTC S FMDATE=%\1,FMDATETM=%
- S %H=%H-90 D TT^%DTC S CUTOFF=X ; cutoff date is 90 days ago
+ S FMDATETM=$$NOW^XLFDT(),FMDATE=FMDATETM\1
+ S CUTOFF=$$HTFM^XLFDT($H-90) ; cutoff date is 90 days ago
  S DFN=$P(SDATA,"^",2),DATETIME=$P(SDATA,"^",3),CLINIC=$P(SDATA,"^",4)
  S APTSCHED("CLINIC IEN")=CLINIC,APTSCHED("FM DATETIME")=DATETIME
  S AFTERSTS=SDATA("AFTER","STATUS"),X=$P(AFTERSTS,"^",3)

@@ -1,6 +1,25 @@
-RORX003 ;HCIOFO/SG - GENERAL UTILIZATION AND DEMOGRAPHICS ; 11/14/06 8:50am
- ;;1.5;CLINICAL CASE REGISTRIES;**1**;Feb 17, 2006;Build 24
+RORX003 ;HOIFO/SG,VAC - GENERAL UTILIZATION AND DEMOGRAPHICS ;4/7/09 2:06pm
+ ;;1.5;CLINICAL CASE REGISTRIES;**1,8,13,19,21**;Feb 17, 2006;Build 45
  ;
+ ; This routine uses the following IAs:
+ ;
+ ; #10103  FMADD^XLFDT, FMDIFF^XLFDT, FMTE^XLFDT (supported)
+ ;
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                 --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*8    MAR  2010   V CARR       Modified to handle ICD9 filter for
+ ;                                      'include' or 'exclude'.
+ ;ROR*1.5*13   DEC  2010   A SAUNDERS   User can select specific patients,
+ ;                                      clinics, or divisions for the report.
+ ;ROR*1.5*19   FEB  2012   K GUPTA      Support for ICD-10 Coding System
+ ;ROR*1.5*21   SEP 2013    T KOPP       Added ICN as last report column if
+ ;                                      additional identifier option selected
+ ;******************************************************************************
+ ;******************************************************************************
  Q
  ;
  ;***** OUTPUTS THE REPORT HEADER
@@ -37,6 +56,8 @@ HEADER(PARTAG) ;
  . Q:'$$OPTCOL^RORXU006(NAME)
  . S TMP=$$ADDVAL^RORTSK11(RORTSK,"COLUMN",,COLUMNS)
  . D ADDATTR^RORTSK11(RORTSK,TMP,"NAME",NAME)
+ ; --- ICN if selected must be last column on report
+ I $$PARAM^RORTSK01("PATIENTS","ICN") D ICNHDR^RORXU006(RORTSK,COLUMNS)
  ;---
  S:$$OPTCOL^RORXU006("CONFDT") RORFL798=RORFL798_";2"
  S:$$OPTCOL^RORXU006("SELDT") RORFL798=RORFL798_";3.2"
@@ -63,8 +84,12 @@ UTLDMG(RORTSK) ;
  N RORSUM        ; Summary data
  N RORUTIL       ; Requested utilization types
  N RORUCNT       ; Utilization counters
+ N RORCDLIST     ; Flag to indicate whether a clinic or division list exists
+ N RORCDSTDT     ; Start date for clinic/division utilization search
+ N RORCDENDT     ; End date for clinic/division utilization search
  ;
  N CNT,ECNT,IEN,IENS,PARAMS,PATIENTS,RC,REPORT,RORPTN,SFLAGS,TMP,XREFNODE
+ N RCC,FLAG,DFN
  ;--- Root node of the report
  S REPORT=$$ADDVAL^RORTSK11(RORTSK,"REPORT")
  Q:REPORT<0 REPORT
@@ -93,6 +118,11 @@ UTLDMG(RORTSK) ;
  S RORAGEDT=$$FMADD^XLFDT(RORSDT,TMP\2)
  S RORDTE0=$P($$FMTE^XLFDT(DT,7),"/")-10  ; 10 year "sliding window"
  ;
+ S FLAG=$G(RORTSK("PARAMS","ICDFILT","A","FILTER"))
+ ;
+ ;=== Set up Clinic/Division list parameters
+ S RORCDLIST=$$CDPARMS^RORXU001(.RORTSK,.RORCDSTDT,.RORCDENDT)
+ ;
  D
  . ;=== Report header
  . S RC=$$HEADER(REPORT)  Q:RC<0
@@ -104,11 +134,25 @@ UTLDMG(RORTSK) ;
  . D TPPSETUP^RORTSK01(95)
  . S (CNT,IEN,RC)=0
  . F  S IEN=$O(@XREFNODE@(IEN))  Q:IEN'>0  D  Q:RC<0
+ . . ;--- Calculate 'progress' for the GUI display
  . . S TMP=$S(RORPTN>0:CNT/RORPTN,1:"")
  . . S RC=$$LOOP^RORTSK01(TMP)  Q:RC<0
  . . S IENS=IEN_",",CNT=CNT+1
+ . . ;-- Get patient DFN
+ . . S DFN=$$PTIEN^RORUTL01(IEN) Q:DFN'>0
+ . . ;--- Check for patient list and quit if not in list
+ . . I $D(RORTSK("PARAMS","PATIENTS","C")),'$D(RORTSK("PARAMS","PATIENTS","C",DFN)) Q
  . . ;--- Check if the patient should be skipped
  . . Q:$$SKIP^RORXU005(IEN,SFLAGS,RORSDT,ROREDT)
+ . . ;--- Check if the ICD Filter includes or excludes the patient
+ . . S RCC=0
+ . . I FLAG'="ALL" D
+ . . . S RCC=$$ICD^RORXU010(DFN)
+ . . I (FLAG="INCLUDE")&(RCC=0) Q
+ . . I (FLAG="EXCLUDE")&(RCC=1) Q
+ . . ;--- End of ICD check.
+ . . ;--- Check for Clinic or Division list and quit if not in list
+ . . I RORCDLIST,'$$CDUTIL^RORXU001(.RORTSK,DFN,RORCDSTDT,RORCDENDT) Q
  . . ;--- Process the registry record
  . . S TMP=$$PATIENT^RORX003A(IENS,PATIENTS)
  . . I TMP<0  S ECNT=ECNT+1  Q

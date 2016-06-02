@@ -1,5 +1,5 @@
 IBCNBLA1 ;ALB/ARH - Ins Buffer: LM action calls (cont) ;1 Jun 97
- ;;2.0;INTEGRATED BILLING;**82,133,149,184,252,271,416**;21-MAR-94;Build 58
+ ;;2.0;INTEGRATED BILLING;**82,133,149,184,252,271,416,438,506**;21-MAR-94;Build 74
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
 ADDBUF ; add a new buffer entry protocol
@@ -202,3 +202,43 @@ INPTTR(FILE,FLD,X) ; Does value X pass input transform for file, field?
  S XCUTE=$$GET1^DID(FILE,FLD,,"INPUT TRANSFORM")
  X XCUTE
  Q $D(X)
+ ;
+ICB(IBBUFDA) ;called by ICB to update eIV status flag (symbol) in the insurance buffer entry
+ ;
+ N SYM,ERR
+ S SYM=$$GET1^DIQ(355.33,IBBUFDA,.12,"I") Q:'SYM
+ I $$SYMBOL^IBCNBLL(IBBUFDA)="*" Q  ;don't update if manually verified
+ ; Determine if Expand Entry is allowed to update the eIV Status
+ I '$P($G(^IBE(365.15,SYM,0)),U,3) Q
+ ; If the current IIV Status allows updates by Expand Entry, then
+ ; invoke the function that tries to find a valid payer
+ S ERR=$$INSERROR^IBCNEUT3("B",IBBUFDA,1)
+ ; If no errors, then remove the eIV Status
+ I 'ERR S ERR=$$SIDERR^IBCNBLE1(IBBUFDA,$P(ERR,U,2))
+ I 'ERR D CLEAR^IBCNEUT4(IBBUFDA)
+ ; If errors found, then update with the new IIV Status
+ I ERR D BUFF^IBCNEUT2(IBBUFDA,$P(ERR,U,1))
+ Q
+ ;
+ESC(IBBUFDA,IBKEYS) ; Escalate to user with ability to edit Insurance/Group data
+ N DIE,DR,DA,DIR,X,Y,IBX,CODE Q:'$G(IBBUFDA)
+ D FULL^VALM1 S VALMBCK="R"
+ W ! D DISPBUF^IBCNBU1(IBBUFDA)
+ I IBKEYS D  G ESCX
+ . W !!,"This action can only be taken by users that do not have either the IB INSURANCE",!,"COMPANY EDIT security key or the IB GROUP PLAN EDIT security key.",!
+ . D PAUSE^VALM1
+ W !!,"This action will escalate the buffer entry to a level with the ability to edit",!,"insurance and/or group data.",!
+ ;
+ S IBX=$G(^IBA(355.33,IBBUFDA,0)) I +$P(IBX,U,10) W !!,"This entry has been verified by ",$$EXPAND^IBTRE(355.33,.11,$P(IBX,U,11))," on ",$$FMTE^XLFDT($P(IBX,U,10)),".",!!
+ ;
+ S DIR("?")="Enter Yes to escalate this buffer entry."
+ S DIR(0)="YO",DIR("B")="N",DIR("A")="Escalate this buffer entry"
+ D ^DIR
+ I $D(DIRUT) G ESCX
+ I Y=1 D
+ . S DIE=355.33,DA=IBBUFDA,CODE="E1"
+ . S DR=".12///^S X=CODE"
+ . D ^DIE
+ . S VALMBCK="Q" D UPDLN^IBCNBLL(IBBUFDA,"EDITED")
+ESCX ;
+ Q

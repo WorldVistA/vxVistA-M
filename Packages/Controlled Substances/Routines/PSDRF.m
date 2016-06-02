@@ -1,5 +1,5 @@
 PSDRF ;BIR/JPW,LTL - Nurse RF Dispensing ; 8 Aug 94
- ;;3.0; CONTROLLED SUBSTANCES ;**25,51,60**;13 Feb 97
+ ;;3.0; CONTROLLED SUBSTANCES ;**25,51,60,68**;13 Feb 97;Build 12
  ;Reference to ^PSD(58.8 are covered by DBIA #2711
  ;Reference to ^PSD(58.81 are covered by DBIA #2808
  ;Reference to ^PSDRUG( are covered by DBIA #221
@@ -34,14 +34,14 @@ DRUG ;select drug
  I $O(^PSD(58.81,"D",Y,0)) D
  .S PSD=0
  .F  S PSD=$O(^PSD(58.81,"D",Y,PSD)) Q:'PSD  S PSD(1)=$G(^PSD(58.81,PSD,0)) I $P(PSD(1),U,11)>3,$P(PSD(1),U,18)=NAOU S PSDR=$P(PSD(1),U,5),PSDPN=$P(PSD(1),U,17),PSDTYP=17
- I $D(PSDR),PSDR'=Y D
+ I $D(PSDR),PSDR'=Y D  G:$G(PSDEND) END
  .I $D(^PSDRUG(Y)),$D(^PSD(58.8,NAOU,1,Y)) D
  ..S PSDDT=$$FMDIFF^DILIBF(DT,$P(PSD(1),U,4),"")
- ..I PSDDT>365 S PSDR=Y
+ ..I PSDDT>365 S PSDR=Y,PSDPN="" ;;<*68 - RJS
  .I '$D(^PSDRUG(Y)),$D(PSD(1)) D
  ..S PSDDT=$$FMDIFF^DILIBF(DT,$P(PSD(1),U,4),"")
  ..I PSDDT>365 K PSDR
- .I '$D(^PSDRUG(Y)),'$D(^PSD(58.8,NAOU,1,Y)),'$D(PSDR) W $C(7),!!,"This is not a valid Pharmacy Dispensing number for this ward.",!! G END
+ .I '$D(^PSDRUG(Y)),'$D(^PSD(58.8,NAOU,1,Y)),'$D(PSDR) W $C(7),!!,"This is not a valid Pharmacy Dispensing number for this ward.",!! S PSDEND=1
  D:'$G(PSDR)  G:$D(DTOUT)!($D(DUOUT)) END G:Y<1 PATIENT
  .S DIC="^PSD(58.8,NAOU,1,",DIC(0)="EMQSZ",DA(1)=NAOU
  .W ! D ^DIC K DIC I $D(DTOUT)!($D(DUOUT))!(Y<1) W $C(7),!!,"This is not a valid Pharmacy Dispensing number for this ward.",!! Q
@@ -73,7 +73,7 @@ WIT .W:$G(NUR2(1)) !,"OK, sixty more seconds, but that's it.",!
  W !!,"Remaining Balance: ",$P(PSDR(1),U,4)-PSDQ," ",$P(PSDR(1),U,8)
  D UPDAT^PSDRF1 G DRUG
 END W:$G(PSDOUT) !!,"No dose signed out.",$C(7),!! K %,%DT,%H,%I,CNT,CNT1,DA,DIC,DIE,DINUM,DIR,DIROUT,DIRUT,DIWF,DIWL,DIWR,DR,DTOUT,DUOUT,LN,MSG,MSG1
- K NAOU,NAOUN,NBKU,NPKG,NUR2,OK,OKTYP,ORD,PAT,PSDA,PSDEM,PSDOUT,PSDQTY,PSDRD,PSDR,PSDRN,PSDS,PSDT,PSDUZ,PSDUZN,REQD,TEXT,TYPE,WORD,X,Y
+ K NAOU,NAOUN,NBKU,NPKG,NUR1,NUR2,OK,OKTYP,ORD,PAT,PSDA,PSDEM,PSDEND,PSDOUT,PSDQTY,PSDRD,PSDR,PSDRN,PSDS,PSDT,PSDUZ,PSDUZN,OQTY,REQD,TEXT,TYPE,WORD,X,Y
  Q
 MSG ;display error message
  W $C(7),!!,?10,"Contact your Pharmacy Coordinator.",!,?10,"This "_$S(MSG=2:"Dispensing Site",MSG=1:"NAOU",1:"Drug")_" is missing "

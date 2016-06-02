@@ -1,6 +1,6 @@
-VFDGMVI ;DSS/LM - vxVistA Vitals RPCs ;July 9, 2010
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;**2**;11 Jun 2013
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
+VFDGMVI ;DSS/LM - vxVistA Vitals RPCs ;March 18, 2015
+ ;;2013.1;DSS,INC VXVISTA OPEN SOURCE;**2,33**;11 Jun 2013;Build 2
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ;
  Q
 GET(VFDRSLT,VFDFN,VFDVDA,VFDQDA,VFDRNG) ;VFD GET VITALS MEASUREMENTS
@@ -115,12 +115,15 @@ VDT(VFDFN,VFDT) ;[Private] Date/time resolution
  ;
 DWM(VFDT,VFDOFF) ;[Private] Wrap classic Fileman ^%DT procedure
  ;VFDT=[Required] Fileman Date +/- xxx D/W/M
- ;Precision is DAYS
+ ;Precision is DAYS [For month offsets, returns same day number]
  ;
  S VFDT=$G(VFDT) Q:VFDT<0 +VFDT N VFD,VFDC,VFDD S VFDC=+VFDT
+ S VFDOFF=$G(VFDOFF) ;VFD*2013.1*33 - Next is special for months
+ I $$UP^XLFSTR($E(VFDOFF,$L(VFDOFF)))="M" Q $$MADD(VFDT,+VFDOFF)
  N %DT,X,Y S %DT="",X="T"_VFDOFF D ^%DT ;Y=Fileman Date(TODAY+VFDOFF)
- S VFDD=$$FMDIFF^XLFDT(Y,DT) ;VFDD=VFDOFF in days
- Q $$FMADD^XLFDT(VFDC,VFDD,0,0,0) ;VFDT+VFDOFF
+ N VFDRSLT,VFDKEEP S VFDD=$$FMDIFF^XLFDT(Y,DT) ;VFDD=VFDOFF in days
+ S (VFDRSLT,VFDKEEP)=$$FMADD^XLFDT(VFDC,VFDD,0,0,0) ;VFDT+VFDOFF
+ Q VFDRSLT
  ;
 HMS(VFDT,VFDOFF) ;[Private] Wrap $$FMADD^XLFDT
  ;VFDT=[Required] Fileman Date[/time] +/- xxx h/m/s
@@ -136,4 +139,28 @@ DMHS(VFDT,VFDOFF) ;[Private] Wrap $$SCH^XLFDT
  I VFDO="M",VFDOFF>99 Q $$DMHS($$SCH^XLFDT("99M",+VFDT),(VFDOFF-99)_"M")
  S VFDY=$$SCH^XLFDT($$UP^XLFSTR(VFDOFF),+VFDT) ;$$SCH^XLFDT returns DATE + .24
  Q $S(VFDY?.E1".24":$$FMADD^XLFDT($P(VFDY,"."),0,24),1:VFDY)
+ ;
+MADD(VFDT,VFDM) ;[Private] - Add/subtract a whole number of months
+ ; to/from Fileman date VFDT
+ ;
+ ; VFDT=[Required] Base date
+ ; VFDM=[Required] Signed whole number of months
+ ;
+ ; This special purpose function replaces a previous method that
+ ; converted months to days, then added or subtracted days, and
+ ; finally adjusting the day number.
+ ;
+ S VFDT=$G(VFDT),VFDM=+$G(VFDM) I VFDT=+VFDT,VFDM'=0 N D,M,VFDX,Y
+ E  Q "" ;Invalid parameter
+ S Y=$E(VFDT,1,3),M=$E(VFDT,4,5),D=$E(VFDT,6,7)
+ N AY,AM,ADD S ADD=(VFDM>0) S:'ADD VFDM=-VFDM S AY=VFDM\12,AM=VFDM#12
+ N TY,TM,TD S TY=$S(ADD:Y+AY,1:Y-AY) ;First approximation to year
+ I ADD S TM=M+AM S:TM>12 TY=TY+1,TM=TM#12 S:'TM TM=12,TY=TY-1
+ E  S TM=M-AM,TY=Y-AY S:TM<1 TM=TM+12,TY=TY-1 ;First approximation to month
+ S TM=$TR($J(TM,2)," ",0),TY=$TR($J(TY,3)," ",0),TD=D
+ N DPM S DPM="31^28^31^30^31^30^31^31^30^31^30^31" ;Ordinary year
+ ; Ignore Leap Century for now - Will be 'Year 2100 problem'
+ I '(TD>$P(DPM,U,TM))!(TD=29&'(TY#4)) Q TY_TM_TD ;Most cases
+ N DELTA S DELTA=D-$P(DPM,U,TM) ;Necessarily positive
+ Q $$FMADD^XLFDT(TY_TM_$P(DPM,U,TM),DELTA,0,0,0)
  ;

@@ -1,5 +1,5 @@
-PSGOE9 ;BIR/CML3-EDIT ORDERS IN 55 ;13 May 98 / 7:58 AM
- ;;5.0; INPATIENT MEDICATIONS ;**11,47,50,72,110,111,188,192,207,113**;16 DEC 97;Build 63
+PSGOE9 ;BIR/CML3-EDIT ORDERS IN 55 ; 7/6/11 9:45am
+ ;;5.0;INPATIENT MEDICATIONS ;**11,47,50,72,110,111,188,192,207,113,223,269**;16 DEC 97;Build 2
  ;
  ; Reference to ^PS(50.7 is supported by DBIA# 2180
  ; Reference to ^PS(51.1 is supported by DBIA 2177
@@ -21,6 +21,7 @@ A101 ;
  I $E(X)="^" D ENFF^PSGOE92 G:Y>0 @Y G A101
  ;BHW;PSJ*5.0*192;Modify ^DIC call to use MIX^DIC and only B/C cross-references
  K DIC,D S DIC="^PS(50.7,",DIC(0)="EMQZ",DIC("S")="I $$ENOISC^PSJUTL(Y,""U"")",D="B^C" D MIX^DIC1 K DIC,D I Y'>0 G A101
+ I +Y=PSGPD G DONE  ;PSJ*5*269 - No change to Orderable Item
  F  S %=2 D DH^PSGOE8,YN^DICN Q:%
  I %'=1 G A101
  S (PSGPDRG,PSGPD)=+Y,(PSGPDN,PSGPDRGN)=$$OINAME^PSJLMUTL(PSGPDRG)
@@ -70,6 +71,10 @@ A7 I $G(PSGP),$G(PSGORD) I $$COMPLEX^PSJOE(PSGP,PSGORD) D
  I $$PRNOK^PSGS0($G(PSGSCH)),X="C" W "  ??" G A7
  I X="@"!(X?1."?") W:X="@" $C(7),"  (Required)" S:X="@" X="?" D ENHLP^PSGOEM(55.06,7) G A7
  I $E(X)="^" D ENFF^PSGOE92 G:Y>0 @Y G A7
+ ;*223 Don't allow O sched type on C orders
+ I X="O",$$SCHTP^PSGOE8(PSGSCH)'="O" W !,"  SCHEDULE ("_PSGSCH_") is not a ONE TIME Schedule." G A7
+ ;*269 Don't allow C sched type on O orders
+ I X="C",$$SCHTP^PSGOE8(PSGSCH)="O" W !,"  SCHEDULE ("_PSGSCH_") is not a CONTINUOUS Schedule." G A7
  S PSGOST=PSGST
  S PSGST=X,PSGSTN=$$ENSTN^PSGMI(X) W:PSGSTN]"" "  ",PSGSTN
  I X="P",$G(PSGAT)]"" S PSGOAT=PSGAT S PSGAT="" D

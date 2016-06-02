@@ -1,5 +1,5 @@
-ORWDBA3 ; SLC/GSS Billing Awareness (CIDC) [8/20/03 9:19am]
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**190,195,243**;Dec 17, 1997;Build 242
+ORWDBA3 ; SLC/GSS Billing Awareness (CIDC) [8/20/03 9:19am] ;05/23/12  10:36
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**190,195,243,361**;Dec 17, 1997;Build 29
  ;
 ORFMDAT(ORDFN) ; Return date in FM format regarding order for CSV/CTD/HIPAA
  ; Pass in Order IEN
@@ -41,9 +41,12 @@ DISPLAY ; Display of BA data from original copied order (ORIT = ORIEN)
  ; Get GUI and GBL Treatment Factor sequence strings
  D TFSTGS^ORWDBA1
  ; Assumes SC will always be first in sequence! - not likely to change
- S ILST=ILST+1
- S LST(ILST)="Service Connected:"_$S($E(CUN)="C":"YES",1:"NO")
- D FRMTLST
+ ;DSS/SMP - BEGIN MODS - Remove "Service Connected"
+ I $G(^%ZOSF("ZVX"))'["VX" D
+ .S ILST=ILST+1
+ .S LST(ILST)="Service Connected:"_$S($E(CUN)="C":"YES",1:"NO")
+ .D FRMTLST
+ ;DSS/SMP - END MODS
  S ILST=ILST+1,LST(ILST)="Treatment Factors:"
  ; If no TxF's (no 'C'hecked) {SC output above} then output '<none>'
  I '$F($E(CUN,2,NTF),"C") S LST(ILST)=LST(ILST)_"<none>" D FRMTLST Q
@@ -115,7 +118,7 @@ DG1(ORDFN,COUNTER,CTVALUE) ; Create DG1 segment(s) & make call for ZCL seg.
  . ;   was previously entered .. but just in case ...)
  . S (DXV,ICD9)=""
  . I DXIEN'="" D
- .. S DXR=$$ICDDX^ICDCODE(DXIEN,ORFMDAT) Q:+DXR=-1
+ .. S DXR=$$ICDDATA^ICDXCODE("DIAGNOSIS",DXIEN,ORFMDAT) Q:+DXR=-1
  .. ; Get diagnosis verbiage and ICD code
  .. S DXV=$P(DXR,U,4),ICD9=$P(DXR,U,2)
  . S FROMFILE=80

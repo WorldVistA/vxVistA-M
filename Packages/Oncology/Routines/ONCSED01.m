@@ -1,5 +1,5 @@
 ONCSED01 ;Hines OIFO/SG - EDITS 'RUN BATCH' REQUEST ; 11/6/06 11:48am
- ;;2.11;ONCOLOGY;**47**;Mar 07, 1995;Build 19
+ ;;2.2;ONCOLOGY;**1**;Jul 31, 2013;Build 8
  ;
  ;--- SOAP REQUST TO THE ONCOLOGY WEB SERVICE
  ;
@@ -9,7 +9,7 @@ ONCSED01 ;Hines OIFO/SG - EDITS 'RUN BATCH' REQUEST ; 11/6/06 11:48am
  ;   soap:encodingStyle="http://www.w3.org/2001/12/soap-encoding">
  ;   <soap:Body>
  ;     <ED-RUN-BATCH [edits-config="..."] ver="2.0"
- ;       xmlns="http://vista.med.va.gov/oncology">
+ ;       xmlns="http://vista.domain.ext/oncology">
  ;       <NAACCR-RECORD> ... </NAACCR-RECORD>
  ;     </ED-RUN-BATCH>
  ;   </soap:Body >

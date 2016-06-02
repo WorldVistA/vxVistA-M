@@ -1,8 +1,10 @@
 PSDLBLR ;BIR/JPW-CS Label Reprint for CS Disp Drug ; 29 Aug 94
- ;;3.0; CONTROLLED SUBSTANCES ;;13 Feb 97
+ ;;3.0; CONTROLLED SUBSTANCES ;**69**;13 Feb 97;Build 13
+ ;References to ^PSD(58.8, covered by DBIA2711
+ ;
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- S OK=$S($D(^XUSEC("PSJ RPHARM",DUZ)):1,$D(^XUSEC("PSJ PHARM TECH",DUZ)):1,1:0)
- I 'OK W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to",!,?12,"print CS dispensing labels.",!!,"PSJ RPHARM or PSJ PHARM TECH security key required.",! K OK Q
+ S OK=$S($D(^XUSEC("PSJ RPHARM",DUZ)):1,$D(^XUSEC("PSJ PHARM TECH",DUZ)):1,$D(^XUSEC("PSD TECH ADV",DUZ)):1,1:0)
+ I 'OK W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to",!,?12,"print CS dispensing labels.",!!,"PSJ RPHARM, PSJ PHARM TECH or PSD TECH ADV security key required.",! K OK Q
  W !!,"Green Sheets/Transactions that have a status of FILLED - NOT DELIVERED",!,"or DELIVERED - ACTIVELY ON NAOU will be reprinted for a given number range.",!!
 GS ;ask disp number range
  S PSDS=$P(PSDSITE,U,3),PSDSN=$P(PSDSITE,U,4)

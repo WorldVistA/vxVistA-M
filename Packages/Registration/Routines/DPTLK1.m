@@ -1,5 +1,5 @@
 DPTLK1 ;ALB/RMO,EG - MAS Patient Look-up Check Cross-References ; 08/15/2006
- ;;5.3;Registration;**32,50,197,249,317,391,244,532,574,620,641,680,538,657**;Aug 13, 1993;Build 19
+ ;;5.3;Registration;**32,50,197,249,317,391,244,532,574,620,641,680,538,657**;Aug 13, 1993;Build 20
 FIND ;Cross reference patient lookup
  ;Optional input: DPTNOFZY='1' to suppress fuzzy lookups implemented
  ;                by patch DG*5.3*244
@@ -167,7 +167,10 @@ SSN(DFN) ;do not show ssn identifier for patient
  .; DG*5.3*657 BAJ 11/20 2005
  .; display Pseudo SSN alert on list
  .I SSN?9N1"P" S SSN=SSN_" **Pseudo SSN**"
- .Q 
+ .;DSS/SMP - BEGIN MOD
+ .I $G(^%ZOSF("ZVX"))["VX" S SSN=$$ID^VFDDFN(DFN,,,,1,3)
+ .;DSS/SMP - END MOD
+ .Q
  Q SSN
  ;
 DOB(DFN,DGYR) ;do not show dob identifier for patient

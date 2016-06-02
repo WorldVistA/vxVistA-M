@@ -1,5 +1,5 @@
-MPIFQ0 ;ALB/RJS-QUERY HANDLER TOP LEVEL ;JUL 11, 1997
- ;;1.0; MASTER PATIENT INDEX VISTA ;**1,3,8,14,13,16,17,21,20,24,26,28,31,33,35,38,43**;30 Apr 99
+MPIFQ0 ;ALB/RJS-QUERY HANDLER TOP LEVEL ; 9/12/12 3:01pm
+ ;;1.0;MASTER PATIENT INDEX VISTA;**1,3,8,14,13,16,17,21,20,24,26,28,31,33,35,38,43,52,54,56**;30 Apr 99;Build 18
  ;
  ; Integration Agreements utilized:
  ;  EXC, START and STOP^RGHLLOG - #2796
@@ -25,9 +25,9 @@ CIRNEXC ; Exception Entry Point
  ;MPIQRYNM="VTQ_PID_ICN_NO_LOAD" **43 CHANGING QUERY NAME
  G JUMP
 VTQ G:$G(DFN)']"" END
- ;DSS/LM - Begin Mod - Disable Connect to MPI
- G EXIT
- ;DSS/LM - Mod End
+ ;DSS/SMP - BEGIN MOD - Conditionally disable MPI connect
+ I $G(^%ZOSF("ZVX"))["VX" G EXIT
+ ;DSS/SMP - END MOD
  N LOCDATA ;Data Returned from GETDATA in ICN array
  D GETDATA("^DPT(",DFN,"LOCDATA",".01;.02;.03;.09;.301;391;1901")
  S LOCDATA(2,DFN,991.01)=$P($$MPINODE^MPIFAPI(DFN),"^"),TSSN=LOCDATA(2,DFN,.09)
@@ -72,9 +72,7 @@ DECIDE ;If no data in ^TMP that means the patient was not found in the MPI w/VTQ
  .I '$D(MPIFS) W:'$D(MPIFRPC) !!,"Exact match for Patient was not found in the MPI..."
  .D A28^MPIFQ3(DFN) S MPIFRTN="DID A28"
  .;**43 log potential match exception if exist
- .I MPIPOT=1 D
- ..D START^RGHLLOG(0),EXC^RGHLLOG(218,"Potential match(es) found, please review via MPI/PD Exception Handler",DFN),STOP^RGHLLOG(0)
- ..K MPIPOT
+ .;**52 removed all references to logging of Potential Matches because that will be done via a remote RPC in the Probabilistic Search flow on the MPI
  ;If INDEX=1 it means we got 1 match check SSN see if definitely same pt
  I (INDEX=1) D  G EXIT
  .;**43 Removed &(TSSN=SSN) from line above as there will only be an exact match returned now
@@ -83,8 +81,12 @@ DECIDE ;If no data in ^TMP that means the patient was not found in the MPI w/VTQ
  .D START^RGHLLOG(0)
  .S TICN=$$GETDFN^MPIF001(+ICN)
  .I TICN>0,DFN'=TICN D
- ..D TWODFNS^MPIF002(TICN,DFN,ICN) S TWODFN=1
- ..I '$D(MPIFS) W:'$D(MPIFRPC) !!,"Exception logged, another patient has the ICN returned already, requesting new ICN for this patient..."
+ ..; call the new DUPLICATE RECORD MERGE ADD API (see section 3.2.1.2)
+ ..N XDRSLT,XDRLST,XDRFL
+ ..S XDRFL=2,XDRLST(1)=TICN_"^"_DFN
+ ..D ADD^XDRDADDS(.XDRSLT,XDRFL,.XDRLST) S TWODFN=1
+ ..;D TWODFNS^MPIF002(TICN,DFN,ICN) S TWODFN=1
+ ..;I '$D(MPIFS) W:'$D(MPIFRPC) !!,"Exception logged, another patient has the ICN returned already, requesting new ICN for this patient..."
  ..D A28^MPIFQ3(DFN),STOP^RGHLLOG(0) S MPIFRTN="Did A28" Q
  .;I TICN>0&(DFN'=TICN)
  .; CHECK IF NAME IS SAME - IF NOT POTENTIAL MATCH EXCEPTION
@@ -102,7 +104,7 @@ DECIDE ;If no data in ^TMP that means the patient was not found in the MPI w/VTQ
  .;I '$D(EXC) S EXC=214,TEXT="Name fields don't match between site and MPI for DFN "_DFN
  .;I $D(MPIFINT) D START^MPIFQ1(INDEX) Q
  .;I '$D(MPIFINT) D LOC2^MPIFQ3(DFN) Q
- .I '$D(MPIFS)&('$D(TWODFN)) W:'$D(MPIFRPC) !!,"Found Patient "_$G(LOCDATA(2,DFN,.01))_" on MPI",!,"  Updating ICN to "_+ICN_" and CMOR to "_$P($$NS^XUAF4(IEN),"^")_" ("_CMOR_")  - just a minute..."
+ .I '$D(MPIFS)&('$D(TWODFN)) W:'$D(MPIFRPC) !!,"Found Patient "_$G(LOCDATA(2,DFN,.01))_" on MPI",!,"  Updating ICN to "_+ICN_"  - just a minute..."
  .D STOP^RGHLLOG(0),UPDATE(DFN,ICN,CMOR) S MPIFRTN="GOT 1 HIT FROM MPI"
  ;I '$D(MPIFINT) D  G EXIT
  ;. came in via PIMS options to d/c with MPI
@@ -130,7 +132,8 @@ UPDATE(DFN,ICN,CMOR) ;
  I CMOR1'="" S CHANGE=$$CHANGE^MPIF001(DFN,CMOR1)
  I CMOR1="" S CHANGE=-1
  I $G(LOCAL)="Y" S CHANGE=$$CHANGE^MPIF001(DFN,$P($$SITE^VASITE,"^"))
- I +CHANGE'>0 S ^TMP($J,"MPIFQ0-ERROR-LOG",DFN,TIME)="COULD NOT SET CMOR IN MPIFQ0" Q
+ ;**56 - MVI_1727 (ckn) - Don't quit after logging an error as we still want to update TFs and send A24 to MPI.
+ I +CHANGE'>0 S ^TMP($J,"MPIFQ0-ERROR-LOG",DFN,TIME)="COULD NOT SET CMOR IN MPIFQ0" ;Q - commented out quit
  Q:$G(LOCAL)="Y"
  N RESLT S RESLT=$$A24^MPIFA24B(DFN)
  I +RESLT<0 D EXC^RGHLLOG(208,"Problem building A24 (ADD TF) for DFN= "_DFN,DFN)
@@ -183,7 +186,7 @@ RDT ;
  S ICN=$P(SEG,"^",6)
  S BIRTHDAY=$P(SEG,"^",4)
  S CMOR=$P(SEG,"^",5),IEN=$$IEN^XUAF4(CMOR)
- S CMOR=$P($$NS^XUAF4(IEN),"^")
+ I IEN'="" S CMOR=$P($$NS^XUAF4(IEN),"^") ;**54 fix when CMOR not passed
  S HEREICN=$$HEREICN^MPIFQ3($P(ICN,"V",1))
  I HEREICN S STRING=$$SETSTR^VALM1("*",STRING,1,1),^TMP("MPIFVQQ",$J,INDEX,"INDICATOR")="*"_"^"_HEREICN
  S STRING=$$SETSTR^VALM1(INDEX,STRING,2,4),STRING=$$SETSTR^VALM1($E(NAME,1,23),STRING,6,23)

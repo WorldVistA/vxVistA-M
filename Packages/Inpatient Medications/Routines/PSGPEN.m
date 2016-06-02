@@ -1,5 +1,5 @@
-PSGPEN ;BIR/CML3-FIND DEFAULT FOR PRE-EXCHANGE NEEDS ;03 Feb 99 / 9:13 AM
- ;;5.0; INPATIENT MEDICATIONS ;**30,37,50,58,115,110,127,129**;16 DEC 97
+PSGPEN ;BIR/CML3-FIND DEFAULT FOR PRE-EXCHANGE NEEDS ; 27OCT2014
+ ;;5.0; INPATIENT MEDICATIONS ;**30,37,50,58,115,110,127,129**;16 DEC 97;Build 4
  ;
  ; References to ^PSD(58.8 supported by DBIA #2283.
  ; References to ^PSI(58.1 supported by DBIA #2284.
@@ -22,8 +22,23 @@ EN(PSGPENO) ;
  I $G(PSGPRIO)="DONE" S PSGPEN=0
  ;
 UPDD ;
- N DIR S DIR(0)="NOA^0:9999:0",DIR("A")="Pre-Exchange DOSES: ",DIR("?")="^D DH^PSGPEN" S:PSGPEN]"" DIR("B")=PSGPEN W ! D ^DIR G:'Y DONE S PSGY=+Y W !!,"...updating dispense drug(s)..."
- F FQ=0:0 S FQ=$O(^PS(55,PSGP,5,PSGPENO,1,FQ)) Q:'FQ  S ND=$G(^(FQ,0)),$P(^(0),"^",9)="" I ND,'$P(ND,"^",3) D DD
+ ; BEGIN MODS - DSS/JCH/SMH - Allow 3 decimals I ^%ZOSF("ZVX") and Fill on Request schedule type and VFD PSJ FILL ON REQUEST AMOUNT param - Orig in Else
+ I ($G(^%ZOSF("ZVX"))["VX"),$$GET^XPAR("ALL","VFD PSJ FILL ON REQUEST AMOUNT")&($$FILREQ(PSGP,PSGPENO)) D  
+ .N DIR,DSPUNIT,DSPMSG,DSPDRG,ND,FQ
+ .F FQ=0:0 S FQ=$O(^PS(55,PSGP,5,PSGPENO,1,FQ)) Q:'FQ!($G(DSPUNIT)]"")  S ND=$G(^(FQ,0)) I ND,'$P(ND,"^",3) S DSPUNIT=$$GET1^DIQ(50,+ND,14.5),DSPMSG=$$GET1^DIQ(50,+ND,215)
+ .S DIR(0)="NA^0:9999:3"
+ .S DIR("A")="Dispense Amount ["_$S($L($G(DSPUNIT)):DSPUNIT,1:"units")_"]"_$S($L(DSPMSG):" ("_DSPMSG_")",1:"")_": "
+ .S DIR("?")="^D DHF^PSGPEN"
+ .I $T(^VFDPSQTY)]"",$O(^VFD(21678,0)) S DIR("??")="^D QTY^VFDPSQTY(+ND)"  ; Display what's in stock
+ .S:PSGPEN]"" DIR("B")=PSGPEN 
+ .W ! D ^DIR S PSGY=+Y W !!,"...updating dispense drug(s)..."
+ E  I $D(^%ZOSF("ZVX")) N DIR S DIR(0)="NOA^0:9999:0",DIR("A")="Pre-Exchange DOSES [enter doses not units]: ",DIR("?")="^D DH^PSGPEN" S:PSGPEN]"" DIR("B")=PSGPEN W ! D ^DIR D  I 1
+ .S PSGY=+Y W !!,"...updating dispense drug(s)..."
+ E  N DIR S DIR(0)="NOA^0:9999:0",DIR("A")="Pre-Exchange DOSES: ",DIR("?")="^D DH^PSGPEN" S:PSGPEN]"" DIR("B")=PSGPEN W ! D ^DIR D
+ .S PSGY=+Y W !!,"...updating dispense drug(s)..."
+ G:'$G(PSGY) DONE
+ ; END MODS - DSS/JCH/SMH
+ F FQ=0:0 S FQ=$O(^PS(55,PSGP,5,PSGPENO,1,FQ)) Q:'FQ  S ND=$G(^(FQ,0)),$P(^(0),"^",9)="" I ND,'$P(ND,"^",3) S FQCNT=$G(FQCNT)+1 D DD
  ;
 DONE ;
  I $P(PSJSYSW0,"^",29)="",$$DEFON^PSGPER1 S $P(PSJSYSW0,"^",29)=0
@@ -41,7 +56,12 @@ DD ;
  N DA S DRG=$S($P(ND,"^")="":"NOT FOUND",'$D(^PSDRUG(+ND,0)):"NOT FOUND ("_$P(ND,"^")_")",$P(^(0),"^")]"":$P(^(0),"^"),1:$P(ND,"^")_";PSDRUG("),UD=$S('$P(ND,"^",2):1,1:$P(ND,"^",2))
  W !,"...",DRG,?45,"U/D: ",UD,"..."
  S PSGDA=PSGY I 'PSGPENWS,ND,PSJPWD,($D(^PSI(58.1,"D",+ND,PSJPWD))!$D(^PSD(58.8,"D",+ND,PSJPWD))) D PSGPENWS Q:'PSGDA
- K DA,DR S PSGDA=$S(UD#1:(PSGDA*((UD\1)+1)),1:PSGDA*UD)
+ ; DSS/JCH - BEGIN MODS - If DSS, round and multiply doses by U/D only if NOT VFD PSJ FILL ON REQUEST parameter and Fill on Request schedule type
+ I $G(^%ZOSF("ZVX"))'["VX" K DA,DR S PSGDA=$S(UD#1:(PSGDA*((UD\1)+1)),1:PSGDA*UD)
+ I $G(^%ZOSF("ZVX"))["VX" D
+ .; If order' schedule type is Fill on Request and VFD PSJ FILL ON REQUEST AMOUNT is YES, round and multiply doses by U/D. Otherwise, do nothing.
+ .K DA,DR I '($$GET^XPAR("ALL","VFD PSJ FILL ON REQUEST AMOUNT")&($$FILREQ(PSGP,PSGPENO))) K DA,DR S PSGDA=$S(UD#1:(PSGDA*((UD\1)+1)),1:PSGDA*UD)
+ ; DSS/JCH - END MODS
  S DIE="^PS(55,"_PSGP_",5,"_PSGPENO_",1,",DA(2)=PSGP,DA(1)=PSGPENO,DA=FQ,DR=".09////"_PSGDA D ^DIE
  S PSGPXN=$G(PSGPXN)
  D:'PSGPXN
@@ -68,8 +88,19 @@ PSGPENWS ;
  W !,"This dispense drug is a WARD STOCK item."
  W !,"Would you like to:",!?3,"1 - Enter 0 (no) doses needed for this dispense drug.",!?3,"2 - Enter ",PSGDA," doses needed for this dispense drug.",!?3,"3 - Enter another amount as the doses needed for this dispense drug."
  K DIR S DIR(0)="SA^1:0 (no) doses;2:"_PSGDA_" doses;3:another amount",DIR("A")="Select ACTION: ",DIR("?")="^D WH^PSGPEN" W ! D ^DIR I Y=1!'Y S PSGDA=0 Q
- Q:Y=2  K DIR S DIR(0)="NA^0:9999:0",DIR("A")="Pre-Exchange DOSES for this dispense drug: ",DIR("?")="^D WDH^PSGPEN" W ! D ^DIR S PSGDA=+Y Q
- ;
+ ; DSS/JCH/SMH - BEGIN MODS - Allow three decimals I $D(^%ZOSF("ZVX")) and Fill on Request schedule type and VFD PSJ FILL ON REQUEST AMOUNT param
+ Q:Y=2  ; NB: This line is part of the original code. Moved out so that it won't take up space
+ I ($G(^%ZOSF("ZVX"))'["VX") K DIR S DIR(0)="NA^0:9999:0",DIR("A")="Pre-Exchange DOSES for this dispense drug: ",DIR("?")="^D WDH^PSGPEN" W ! D ^DIR S PSGDA=+Y Q
+ I ($G(^%ZOSF("ZVX"))["VX"),$$GET^XPAR("ALL","VFD PSJ FILL ON REQUEST AMOUNT")&($$FILREQ(PSGP,PSGPENO)) D  QUIT
+ .N DIR,DSPUNIT,DSPMSG,DSPDRG,ND,FQ
+ .F FQ=0:0 S FQ=$O(^PS(55,PSGP,5,PSGPENO,1,FQ)) Q:'FQ!($G(DSPUNIT)]"")  S ND=$G(^(FQ,0)) I ND,'$P(ND,"^",3) S DSPUNIT=$$GET1^DIQ(50,+ND,14.5),DSPMSG=$$GET1^DIQ(50,+ND,215)
+ .S DIR(0)="NA^0:9999:3"
+ .S DIR("A")="Dispense Amount ["_$S($L($G(DSPUNIT)):DSPUNIT,1:"units")_"]"_$S($L(DSPMSG):" ("_DSPMSG_")",1:"")_": "
+ .S DIR("?")="^D DHF^PSGPEN"
+ .I $T(^VFDPSQTY)]"",$O(^VFD(21678,0)) S DIR("??")="^D QTY^VFDPSQTY(+ND)"  ; Display what's in stock
+ .W ! D ^DIR S PSGY=+Y W !!,"...updating dispense drug(s)..."
+ I ($G(^%ZOSF("ZVX"))["VX") K DIR S DIR(0)="NA^0:9999:0",DIR("A")="Pre-Exchange DOSES for this dispense drug [enter doses not units]: ",DIR("?")="^D WDH^PSGPEN" W ! D ^DIR S PSGDA=+Y Q
+ ; DSS/JCH/SMH - END MODS
 WH ;
  S Q="This dispense drug ("_DRG_") is a ward stock item.  Select:"
  W !! F Q1=1:1:$L(Q," ") S Q2=$P(Q," ",Q1) W:$X+$L(Q2)>78 ! W Q2," "
@@ -77,3 +108,25 @@ WH ;
  ;
 WDH ;
  W !!?2,"Enter a number from 0 to 9999, 0 decimal digits.  If you enter an '^' to exit",!,"NO pre-exchange doses will be entered for this dispense drug." Q
+ Q
+ ;
+WDHF ;
+ ; DSS/JCH - BEGIN MODS - allow decimals
+ W !!?2,"Enter a number from 0 to 9999, 3 decimal digits.  If you enter an '^'",!,"to exit, NO Dispense Amount will be entered for this dispense drug." Q
+ ; DSS/JCH - END MODS
+ Q
+ ; DSS/SMH - BEGIN MODS
+OMH() Q ($D(^%ZOSF("ZVX"))&($E($P($$SITE^VASITE,U,3),1,3)=111))
+ ; DSS/SMH - END MODS
+ ; DSS/JCH - BEGIN MODS - Help text for Dispense Amount prompt
+DHF ; Fill on Request Dispense Amount
+ W !!?2,"Enter a number from 0 to 9999, 3 decimal digits.  If you enter an '^'",!,"to exit, NO Dispense Amount will be entered for this dispense drug."
+ W !!?2,"Enter the dispense amount needed for this order until the next cart exchange.",!,"This will be the amount that will be administered to the patient from the",!,"start of the order until the next cart exchange."
+ W !!?2,"PLEASE NOTE that this is dispense AMOUNT, not number of doses." Q
+ Q
+ ; DSS/JCH - ENDS MODS
+ ; DSS/JCH - BEGIN MODS - Return 1 if order PSGPENO for patient PSGP has a Schedule Type of Fill on Request
+FILREQ(PSGP,PSGPENO) ; Return Schedule type: [C]ontinuous, R = Fill on request, ditto
+ N SCHTYPE S SCHTYPE=$P(^PS(55,PSGP,5,PSGPENO,0),U,7)
+ Q $S(SCHTYPE="R":1,1:0)
+ ; DSS/JCH - END MODS

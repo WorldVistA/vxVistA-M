@@ -1,5 +1,5 @@
 RCNRIG ;Washington IRMFO@Altoona, Pa/TJK-IG REPORTS ;6/17/96  11:37 AM
- ;;4.5;Accounts Receivable;**41,77,117,103,203,220**;Mar. 20, 1995
+ ;;4.5;Accounts Receivable;**41,77,117,103,203,220,270**;Mar. 20, 1995;Build 25
  Q
  ;
  ;
@@ -27,7 +27,7 @@ EN2 ;  called by routine rcrjr as part of the nightly process
     .S T1=$G(^PRCA(433,TRANS,1)),T0=$G(^(0))
     .S TD=$P(T1,U,9) Q:$S(TD<STDT:1,TD>EDT:1,1:0)
     .S BILL=$P(T0,U,2) S:'BILL B0="           ",FUND="      ",RSC="    "
-    .S:BILL B0=$P($G(^PRCA(430,BILL,0)),U),B0=$$LJ^XLFSTR(B0,11)
+    .S:BILL B0=$P($G(^PRCA(430,BILL,0)),U),B0=$E($$LJ^XLFSTR(B0,11),1,11)  ;WCJ;PRCA*4.5*270
     .S AMT=$P(T1,"^",5) S AMT=$$AMT(AMT)
     .S TT=+$P(T1,"^",2) S:'TT TT="                      "
     .S:TT TT=$G(^PRCA(430.3,TT,0)),TT=$E($P(TT,"^"),1,22),TT=$$LJ^XLFSTR(TT,22)

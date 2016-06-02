@@ -1,5 +1,5 @@
 ONCSED04 ;Hines OIFO/SG - EDITS API (EDIT INFO)  ; 9/22/06 11:58am
- ;;2.11;ONCOLOGY;**47**;Mar 07, 1995;Build 19
+ ;;2.2;ONCOLOGY;**1**;Jul 31, 2013;Build 8
  ;
  ;--- SOAP REQUST TO THE ONCOLOGY WEB SERVICE
  ;
@@ -9,7 +9,7 @@ ONCSED04 ;Hines OIFO/SG - EDITS API (EDIT INFO)  ; 9/22/06 11:58am
  ;   soap:encodingStyle="http://www.w3.org/2001/12/soap-encoding">
  ;   <soap:Body>
  ;     <ED-GET-EDITINFO ver="2.0"
- ;       xmlns="http://vista.med.va.gov/oncology">
+ ;       xmlns="http://vista.domain.ext/oncology">
  ;       <EDIT-SET> ... </EDIT-SET>
  ;       <EDIT> ... </EDIT>
  ;       <TEXT-WIDTH> ... </TEXT-WIDTH>
@@ -24,7 +24,7 @@ ONCSED04 ;Hines OIFO/SG - EDITS API (EDIT INFO)  ; 9/22/06 11:58am
  ;   xmlns:soap="http://www.w3.org/2001/12/soap-envelope"
  ;   soap:encodingStyle="http://www.w3.org/2001/12/soap-encoding">
  ;   <soap:Body>
- ;     <ED-RESPONSE xmlns="http://vista.med.va.gov/oncology">
+ ;     <ED-RESPONSE xmlns="http://vista.domain.ext/oncology">
  ;       <NAME> ... </NAME>
  ;       <DESCRIPTION>
  ;         ...

@@ -1,5 +1,5 @@
 VASITE ;ALB/AAS - TIME SENSETIVE VA STATION NUMBER UTILITY ; 4/22/92
- ;;5.3;Registration;**134**;Aug 13, 1993;Build 153
+ ;;5.3;Registration;**134**;Aug 13, 1993;Build 164
  ;
 SITE(DATE,DIV) ;
  ;       -Output= Institution file pointer^Institution name^station number with suffix

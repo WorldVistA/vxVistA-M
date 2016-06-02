@@ -1,5 +1,6 @@
 PRSRLL ;HISC/JH-CALCULATE LENGTH OF TIME ;7-AUG-2000
- ;;4.0;PAID;**2,6,21,61**;Sep 21, 1995
+ ;;4.0;PAID;**2,6,21,61,115**;Sep 21, 1995;Build 2
+ ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;This routine is called by ^PRSRL11,^PRSRL12,^PRSRL41.
 H ; Calculate Hours
  N %,DAY,X,X1,X2,D1,PPE,Y,K S TYL="H",D1=$P(Z,"^",3) D PP^PRSAPPU
@@ -26,7 +27,7 @@ L ; Calculate last day
  I $P(Z,"^",4)["P"&($P(Z,"^",6)["A") S TIM=((1440-$P(Y,U))/60)+($P(Y,U,2)/60)
  E  S TIM=$P(Y,"^",2)-$P(Y,"^",1)/60
  S:TIM'>0 TIM=TIM+24 ;This line of code relocated to correct miscalculation - refer to Patch PRS*4*61
- D TC,RG I TIM>RG&($P(X4,"^",13)'="") D SEC I TIM>RG S TIM=RG Q
+ D TC,RG I (TIM-(LUN/60))>RG&($P(X4,"^",13)'="") D SEC I TIM>RG S TIM=RG Q
  I TIM>RG S TIM=RG
  ;Algorithm to determine whether to deduct lunch.  Deduct lunch from 
  ;leave only when leave taken is >= length of tour + meal time.

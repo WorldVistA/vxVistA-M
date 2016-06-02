@@ -1,5 +1,5 @@
 RGHLLOG ;CAIRO/DKM-LOG MESSAGE PROCESSING INFO ;09/04/98
- ;;1.0;CLINICAL INFO RESOURCE NETWORK;**1,3,11,13,18,19,25,45,52**;30 Apr 99;Build 2
+ ;;1.0;CLINICAL INFO RESOURCE NETWORK;**1,3,11,13,18,19,25,45,52,57,59**;30 Apr 99;Build 1
  ;
  ;Reference to ^HLMA("C" supported by IA #3244
  ;=================================================================
@@ -60,6 +60,16 @@ EXC(RGEXC,RGERR,RGDFN,MSGID,STATNUM) ;
  ;   STATNUM - station # of site that encountered the error (optional) - if not defined then the local site is assumed, using $$SITE^VASITE
  ;
  I (RGEXC=215)!(RGEXC=216)!(RGEXC=217) Q  ;**52 until MPIFBT3 call eliminates these exception types
+ ;I (RGEXC=215)!(RGEXC=216)!(RGEXC=217) Q  ;**52 until MPIFBT3 call eliminates these exception types;**57 done in MPIF*1*52
+ I RGEXC=234 N ACTPVR S ACTPVR=1 D  I ACTPVR=0 Q  ;**59 MVI_778 Do not log duplicate PVR (234) exception for patient if active one in CIRN HL7 EXCEPTION LOG (#991.1) file.
+ .N PVRIEN,PVRIEN2 S PVRIEN=0
+ .;Examine PVR (234) exception type, for patient - RGDFN
+ .F  S PVRIEN=$O(^RGHL7(991.1,"ADFN",234,RGDFN,PVRIEN)) Q:'PVRIEN  Q:ACTPVR=0  D
+ ..S PVRIEN2=0
+ ..F  S PVRIEN2=$O(^RGHL7(991.1,"ADFN",234,RGDFN,PVRIEN,PVRIEN2)) Q:'PVRIEN2  Q:ACTPVR=0  D
+ ...;Is there an active exception in CIRN HL7 EXCEPTION LOG (#991.1) file?
+ ...S ACTPVR=$P($G(^RGHL7(991.1,PVRIEN,1,PVRIEN2,0)),"^",5) I ACTPVR=0 Q
+ ;
  I $L($G(HL("MID"))) Q:$$INVEXC(HL("MID"))  ; is the exception valid?
  N RGI,RGZ
  S U="^"
@@ -95,7 +105,7 @@ EXC(RGEXC,RGERR,RGDFN,MSGID,STATNUM) ;
  Q:'RGI!'RGZ
  ;quit and don't send messages for exception types that are now being
  ;handled through the MPI/PD Exception Handling option.
- Q:RGEXC=234!(RGEXC=218)  ;MPIC_772; **52 remove 215, 216, and 217
+ Q:RGEXC=234  ;**52 MPIC_772 remove 215, 216 & 217;**57 MPIC_1893 remove 218
  S DIC="^XMB(3.8,",DIC(0)="NZ",X="`"_RGZ D ^DIC K DIC Q:+Y<1  S RGZ=$P(Y,U,2) K Y
  Q:RGZ=""!$P($G(^RGSITE("COR",1,0)),U,7)
  S RGERR=$$SHORT(RGEXC,RGERR),RGZ="G."_RGZ

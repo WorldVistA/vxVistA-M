@@ -1,5 +1,5 @@
 ORPRS05 ; slc/dcm - Order summary headers, footers, inerds ;6/10/97  15:42
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**11**;Dec 17, 1997
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**11**;Dec 17, 1997;Build 29
 PTOP(PG,TITLE,SHORT,START,STOP) ;header for printouts
  ;PG=Page #
  ;TITLE=Report title
@@ -12,7 +12,12 @@ PTOP(PG,TITLE,SHORT,START,STOP) ;header for printouts
  W ! I $L($P(START,"^",2)) D  W X
  . S X=$P(START,"^",2)_" thru "_$P(STOP,"^",2) I $$FMDIFF^XLFDT(+STOP,+START)<2 S X="For: "_$P($P(STOP,"^",2),"@")
  S X=$P($$HTE^XLFDT($H),":",1,2) W ?IOM-($L(X)+8),"Printed "_X
- W !,"Ord'd",?9,"ST",?13,"Item Ordered",?54,"Requestor   Start     Stop",!,ORHLINE
+ ;DSS/TFF/SMP - BEGIN MODS - ADD YEAR TO REPORT CORRECT HEADER
+ I $G(^%ZOSF("ZVX"))["VX" D  I 1
+ .W !,"Ord'd",?9,"ST",?13,"Item Ordered",?50,"Requestor   Start     Stop",!,ORHLINE
+ E  D
+ .W !,"Ord'd",?9,"ST",?13,"Item Ordered",?54,"Requestor   Start     Stop",!,ORHLINE
+ ;DSS/TFF/SMP - END MODS
  Q
 PBOT(PG,BOTTOM,NAME,SSN,DOB,AGE,WEIGHT,LOC,BED,SHORT) ;Footer for printouts
  ;PG=Page #

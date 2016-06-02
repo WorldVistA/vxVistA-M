@@ -1,5 +1,5 @@
-MAGDGMRC ;WOIFO/PMK - Read a DICOM image file ; 12/15/2006 13:50
- ;;3.0;IMAGING;**10,51,50,85**;16-March-2007;;Build 1039
+MAGDGMRC ;WOIFO/PMK,EdM,MLH - Read a DICOM image file ; 24-Dec-2010 13:50
+ ;;3.0;IMAGING;**10,51,50,85,118**;Mar 19, 2002;Build 4525;May 01, 2013
  ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -76,6 +76,16 @@ TIUALL(GMRCIEN,RESULT) ; find all IENs for the TIU notes for this request
  . . S MAGIEN=$P(Y,"^",2)
  . . S RESULT=RESULT+1
  . . S RESULT(RESULT)=TIUIEN_"^GMRC-"_GMRCIEN_"^"_MAGIEN
+ . . Q
+ . ; new database structure
+ . S TIUXIEN=""
+ . F  S TIUXIEN=$O(^MAG(2005.61,"B",TIUIEN,TIUXIEN)) Q:'TIUXIEN  D
+ . . S Y=$G(^MAG(2005.61,TIUXIEN,0)) Q:$P(Y,"^",3)'="TIU"
+ . . S MAGIEN=""
+ . . F  S MAGIEN=$O(^MAG(2005.62,"C",TIUXIEN,MAGIEN)) Q:'MAGIEN  D
+ . . . S RESULT=RESULT+1
+ . . . S RESULT(RESULT)=TIUIEN_"^GMRC-"_GMRCIEN_"^N"_MAGIEN
+ . . . Q
  . . Q
  . Q
  K @WRK

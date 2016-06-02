@@ -1,5 +1,5 @@
-VFDCDPT ;DSS/SGM - MAIN ENTRY TO VFDCDPT ROUTINES ; 09/21/2012 14:50
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 153
+VFDCDPT ;DSS/SGM - MAIN ENTRY TO VFDCDPT ROUTINES ; 09/16/2015 16:50
+ ;;15.0;DSS,INC VXVISTA OPEN SOURCE;**2**;28 Jan 2013;Build 3
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  ;This routine will be the main entry point into all of the VFDCDPT*
@@ -95,6 +95,16 @@ ID(VFDC,PAT,ISSSN,VAPTYP,FUN) ; RPC VFDC DPT GET ID
  ;Defaults to VA identifier
  D ID^VFDCDPT3(.VFDC,$G(PAT),$G(ISSSN),$G(VAPTYP),$G(FUN))
  G OUT
+ ;
+IDCHECK(RET,DFN); RPC: VFDC ID CHECK
+ ;Checks the existence of an MRN and SSN for a specific patient
+ ;DFN - DFN of the Patient you want to check
+ ;RET  - Returns 1 if the patient has the ID type else 0 -  MRN^SSN
+ S RET=0
+ I '$G(DFN) S RET="-1^Patient DFN Required" Q
+ I '$D(^DPT(DFN,0)) S RET="-1^Patient Does Not Exist" Q
+ S RET=($L($$MRN^VFDCDPT3(DFN))>0)_"^"_($L($$SSN^VFDCDPT3(DFN))>0)
+ Q
  ;
 IN(VFDC,DFN,DATE,LODGE) ; RPC: VFDC DPT INP INFO
  ;Return information about a patient's inpatient stay

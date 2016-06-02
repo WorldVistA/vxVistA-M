@@ -1,6 +1,6 @@
-VFDXXLA ;DSS/LM - Exception handler User Interface Actions ; 3/10/2008
- ;;2009.2;DSS,INC VXVISTA OPEN SOURCE;;01 Dec 2009
- ;Copyright 1995-2009,Document Storage Systems Inc. All Rights Reserved
+VFDXXLA ;DSS/LM - Exception handler User Interface Actions ; 02/08/2014
+ ;;2011.1.3;DSS,INC VXVISTA OPEN SOURCE;**23**;05 Jan 2010;Build 1
+ ;Copyright 1995-2010,Document Storage Systems Inc. All Rights Reserved
  ;
  ; ICR#  SUPPORTED DESCRIPTION
  ;-----  -------------------------------------------------------------
@@ -121,6 +121,17 @@ DETAILS ;[Private] Implements action DETAILS
  ..S @VFDTXT@(VFDK,0)=$$LJ^XLFSTR(VFDI_".",4)
  ..S VFDFLD="" F  S VFDFLD=$O(VFDGETS(21603,VFDIENS,VFDFLD)) Q:VFDFLD=""  D
  ...S VFDK=VFDK+1
+ ...;DSS/LM - List variables (Bug reported by Bill Carey)
+ ...I VFDFLD="VARIABLES",$D(VFDGETS(21603,VFDIENS,VFDFLD))>1 D  Q
+ ....S @VFDTXT@(VFDK,0)="    "_VFDFLD_":"
+ ....S VFDK=VFDK+1,@VFDTXT@(VFDK,0)=""
+ ....N VFDJ,VFDL,VFDVAR,VFDX F VFDJ=1:1 Q:'$D(VFDGETS(21603,VFDIENS,VFDFLD,VFDJ))  D
+ .....S VFDK=VFDK+1,VFDX=$G(VFDGETS(21603,VFDIENS,VFDFLD,VFDJ))
+ .....S VFDVAR=$P(VFDX,"="),VFDL=$L(VFDVAR)
+ .....S @VFDTXT@(VFDK,0)="  "_VFDVAR_$J("",10-VFDL)_"= "_$P(VFDX,"=",2)
+ .....Q
+ ....Q
+ ...;DSS/LM - End modification to list variables 2/8/2014
  ...S @VFDTXT@(VFDK,0)="    "_$$LJ^XLFSTR(VFDFLD_":",20)
  ...S @VFDTXT@(VFDK,0)=@VFDTXT@(VFDK,0)_VFDGETS(21603,VFDIENS,VFDFLD)
  ...Q

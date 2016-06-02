@@ -1,11 +1,13 @@
 RAPMW2 ;HOIFO/SWM-Radiology Wait Time reports ;12/05/05 13:41
- ;;5.0;Radiology/Nuclear Medicine;**67,79,83**;Mar 16, 1998;Build 4
+ ;;5.0;Radiology/Nuclear Medicine;**67,79,83,99,47**;Mar 16, 1998;Build 21
  ; IA 10063 allows check for Task Stop Request
  ; detail
  Q
 STORDET ;
  S RAREC=""
  S RACNL=$E(RAXDT,4,5)_$E(RAXDT,6,7)_$E(RAXDT,2,3)_"-"_+RACN0 ;long CN
+ N RASSAN,RACNDSP S RASSAN=$$SSANVAL^RAHLRU1(RADFN,RADTI,RACNI)
+ S RACNDSP=$S((RASSAN'=""):RASSAN,1:RACNL)
  S RA71REC=$G(^RAMIS(71,+$P(RACN0,U,2),0))
  S RAXMST=$P(RA72,U) ;exam status name
  S RACPT=$P($$NAMCODE^RACPTMSC($P(RA71REC,U,9),RAXDT),U) ;CPT code
@@ -20,7 +22,8 @@ STORDET ;
  ; 10;img typ name/ 11;* if canc & re-ord same day/ 12;Proc Typ Name/
  ; 13;"p" if case from print set (highest ranked proc type)
  ;
- S RAREC=RAPATNM_U_RACNL_U_$E(RADTORD,1,7)_U_$E(RADSDT,1,7)
+ I $$USESSAN^RAHLRU1() S RAREC=RAPATNM_U_RACNDSP_U_$E(RADTORD,1,7)_U_$E(RADSDT,1,7)
+ I '$$USESSAN^RAHLRU1() S RAREC=RAPATNM_U_RACNL_U_$E(RADTORD,1,7)_U_$E(RADSDT,1,7)
  S RAREC=RAREC_U_$E(RAXDT,1,7)_U_RAWAITD_U_$E(RAXMST,1,11)_U_RACPT
  S RAREC=RAREC_U_$E(RAPROCNM,1,45)_U_$E(RAIMGTYP,1,3)_U_$S(RASAME2:"*",1:"")_U_RAPTA
  S RAREC=RAREC_U_$S(RACNI=99999:"p",1:"") ;flag printset case picked
@@ -54,9 +57,9 @@ HDDET ;
 COLHDD ;
  I RAPG>1 W @IOF,!,"Page: ",RAPG
  S RAPG=RAPG+1
- W !!?27,"Date",?36,"Date",?45,"Date",?54,"Days",?59,"Exam",?71,"CPT",?122,"Img",?127,"PROC."
- W !,"Patient Name",?14,"Case #",?27,"Ordered",?36,"Desired",?45,"Register",?54,"Wait",?59,"Status",?71,"Code",?77,"Name of Procedure",?122,"Type",?127,"TYPE"
- W !,$E(RADASH,1,12),?14,$E(RADASH,1,12),?27,$E(RADASH,1,8),?36,$E(RADASH,1,8),?45,$E(RADASH,1,8),?54,$E(RADASH,1,4),?59,$E(RADASH,1,11),?71,$E(RADASH,1,5),?77,RADASH,?123,$E(RADASH,1,4),?127,$E(RADASH,1,5)
+ W !!?31,"Date",?40,"Date",?49,"Date",?58,"Days",?63,"Exam",?75,"CPT",?123,"Img",?127,"PROC."
+ W !,"Patient Name",?14,"Case #",?31,"Ordered",?40,"Desired",?49,"Register",?58,"Wait",?63,"Status",?75,"Code",?81,"Name of Procedure",?123,"Typ",?127,"TYPE"
+ W !,$E(RADASH,1,12),?14,$E(RADASH,1,16),?31,$E(RADASH,1,8),?40,$E(RADASH,1,8),?49,$E(RADASH,1,8),?58,$E(RADASH,1,4),?63,$E(RADASH,1,11),?75,$E(RADASH,1,5),?81,$E(RADASH,1,41),?123,$E(RADASH,1,3),?127,$E(RADASH,1,5)
  I $D(ZTQUEUED) D STOPCHK^RAUTL9 S:$G(ZTSTOP)=1 RAXIT=1 ;user stopped task
  Q
 PRTD ;
@@ -69,8 +72,8 @@ PRTD ;
  ..F  S RA2=$O(^TMP($J,"RA WAIT3",RA0,RA1,RA2)) Q:RA2=""  Q:RAXIT  S RA3=0 D
  ...F  S RA3=$O(^TMP($J,"RA WAIT3",RA0,RA1,RA2,RA3)) Q:'RA3  Q:RAXIT  S X=^(RA3) D
  ....D CKLINE Q:RAXIT
- ....W !,$P(X,U),?13,$P(X,U,13),?14,$P(X,U,2),?27,$$FMTE^XLFDT($P(X,U,3),2),?36,$$FMTE^XLFDT($P(X,U,4),2),?45,$$FMTE^XLFDT($P(X,U,5),2),$P(X,U,11),?54,$J($P(X,U,6),4),?59,$P(X,U,7)
- ....W ?71,$P(X,U,8),?77,$P(X,U,9),?123,$P(X,U,10),?127,$E($P(X,U,12),1,5)
+ ....W !,$P(X,U),?13,$P(X,U,13),?14,$P(X,U,2),?31,$$FMTE^XLFDT($P(X,U,3),2),?40,$$FMTE^XLFDT($P(X,U,4),2),?49,$$FMTE^XLFDT($P(X,U,5),2),$P(X,U,11),?58,$J($P(X,U,6),4),?63,$P(X,U,7)
+ ....W ?75,$P(X,U,8),?81,$P(X,U,9),?123,$P(X,U,10),?127,$E($P(X,U,12),1,5)
  ....Q
  ...Q
  ..Q
@@ -125,15 +128,16 @@ PTA ; *79
  ; RAPTA should match one of the RATOTAL(rapta)
  Q
 COLHDS(X) ; moved from RAPMW1
+ ;input: X (header) 1 = DAYS WAIT -- PERCENTAGES; 2 = DAYS WAIT -- COUNTS
  I X=1 D
- .W !,"PROCEDURE",?31,"<=30",?40,"31-60",?50,"61-90",?59,"91-120",?71,">120"
- .W !,"TYPE",?31,"Days",?41,"Days",?51,"Days",?61,"Days",?71,"Days"
- .W !,"--------------------------",?29,"------",?39,"------",?49,"------",?59,"------",?69,"------"
+ .W !,"PROCEDURE",?29,"<=14",?37,"<=30",?45,"31-60",?54,"61-90",?63,"91-120",?73,">120"
+ .W !,"TYPE",?29,"Days",?37,"Days",?46,"Days",?55,"Days",?65,"Days",?73,"Days"
+ .W !,"------------------------",?27,"------",?35,"------",?44,"------",?53,"------",?63,"------",?71,"------"
  .Q
  I X=2 D
- .W !,"PROCEDURE",?30,"<=30",?36,"31-60",?43,"61-90",?50,"91-120",?58,">120",?66,"ROW",?73,"Avg."
- .W !,"TYPE",?30,"Days",?37,"Days",?44,"Days",?51,"Days",?58,"Days",?65,"TOTAL",?73,"Days"
- .W !,"--------------------------",?28,"------",?35,"------",?42,"------",?49,"------",?56,"------",?64,"------",?72,"-----"
+ .W !,"PROCEDURE",?19,"<=14",?27,"<=30",?34,"31-60",?42,"61-90",?49,"91-120",?59,">120",?68,"ROW",?75,"Avg."
+ .W !,"TYPE",?19,"Days",?27,"Days",?35,"Days",?43,"Days",?51,"Days",?59,"Days",?66,"TOTAL",?75,"Days"
+ .W !,"---------------",?16,"-------",?24,"-------",?32,"-------",?40,"-------",?48,"-------",?56,"-------",?64,"-------",?72,"-------"
  .Q
  Q
 FOOTD2 ;

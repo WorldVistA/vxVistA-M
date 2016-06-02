@@ -1,6 +1,6 @@
-RCRJRBD ;WISC/RFJ,TJK-bad debt extractor and report ;1 Feb 98
- ;;4.5;Accounts Receivable;**101,139,170,193,203,215,220,138,239**;Mar 20, 1995
- ;;Per VHA Directive 10-93-142, this routine should not be modified.
+RCRJRBD ;WISC/RFJ,TJK-bad debt extractor and report ; 10/18/10 9:00am
+ ;;4.5;Accounts Receivable;**101,139,170,193,203,215,220,138,239,273,282**;Mar 20, 1995;Build 2
+ ;;Per VHA Directive 2004-038, this routine should not be modified.
  ; IA 4385 for calls to $$MRATYPE^IBCEMU2 and $$MRADTACT^IBCEMU2
  Q
  ;
@@ -18,7 +18,7 @@ START(DATEEND) ;  run bad debt report
  ;
  ;  lock the bad debt file for storing data, lock cannot fail
  ;  this lock can be used to monitor if the report is running
- L +^RC(348.1)
+ F  L +^RC(348.1):$S($G(DILOCKTM)>5:DILOCKTM,1:5) Q:$T
  ;
  ;  calculate the base percentages from past data
  ;  example:  DATEEND=2980331  => BEGDATE=2970300
@@ -37,7 +37,7 @@ START(DATEEND) ;  run bad debt report
  . . ;  only look at bills with a 0 principal balance
  . . I $P($G(^PRCA(430,BILLDA,7)),"^") Q
  . . ;
- . . ;  only report fund 528701,03,04, and 4032/528709 bills
+ . . ;  only report fund 528701,03,04,11 and 4032/528709 bills
  . . S FUND=$$GETFUNDB^RCXFMSUF(BILLDA,1)
  . . I '$$PTACCT^PRCAACC(FUND),$E(FUND,1,4)'=4032 Q
  . . ;
@@ -90,7 +90,7 @@ START(DATEEND) ;  run bad debt report
  . . . ;  do not look at prepayments
  . . . I 'CATEGORY!(CATEGORY=26) Q
  . . . ;
- . . . ;  only report fund 528701,03,04 and 4032/528709 (ltc) bills
+ . . . ;  only report fund 528701,03,04,11 and 4032/528709 (ltc) bills
  . . . S FUND=$$GETFUNDB^RCXFMSUF(BILLDA,1)
  . . . I '$$PTACCT^PRCAACC(FUND),$E(FUND,1,4)'=4032 Q
  . . . ;
@@ -119,7 +119,7 @@ START(DATEEND) ;  run bad debt report
  D DELETALL
  ;
  ;  calculate percentages and store them
- F SGL=1319,1319.2,1319.3,1319.4,1338,1339,"133N" D
+ F SGL=1319,1319.2,1319.3,1319.4,1319.5,1338,1338.2,1339,"133N","133N.2" D
  . ;  collection %
  . S COLLECT=0 I $G(PRINCPAL(SGL)) S COLLECT=$J($G(PAYMENT(SGL))/PRINCPAL(SGL)*100,0,2)
  . ;  patch PRCA*4.5*138: for the first year from when MRA is activated at a site, there is no collection
@@ -142,7 +142,7 @@ START(DATEEND) ;  run bad debt report
  . ;  calculate allowance estimate for 1319 and 1338
  . ;  .08 allowance estimate = (writeoff % * current receivables)
  . ;  .09 actual writeoffs fytd
- . I SGL=1319!(SGL=1319.2)!(SGL=1319.3)!(SGL=1319.4)!(SGL=1338) D
+ . I SGL=1319!(SGL=1319.2)!(SGL=1319.3)!(SGL=1319.4)!(SGL=1319.5)!(SGL=1338)!(SGL=1338.2) D
  . . S WRITEOFF=100-COLLECT
  . . S DR=DR_".03////"_WRITEOFF_";"
  . . S DR=DR_".08////"_$J((WRITEOFF/100)*$G(^TMP($J,"RCRJRBD",SGL)),0,2)_";"
@@ -150,7 +150,7 @@ START(DATEEND) ;  run bad debt report
  . ;  calculate allowance estimate for 1339
  . ;  .08 allowance estimate = (contract % * current receivables)
  . ;  .09 actual contract adjustments fytd
- . I SGL=1339!(SGL="133N") D
+ . I SGL=1339!(SGL="133N")!(SGL="133N.2") D
  . . S CONTRACT=100-COLLECT
  . . S DR=DR_".04////"_CONTRACT_";"
  . . S DR=DR_".08////"_$J((CONTRACT/100)*$G(^TMP($J,"RCRJRBD",SGL)),0,2)_";"
@@ -203,6 +203,9 @@ PREVMONT(FORDATE) ; return the previous month's date
 SGL(CATEGORY,FUND) ;
  I $G(FUND)=528709 Q 1319.2 ;new long term care fund
  I $E($G(FUND),1,4)=4032 Q 1319.2 ; breakout long term care as a subset
+ I $G(FUND)=528711&(CAT=6)!(CAT=7) Q 1319.5  ; breakout pharmacy
+ I $G(FUND)=528711&(CAT=9) Q "133N.2"  ; pharmacy reimburs health ins
+ I $G(FUND)=528711&(CAT=10) Q 1338.2  ; pharmacy tort feasor
  I CATEGORY=8 Q 1339   ; crime or per. vio.
  I CATEGORY=9 Q 1339   ; reimbursable health insurance
  I CATEGORY=10 Q 1338  ; tort feasor
@@ -230,15 +233,22 @@ BDRSGL(CAT,FUND,MRATYPE) ; Calculate SGLs for the BDR process
  ; RHI (9), pre-MRA                  528704    1339
  ; RHI (9), post-MRA, MRA rec.       528704    133H
  ; RHI (9), post-MRA, non-MRA rec.   528704    133N
+ ; Pharmacy No Fault Auto(7),        528711    1319.5
+ ;  Pharmacy Workman's Comp(6)
+ ; Pharmacy RHI, non MRA (9)         528711    133N.2
+ ; Pharmacy Tort Feasor (10)         528711    1338.2
  ;
  ;  Input:  CAT  --  Pointer to the receivable category in file 430.2
- ;         FUND  --  Receivable fund calcualted by routine RCXFMSUF
+ ;         FUND  --  Receivable fund calculated by routine RCXFMSUF
  ;      MRATYPE  --  Indicator of an MRA (2) or non-MRA (3) receivable
  ;
  ;
  I $G(FUND)=528709 Q 1319.2
  I $E($G(FUND),1,4)=4032 Q 1319.2
  I $G(FUND)=528701 Q 1319.3
+ I $G(FUND)=528711&((CAT=6)!(CAT=7)) Q 1319.5
+ I $G(FUND)=528711&(CAT=9) Q "133N.2"
+ I $G(FUND)=528711&(CAT=10) Q 1338.2
  I CAT=8!(CAT=21)!(CAT=7)!(CAT=6) Q 1319.4
  I CAT=10 Q 1338
  I CAT=9 Q $S(MRATYPE=2:"133H",MRATYPE=3:"133N",1:1339)

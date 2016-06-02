@@ -1,5 +1,5 @@
-SROVAR ;BIR/MAM,ADM - SITE PARAMETERS ;10/04/05
- ;;3.0; Surgery ;**17,38,48,67,77,50,87,88,102,107,100,134,144,157**;24 Jun 93;Build 3
+SROVAR ;BIR/MAM,ADM - SITE PARAMETERS ; 7/21/09 1:37pm
+ ;;3.0; Surgery ;**17,38,48,67,77,50,87,88,102,107,100,134,144,157,171**;24 Jun 93;Build 1
  ;
  ; Reference to ^TMP("CSLSUR1" supported by DBIA #3498
  ;
@@ -79,7 +79,7 @@ TERM ; compare stop time with start time
  K %DT S %DT="EPTXR" D ^%DT S X=Y D OUT
  Q
 PLUS24 S:SRNULL SR130="TIME PAT IN OR" S (SRV,Y)=X X ^DD("DD") S SRY=Y
- K DIR S DIR("A",1)="",DIR("A",2)="The time you have entered is earlier than "_SR130_".",DIR("A")="Do you mean "_SRY_" (Y/N) ? ",DIR(0)="YA" D ^DIR K DIR I 'Y!$D(DTOUT)!$D(DUOUT) K X Q
+ N DIR S DIR("A",1)="",DIR("A",2)="The time you have entered is earlier than "_SR130_".",DIR("A")="Do you mean "_SRY_" (Y/N) ? ",DIR(0)="YA" D ^DIR K DIR I 'Y!$D(DTOUT)!$D(DUOUT) K X Q
  S X=SRV
  Q
 CLEAR ; clean-up case edit/lock flags in ^XTMP

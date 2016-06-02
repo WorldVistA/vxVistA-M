@@ -1,5 +1,5 @@
-ORWDXR ; SLC/KCM/JDL - Utilites for Order Actions ;5/30/06  14:50
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**10,85,125,131,134,141,149,187,190,213,243**;Dec 17, 1997;Build 242
+ORWDXR ;SLC/KCM/JDL - Utilites for Order Actions ;05/06/14  16:06
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**10,85,125,131,134,141,149,187,190,213,243,331,306,349,374**;Dec 17, 1997;Build 29
  ;
 ACTDCREA(DCIEN) ; Valid DC Reason
  N X
@@ -18,6 +18,8 @@ RENEW(REC,ORIFN,ORVP,ORNP,ORL,FLDS,CPLX,ORAPPT) ; Renew an order
  N ORDUZ,ORSTS,OREVENT,ORCAT,ORDA,ORTS,ORNEW,ORCHECK,ORLOG,ORPKG
  N ORDIALOG,PRMT,X0
  N FSTDOSE,FST
+ ;*349 Allow for ORDUZ to come in through FLDS. Allow renewer to be specified by the caller.
+ S ORDUZ=$G(FLDS("ORDUZ"))
  S (FSTDOSE,FST)=0
  I '$D(CPLX) S CPLX=0
  I '$G(ORAPPT) S ORAPPT=""
@@ -58,6 +60,12 @@ RENEW(REC,ORIFN,ORVP,ORNP,ORL,FLDS,CPLX,ORAPPT) ; Renew an order
  . K ORDIALOG($$PTR^ORCD("OR GTX START DATE"),1) ; remove effective dt
  . S ORDIALOG($$PTR^ORCD("OR GTX REFILLS"),1)=$P(FLDS(1),U,4)
  . S ORDIALOG($$PTR^ORCD("OR GTX ROUTING"),1)=$P(FLDS(1),U,5)
+ . ;DSS/SMP - Begin Mods - Use order to find previous routing if present
+ . D:$G(^%ZOSF("ZVX"))["VX"
+ . . N VFDX S VFDX=$O(^OR(100,+ORIFN,4.5,"ID","PICKUP",""))
+ . . Q:'VFDX  S VFDX=$G(^OR(100,+ORIFN,4.5,VFDX,1))
+ . . I VFDX'="" S ORDIALOG($$PTR^ORCD("OR GTX ROUTING"),1)=VFDX
+ . ;DSS/SMP - End Mods
  . S PRMT=$$PTR^ORCD("OR GTX WORD PROCESSING 1")
  . K ^TMP("ORWORD",$J,PRMT,1)
  . S I=1 F  S I=$O(FLDS(I)) Q:'I  S ^TMP("ORWORD",$J,PRMT,1,I-1,0)=FLDS(I)
@@ -76,12 +84,20 @@ RNWFLDS(LST,ORIFN) ; Return fields for renew action
  S PKG=$E($P(^DIC(9.4,PKG,0),U,2),1,2),DG=$P(^ORD(100.98,DG,0),U,3)
  S LST(0)=$S(PKG="OR":999,PKG="PS"&(DG="O RX"):140,PKG="PS"&(DG="UD RX"):130,PKG="PS"&(DG="NV RX"):145,1:0)
  I +LST(0)=140 D
- . S LST(0)=LST(0)_U_U_U_+$$VAL(ORIFN,"REFILLS")_U_$$VAL(ORIFN,"PICKUP")
+ . N ORPICK,ORPREV
+ . S ORPICK=$$DEFPICK^ORWDPS1("")
+ . I ORPICK="" D
+ .. N D3
+ .. S D3=$G(^OR(100,ORIFN,3))
+ .. I $P(D3,"^",3)=11,$P(D3,"^",11)=2 S ORPREV=$P(D3,"^",5) I ORPREV]"" S ORPICK=$$VAL(ORPREV,"PICKUP")
+ .. I $P(D3,"^",3)'=11 S ORPICK=$$VAL(ORIFN,"PICKUP")
+ .. I ORPICK="" S ORPICK="M^by Mail"
+ . S LST(0)=LST(0)_U_U_U_+$$VAL(ORIFN,"REFILLS")_U_ORPICK
  . ;D WPVAL(.LST,ORIFN,"COMMENT")
  I +LST(0)=999 S LST(0)=LST(0)_U_$$VAL(ORIFN,"START")_U_$$VAL(ORIFN,"STOP")
  ; make sure start/stop times are relative times, otherwise use NOW, no Stop
- I +$P(LST(0),U,2) S $P(LST(0),U,2)="NOW"
- I +$P(LST(0),U,3)!($P(LST(0),U,3)="0") S $P(LST(0),U,3)=""
+ ;I +$P(LST(0),U,2) S $P(LST(0),U,2)="NOW" ;DJE-VM *331 - moved to $$VAL
+ ;I +$P(LST(0),U,3)!($P(LST(0),U,3)="0") S $P(LST(0),U,3)=""
  ;NEW STUFF AFTER THIS LINE OR*3*243
  S $P(LST(0),U,9)=0
  S OROI=$O(^OR(100,+ORIFN,4.5,"ID","ORDERABLE",0))
@@ -102,8 +118,19 @@ RNWFLDS(LST,ORIFN) ; Return fields for renew action
  .M LST(1)=ORY
  Q
 VAL(ORIFN,ID) ; Return value for order response
- N DA S DA=+$O(^OR(100,ORIFN,4.5,"ID",ID,0))
- Q $G(^OR(100,ORIFN,4.5,DA,1))
+ N DA,Y,ORDIALOG,ORDGDA,CAPS,XCODE
+ S DA=+$O(^OR(100,ORIFN,4.5,"ID",ID,0))
+ I (ID="START")!(ID="STOP") D  I 1 ;DJE-VM *331
+ . ; make sure start/stop times are relative times, otherwise use dialog default values
+ . S CAPS=$$UP^XLFSTR($G(^OR(100,ORIFN,4.5,DA,1)))
+ . I ('$L(CAPS))!($E(CAPS)="T")!($E(CAPS)="V")!($E(CAPS)="N"&($E(CAPS,1,3)'="NOV")) S Y=CAPS Q
+ . S ORDIALOG=$P(^OR(100,+ORIFN,0),U,5)
+ . S ORDGDA=+^OR(100,ORIFN,4.5,DA,0)
+ . S XCODE=$G(^ORD(101.41,+ORDIALOG,10,ORDGDA,7))
+ . I $L(XCODE) X XCODE
+ . I '$L($G(Y)),ID="START" S Y="NOW" ;if no default, set START to NOW
+ E  S Y=$G(^OR(100,ORIFN,4.5,DA,1))
+ Q $G(Y)
 WPVAL(TXT,ORIFN,ID) ; Return word processing value
  N DA S DA=+$O(^OR(100,ORIFN,4.5,"ID",ID,0))
  S I=0 F  S I=$O(^OR(100,ORIFN,4.5,DA,2,I)) Q:'I  S TXT(I)=^(I,0)

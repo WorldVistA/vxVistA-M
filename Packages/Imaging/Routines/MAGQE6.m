@@ -1,5 +1,5 @@
-MAGQE6 ;WOIFO/OHH - Counts for Remote Image Views ; 08/29/2006 09:48
- ;;3.0;IMAGING;**46**;16-February-2007;;Build 1023
+MAGQE6 ;WOIFO/OHH - Counts for Remote Image Views ; 01 Jul 2010 4:49 PM
+ ;;3.0;IMAGING;**46,39**;Mar 19, 2002;Build 2010;Mar 08, 2011
  ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -61,3 +61,27 @@ START(SDATE,EDATE,INST,NMS) ;
  . Q
  Q 
  ;
+GATH(START,STOP,INST) ;Will count the number of entries for remote views
+ ;from DOD to VA and VA to DOD
+ ;INST=STATION NUMBER 
+ N AI,ENTRIES,ENTRY,CNT,J,JJ,RMTYPE,SITE
+ Q:'$G(INST)
+ K ^TMP($J,"MAG_ACC")
+ I '$G(START)!'$G(STOP) D
+ . S STOP=$$FMADD^XLFDT($$NOW^XLFDT()\100_"01",-1)
+ . S START=STOP\100_"01"
+ Q:'STOP
+ Q:'START
+ S SITE=$O(^MAG(2006.1,"B",INST,0))
+ S I=START F  S I=$O(^MAG(2006.95,"C",SITE,I)) Q:'I!(I>STOP)  S ENTRY=0 D
+ . F  S ENTRY=$O(^MAG(2006.95,"C",SITE,I,ENTRY)) Q:'ENTRY  D 
+ . . I $D(^MAG(2006.95,ENTRY,0)) S RMTYPE=$P(^MAG(2006.95,ENTRY,0),"^",2)
+ . . I RMTYPE]"" D
+ . . . I '$D(^TMP($J,"MAG_ACC",RMTYPE)) S ^TMP($J,"MAG_ACC",RMTYPE)=0
+ . . . S $P(^TMP($J,"MAG_ACC",RMTYPE),"^")=$P(^TMP($J,"MAG_ACC",RMTYPE),"^")+1
+ . . . Q
+ . . Q
+ . Q
+ S J="" F  S J=$O(^TMP($J,"MAG_ACC",J)) Q:J=""   D MSG^MAGQE2("ACCESS TYPE("_J_"): "_$G(^TMP($J,"MAG_ACC",J)))
+ K ^TMP($J,"MAG_ACC")
+ Q

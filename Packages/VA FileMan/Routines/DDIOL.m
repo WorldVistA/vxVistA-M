@@ -1,11 +1,15 @@
-DDIOL ;SFISC/MKO-THE LOADER ;1:53 PM  12 Sep 1995
- ;;22.0;VA FileMan;;Mar 30, 1999
- ;Per VHA Directive 10-93-142, this routine should not be modified.
+DDIOL ;SFISC/MKO-THE LOADER ;14JUN2011
+ ;;22.2;MSC Fileman;;Jan 05, 2015;
+ ;;Submitted to OSEHRA 5 January 2015 by the VISTA Expertise Network.
+ ;;Based on Medsphere Systems Corporation's MSC Fileman 1051.
+ ;;Licensed under the terms of the Apache License, Version 2.0.
+ ;;GFT;**1038,1042**
+ ;
  ;
 EN(A,G,FMT) ;Write the text contained in local array A or global array G
  ;If one string passed, use format FMT
  N %,Y,DINAKED
- S DINAKED=$$LGR^%ZOSV
+ S DINAKED=$NA(^(0))
  ;
  S:'$D(A) A=""
  I $G(A)="",$D(A)<9,$G(FMT)="",$G(G)'?1"^"1A.7AN,$G(G)'?1"^"1A.7AN1"(".E1")" Q
@@ -54,7 +58,7 @@ LD1(S,F) ;Load string S, with format F
  S:S[$C(7) S=$TR(S,$C(7),"")
  F J=1:1:$L(F,"!")-1 S N=N+1,^TMP(T,$J,N)=""
  S:'N N=1
- S:F["?" @("C="_$P(F,"?",2))
+ S:F["?" @("C="_+$P(F,"?",2))
  S L=$G(^TMP(T,$J,N))
  S ^TMP(T,$J,N)=L_$J("",$G(C)-$L(L))_S
  Q

@@ -1,5 +1,5 @@
-VFDCHFS1 ;DSS/SGM - HOST FILE UTILITIES ;05/08/2007 15:20
- ;;2009.2;DSS,INC VXVISTA OPEN SOURCE;;01 Dec 2009
+VFDCHFS1 ;DSS/SGM - HOST FILE UTILITIES ; 10/29/2013 14:20
+ ;;2011.1.3;DSS,INC VXVISTA OPEN SOURCE;**15**;01 Dec 2009;Build 1
  ;Copyright 1995-2009,Document Storage Systems Inc. All Rights Reserved
  ;
  ;THIS ROUTINE IS NOT DIRECTLY INVOKABLE.  SEE VFDCHFS ROUTINE
@@ -69,12 +69,12 @@ STRIP(ROOT) ;  strip control characters from data in ROOT
  I ROOT'["(" S STOP=ROOT_"("
  E  S STOP=$E(ROOT,1,$L(ROOT)-1)_","
  F  S ROOT=$Q(@ROOT) Q:ROOT'[STOP  S Z=@ROOT D:Z?.E1C.E
- .S Z=$TR(Z,CTRL) I Z'[TAB S @ROOT=Z Q
- .S STR="" F I=1:1:$L(Z,TAB) S Y=$P(Z,TAB,I) D
- ..S STR=STR_Y,X=$L(STR)#8,STR=STR_$E(SP,1,8-X)
- ..Q
- .S @ROOT=Z
- .Q
+ . S Z=$TR(Z,CTRL) I Z'[TAB S @ROOT=Z Q
+ . S STR="" F I=1:1:$L(Z,TAB) S Y=$P(Z,TAB,I) D
+ . . S STR=STR_Y,X=$L(STR)#8,STR=STR_$E(SP,1,8-X)
+ . . Q
+ . S @ROOT=Z
+ . Q
  Q
  ;
 VER ;  verify that file exists in path
@@ -113,7 +113,6 @@ FTG2 ; +vfdcmsg=-1 if fail
  I X=0 D FTG1(5),FTG3(0) Q
  I '$$FTG^%ZISH(PATH,FILE,$NA(@VFDCHX@(1)),3) D FTG1(1),FTG3(0) Q
  I '$D(@VFDCHX) D FTG1(1),FTG3(0)
- S $EC=VFDECODE
  Q
  ;
 FTG3(Y) ; check to see if file needs to be deleted
@@ -124,14 +123,14 @@ FTG3(Y) ; check to see if file needs to be deleted
 RTN ; run user defined routine
  N $ES,$ET,VFDECODE
  S VFDECODE=$EC,$EC="",$ETRAP="D ETRAP^VFDCHFS1 Q"
- D OPEN I VFDCMSG>-1 D @RTN I VFDCMSG>-1 D CLOSE S $EC=VFDECODE
+ D OPEN I VFDCMSG>-1 D @RTN I VFDCMSG>-1 D CLOSE
  Q
  ;
 RTNDIP ; run the Fileman print utility
  N $ES,$ET,%ZIS,VFDECODE,IOP,POP
  S VFDECODE=$EC,$EC="",$ETRAP="D ETRAP^VFDCHFS1 Q"
  S %ZIS("HFSNAME")=PATH_FILE,%ZIS("HFSMODE")="W"
- D IOP,EN1^DIP I VFDCMSG>-1 D ^%ZISC S $EC=VFDECODE
+ D IOP,EN1^DIP I VFDCMSG>-1 D ^%ZISC
  Q
  ;
  ;--------------- Interactive Modules ---------------
@@ -156,16 +155,15 @@ ASKPATH ;  interactive entry to prompt for path name
  ;------------------- ERROR TRAP -------------------
 ETRAP ;Error trap
  S X=$$EC^%ZOSV
- S Y=$ECODE
- S Z=$G(FILE)
- S VFDCMSG="-1^Error trap: |$ZE|"_X_"|$EC|"_Y_"|FILE|"_Z
+ S VFDCMSG="-1^Error trap: |$ZE|"_X_"|$EC|"_$EC_"|FILE|"_$G(FILE)
  D ^%ZTER
  N %ZIS S %ZIS="0N"
  I $G(RTN)="EN1^DIP" D ^%ZISC
  I $G(HANDLE)'="" D CLOSE
  ; upon error always delete the file
- Q:$G(FILE)=""  Q:$G(PATH)=""
- N VFDDEL S VFDDEL(FILE)="" S X=VFDCMSG D DEL S VFDCMSG=X
+ I $G(FILE)'="",$G(PATH)'="" D
+ . N VFDDEL S VFDDEL(FILE)="",X=VFDCMSG D DEL S VFDCMSG=X
+ . Q
  Q
  ;
  ;--------------- Utilities for VFDCHFS ---------------

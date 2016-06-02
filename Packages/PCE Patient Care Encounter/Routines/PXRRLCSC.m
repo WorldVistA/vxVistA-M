@@ -1,5 +1,7 @@
 PXRRLCSC ;ISL/PKR - PCE reports locations selection criteria routines. ;4/8/97
- ;;1.0;PCE PATIENT CARE ENCOUNTER;**12,18,20,72**;Aug 12, 1996
+ ;;1.0;PCE PATIENT CARE ENCOUNTER;**12,18,20,72,189**;Aug 12, 1996;Build 13
+ ;;Reference to FileMan call Institution file (#4) supported by DBIA 10090.
+ ;;Reference to ^DIC(40.7 supported by DBIA 93-C.
  ;
  ;=======================================================================
 BYLOC ;Ask if the report should be broken down by clinic location or clinic
@@ -58,10 +60,10 @@ FAC ;Select the facilities.
  . S PXRRFAC(NFAC)=Y_U_Y(0,0)
  ;
  ;Save the facility names and station.
- ;We will probably need a DBIA to read DIC(4.
  F IC=1:1:NFAC D
  . S X=$P(PXRRFAC(IC),U,1)
- . S STATION=$P($G(^DIC(4,X,99)),U,1)
+ . ;S STATION=$P($G(^DIC(4,X,99)),U,1)
+ . S STATION=$$GET1^DIQ(4,X_",",99,"I")
  . S PXRRFACN(X)=$P(PXRRFAC(IC),U,2)_U_STATION
  ;
  ;Ask user whether they want to display non-va sites
@@ -69,7 +71,7 @@ FAC ;Select the facilities.
  S DIR(0)=DIR(0)_"Y:Yes"
  W !
  S DIR("A")="Do you want to display encounters at Non-VA sites "
- S DIR("B")="N"
+ S DIR("B")="NO"  ; Changed from N to NO - *189
  D ^DIR K DIR
  I +Y=1 D
  . S NFAC=NFAC+1
@@ -98,7 +100,6 @@ NHLOC I NHL'<1 S DIC("A")="Select another HOSPITAL LOCATION: "
  . S NHL=NHL+1
  . S IEN=$P(Y,U,1)
  .;Get the stop code.
- .;These will probably require a DBIA.
  . S X=$P(^SC(IEN,0),U,7)
  . I +X>0 S SC=$P(^DIC(40.7,X,0),U,2)
  . E  S SC="Unknown"

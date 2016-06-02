@@ -1,7 +1,16 @@
-TIURE ; SLC/JER - Error handler actions ;3/30/05
- ;;1.0;TEXT INTEGRATION UTILITIES;**3,21,81,131,113,184**;Jun 20, 1997
+TIURE ; SLC/JER - Error handler actions ;04/23/10  15:11
+ ;;1.0;TEXT INTEGRATION UTILITIES;**3,21,81,131,113,184,250**;Jun 20, 1997;Build 14
+ ;
+ ; ICR #10018    - ^DIE Routine & DIE, DA, DR, DTOUT, & DUOUT local vars
+ ;     #10010    - EN1^DIP Routine & BY, DIC, FLDS, FR, L, TO, & IOP local vars
+ ;     #10028    - EN^DIWE Routine & DIC & DWPK local vars
+ ;     #10118    - EN^VALM, CLEAR^VALM1, & FULL^VALM1  Routines & VALM("ENTITY"),
+ ;                 VALMBCK, VALMY, & VALMY( Local Vars
+ ;     #10119    - EN^VALM2 Routine & XQORNOD(0) Local Var
+ ;     #10081    - DELETEA^XQALERT Routine & XQAKILL & XQAID local vars
+ ;
 PRINT ; Print Buffer record associated w/unresolved filing error
- N TIUDA,TIUDATA,TIUI,DIROUT
+ N TIUDA,TIUDATA,TIUI,DIROUT,ZTDESC,ZTRTN
  I '$D(VALMY) D EN^VALM2(XQORNOD(0))
  S TIUI=0
  F  S TIUI=$O(VALMY(TIUI)) Q:+TIUI'>0  D  Q:$D(DIROUT)
@@ -50,8 +59,8 @@ EDIT1 ; Single record edit
  I +ERRTYPE=2 D FLDERR(ERRDA)
  Q
 FILERR(ERRDA) ; Resolve filing errors
- N TIUI,INQUIRE,BUFDA,TIUTYPE,RESCODE,TIUDONE
- N TIUEVNT,TIUSKIP,ERR0,STATUS,PRFILERR
+ N DIC,DIRUT,DWPK,TIUI,INQUIRE,BUFDA,TIUTYPE,RESCODE,TIUDONE
+ N TIUEVNT,TIUSKIP,ERR0,RETRY,STATUS,PRFILERR
  ; Set TIUEVNT for PN resolve code:
  S TIUEVNT=+ERRDA
  S TIUI=0,ERR0=$G(^TIU(8925.4,TIUEVNT,0)),STATUS=$P(ERR0,U,6)
@@ -67,7 +76,7 @@ FILERR(ERRDA) ; Resolve filing errors
  . . W ! S INQUIRE=$$READ^TIUU("YO","Inquire to patient record","YES","^D INQRHELP^TIUPEVNT")
  . . I $D(DIRUT) S TIUSKIP=1 Q
  . . I +INQUIRE X RESCODE
- . W !!,"Filing error resolution code could not found for this document type.",!,"Please edit the buffered data directly and refile."
+ . W !!,"Filing error resolution code could not be found for this document type.",!,"Please edit the buffered data directly and refile."
  W !!,"You may now edit the buffered upload data in an attempt to resolve error:",!,$P(ERR0,U,4),!
  I '$$READ^TIUU("EA","Press RETURN to continue and edit the buffer or '^' to exit: ") G FILEX
  S DIC="^TIU(8925.2,"_+BUFDA_",""TEXT"",",DWPK=1 D EN^DIWE
@@ -99,10 +108,14 @@ FLDERR(EVNTDA) ; Resolve field errors
  . I +TIUFIX=1 N XQAKILL,XQAID S XQAKILL=0,XQAID="TIUERR,"_+EVNTDA_","_+EVNTDA1 D DELETEA^XQALERT
  . ; If entry is a TIU Document, do Post-filing action and SEND^TIUALRT
  . I DIE="^TIU(8925," D
- . . N TIUPOST,TIUREC,DR,DIE
+ . . N TIUPOST,TIUREC,DR,DIE,TIUD12,TIUD13,TIUAU,TIUEC,TIUEBY
  . . S TIUPOST=$$POSTFILE^TIULC1(+$G(^TIU(8925,DA,0)))
  . . S TIUREC("#")=DA
  . . I TIUPOST]"" X TIUPOST I 1
+ . . ;if not entered by the author or expected cosigner record VBC Line Count
+ . . S TIUD12=$G(^TIU(8925,DA,12)),TIUD13=$G(^(13))
+ . . S TIUEBY=$P(TIUD13,U,2),TIUAU=$P(TIUD12,U,2),TIUEC=$P(TIUD13,U,8)
+ . . I ((+TIUEBY>0)&(+TIUAU>0))&((TIUEBY'=TIUAU)&(TIUEBY'=TIUEC)) D LINES^TIUSRVPT(DA)
  . . D SEND^TIUALRT(DA)
  D FLDRSLV^TIUPEVN1(EVNTDA) ; TIU*1*81 moved from TIUPEVNT
  Q

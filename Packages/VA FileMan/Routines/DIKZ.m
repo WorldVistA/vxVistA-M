@@ -1,7 +1,11 @@
-DIKZ ;SFISC/XAK-XREF COMPILER ;7JUN2004
- ;;22.0;VA FileMan;**140**;Mar 30, 1999
- ;Per VHA Directive 10-93-142, this routine should not be modified.
- I $G(DUZ(0))'="@" W $C(7),$$EZBLD^DIALOG(101) Q
+DIKZ ;SFISC/XAK-XREF COMPILER ;1JUN2010
+ ;;22.2;MSC Fileman;;Jan 05, 2015;
+ ;;Submitted to OSEHRA 5 January 2015 by the VISTA Expertise Network.
+ ;;Based on Medsphere Systems Corporation's MSC Fileman 1051.
+ ;;Licensed under the terms of the Apache License, Version 2.0.
+ ;;GFT;**140,163**
+ ;
+ I $G(DUZ(0))'="@" W:$D(^DI(.84,0)) $C(7),$$EZBLD^DIALOG(101) Q
 EN1 N DIKJ,%X D:'$D(DISYS) OS^DII
  I '$D(^DD("OS",DISYS,"ZS")) W $C(7),$$EZBLD^DIALOG(820) Q
  S U="^" S:'$G(DTIME) DTIME=300
@@ -15,7 +19,7 @@ EN ;
  K ^UTILITY($J),^UTILITY("DIK",$J) N DIK,DIFILENO
  S DNM=X,(DH,DIFILENO)=+Y I $D(^DIC(+Y,0,"GL")) S DIK2=^("GL")
  I '$D(DIK2)!(DMAX<2400) G Q
- S X=DH D A^DIU21,WAIT^DICD:'$G(DIKZS),DT^DICRW
+ S X=DH D DELETROU^DIEZ(DNM),A^DIU21,WAIT^DICD:'$G(DIKZS),DT^DICRW ;DELETE OLD ROUTINES, DELETE "DIK" NODES
  S (DRN,DIKZQ,T)=0,DMAX=DMAX-100
  ;
  ;Load indexes defined in Index file

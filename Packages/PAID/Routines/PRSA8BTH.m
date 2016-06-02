@@ -1,5 +1,5 @@
 PRSA8BTH ;WOIFO/JAH - Tour Hours Display ;7/9/08
- ;;4.0;PAID;**117**;Sep 21, 1995;Build 32
+ ;;4.0;PAID;**117,110**;Sep 21, 1995;Build 7
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  Q
  ;
@@ -8,13 +8,20 @@ TOURHRP ;Tour Hours Display for payroll
  S PRSTLV=7
  S TLS=0
  S FORWHO="for Payroll"
+ D MAIN
+ Q
  ;
 TOURHRT ; Tour hours display for timekeeper
- I $G(PRSTLV)'>0 N TLS,PRSTLV,FORWHO S TLS=1,PRSTLV=2,FORWHO="for Timekeeper"
+ N TLS,PRSTLV,FORWHO S TLS=1,PRSTLV=2,FORWHO="for Timekeeper"
+ D MAIN
+ Q
  ;
 TOURHRS ; Tour hours for T&L supervisor
- I $G(PRSTLV)'>0 N PRSTLV,TLS,FORWHO S TLS=1,PRSTLV=3,FORWHO="for T&A Supervisor"
+ N PRSTLV,TLS,FORWHO S TLS=1,PRSTLV=3,FORWHO="for T&A Supervisor"
+ D MAIN
+ Q
  ;
+MAIN ;
  N DIR,DIRUT,Y,PPI,PPE,NOTOUR,NOTCARD,PPRANGE,DAILYHRS,EP,SP,SDT,EDT
  N SHONOTES,PRSIEN,TLI
  S PRSIEN=0

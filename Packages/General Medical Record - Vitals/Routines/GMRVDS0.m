@@ -1,5 +1,5 @@
 GMRVDS0 ;HIRMFO/YH,FT-DISPLAY LATEST VITALS/MEASUREMENTS ;6/13/01  15:03
- ;;4.0;Vitals/Measurements;**1,7,11,13**;Apr 25, 1997
+ ;;4.0;Vitals/Measurements;**1,7,11,13**;Apr 25, 1997;Build 8
  ;
  ; This routine uses the following IAs:
  ; #10061  ^VADPT calls     (supported)
@@ -21,9 +21,18 @@ EN1 ; ENTRY TO DISPLAY VITALS
   . W ! W:GMRVDT(1)=0 $S(X="BP":"B/P",X="P":"Pulse",X="R":"Resp.",X="T":"Temp.",X="HT":"Ht.",X="CG":"Circ/Girth",X="WT":"Wt.",X="PO2":"Pulse Ox",X="PN":"Pain",1:X)_": "
  . I GMRVDT(1)=0 W ?12,"("_GMRVDT_") " S GMRVDT(1)=1
  . I X="T" W ?29,GMRVX(0)_" F  ("_$J(+GMRVX(0)-32*5/9,0,1)_" C)"
- . I X="WT" W ?29,GMRVX(0)_" lb  ("_$J(GMRVX(0)/2.2,0,2)_" kg)" S GMRVWT=GMRVX(0)/2.2
- . I X="HT" W ?29,$S(GMRVX(0)\12:GMRVX(0)\12_" ft ",1:"")_$S(GMRVX(0)#12:GMRVX(0)#12_" in",1:"")_" ("_$J(GMRVX(0)*2.54,0,2)_" cm)" S GMRVHT=(GMRVX(0)*2.54)/100
- . I X="CG" W ?29,GMRVX(0)_" in ("_$J(+GMRVX(0)/.3937,0,2)_" cm)"
+ . ;DSS/SMP - BEGIN MODS
+ . N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
+ . I X="WT" D
+ . . I VFD W ?29,GMRVX(0)_" lb  ("_$$LB2KG^VFDXLF(GMRVX(0),2)_" kg)" S GMRVWT=$$LB2KG^VFDXLF(GMRVX(0)) Q
+ . . W ?29,GMRVX(0)_" lb  ("_$J(GMRVX(0)/2.2,0,2)_" kg)" S GMRVWT=GMRVX(0)/2.2
+ . I X="HT" D
+ . . I VFD W ?29,$S(GMRVX(0)\12:GMRVX(0)\12_" ft ",1:"")_$S(GMRVX(0)#12:GMRVX(0)#12_" in",1:"")_" ("_$$IN2CM^VFDXLF(GMRVX(0),2)_" cm)" S GMRVHT=$$IN2M^VFDXLF(GMRVX(0)) Q
+ . . W ?29,$S(GMRVX(0)\12:GMRVX(0)\12_" ft ",1:"")_$S(GMRVX(0)#12:GMRVX(0)#12_" in",1:"")_" ("_$J(GMRVX(0)*2.54,0,2)_" cm)" S GMRVHT=(GMRVX(0)*2.54)/100
+ . I X="CG" D
+ . . I VFD W ?29,GMRVX(0)_" in ("_$$IN2CM^VFDXLF(+GMRVX(0),2)_" cm)" Q
+ . . W ?29,GMRVX(0)_" in ("_$J(+GMRVX(0)/.3937,0,2)_" cm)"
+ . ;DSS/SMP - END MODS
  . I X="CVP" W ?29,GMRVX(0)_" cmH2O ("_$J(GMRVX(0)/1.36,0,1)_" mmHg)"
  . I X="PO2" W ?29,GMRVX(0)_"% "
  . I X="P"!(X="R")!(X="BP") W ?29,GMRVX(0)

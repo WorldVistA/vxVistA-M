@@ -1,7 +1,11 @@
 PSDREC ;BIR/LTL-CS Receiving ; 6 July 94
- ;;3.0; CONTROLLED SUBSTANCES ;;13 Feb 97
+ ;;3.0; CONTROLLED SUBSTANCES ;**69**;13 Feb 97;Build 13
+ ;References to ^PSD(58.8, covered by DBIA2711
+ ;References to file 58.81 covered by DBIA #2808
+ ;References to ^PRC(442, covered by DBIA#682
+ ;
  I '$D(PSDSITE) D ^PSDSET G:'$D(PSDSITE) QUIT
- I '$D(^XUSEC("PSJ RPHARM",DUZ)) W !!,"Sorry, you need the PSJ RPHARM Security key to do receiving.",!! G QUIT
+ I '$D(^XUSEC("PSJ RPHARM",DUZ)),'$D(^XUSEC("PSD TECH ADV",DUZ)) W !!,"Sorry, you need either the PSJ RPHARM or PSD TECH ADV Security key",!,"to do receiving.",!! G QUIT
  I $P($G(^VA(200,DUZ,20)),U,4)']"" N XQH S XQH="PSD ESIG" D EN^XQH G QUIT
 SETUP D DT^DICRW N C,D,D0,DA,DIC,DINUM,DIE,DIR,DIRUT,DLAYGO,DR,DTOUT,DUOUT,DZ,PSDAT,PSDB,PSDI,PSDIT,PSDW,PSDLOC,PSDLOCN,PSDOUT,PSDP,PSDPI,PSDS,PSDCON,PSDL,PSDPO,PSDREC,PSDRUG,PSDRUGN,PSDT,PSAPV,X,Y,%,%H,%I S PSDL=0,(PSDI,PSDPO)=""
  D NOW^%DTC S PSDAT=+$E(%,1,12)

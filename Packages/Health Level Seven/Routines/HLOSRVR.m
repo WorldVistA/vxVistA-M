@@ -1,5 +1,5 @@
-HLOSRVR ;ALB/CJM/OAK/PIJ- Server for receiving messages - 10/4/94 1pm ;05/14/2008
- ;;1.6;HEALTH LEVEL SEVEN;**126,130,131,134,137,138**;Oct 13, 1995;Build 34
+HLOSRVR ;ALB/CJM - Server for receiving messages - 10/4/94 1pm ;06/25/2012
+ ;;1.6;HEALTH LEVEL SEVEN;**126,130,131,134,137,138,139,143,147,157,158**;Oct 13, 1995;Build 14
  ;Per VHA Directive 2004-038, this routine should not be modified.
  ;
 GETWORK(WORK) ;
@@ -10,6 +10,8 @@ GETWORK(WORK) ;
  ;
 DOWORKS(WORK) ;
  ;DO WORK rtn for a single server (non-concurrent)
+ N $ETRAP,$ESTACK
+ S $ETRAP="G ERROR^HLOSRVR3"
  D SERVER(WORK("LINK"))
  Q
 DOWORKM(WORK) ;
@@ -37,29 +39,54 @@ VMS ;Called from VMS TCP Service once a connection request has been received. Th
  ;
  D SERVER(LINKNAME,"SYS$NET")
  Q
+LINUX1 ;The listener entry point on Linux systems.  The HL LOGICAL LINK should
+ ;be specified in the xinetd configuration file as the variable
+ ;HLOLINK or otherwise in the HLO SYSTEM PARAMETERS file 
+ ;
+ N LINKNAME,NODE
+ S LINKNAME=$System.Util.GetEnviron("HLOLINK")
+ I '$L(LINKNAME) S NODE=$G(^HLD(779.1,1,0)) I $P(NODE,"^",10) S LINKNAME=$P($G(^HLCS(870,$P(NODE,"^",10),0)),"^")
+ S:'$L(LINKNAME) LINKNAME="HLO DEFAULT LISTENER"
+ D LINUX(LINKNAME)
+ Q
+ ;
+LINUX(LINKNAME) ;Listener for Linux systems running under Xinetd.
+ ;Input:
+ ;  LINKNAME - name of the HL LOGICAL LINK for the listener
+ ;
+ Q:'$L($G(LINKNAME))
+ Q:$$CHKSTOP^HLOPROC
+ ;
+ D $ZU(68,15,1) ;need error on disconnect
+ D SERVER(LINKNAME,$PRINCIPAL)
+ Q
  ;
 SERVER(LINKNAME,LOGICAL) ; LINKNAME identifies the logical link, which describes the communication channel to be used
- ;;Start HL*1.6*138 PIJ
- ;;N $ETRAP,$ESTACK S $ETRAP="G ERROR^HLOSRVR1"
  N $ETRAP,$ESTACK S $ETRAP="G ERROR^HLOSRVR3"
- ;;End HL*1.6*138 PIJ
  N HLCSTATE,INQUE
  S INQUE=0
+ ;
+ZB1 ;
+ ;
  Q:'$$CONNECT(.HLCSTATE,LINKNAME,.LOGICAL)
+ ;
  K LINKNAME
  F  Q:'HLCSTATE("CONNECTED")  D  Q:$$CHKSTOP^HLOPROC
  .N HLMSTATE,SENT
- .;
  .;read msg and parse the hdr
  .;HLMSTATE("MSA",1) is set with type of ack to return
+ .;
  .I $$READMSG^HLOSRVR1(.HLCSTATE,.HLMSTATE) D
- ..;
- ..;send an ack if required and save the MSA segment
  ..I (HLMSTATE("MSA",1)]"") S SENT=$$WRITEACK(.HLCSTATE,.HLMSTATE) D:HLMSTATE("IEN") SAVEACK(.HLMSTATE,SENT)
+ ..;
+ ..I HLMSTATE("ID")'="" L -HLO("MSGID",HLMSTATE("ID"))
+ ..;
  ..D:HLMSTATE("IEN") UPDATE(.HLMSTATE,.HLCSTATE)
  ..D:HLCSTATE("COUNTS")>4 SAVECNTS^HLOSTAT(.HLCSTATE)
- ..I $G(HLMSTATE("ACK TO","IEN")),$L($G(HLMSTATE("ACK TO","SEQUENCE QUEUE"))) D ADVANCE^HLOQUE(HLMSTATE("ACK TO","SEQUENCE QUEUE"),+HLMSTATE("ACK TO","IEN"))
- .E  D INQUE() H:HLCSTATE("CONNECTED") 1
+ ..I $G(HLMSTATE("ACK TO IEN")),$L($G(HLMSTATE("ACK TO","SEQUENCE QUEUE"))) D ADVANCE^HLOQUE(HLMSTATE("ACK TO","SEQUENCE QUEUE"),+HLMSTATE("ACK TO IEN"))
+ .E  D
+ ..I $G(HLMSTATE("ID"))'="" L -HLO("MSGID",HLMSTATE("ID"))
+ ..D INQUE() H:HLCSTATE("CONNECTED") 1
  ;
 END D CLOSE^HLOT(.HLCSTATE)
  D INQUE()
@@ -72,6 +99,7 @@ CONNECT(HLCSTATE,LINKNAME,LOGICAL) ;
  N LINK,NODE
  S HLCSTATE("CONNECTED")=0
  Q:'$$GETLINK^HLOTLNK(LINKNAME,.LINK) 0
+ZB999 ; 
  Q:+LINK("SERVER")'=1 0
  S HLCSTATE("SERVER")=LINK("SERVER")
  M HLCSTATE("LINK")=LINK
@@ -84,6 +112,7 @@ CONNECT(HLCSTATE,LINKNAME,LOGICAL) ;
  S HLCSTATE("BUFFER","SEGMENT COUNT")=0 ;count of segments in buffer
  ;
  S HLCSTATE("COUNTS")=0
+ S HLCSTATE("MESSAGE STARTED")=0 ;start of message flag
  S HLCSTATE("MESSAGE ENDED")=0 ;end of message flag
  S NODE=^%ZOSF("OS")
  S HLCSTATE("SYSTEM","OS")=$S(NODE["DSM":"DSM",NODE["OpenM":"CACHE",NODE["G.TM":"G.TM",1:"")
@@ -100,17 +129,22 @@ CONNECT(HLCSTATE,LINKNAME,LOGICAL) ;
  Q HLCSTATE("CONNECTED")
  ;
 INQUE(MSGIEN,PARMS) ;
- ;puts received messages on the incoming queue and sets the B x-refs
+ ;
+ ;
+ ;puts received messages on the incoming queue and sets the B x-ref
  I $G(MSGIEN) S INQUE=INQUE+1 M INQUE(MSGIEN)=PARMS
+ ;
+ ;
  I ('$G(MSGIEN))!(INQUE>20) S MSGIEN=0 D
  .F  S MSGIEN=$O(INQUE(MSGIEN)) Q:'MSGIEN  D
  ..S ^HLB("B",INQUE(MSGIEN,"MSGID"),MSGIEN)=""
  ..S ^HLA("B",INQUE(MSGIEN,"DT/TM"),INQUE(MSGIEN,"BODY"))=""
  ..D:INQUE(MSGIEN,"PASS")
- ...N PURGE
+ ...N PURGE,ORIG
  ...S PURGE=+$G(INQUE(MSGIEN,"PURGE"))
- ...S PURGE("ACKTOIEN")=$G(INQUE(MSGIEN,"ACKTOIEN"))
- ...D INQUE^HLOQUE(INQUE(MSGIEN,"FROM"),INQUE(MSGIEN,"QUEUE"),MSGIEN,INQUE(MSGIEN,"ACTION"),.PURGE)
+ ...S ORIG("IEN")=$G(INQUE(MSGIEN,"ORIG_IEN"))
+ ...S:ORIG("IEN") ORIG("STATUS")=$G(INQUE(MSGIEN,"ORIG_STATUS")),ORIG("ACK BY")=INQUE(MSGIEN,"MSGID")
+ ...D INQUE^HLOQUE(INQUE(MSGIEN,"FROM"),INQUE(MSGIEN,"QUEUE"),MSGIEN,INQUE(MSGIEN,"ACTION"),PURGE,.ORIG)
  .K INQUE S INQUE=0
  Q
  ;
@@ -131,7 +165,7 @@ UPDATE(HLMSTATE,HLCSTATE) ;
  ;Updates status and purge date when appropriate
  ;Also, sets the "B" xrefs, files 777,778, and places message on the incoming queue
  ;
- N PARMS,PURGE,WAIT
+ N PARMS
  S PARMS("PASS")=0
  I HLMSTATE("STATUS","ACTION")]"",HLMSTATE("STATUS")'="ER" D
  .N IEN
@@ -139,18 +173,10 @@ UPDATE(HLMSTATE,HLCSTATE) ;
  .S PARMS("PASS")=1,$P(^HLB(IEN,0),"^",6)=HLMSTATE("STATUS","QUEUE"),$P(^HLB(IEN,0),"^",10)=$P(HLMSTATE("STATUS","ACTION"),"^"),$P(^HLB(IEN,0),"^",11)=$P(HLMSTATE("STATUS","ACTION"),"^",2)
  D:'PARMS("PASS")  ;if not passing to the app, set the purge date
  .I HLMSTATE("STATUS")="" S HLMSTATE("STATUS")="SU"
- .S:HLMSTATE("BATCH") WAIT=HLCSTATE("SYSTEM","ERROR PURGE")
- .S:'HLMSTATE("BATCH") WAIT=$S(($G(HLMSTATE("ACK TO","STATUS"))="ER"):24*HLCSTATE("SYSTEM","ERROR PURGE"),HLMSTATE("STATUS")="ER":24*HLCSTATE("SYSTEM","ERROR PURGE"),1:HLCSTATE("SYSTEM","NORMAL PURGE"))
- .S PURGE=$$FMADD^XLFDT($$NOW^XLFDT,,WAIT)
- .S $P(^HLB(HLMSTATE("IEN"),0),"^",9)=PURGE
- .S ^HLB("AD","IN",PURGE,HLMSTATE("IEN"))=""
- .;if this is an app ack, purge the original message at the same time
- .I $G(HLMSTATE("ACK TO","IEN")),'HLMSTATE("BATCH") D
- ..S $P(^HLB(+HLMSTATE("ACK TO","IEN"),0),"^",9)=PURGE
- ..S ^HLB("AD","IN",PURGE,+HLMSTATE("ACK TO","IEN"))=""
+ .D SETPURGE^HLOF778A(HLMSTATE("IEN"),HLMSTATE("STATUS"),$G(HLMSTATE("ACK TO IEN")),$G(HLMSTATE("ACK TO","STATUS")))
  ;
  ;if not waiting for an application ack, set the status now even if passing to the app - but don't set the purge until the infiler passes the message
- I HLMSTATE("STATUS")="",($G(HLMSTATE("ACK TO","IEN"))!HLMSTATE("HDR","APP ACK TYPE")'="AL") S HLMSTATE("STATUS")="SU"
+ I HLMSTATE("STATUS")="",($G(HLMSTATE("ACK TO IEN"))!HLMSTATE("HDR","APP ACK TYPE")'="AL") S HLMSTATE("STATUS")="SU"
  I HLMSTATE("STATUS")'="" S $P(^HLB(HLMSTATE("IEN"),0),"^",20)=HLMSTATE("STATUS") S:$G(HLMSTATE("MSA",3))]"" $P(^HLB(HLMSTATE("IEN"),0),"^",21)=HLMSTATE("MSA",3) D:HLMSTATE("STATUS")'="SU"
  .N APP
  .S APP=HLMSTATE("HDR","RECEIVING APPLICATION") S:APP="" APP="UNKNOWN" S ^HLB("ERRORS",APP,HLMSTATE("DT/TM"),HLMSTATE("IEN"))=""
@@ -163,12 +189,14 @@ UPDATE(HLMSTATE,HLCSTATE) ;
  .I HLMSTATE("HDR","SENDING FACILITY",2)]"" S FROM=FROM_"~"_HLMSTATE("HDR","SENDING FACILITY",2)_"~"_HLMSTATE("HDR","SENDING FACILITY",3)
  .I FROM="" S FROM="UNKNOWN SENDING FACILITY"
  .S PARMS("FROM")=FROM,PARMS("QUEUE")=HLMSTATE("STATUS","QUEUE"),PARMS("ACTION")=HLMSTATE("STATUS","ACTION")
- .I HLMSTATE("STATUS")'="" S PARMS("PURGE")=$S(HLMSTATE("STATUS")="ER":2,$G(HLMSTATE("ACK TO","STATUS"))="ER":2,1:1)
- .S:$G(HLMSTATE("ACK TO","IEN")) PARMS("ACKTOIEN")=HLMSTATE("ACK TO","IEN") ;to insure that the infiler will know to set the purge date at the same time as the initial message
+ .I HLMSTATE("STATUS")'="" S PARMS("PURGE")=1
+ .;The infiler should set the purge date at the same time as the initial message, and update the status and 'ack by' fields
+ .S:$G(HLMSTATE("ACK TO IEN")) PARMS("ORIG_IEN")=HLMSTATE("ACK TO IEN"),PARMS("ORIG_STATUS")=$G(HLMSTATE("ACK TO","STATUS"))
  ;
  S PARMS("BODY")=HLMSTATE("BODY")
  S PARMS("DT/TM")=HLMSTATE("DT/TM")
  S PARMS("MSGID")=HLMSTATE("ID")
+ ;
  D INQUE(HLMSTATE("IEN"),.PARMS)
  Q
  ;
@@ -186,7 +214,7 @@ WRITEACK(HLCSTATE,HLMSTATE) ;
  ;  Function returns 1 if successful, 0 otherwise
  ;  HLMSTATE("MSA","MESSAGE CONTROL ID") - the msg id of the ack
  ;  HLMSTATE(,"MSA","DT/TM OF MESSAGE") - from the ack header
- ;
+ ; 
  N HDR,SUB,FS,CS,MSA,ACKID,TIME
  ;Hard-code the delimiters, the standard requires that the receiving system accept the delimiters listed in the header
  S FS="|"

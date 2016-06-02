@@ -1,8 +1,7 @@
 PSJADT0 ;BIR/CML3,PR,MLM-AUTO DC/HOLD CANCEL ;11 Aug 98 / 8:25 AM
- ;;5.0; INPATIENT MEDICATIONS ;**17,111,112,135**;16 DEC 97
+ ;;5.0;INPATIENT MEDICATIONS ;**17,111,112,135,181,274**;16 DEC 97;Build 29
  ;
  ;Reference to ^PS(55 supported by DBIA #2191.
- ;Reference to ^PS(59.7 supported by DBIA #2181.
  ;
 ENDC ; dc active orders first, then non-verified orders
  W:'$D(PSJQUIET)&'$D(DGQUIET) !,"...discontinuing Inpatient Medication orders..."
@@ -17,6 +16,7 @@ ENDC ; dc active orders first, then non-verified orders
  .D ^PSGAL5
  .K TMP
  .S TMP(55.06,""_PSJDA_","_PSGP_","_"",28)="D"
+ .S TMP(55.06,""_PSJDA_","_PSGP_","_"",136)=$S(PSGALO=1010:"DD",1:"DA")
  .D FILE^DIE("","TMP")
  .K TMP
  .S TMP(55.06,""_PSJDA_","_PSGP_","_"",34)=PSJDCDT
@@ -47,6 +47,7 @@ DC ;
  .K TMP
  K PSIVALT S PSIVAC="AD",PSIVALCK="STOP",PSIVREA="D",PSIVAL=$S('+$G(PSGALO):$G(PSIVRES),1:$P($G(^PS(53.3,+PSGALO,0)),U)) D D1^PSIVOPT2,LOG^PSIVORAL
  K TMP
+ S TMP(55.01,""_+ON_","_DFN_","_"",157)=$S($G(PSGALO)=1010:"DD",1:"DA")
  S TMP(55.01,""_+ON_","_DFN_","_"",.03)=PSJDCDT
  S TMP(55.01,""_+ON_","_DFN_","_"",121)=1
  D FILE^DIE("","TMP")
@@ -71,6 +72,9 @@ ENHE ; status from hold to expired
  Q
  ;
 ENUNDC(PSJDCDT,PSGP,PSJUOW,PSGALO) ; Auto-reinstate orders DC'ed due to a patient movement.
+ ;DSS/LM/SMP - BEGIN MOD - Check time allowed for reinstating orders
+ Q:'$$VFD
+ ;DSS/LM/SMP - END MOD
  N PSJSYSW0 D NOW^%DTC S PSJUNDC=1,PSGDT=%,PSJFIRST='$D(PSJQUIET),PSJSYSW0=$G(^PS(59.6,+$O(^PS(59.6,"B",+PSJUOW,0)),0))
  S PSJS=$O(^PS(55,PSGP,5,"AUS",PSJDCDT-.0002)) F PSGORD=0:0 S PSGORD=$O(^PS(55,PSGP,5,"AUS",+PSJS,PSGORD)) Q:'PSGORD  D
  .I $P($G(^PS(55,PSGP,5,PSGORD,0)),U,9)["D",$P($G(^(4)),U,11) D DISREIN,ENRI^PSGOERI
@@ -100,3 +104,15 @@ DCIMO(DFN,ON,TYP) ; Check parameter before DC'ing clinic order
  Q:'$$CLINIC^PSJBCMA(A) 1
  I '$D(^PS(53.46,"B",CLINIC)) Q 1
  S B=$O(^PS(53.46,"B",CLINIC,"")),C=+$P(^PS(53.46,B,0),"^",3) Q C
+ ;
+ ;DSS/LM/SMP - BEGIN MOD
+VFD() ; 
+ ; Return 1 (true) if okay to auto-reactivate auto-DC'ed orders or
+ ; 0 (false) if maximum allowed time has been exceeded.
+ ; Checks parameter that specifies the maximum time allowed for reinstatement
+ ;
+ N VFD S VFD=$$GET^XPAR("SYS","VFD REINSTATE ORDERS TIME","PSJ")
+ Q:VFD="" 1 ;If parameter is not valued, OK to reinstate
+ Q:'($G(PSJDCDT)>0) 1 ;If unable to compute auto-DC date/time, OK
+ Q:$$FMDIFF^XLFDT($$NOW^XLFDT,PSJDCDT,2)>(VFD*60) 0 ;Time exceeded
+ Q 1 ;OK to reinstate orders

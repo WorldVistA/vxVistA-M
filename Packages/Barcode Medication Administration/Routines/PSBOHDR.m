@@ -1,5 +1,5 @@
-PSBOHDR ;BIRMINGHAM/EFC-REPORT HEADERS ;Mar 2004
- ;;3.0;BAR CODE MED ADMIN;**5,13**;Mar 2004
+PSBOHDR ;BIRMINGHAM/EFC - REPORT HEADERS ;12/12/12 12:12pm
+ ;;3.0;BAR CODE MED ADMIN;**5,13,42,74,70**;Mar 2004;Build 1
  ;
  ; Reference/IA
  ; EN6^GMRVUTL/1120
@@ -7,10 +7,17 @@ PSBOHDR ;BIRMINGHAM/EFC-REPORT HEADERS ;Mar 2004
  ; IN5^VADPT/10061
  ; DEM^VADPT/10061
  ;
-PT(DFN,PSBHDR,PSBCONT,PSBDT) ; 
+ ;*70 - add to heading CLINIC ORDERS ONLY when in clinic exclusive
+ ;      mode
+ ;    - 1489: Blended PSB*3*74 with PSB*3*70
+ ;
+PT(DFN,PSBHDR,PSBCONT,PSBDT,SRCHTXT,SUBHD) ;
  ; DFN:     Patient File IEN
  ; PSBCONT: True if this is a continuation page
  ; PSBDT:   Date of Pt Information (Default to DT)
+ ; SRCHTXT: User selection list
+ ; SUBHD:   Sub heading if present - prints before body === line
+ S SRCHTXT=$G(SRCHTXT),SUBHD=$G(SUBHD)    ;*70
  W:$Y>1 @IOF
  W:$X>1 !
  S:'$G(PSBDT) PSBDT=DT
@@ -19,7 +26,7 @@ PT(DFN,PSBHDR,PSBCONT,PSBDT) ;
  .S VAIP("D")="LAST"
  .D DEM^VADPT,IN5^VADPT
  .S PSBHDR("NAME")=VADM(1)
- .S PSBHDR("SSN")=$P(VADM(2),U,2)
+ .S PSBHDR("SSN")=VA("PID")
  .S PSBHDR("DOB")=$P(VADM(3),U,2)
  .S PSBHDR("AGE")=VADM(4)
  .S PSBHDR("SEX")=$P(VADM(5),U,2)
@@ -28,11 +35,28 @@ PT(DFN,PSBHDR,PSBCONT,PSBDT) ;
  .S PSBHDR("WARD")=$P(VAIP(5),U,2)
  .S PSBHDR("ROOM")=$P(VAIP(6),U,2)
  .S PSBHDR("DX")=VAIP(9)
- .K VAIP,VADM
- .S GMRVSTR="HT" D EN6^GMRVUTL
- .S X=+$P(X,U,8) S:X X=X*2.54\1 S PSBHDR("HEIGHT")=$S(X:X_"cm",1:"*")
- .S GMRVSTR="WT" D EN6^GMRVUTL
- .S X=+$P(X,U,8) S:X X=X*.45\1 S PSBHDR("WEIGHT")=$S(X:X_"kg",1:"*")
+ .K VAIP,VADM,VA
+ .;
+ .;IHS/MSC/PLS - Call Vitals lookup based on agency code
+ .;  and PCC Vitals package usage flag "BEHOVM USE VMSR"=1
+ .I $G(DUZ("AG"))="I",$$GET^XPAR("ALL","BEHOVM USE VMSR") D
+ ..S X=+$P($$VITAL^APSPFUNC(DFN,"HT"),U,2)
+ ..S X=$$VITCHT^APSPFUNC(X)\1,PSBHDR("HEIGHT")=$S(X:X_"cm",1:"*")
+ ..S X=+$P($$VITAL^APSPFUNC(DFN,"WT"),U,2)
+ ..S X=$$VITCWT^APSPFUNC(X)\1,PSBHDR("WEIGHT")=$S(X:X_"kg",1:"*")
+ .E  D
+ ..;DSS/SMP - BEGIN MODS
+ ..N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
+ ..S GMRVSTR="HT" D EN6^GMRVUTL
+ ..S X=+$P(X,U,8) D  S PSBHDR("HEIGHT")=$S(X:X_"cm",1:"*")
+ ...I VFD S:X X=$$IN2CM^VFDXLF(X,0) Q
+ ...S:X X=X*2.54\1
+ ..S GMRVSTR="WT" D EN6^GMRVUTL
+ ..S X=+$P(X,U,8) D  S PSBHDR("WEIGHT")=$S(X:X_"kg",1:"*")
+ ...I VFD S:X X=$$LB2KG^VFDXLF(X,0) Q
+ ...S:X X=X*.45\1
+ ..;DSS/SMP - END MODS
+ .;
  .N PSBADRX D ALLR^PSBALL(.PSBADRX,DFN) S X=0,Y=""
  .F  S X=$O(PSBADRX(X)) Q:'X  D
  ..Q:$P(PSBADRX(X),U,1)'="ADR"  S Z=$P(PSBADRX(X),U,2) Q:Z=""
@@ -44,19 +68,35 @@ PT(DFN,PSBHDR,PSBCONT,PSBDT) ;
  .K GMRAL,GMRVSTR,GMRA,PSBARX
  .D NOW^%DTC S Y=+$E(%,1,12) D D^DIQ S PSBHDR("DATE")="Run Date: "_Y
  .S PSBHDR("PAGE")=0
+ ;DSS/RAC - BEGIN MOD - Prevent undefined page # and Use same header as CPRS Print
+ D:^%ZOSF("ZVX")["VX" VFD2
+ ;DSS/RAC - END MOD
+ ;
  W $C(13),$TR($J("",IOM)," ","=")
+ ;*70 insert across the board, a heading line base on the order mode
+ ;    write line after the report name.  Some reports use PSBHDR(0)
+ ;    for report name others use PSBHDR(1).
  W !,$G(PSBHDR(0))
+ ; the DO report should not try to print a mode heading *70
+ N DORPT S DORPT=$S($P(PSBRPT(0),"-")="DO":1,1:0)
+ ;
+ S PSBMODE=$S(PSBCLINORD=1:"Include Clinic Orders Only",PSBCLINORD=0:"Include Inpatient Orders Only",1:"Include Inpatient and Clinic Orders")   ;*70
+ I 'DORPT,$G(PSBHDR(1))]"",$G(PSBHDR(0))]"" W !,PSBMODE           ;*70
  W !,$G(PSBHDR(1)),?(IOM-$L(PSBHDR("DATE"))),PSBHDR("DATE")
  S PSBHDR("PAGE")=PSBHDR("PAGE")+1
+ I 'DORPT,$G(PSBHDR(1))]"",$G(PSBHDR(0))="" W !,PSBMODE           ;*70
  W !,$G(PSBHDR(2)),?(IOM-10),$J("Page: "_PSBHDR("PAGE"),10)
- F X=3:1 Q:'$D(PSBHDR(X))  W !,PSBHDR(X)  ; More Lines If Needed
+ F X=3:1 Q:'$D(PSBHDR(X))  D      ; More Lines If Needed          ;*70
+ . W !,PSBHDR(X)
+ . I PSBHDR(X)["Clinic Search" W $$WRAP^PSBO(21,111,SRCHTXT)
+ . I PSBHDR(X)["Ward Location" W SRCHTXT
  I $G(PSBCONT) W !?(IOM-35\2),"*** CONTINUED FROM PREVIOUS PAGE ***"
  W !!,"Patient:",?10,PSBHDR("NAME")
- W ?40,"SSN:       ",PSBHDR("SSN")
- W ?75,"DOB:",?82,PSBHDR("DOB")," (",PSBHDR("AGE"),")"
+ W ?42,$$GET^XPAR("ALL","PSB PATIENT ID LABEL")_":",?53,PSBHDR("SSN")
+ W ?76,"DOB:",?83,PSBHDR("DOB")," (",PSBHDR("AGE"),")"
  D:'$G(PSBCONT)
- .W !,"Sex: ",?10,PSBHDR("SEX"),?40,"Ht/Wt:     ",PSBHDR("HEIGHT"),"/",PSBHDR("WEIGHT"),?75,"Ward: ",?82,PSBHDR("WARD")," Rm ",PSBHDR("ROOM")
- .W !,"Dx:",?10,PSBHDR("DX"),?40,"Last Mvmt: ",PSBHDR("MVMTLAST"),?75,"Type:  ",PSBHDR("MVMTTYPE")
+ .W !,"Sex: ",?10,PSBHDR("SEX"),?42,"Ht/Wt:",?53,PSBHDR("HEIGHT"),"/",PSBHDR("WEIGHT"),?76,"Ward: ",?83,PSBHDR("WARD")," Rm: ",PSBHDR("ROOM")           ;added colon to Rm, PSB*3*74   [1489]
+ .W !,"Dx:",?10,PSBHDR("DX"),?42,"Last Mvmt:",?53,PSBHDR("MVMTLAST"),?76,"Type:",?83,PSBHDR("MVMTTYPE")
  .; Reactions/Allergies
  .W !!,"ADRs:"
  .F X=0:0 S X=$O(PSBHDR("REAC",X)) Q:'X  W:$X>12 ! W ?12,PSBHDR("REAC",X)
@@ -65,11 +105,12 @@ PT(DFN,PSBHDR,PSBCONT,PSBDT) ;
  .; Local Mods Allowed Here and showup only on First Page
  .; Immunizations
  .;D SHOT80^ASFSHOTF
+ W:SUBHD]"" !!,SUBHD
  W !,$TR($J("",IOM)," ","=")
  Q
  ;
-WARD(PSBWP,PSBHDR,PSBCONT,PSBDT) ; 
- ; WARD:    Nurse Location File IEN
+WARD(PSBWP,PSBHDR,PSBCONT,PSBDT,SRCHTXT) ; 
+ ; PSBWP:   Nurse Location File IEN
  ; PSBCONT: True if this is a continuation page
  ; PSBDT:   Date of Pt Information (Default to DT)
  N PSBWRDA
@@ -78,18 +119,56 @@ WARD(PSBWP,PSBHDR,PSBCONT,PSBDT) ;
  S:'$D(PSBHDR("PAGE")) PSBHDR("PAGE")=0
  W:$Y>1 @IOF
  W:$X>0 !
- W $TR($J("",IOM)," ","="),!,$G(PSBHDR(0)),!,$G(PSBHDR(1)),?(IOM-$L(PSBHDR("DATE"))),PSBHDR("DATE")
+ W $TR($J("",IOM)," ","=")
+ ;*70 Insert all reports, a heading line based on the order mode.
+ ;    Write line after the report name.  Some reports use PSBHDR(0)
+ ;    for report name, others use PSBHDR(1).
+ W !,$G(PSBHDR(0))
+ S PSBMODE=$S(PSBCLINORD=1:"Include Clinic Orders Only",PSBCLINORD=0:"Include Inpatient Orders Only",1:"Include Inpatient and Clinic Orders")        ;*70
+ I $G(PSBHDR(0))]"" W !,PSBMODE                                 ;*70
+ W !,$G(PSBHDR(1)),?(IOM-$L(PSBHDR("DATE"))),PSBHDR("DATE")
+ I $G(PSBHDR(0))="" W !,PSBMODE                                   ;*70
  S PSBHDR("PAGE")=PSBHDR("PAGE")+1
  W !,$G(PSBHDR(2)),?(IOM-10),$J("Page: "_PSBHDR("PAGE"),10)
- F X=3:1 Q:'$D(PSBHDR(X))  W !,PSBHDR(X)  ; More Lines If Needed
+ F X=3:1 Q:'$D(PSBHDR(X))  D      ; More Lines If Needed
+ . W !,PSBHDR(X)
+ . I PSBHDR(X)["Clinic Search" W $$WRAP^PSBO(21,111,SRCHTXT)      ;*70
+ . I PSBHDR(X)["Ward Location" W SRCHTXT                          ;*70
  I $G(PSBCONT) W !?(IOM-35\2),"*** CONTINUED FROM PREVIOUS PAGE ***"
  D WARD^NURSUT5("L^"_PSBWP,.PSBWRDA)
- W !!,"Ward Location: "_$P(PSBWRDA(PSBWP,.01),U,2)
  S X="Division: "_$P(PSBWRDA(PSBWP,.02),U,2)
  W ?(IOM-$L(X)),X,!,$TR($J("",IOM)," ","=")
  Q
  ;
-PSBALG   ;
+CLINIC(PSBRPT,PSBHDR,PSBCONT,PSBDT,SRCHTXT) ;
+ ; PSBCONT: True if this is a continuation page
+ ; PSBDT:   Date of Pt Information (Default to DT)
+ S:'$G(PSBDT) PSBDT=DT
+ I '$D(PSBHDR("DATE")) D NOW^%DTC S Y=+$E(%,1,12) D D^DIQ S PSBHDR("DATE")="Run Date: "_Y
+ S:'$D(PSBHDR("PAGE")) PSBHDR("PAGE")=0
+ W:$Y>1 @IOF
+ W:$X>0 !
+ W $TR($J("",IOM)," ","=")
+ ;*70 insert across the board, a heading line base on the order mode
+ ;    write line after the report name.  Some reports use PSBHDR(0)
+ ;    for report name others use PSBHDR(1).
+ W !,$G(PSBHDR(0))
+ S PSBMODE=$S(PSBCLINORD=1:"Include Clinic Orders Only",PSBCLINORD=0:"Include Inpatient Orders Only",1:"Include Inpatient and Clinic Orders")               ;*70
+ I $G(PSBHDR(0))]"" W !,PSBMODE        ;*70
+ W !,$G(PSBHDR(1)),?(IOM-$L(PSBHDR("DATE"))),PSBHDR("DATE")
+ I $G(PSBHDR(0))="" W !,PSBMODE        ;*70
+ S PSBHDR("PAGE")=PSBHDR("PAGE")+1
+ W !,$G(PSBHDR(2)),?(IOM-10),$J("Page: "_PSBHDR("PAGE"),10)
+ F X=3:1 Q:'$D(PSBHDR(X))  D      ; More Lines If Needed        ;*70
+ . W !,PSBHDR(X)
+ . I PSBHDR(X)["Clinic Search" W $$WRAP^PSBO(21,111,SRCHTXT)
+ . I PSBHDR(X)["Ward Location" W SRCHTXT
+ I $G(PSBCONT) W !?(IOM-35\2),"*** CONTINUED FROM PREVIOUS PAGE ***"
+ N DFN D CLIN^PSBO(.PSBRPT) M ^TMP("PSBO",$J)=^TMP("PSJCL",$J)
+ W !,$TR($J("",IOM)," ","=")
+ Q
+ ;
+PSBALG ;
  S YA=""
  K PSBAL,GMRALA
  S PSBLIST=""
@@ -114,3 +193,75 @@ PTFTR() ; [Extrinsic] Patient Page footer
  I $G(PSBUNK) S X="Note:  ??  Indicates an administration with an *UNKNOWN* Action Status" W !!,X
  Q ""
  ;
+SRCHLIST() ;Build appropriate Clinic or Ward/Nurse Unit Search list heading
+ N LIST,RPT,LBL,QQ,PSBWP,PSBWRDA
+ S LIST=""
+ ; Clinic locations lookup
+ D:$P($G(PSBRPT(4)),U,2)="C"
+ . S:'$D(PSBRPT(2)) LIST="All Clinics"
+ . D:$D(PSBRPT(2))
+ .. F QQ=$O(PSBRPT(2,0)):1:$O(PSBRPT(2,"B"),-1) S RPT(PSBRPT(2,QQ,0))=""
+ .. S LIST=""
+ .. S LBL="" F  S LBL=$O(RPT(LBL)) Q:LBL=""  D
+ ... I LIST="" S LIST=LBL Q
+ ... I LIST]"" S LIST=LIST_", "_LBL
+ ; Ward location lookup
+WRD I $P(PSBRPT(.1),U)="W" D
+ . S PSBWP=$P(PSBRPT(.1),U,3) D WARD^NURSUT5("L^"_PSBWP,.PSBWRDA)
+ . S WLOC=PSBWRDA(PSBWP,.01)
+ . ;  name if a nurs unit
+ . S LIST=$P(WLOC,U,2)
+ . ;  hosp/ward loc name if not nurs unit
+ . S:LIST="" LIST=$$GET1^DIQ(44,+WLOC,.01)
+ Q LIST
+ ;
+EMPTYHDR(SRCHTXT) ; Write headings & search cirtieria - for no data scenario
+ D NOW^%DTC S Y=+$E(%,1,12) D D^DIQ S PSBHDR("DATE")="Run Date: "_Y
+ S PSBHDR("PAGE")=1
+ ;
+ W !,$TR($J("",IOM)," ","=")
+ W !,$G(PSBHDR(0))
+ S PSBMODE=$S(PSBCLINORD=1:"Include Clinic Orders Only",PSBCLINORD=0:"Include Inpatient Orders Only",1:"Include Inpatient and Clinic Orders")   ;*70
+ I $G(PSBHDR(1))]"",$G(PSBHDR(0))]"" W !,PSBMODE
+ W !,$G(PSBHDR(1)),?(IOM-$L(PSBHDR("DATE"))),PSBHDR("DATE")
+ I $G(PSBHDR(1))]"",$G(PSBHDR(0))="" W !,PSBMODE
+ W !,$G(PSBHDR(2)),?(IOM-10),$J("Page: "_PSBHDR("PAGE"),10)
+ F X=3:1 Q:'$D(PSBHDR(X))  D      ; More Lines If Needed
+ . W !,PSBHDR(X)
+ . I PSBHDR(X)["Clinic Search" W $$WRAP^PSBO(21,111,SRCHTXT)
+ . I PSBHDR(X)["Ward Location" W SRCHTXT
+ W !,$TR($J("",IOM)," ","=")
+ Q ""
+ ;
+ ;DSS/RAC Below is the added to replicate the same header as CPRS
+ ;
+VFD(NAME,MRN,DOB,AGE,SEX) ;
+ ; NAME - patient name
+ ;  MRN - medical record number
+ ;  DOB - human readable date of birth
+ ;  AGE - patient's age
+ ;  SEX - single character patient sex
+ N X S NAME=$G(NAME),MRN=$G(MRN),DOB=$G(DOB),AGE=$G(AGE),SEX=$G(SEX)
+ N X S X=$E($G(NAME),1,26),$E(X,29)="MRN: "_MRN,$E(X,45)="Sex: "_SEX
+ S $E(X,53)="DOB" S:AGE X=X_" (Age)" S X=X_": "_DOB S:AGE X=X_" ("_AGE_")"
+ Q X
+ ;
+VFD2 ;
+ Q:$G(XQY0)'="PSB GUI CONTEXT - USER"
+ Q:'$D(ZTQUEUED)
+ Q:$E($P($G(PSBRPT(0)),U),1,2)'="MH"
+ N %,%H,%I,DISYS,ORAGE,ORDOB,ORHLINE,ORL,ORNP,ORPNM,ORPV,ORSEX,ORSSN,ORTS,ORWARD,VA,X,ORI,VFDTXT
+ S TEXT="PATIENT MEDICATION HISTORY ("_$$FMTE^XLFDT(PSBSTRT)_" - "_$$FMTE^XLFDT(PSBSTOP)_")"
+ S STATION=$P($$SITE^VASITE,U,3)
+ I $G(^%ZOSF("ZVX"))["VX" S VFDTXT=$$GET^XPAR("SYS","VFD ORWRP REPORT WORDING",1,"E")
+ S:$G(VFDTXT)="" VFDTXT="*** WORK COPY ONLY ***"
+ D PAT^ORPR03(DFN)
+ D SITE^ORWRPP() ;DGR 01/22/16 D SITE^ORWRPP($G(STATION)) 
+ W !,TEXT,?(IOM-$L("Page "_PSBHDR("PAGE"))),"Page "_(PSBHDR("PAGE")+1)
+ W !,$$VFD(ORPNM,ORSSN,ORDOB,ORAGE,ORSEX)
+ S X=$G(ORL(0))_$S($L($G(ORL(1))):"/"_ORL(1),1:"") W:X'="" !,X
+ S $P(ORHLINE,"=",IOM+1)=""
+ W !,ORHLINE
+ S X="Printed: "_$$DATE^ORU($$NOW^XLFDT,"MM/DD/CCYY HR:MIN")
+ W !?27,VFDTXT,?(IOM-($L(X))-1),X,!
+ Q

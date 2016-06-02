@@ -1,11 +1,10 @@
-HLOPRS2 ;ALB/CJM-HL7 - Developer API's for parsing messages(continued) ;02/04/2004
- ;;1.6;HEALTH LEVEL SEVEN;**131**;Oct 13, 1995;Build 10
+HLOPRS2 ;ALB/CJM-HL7 - Developer API's for parsing messages(continued) ;05/12/2009
+ ;;1.6;HEALTH LEVEL SEVEN;**131,146**;Oct 13, 1995;Build 16
  ;
 GETTS(SEG,VALUE,FIELD,COMP,REP) ;
  ;Gets a segment value that is a timestamp in HL7 format and converts it 
  ;to FileMan format. IF the segment value included the timezone, it is
- ;the timestamp is converted to local time. The degree of precision
- ;is optionally returned.
+ ;the timestamp is converted to local time.
  ;
  ;IF the component is specified, then the component is parsed for data type rather than at the higher field level.
  ;
@@ -16,9 +15,8 @@ GETTS(SEG,VALUE,FIELD,COMP,REP) ;
  ;  COMP (optional) If specified, the data type is parsed as a component  value.
  ;  REP - The occurrence # (optional, defaults to 1).  For a non-repeating fields, this parameter is not necessary.
  ;Output:
- ;  VALUE  (required) The date/time in FileMan format.
- ;  VALUE("PRECISION") (optional) If needed, VALUE must be passed by
- ;       reference.  Expected values are:
+ ;  VALUE  (pass-by-reference) The date/time in FileMan format.
+ ;  VALUE("PRECISION") Expected values are:
  ;           "S" - second
  ;           "M" - minute
  ;           "H" - hour
@@ -49,7 +47,7 @@ GETTS(SEG,VALUE,FIELD,COMP,REP) ;
  Q
  ;
 GETDT(SEG,VALUE,FIELD,COMP,REP) ;
- ;Gets a segment value that is a date in HL7 format and converts it to FileMan format. The degree of precision is optionally returned.
+ ;Gets a segment value that is a date in HL7 format and converts it to FileMan format.
  ;IF the component is specified, then the component is parsed for data type rather than at the higher field level.
  ;
  ;Input:
@@ -58,9 +56,8 @@ GETDT(SEG,VALUE,FIELD,COMP,REP) ;
  ;  COMP (optional) If specified, the data type is parsed as a component  value.
  ;  REP - the occurrence# (optional, defaults to 1)  For a non-repeating fields, this parameter is not necessary.
  ;Output:
- ;  VALUE  (required) The date/time in FileMan format.
- ;  VALUE("PRECISION") (optional) If needed, VALUE must be passed by
- ;       reference.  Expected values are:
+ ;  VALUE  (pass-by-reference) The date/time in FileMan format.
+ ;  VALUE("PRECISION") - Expected values are:
  ;           "S" - second (not valid for DT)
  ;           "M" - minute (not valid for DT)
  ;           "H" - hour (not valid for DT)
@@ -232,3 +229,38 @@ GETAD(SEG,VALUE,FIELD,COMP,REP) ;
  S @VAR=7,VALUE("TYPE")=$$GET^HLOPRS(.SEG,FIELD,COMP,SUB,REP)
  S @VAR=8,VALUE("OTHER")=$$GET^HLOPRS(.SEG,FIELD,COMP,SUB,REP)
  Q
+ ;
+ ;**P146 START CJM
+GETXPN(SEG,VALUE,FIELD,COMP,REP) ;
+ ;Gets an XPN data type (Extended Persons Name, HL7 Section Reference 2.9.1) from the specified field.
+ ;IF the component is specified, then the component is parsed for the address rather than at the higher field level.
+ ;
+ ;Input:
+ ;  SEG - (required, pass by reference) The array returned by a call to NEXTSEG^HLOPRS.
+ ;  FIELD (required) The sequence # of the field.
+ ;  COMP (optional) If specified, the data type is parsed as a component  value.
+ ;  REP - The occurrence # (optional, defaults to 1).  For a non-repeating fields, this parameter is not necessary.
+ ;Output:
+ ;  VALUE  (required, pass-by-reference) These subscripts are returned:
+ ;    "FAMILY"
+ ;    "GIVEN" first name
+ ;    "SECOND" second and further names or initials
+ ;    "SUFFIX" (e.g., JR)
+ ;    "PREFIX" (e.g., DR)
+ ;    "DEGREE" (e.g., MD)
+ ;
+ N SUB,VAR
+ Q:'$G(FIELD)
+ I '$G(COMP) D
+ .S VAR="COMP",SUB=1
+ E  D
+ .S VAR="SUB"
+ S:'$G(REP) REP=1
+ S @VAR=1,VALUE("FAMILY")=$$GET^HLOPRS(.SEG,FIELD,COMP,SUB,REP)
+ S @VAR=2,VALUE("GIVEN")=$$GET^HLOPRS(.SEG,FIELD,COMP,SUB,REP)
+ S @VAR=3,VALUE("SECOND")=$$GET^HLOPRS(.SEG,FIELD,COMP,SUB,REP)
+ S @VAR=4,VALUE("SUFFIX")=$$GET^HLOPRS(.SEG,FIELD,COMP,SUB,REP)
+ S @VAR=5,VALUE("PREFIX")=$$GET^HLOPRS(.SEG,FIELD,COMP,SUB,REP)
+ S @VAR=6,VALUE("DEGREE")=$$GET^HLOPRS(.SEG,FIELD,COMP,SUB,REP)
+ Q
+ ;** P146 END CJM

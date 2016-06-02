@@ -1,5 +1,5 @@
-PSBSVHL7 ;BIRMINGHAM/TEJ-BCMA HL7 SERVER ;Mar 2004
- ;;3.0;BAR CODE MED ADMIN;**3**;Mar 2004
+PSBSVHL7 ;BIRMINGHAM/TEJ - BCMA HL7 SERVER ;5/28/10 1:48pm
+ ;;3.0;BAR CODE MED ADMIN;**3,42**;Mar 2004;Build 23
  ; Reference/IA
  ; $$HLDATE^HLFNC/10106
  ; $$HLNAME^HLFNC/10106
@@ -16,7 +16,7 @@ PSBSVHL7 ;BIRMINGHAM/TEJ-BCMA HL7 SERVER ;Mar 2004
  ; VISTA application.
  ; The entry point ("EN") is accessed via BCMA.  This routine
  ; basically consists of subroutines to generate HL7 messages
- ; per trigger events coresponding to BCMA transactions.  
+ ; per trigger events corresponding to BCMA transactions.  
  ; These trigger events are captured within the routine PSBML.
  ; PSBML passes the affected BCMA MEDICATION LOG File IEN and 
  ; a variable capturing the BCMA activity as the input.
@@ -24,7 +24,7 @@ PSBSVHL7 ;BIRMINGHAM/TEJ-BCMA HL7 SERVER ;Mar 2004
  ;                       PSBHL7X  BCMA trigger event/transaction
  ;       Output -        HL7 broadcast to subscribing Applications 
  ;
-EN(PSBIEN,PSBHL7X) ; This is the entry point for for all HL7 processing
+EN(PSBIEN,PSBHL7X) ; This is the entry point for all HL7 processing
 1 ; set up environment for message
  N PSBHLFS,PSBHLCS
  D INIT^HLFNC2("PSB BCMA RASO17 SRV",.HL)
@@ -54,7 +54,7 @@ PID ; PID segment -- use segment generator
  S $P(VADM(4),PSBHLCS)=VADM(4),$P(VADM(4),PSBHLCS,5)="AGE",$P(PSBHL7MS,PSBHLFS,4)=VADM(4)
  S $P(PSBHL7MS,PSBHLFS,5)=$$HLNAME^HLFNC(VADM(1),HL("ECH"))
  S $P(PSBHL7MS,PSBHLFS,7)=$$HLDATE^HLFNC(+VADM(3),"DT")
- S $P(PSBHL7MS,PSBHLFS,19)=$P(VADM(2),"^")
+ S $P(PSBHL7MS,PSBHLFS,19)=$TR(VA("PID"),"-")  ;IHS/VA - use VA("PID")
  S $P(PSBHL7MS,PSBHLFS,8)=$P(VADM(5),"^")
  S HLA("HLS",PSBCNT)="PID"_PSBHLFS_PSBHL7MS
  Q

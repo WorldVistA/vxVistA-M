@@ -1,14 +1,17 @@
 PSORXPR ;BHAM ISC/SAB - view individual prescription ;08/23/96  8:15 am
- ;;7.0;OUTPATIENT PHARMACY;**131,156,148**;DEC 1997
+ ;;7.0;OUTPATIENT PHARMACY;**131,156,148,251**;DEC 1997;Build 202
  ;Reference to ^PS(55 supported by DBIA 2228
  ;Reference ^PSDRUG( supported by DBIA 221
  ;Reference to ^SC supported by DBIA 10040
  ;Reference to ^PSXVIEW supported by DBIA 2204
+ ;External reference to $$DS^PSSDSAPI supported by DBIA 5424
 GET S RX0=^PSRX(DA,0),J=DA,$P(RX0,"^",15)=+$G(^("STA")),RX2=$G(^(2)),R3=$G(^(3)),RTN=$G(^("TN")) S (DFN,P0)=+$P(RX0,"^",2) S:$D(^DPT(P0,0)) P0=^(0) S FFX=0
  S PSDIV=$S($D(^PS(59,+$P(RX2,"^",9),0)):$P(^(0),"^")_" ("_$P(^(0),"^",6)_")",1:"UNKNOWN"),PSDIV=$E(PSDIV,1,28),PSEXDT=$P(RX2,"^",6),PSEXDT=$S(PSEXDT]"":$E(PSEXDT,4,5)_"/"_$E(PSEXDT,6,7)_"/"_$E(PSEXDT,2,3),1:"UNKNOWN")
 PR D STAT^PSOFUNC I 'ST0,$D(^PS(52.4,"AREF",DFN,DA)) S ST="UNPRINTED"
  ;S:$G(PSLSTVER)&($P($G(^PSRX(+$G(PSONV),"STA")),"^")=4) ST="PENDING DUE TO DRUG INTERACTION"
- D PID^VADPT W @IOF,"RX: ",$P(RX0,"^"),?20,"PATIENT: "_$P(P0,"^")_" (",VA("PID")_") ",!,"STATUS: "_ST_"   "_$S($P($G(^PSRX(DA,"IB")),"^")]"":"CO-PAY STATUS",1:"") I ($D(PS)#2),PS="DISCONTINUE",ST["DISCONTINUE" S PS="REINSTATE"
+ D PID^VADPT W @IOF,"RX: ",$P(RX0,"^"),?20,"PATIENT: "_$P(P0,"^")_" (",VA("PID")_") "
+ I $$DS^PSSDSAPI D DRIDOSE^PSOVER1(DA,RX0)
+ W !,"STATUS: "_ST_"   "_$S($P($G(^PSRX(DA,"IB")),"^")]"":"CO-PAY STATUS",1:"") I ($D(PS)#2),PS="DISCONTINUE",ST["DISCONTINUE" S PS="REINSTATE"
  ;W @IOF,!,"RX: ",$P(RX0,"^"),?20,"PATIENT: ",$P(P0,"^")," (",$P(P0,"^",9),") ",!,"STATUS: ",ST_"   "_$S($P($G(^PSRX(DA,"IB")),"^")]"":"CO-PAY STATUS",1:"") I ($D(PS)#2),PS="DISCONTINUE",ST["DISCONTINUE" S PS="REINSTATE"
  I $G(PKI1)!($G(PKI)) N PKIT D  W !,PKIT
  .I '$D(IORVON) S X="IORVOFF;IORVON" D ENDR^%ZISS S PKIT=IORVON_PKIE_IORVOFF K IORVOFF,IORVON,X Q

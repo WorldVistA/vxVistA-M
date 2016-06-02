@@ -1,8 +1,9 @@
-GMVGGR1 ;HOIFO/YH,FT-VITAL SIGNS RECORD SF 511 ;6/12/02  11:58
- ;;5.0;GEN. MED. REC. - VITALS;**3**;Oct 31, 2002;Build 153
+GMVGGR1 ;HOIFO/YH,FT-VITAL SIGNS RECORD SF 511 ;10/24/07
+ ;;5.0;GEN. MED. REC. - VITALS;**3,23**;Oct 31, 2002;Build 15
  ;
  ; This routine uses the following IAs:
  ;  #3214 - ^GMRYAPI calls         (private)
+ ;  #4290 - ^PXRMINDX global       (controlled)
  ; #10040 - FILE 44 references     (supported)
  ; #10061 - ^VADPT calls           (supported)
  ; #10096 - ^%ZOSF calls           (supported)
@@ -16,18 +17,25 @@ VMDATA(RESULT,GMVDATA) ;GMV V/M ALLDATA [RPC entry point]
  ;                2 = start date
  ;                3 = end date
  ;                4 = 0
+ ;                5 = database screen
+ ;                    0 = return records from Vitals & FlowSheets (default)
+ ;                    1 = return records from Vitals only
+ ;                    2 = return records from FlowSheets only
  ;
  N DFN,GQT,X,Y
+ N GCHA,GMVCLIO,GMVLOOP,GSEL,%,%H,%I,%T,GMVQNAME,GMVDB
  K ^TMP($J)
- S (GMROUT,GN,GQT)=0,DFN=+$P(GMVDATA,"^"),GMRSTRT=$P(GMVDATA,"^",2),GMRFIN=$P(GMVDATA,"^",3),GMR=+$P(GMVDATA,"^",4)
+ S (GMROUT,GN,GQT)=0,DFN=+$P(GMVDATA,"^"),GMRSTRT=$P(GMVDATA,"^",2),GMRFIN=$P(GMVDATA,"^",3),GMR=+$P(GMVDATA,"^",4),GMVDB=+$P(GMVDATA,U,5)
+ S GMVDB=$S(GMVDB=2:2,GMVDB=1:1,1:0)
  S GSEL=0,GMR=0
  S Y=GMRSTRT X ^DD("DD") S GSTRFIN=Y S Y=GMRFIN X ^DD("DD") S GSTRFIN=GSTRFIN_" - "_Y
  S GMRHT=0
  K ^TMP($J,"GMR"),^TMP($J,"GMRK"),^TMP($J,"GDT"),^TMP($J,"GMRVG"),^TMP($J,"GTNM")
- S GSTART1=(9999999-GMRFIN)-.0001,GEND1=9999999-GMRSTRT
+ S GSTART1=GMRSTRT-.0001,GEND1=GMRFIN
  ;DSS/LM - Begin modification to include additional vital types - 2/16/2010 Add LEN
- ;F GTYPE="B","H","P","R","T","W","PO2","CVP","CG","PN" D SETT
- F GTYPE="B","H","P","R","T","W","PO2","CVP","CG","PN","LMP","EDD","LEN" D SETT
+ ;       - 8/5/2013 - Add OSEHRA check
+ I $G(^%ZOSF("ZVX"))["VX" F GTYPE="B","H","P","R","T","W","PO2","CVP","CG","PN","LMP","EDD","LEN" D SETT
+ I $G(^%ZOSF("ZVX"))'["VX" F GTYPE="B","H","P","R","T","W","PO2","CVP","CG","PN" D SETT
  ;DSS/LM - End modification
  S GRPT=5 D:GMR'=1 SETIO D ^GMVGGR2
 Q1 K GMR,GSOL,GIVDT,GMRHLOC,GMRVJ,GDATA,GDT,GEN,GEND1,GI,GJ,GK,GMRVX,GSTART1,GTNM,GTYP,GTYPE,GX,I D KVAR^VADPT K VA,VAROOT
@@ -38,28 +46,40 @@ Q1 K GMR,GSOL,GIVDT,GMRHLOC,GMRVJ,GDATA,GDT,GEN,GEND1,GI,GJ,GK,GMRVX,GSTART1,GTN
 SETT ;SET GMRT
  S GTYP(1)=$S(GTYPE="B":"BLOOD PRESSURE",GTYPE="P":"PULSE",GTYPE="R":"RESPIRATION",GTYPE="T":"TEMPERATURE",GTYPE="H":"HEIGHT",GTYPE="W":"WEIGHT",GTYPE="CG":"CIRCUMFERENCE/GIRTH",GTYPE="PO2":"PULSE OXIMETRY",1:"")
  I GTYP(1)="" S GTYP(1)=$S(GTYPE="CVP":"CENTRAL VENOUS PRESSURE",GTYPE="PN":"PAIN",1:"")
- ;DSS/LM - Begin insert
- I GTYP(1)="" S GTYP(1)=$S(GTYPE="LMP":"LAST MENSTRUAL PERIOD",GTYPE="EDD":"ESTIMATED DELIVERY DATE",GTYPE="LEN":"LENGTH",1:"")
+ ;DSS/LM - Begin conditional insert
+ I GTYP(1)="",$G(^%ZOSF("ZVX"))["VX" S GTYP(1)=$S(GTYPE="LMP":"LAST MENSTRUAL PERIOD",GTYPE="EDD":"ESTIMATED DELIVERY DATE",GTYPE="LEN":"LENGTH",1:"")
  ;DSS/LM - End insert
  Q:GTYP(1)=""
- S GTYP=$O(^GMRD(120.51,"B",GTYP(1),""))
- I GTYP>0 F GX=GSTART1:0 S GX=$O(^GMR(120.5,"AA",DFN,GTYP,GX)) Q:GX>GEND1!(GX'>0)  F GEN=0:0 S GEN=$O(^GMR(120.5,"AA",DFN,GTYP,GX,GEN)) Q:GEN'>0  I '$D(^GMR(120.5,GEN,2)) D BLDARR
+ S GTYP=$O(^GMRD(120.51,"B",GTYP(1),"")),GX=GSTART1
+ I GTYP>0 F  S GX=$O(^PXRMINDX(120.5,"PI",DFN,GTYP,GX)) Q:GX'>0!(GX>GEND1)  S GEN=0 F  S GEN=$O(^PXRMINDX(120.5,"PI",DFN,GTYP,GX,GEN)) Q:$L(GEN)'>0  D
+ .K GMVCLIO
+ .I GEN=+GEN,GMVDB=2 Q  ;want clio records only
+ .I GEN'=+GEN,GMVDB=1 Q  ;want vitals records only
+ .I GEN=+GEN D
+ ..D F1205^GMVUTL(.GMVCLIO,GEN)
+ .I GEN'=+GEN D
+ ..D CLIO^GMVUTL(.GMVCLIO,GEN)
+ .S GMVCLIO(0)=$G(GMVCLIO(0)),GMVCLIO(5)=$G(GMVCLIO(5))
+ .I GMVCLIO(0)=""!($P(GMVCLIO(0),U,8)="") Q
+ .S GMVLOOP=0,GG=""
+ .F GMVLOOP=1:1 Q:$P(GMVCLIO(5),U,GMVLOOP)=""  D
+ ..S GMVQNAME=$$FIELD^GMVGETQL($P(GMVCLIO(5),U,GMVLOOP),1,"E")
+ ..I GMVQNAME=""!(GMVQNAME=-1) Q
+ ..S GG=GG_$S(GG'="":";",1:"")_GMVQNAME
+ .D BLDARR
+ .Q
  Q
 BLDARR ;
  N GMVLOC,GMVUSER
- S GDATA=$S($D(^GMR(120.5,GEN,0)):^(0),1:"")
+ S GDATA=GMVCLIO(0)
  Q:GDATA=""
  S GMVLOC=+$P(GDATA,U,5) ;hospital location ien
  S GMVLOC=$P($G(^SC(GMVLOC,0)),U,1)
  S GMVUSER=+$P(GDATA,U,6) ;user duz
  S GMVUSER=$$PERSON^GMVUTL1(GMVUSER)
  S GMRVX=GTYPE,GMRVX(0)=$P(GDATA,"^",8),GMRVX(1)=0  D:GMRVX(0)>0!(GMRVX(0)<0)!($E(GMRVX(0))="0") EN1^GMVSAS0
- K GMRVARY S GMRVARY="" I $P($G(^GMR(120.5,GEN,5,0)),"^",4)>0 D CHAR^GMVCHAR(GEN,.GMRVARY,GTYP)
- K GG S GG="" I $O(GMRVARY(0)) D
- . S GG(1)=0 F  S GG(1)=$O(GMRVARY(GG(1))) Q:GG(1)'>0  S GG(2)=0 F  S GG(2)=$O(GMRVARY(GG(1),GG(2))) Q:GG(2)'>0  S GG(3)="" F  S GG(3)=$O(GMRVARY(GG(1),GG(2),GG(3))) Q:GG(3)=""  S GG=GG_$S(GG="":"",1:";")_GG(3)
- I $P(GDATA,"^",8)="" Q
- S ^TMP($J,"GMRVG",9999999-GX,GTYPE,$P(GDATA,"^",8))=GG_"^"_$S($G(GMRVX(1))>0:1,1:"")_"^^"_$P(GDATA,"^",10)_U_GMVLOC_U_GMVUSER
- S:$D(^TMP($J,"GMRVG",9999999-GX,"H",$P(GDATA,"^",8))) GHT=$P(GDATA,"^",8)
+ S ^TMP($J,"GMRVG",GX,GTYPE,$P(GDATA,"^",8))=GG_"^"_$S($G(GMRVX(1))>0:1,1:"")_"^^"_$P(GDATA,"^",10)_U_GMVLOC_U_GMVUSER_U_$S(GEN=+GEN:"Vitals",1:"CLIO")
+ S:$D(^TMP($J,"GMRVG",GX,"H",$P(GDATA,"^",8))) GHT=$P(GDATA,"^",8)
  ;I GTYPE="B",$P(GDATA,"^",8)'>0 S ^TMP($J,"GMRVG",9999999-GX,"B",$P(GDATA,"^",8))="^^"
  K GG
  Q

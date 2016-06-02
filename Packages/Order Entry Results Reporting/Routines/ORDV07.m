@@ -1,5 +1,5 @@
 ORDV07 ;SLC/DAN/KER - OE/RR Report extracts ; 01/09/2003
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**109,120,159**;Dec 17,1997
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**109,120,159**;Dec 17,1997;Build 2
  ; 
  ; External References
  ;   DBIA  10112  $$SITE^VASITE
@@ -73,7 +73,11 @@ DEM(ROOT,ORALPHA,OROMEGA,ORMAX,ORDBEG,ORDEND,OREXT) ; ADT Demographics
  ;  2  Patient Name
  S ^TMP("ORDATA",$J,1,"WP",2)="2^"_VADM(1)
  ;  3  SSN
- S ^TMP("ORDATA",$J,1,"WP",3)="3^"_$P(VADM(2),"^")
+ ;DSS/SMP - Begin Mods - Replace SSN with MRN
+ I $G(^%ZOSF("ZVX"))["VX" D
+ . S ^TMP("ORDATA",$J,1,"WP",3)="3^"_$G(VA("MRN"))
+ E  S ^TMP("ORDATA",$J,1,"WP",3)="3^"_$P(VADM(2),"^")
+ ;DSS/SMP - End Mods
  ;  4  Sex
  S ^TMP("ORDATA",$J,1,"WP",4)="4^"_$P(VADM(5),"^",2)
  ;  5  Date of Birth
@@ -167,5 +171,10 @@ INS(ROOT,ORALPHA,OROMEGA,ORMAX,ORDBEG,ORDEND,OREXT) ;Return Insurance Informatio
  . S ^TMP("ORDATA",$J,"WP",I,5)="5^"_$S($P(ORARRAY(I,0),"^",6)="s":"SPOUSE",$P(ORARRAY(I,0),"^",6)="v":"SELF",1:"OTHER") ;Policy holder
  . S ^TMP("ORDATA",$J,"WP",I,6)="6^"_$$DATE^ORDVU($P(ORARRAY(I,0),"^",8)) ;Effective date of policy
  . S ^TMP("ORDATA",$J,"WP",I,7)="7^"_$$DATE^ORDVU($P(ORARRAY(I,0),"^",4)) ;Expiration date of policy
+ . ;DSS/SMP - Begin Mods - Add Type of Coverage
+ . I $G(^%ZOSF("ZVX"))["VX" D
+ . . S ^TMP("ORDATA",$J,"WP",I,8)="8^"_$$GET1^DIQ(36,+$P(ORARRAY(I,0),"^")_",",.13)
+ . ;DSS/SMP - End Mods
  S ROOT=$NA(^TMP("ORDATA",$J))
  Q
+ ;

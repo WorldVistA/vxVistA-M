@@ -1,5 +1,5 @@
 PSAUTL4 ;BIR ISC/JMB-Verify Invoices Utility ; 8/19/97
- ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**3,21,48,54,61,67**; 10/24/97;Build 15
+ ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**3,21,48,54,61,67,71**; 10/24/97;Build 10
  ;
  ;References to ^DIC(51.5 are covered by IA #1931
  ;References to ^PSDRUG( are covered by IA #2095
@@ -29,9 +29,9 @@ QTY W !,"Qty Invoiced: "
  ;No Adj. Qty
  S PSADJQ="",PSADJ=+$O(^PSD(58.811,PSAIEN,1,PSAIEN1,1,PSALINE,1,"B","Q",0))
  I $G(PSADJ) S PSANODE=$G(^PSD(58.811,PSAIEN,1,PSAIEN1,1,PSALINE,1,PSADJ,0)),PSADJQ=$S($P(PSANODE,"^",6)'="":+$P(PSANODE,"^",6),1:$P(PSANODE,"^",2))
- ;Adj. Qty
- I $G(PSADJQ) S PSAQTY=PSADJQ W PSAQTY_" ("_$S($P(PSADATA,"^",3):$P(PSADATA,"^",3),$P(PSADATA,"^",3)=0:0,1:"Blank")_")"
- I '$G(PSADJQ) W $P(PSADATA,"^",3) S PSAQTY=$P(PSADATA,"^",3)
+ ;Adj. Qty  <-RJS *71 START
+ I $G(PSADJQ)'="" S PSAQTY=PSADJQ W PSAQTY_" ("_$S($P(PSADATA,"^",3):$P(PSADATA,"^",3),$P(PSADATA,"^",3)=0:0,1:"Blank")_")"
+ I $G(PSADJQ)="" W $P(PSADATA,"^",3) S PSAQTY=$P(PSADATA,"^",3)  ;; <- RJS *71 END
 UPC S PSAUPC=$P(PSADATA,U,13) W:PSAUPC'="" ?38,"UPC: "_PSAUPC
 OU W !,"Order Unit  : "
  S PSAOU=$S(+$P(PSADATA,"^",4)&($P($G(^DIC(51.5,+$P(PSADATA,"^",4),0)),"^")'=""):+$P(PSADATA,"^",4),1:"")

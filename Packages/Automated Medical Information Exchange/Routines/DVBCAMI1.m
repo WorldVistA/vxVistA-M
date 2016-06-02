@@ -1,11 +1,18 @@
 DVBCAMI1 ;ALB/GTS-557/THM-AMIS REPORT/BULLETIN TEXT ; 10/4/91  8:48 AM
- ;;2.7;AMIE;**17**;Apr 10, 1995
+ ;;2.7;AMIE;**17,149,184**;Apr 10, 1995;Build 10
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  ;
- ;** NOTICE: This routine is part of an implementation of a Nationally
- ;**         Controlled Procedure.  Local modifications to this routine
- ;**         are prohibited per VHA Directive 10-93-142
- ;
-BULLTXT S TOTRECV=TOT("RECEIVED")+TOT("INSUFF"),TOTRVTN=TOTRECV+TOT("TRANSIN")
+ ;Input : DVBACDE - Priority of Exam code to get Totals for
+BULLTXT(DVBACDE) ;
+ N DVBATXT,DVBADTS
+ S TOTRECV=TOT("RECEIVED")+TOT("INSUFF"),TOTRVTN=TOTRECV+TOT("TRANSIN")
+ S DVBATXT=$$PRHD^DVBCIUTL(DVBACDE)
+ S DVBATXT=$S(DVBATXT["Excludes":"Report "_DVBATXT,1:"Report for "_DVBATXT)
+ ;IDES Type exams required to be completed in 45 days, all others 30
+ S DVBADTS=$S(((";IDES;")[(";"_DVBACDE_";")):45,1:30)
+ ;.01,.02 printed only in bulletin (if generated)
+ S ^TMP($J,.01,0)=DVBATXT
+ S ^TMP($J,.02,0)=" "
  S ^TMP($J,1,0)="Processing date: "_$$FMTE^XLFDT(DT,"5DZ")
  S ^TMP($J,2,0)=" "
  S ^TMP($J,3,0)="Total pending from previous month: "_PREVMO
@@ -22,7 +29,7 @@ BULLTXT S TOTRECV=TOT("RECEIVED")+TOT("INSUFF"),TOTRVTN=TOTRECV+TOT("TRANSIN")
  S ^TMP($J,10,0)="Average processing time: "_TOT("AVGDAYS")_$S(TOT("AVGDAYS")>1!(TOT("AVGDAYS")<1):" days",1:" day")
  S ^TMP($J,11,0)=" "
  S ^TMP($J,12,0)="Greater than 3 days to schedule: "_TOT("3DAYSCH")
- S ^TMP($J,13,0)="Greater than 30 days to examine: "_TOT("30DAYEX")
+ S ^TMP($J,13,0)="Greater than "_DVBADTS_" days to examine: "_TOT("30DAYEX")
  S ^TMP($J,14,0)=" "
  S ^TMP($J,15,0)="Pending, 0-90 days: "_TOT("P90")
  S ^TMP($J,16,0)="Pending, 91-120 days: "_TOT("P121")

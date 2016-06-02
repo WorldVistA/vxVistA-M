@@ -1,6 +1,6 @@
 DVBHS5 ; ALB/JLU;Routine for HINQ screen 5 ; 7/13/05 12:58pm
- ;;4.0;HINQ;**12,11,20,49**;03/25/92
- N Y
+ ;;4.0;HINQ;**12,11,20,49,61**;03/25/92;Build 19
+ N Y,DVBAA,DVBHH,DVBAAHB
  K DVBX(1)
  K DVBDIQ ;F LP2=.3611,.3616,.3612,.306,.3615,391,1901,.301,.302,.361,.36205,.3621,.36235,.3624,.36215,.3622,.36295,.3025,.303 S X="DVBDIQ(2,"_DFN_","_LP2_")" K @X
  I $D(X(1)) S DVBX(1)=X(1)
@@ -9,6 +9,11 @@ DVBHS5 ; ALB/JLU;Routine for HINQ screen 5 ; 7/13/05 12:58pm
  S DR=".01;.09;.3611;.3616;.3612;.306;.3615;391;1901;.301;.302;.361;.36205;.36235;.36215;.36295;.3025"
  D EN^DIQ1
  I $D(DVBX(1)) S X(1)=DVBX(1) K DVBX(1)
+ S DVBAA=DVBDIQ(2,DVBQDFN,".36205","E")
+ S DVBHB=DVBDIQ(2,DVBQDFN,".36215","E")
+ S DVBAAHB=""
+ I DVBHB="YES" S DVBAAHB="H"
+ I DVBAA="YES" S DVBAAHB="A"
  ;
  S DVBSCRN=5 D SCRHD^DVBHUTIL
  S DVBJS=53
@@ -21,8 +26,8 @@ DVBHS5 ; ALB/JLU;Routine for HINQ screen 5 ; 7/13/05 12:58pm
  S DVBENT=$S($G(T1)="01":"Compensation",$G(T1)="0L":"Pension",1:"")
  K T1,T2 W !,"Benefit Type:",?15,$S($D(DVBENT):DVBENT,1:"")
  W ?40,"Income for VA Purposes: $"_$S($P($G(DVBINC),U,15)>0:$P(DVBINC,U,15)_".00",1:"0.00")
- W !,"Aid & Attendance: " I $D(DVBAAHB) S Y=DVBAAHB D AAA^DVBHQM2 W Y
- ;;;W !,"Rated (HINQ) Disabilities:" I $D(DVBDXNO),DVBDXNO'=0 D S1^DVBHQZ6
+ W !,"Aid & Attendance: " I $D(DVBAAHB) S Y=$S(DVBAAHB="A":2,DVBAAHB="H":3,1:"")  D AAA^DVBHQM2 W Y
+ ;W !,"Rated (HINQ) Disabilities:" I $D(DVBDXNO),DVBDXNO'=0 D S1^DVBHQZ6
  I $D(DVBSCR) K DVBSCR D LINE Q
  ;
  W !!,"--- ",DVBON,"Patient Data",DVBOFF," ---"

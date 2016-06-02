@@ -1,5 +1,5 @@
 PSAHIS1 ;BIR/LTL,JMB-Drug Transaction History - CONT'D ;7/23/97
- ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**3**; 10/24/97
+ ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**3,69,72**; 10/24/97;Build 2
  ;Prints the Show Drug Transaction History report in pharmacy location
  ;then date order. It is called by PSAHIS.
  ;
@@ -24,12 +24,13 @@ TRANS S PSATR0=$G(^PSD(58.81,PSATR,0)),PSACNT=1,PSATRCNT=$G(PSATRCNT)+1
  ;dispensing(-) made prior to beg date & fell within rpt date range)
  I PSATRCNT=1 D
  .W !,?37,"|",?48,"|",?54,"|",?60,"|",?71,"|" D WRAPDRUG
- .S PSABAL=$P($G(^PSD(58.81,+^TMP("PSA",$J,PSADRG),0)),"^",10)+$G(PSABAD(PSADRG)) W ?72,$J(PSABAL,7)
+ .S Z=$G(^PSD(58.81,+^TMP("PSA",$J,PSADRG),0))
+ .S PSABAL=$P(Z,"^",10)+$G(PSABAD(PSADRG)) W ?72,$J(PSABAL,7)
  ;
  ;Print transaction date & +/- qty from balance
  W !,$E(PSADT,4,5)_"-"_$E(PSADT,6,7)_"-"_$E(PSADT,2,3),?10,$E($P($G(^VA(200,+$P(PSATR0,"^",7),0)),"^"),1,28)
- I $P(PSATR0,"^",2)'=24 S PSABAL=$S(119[$P(PSATR0,"^",2):PSABAL+$P(PSATR0,"^",6),1:PSABAL-$P(PSATR0,"^",6))
- I $P(PSATR0,"^",2)=24 S PSABAL=PSABAL+$P(PSATR0,"^",6)
+ I $P(PSATR0,"^",2)'=24,$P(PSATR0,"^",2)'=9 S PSABAL=$S(",1,10,11,19,"[(","_$P(PSATR0,"^",2)_","):PSABAL+$P(PSATR0,"^",6),1:PSABAL-$P(PSATR0,"^",6))  ;;<<3*72-RJS>>
+ I $P(PSATR0,"^",2)=24!($P(PSATR0,"^",2)=9) S PSABAL=PSABAL+$P(PSATR0,"^",6)
  ;Receipts
  I $P(PSATR0,"^",2)=1 S PSAWRT=0 W ?37,"|",?41,$J($P(PSATR0,"^",6),6),?48,"|",?54,"|",?60,"|",?71,"|",?72,$J(PSABAL,7),! S PSARECT=$G(PSARECT)+$P(PSATR0,"^",6) D  Q
  .I $P($G(^PRC(442,+$P(PSATR0,"^",9),0)),"^") W ?11,"PO# ",$P($G(^(0)),"^"),?37,"|",?48,"|",?54,"|",?60,"|",?71,"|" S PSALN=$G(PSALN)+1 S PSAWRT=1
@@ -47,6 +48,8 @@ TRANS S PSATR0=$G(^PSD(58.81,PSATR,0)),PSACNT=1,PSATRCNT=$G(PSATRCNT)+1
  I $P(PSATR0,"^",2)=2!($P(PSATR0,"^",2)=15) W ?10,"NIGHTLY BACKGROUND JOB",?37,"|",?48,"|",?49,$J($P(PSATR0,"^",6),5),?54,"|",?60,"|",?71,"|",?72,$J(PSABAL,7) S PSAIPT=$G(PSAIPT)+$P(PSATR0,"^",6) Q
  ;Dispensed by OP
  I $P(PSATR0,"^",2)=6 W ?10,"NIGHTLY BACKGROUND JOB",?37,"|",?48,"|",?54,"|",?55,$J($P(PSATR0,"^",6),5),?60,"|",?71,"|",?72,$J(PSABAL,7) S PSAOPT=$G(PSAOPT)+$P(PSATR0,"^",6)
+ ;Return Drug Credit
+ I $P(PSATR0,"^",2)=10 W ?37,"|",?48,"|",?54,"|",?60,"|",?62,$J($P(PSATR0,"^",6),8),?71,"|",?72,$J($P(PSATR0,"^",10),7) S PSADJT=$G(PSADJT)+$P(PSATR0,"^",6) D REASON
  Q
  ;
 HEADER ;Prints header info

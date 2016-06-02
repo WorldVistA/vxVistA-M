@@ -1,5 +1,5 @@
 TIURB2 ; SLC/JER,AJB - More Review Screen Actions ; 1/18/05
- ;;1.0;TEXT INTEGRATION UTILITIES;**100,109,154,112,184**;Jun 20, 1997
+ ;;1.0;TEXT INTEGRATION UTILITIES;**100,109,154,112,184,232**;Jun 20, 1997;Build 19
  ; 2/3: Update TEXTEDIT from TIUEDIT to TIUEDI4
  ; 9/28 Moved DELETE, DEL, DELTEXT, DIK to new rtn TIURB2
  ; 8/2/02 DELTEXT logic to bypass user-response if called by GUI TIU*1*154
@@ -50,8 +50,11 @@ GODEL ; -- Called from DEL^TIURB
  S TIUVTYP=$S(+$$ISDS^TIULX(+TIUD0):" Admission",1:" Visit")
  S TIUMSG="DELETING "_TIUTYP_" For "_TIUPT_"'s "_TIUVDT_TIUVTYP_"."
  S CANDEL=$$CANDO^TIULP(DA,"DELETE RECORD")
- I 'CANDEL W !!,$C(7),$C(7),$C(7),$P(CANDEL,U,2),! H 2 G DELX
- I $$HASIDKID^TIUGBR(DA) W !!,"This interdisciplinary parent cannot be deleted; it's entries must first",!,"be detached.",! H 3 G DELX
+ ;VMP/ELR NEXT PARAGRAPH ADDED LONGER HANG FOR LONG ERROR MESSAGES
+ I 'CANDEL D  G DELX
+ . NEW TIUHANG S TIUHANG=2 I $L($G(CANDEL))>99 S TIUHANG=5
+ . W !!,$C(7),$C(7),$C(7),$P(CANDEL,U,2),! H TIUHANG
+ I $$HASIDKID^TIUGBR(DA) W !!,"This interdisciplinary parent cannot be deleted; its entries must first",!,"be detached.",! H 3 G DELX
  I $O(^TIU(8925,"DAD",+DA,0))>0,$$HASADDEN^TIULC1(DA) D
  . W !!,"This "_TIUTYP_" has ADDENDA."
  W !,$C(7) F TIUI=1:1:$L(TIUMSG,"|") W !,$P(TIUMSG,"|",TIUI)

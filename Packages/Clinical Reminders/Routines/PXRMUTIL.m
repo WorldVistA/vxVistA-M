@@ -1,5 +1,5 @@
-PXRMUTIL ; SLC/PKR/PJH - Utility routines for use by PXRM. ;01/11/2010
- ;;2.0;CLINICAL REMINDERS;**4,6,11,12,17**;Feb 04, 2005;Build 102
+PXRMUTIL ;SLC/PKR/PJH - Utility routines for use by PXRM. ;02/05/2013
+ ;;2.0;CLINICAL REMINDERS;**4,6,11,12,17,18,24,26**;Feb 04, 2005;Build 404
  ;
  ;=================================
 ATTVALUE(STRING,ATTR,SEP,AVSEP) ;STRING contains a list of attribute value
@@ -42,8 +42,33 @@ ACOPY(REF,OUTPUT) ;Copy all the descendants of the array reference into a linear
  Q
  ;
  ;=================================
-AWRITE(REF) ;Write all the descendants of the array reference.
- ;REF is the starting array reference, for example A or ^TMP("PXRM",$J).
+APRINT(REF) ;Write all the descendants of the array reference.
+ ;REF is the starting array reference, for example A or
+ ;^TMP("PXRM",$J).
+ N DONE,IND,LEN,LN,PROOT,ROOT,START,TEMP,TEXT
+ I REF="" Q
+ S LN=0
+ S PROOT=$P(REF,")",1)
+ ;Build the root so we can tell when we are done.
+ S TEMP=$NA(@REF)
+ S ROOT=$P(TEMP,")",1)
+ S REF=$Q(@REF)
+ I REF'[ROOT Q
+ S DONE=0
+ F  Q:(REF="")!(DONE)  D
+ . S START=$F(REF,ROOT)
+ . S LEN=$L(REF)
+ . S IND=$E(REF,START,LEN)
+ . S LN=LN+1,TEXT(LN)=@REF
+ . S REF=$Q(@REF)
+ . I REF'[ROOT S DONE=1
+ D MES^XPDUTL(.TEXT)
+ Q
+ ;
+ ;=================================
+AWRITE(REF) ;Write all the descendants of the array reference, including the
+ ;array. REF is the starting array reference, for example A or
+ ;^TMP("PXRM",$J).
  N DONE,IND,LEN,LN,PROOT,ROOT,START,TEMP,TEXT
  I REF="" Q
  S LN=0
@@ -62,6 +87,27 @@ AWRITE(REF) ;Write all the descendants of the array reference.
  . S REF=$Q(@REF)
  . I REF'[ROOT S DONE=1
  D MES^XPDUTL(.TEXT)
+ Q
+ ;
+ ;=================================
+BORP(DEFAULT) ;Ask the user if they want to browse or print.
+ N DIR,POP,X,Y
+ S DIR(0)="SA"_U_"B:Browse;P:Print"
+ S DIR("A")="Browse or Print? "
+ S DIR("B")=DEFAULT
+ D ^DIR
+ I $D(DIROUT) S DTOUT=1
+ I $D(DTOUT)!($D(DUOUT)) Q ""
+ Q Y
+ ;
+ ;=================================
+DELTLFE(FILENUM,NAME) ;Delete top level entries from a file.
+ N FDA,IENS,MSG
+ S IENS=+$$FIND1^DIC(FILENUM,"","BXU",NAME)
+ I IENS=0 Q
+ S IENS=IENS_","
+ S FDA(FILENUM,IENS,.01)="@"
+ D FILE^DIE("","FDA","MSG")
  Q
  ;
  ;=================================
@@ -119,6 +165,44 @@ FNFR(ROOT) ;Given the root of a file return the file number.
  Q +$P(@(ROOT_"0)"),U,2)
  ;
  ;=================================
+GPRINT(REF) ;General printing.
+ N DIR,IOTP,POP
+ S %ZIS="Q"
+ D ^%ZIS
+ I POP Q
+ I $D(IO("Q")) D  Q
+ . N ZTDESC,ZTRTN,ZTSAVE
+ . S ZTSAVE("IO")=""
+ .;Save the evaluated name of REF.
+ . S ZTSAVE("REF")=$NA(@$$CREF^DILF(REF))
+ .;Save the open root form for TaskMan.
+ . S ZTSAVE($$OREF^DILF(ZTSAVE("REF")))=""
+ . S ZTRTN="GPRINTQ^PXRMUTIL"
+ . S ZTDESC="Queued print job"
+ . D ^%ZTLOAD
+ . W !,"Task number ",ZTSK
+ . D HOME^%ZIS
+ . K IO("Q")
+ . H 2
+ ;If this is being called from List Manager go to full screen.
+ I $D(VALMDDF) D FULL^VALM1
+ U IO
+ S IOTP=IOT
+ D APRINT^PXRMUTIL(REF)
+ D ^%ZISC
+ I IOTP["TRM" S DIR(0)="E",DIR("A")="Press ENTER to continue" D ^DIR
+ I $D(VALMDDF) S VALMBCK="R"
+ Q
+ ;
+ ;=================================
+GPRINTQ ;Queued general printing.
+ U IO
+ D APRINT^PXRMUTIL(REF)
+ D ^%ZISC
+ S ZTREQ="@"
+ Q
+ ;
+ ;=================================
 NTOAN(NUMBER) ;Given an integer N return an alphabetic string that can be
  ;used for sorting. This will be modulus 26. For example N=0 returns
  ;A, N=26 returns BA etc.
@@ -149,8 +233,8 @@ OPTION(ACT) ;Disable/enable options.
  ;
  D FIND^DIC(19,"","@;.01","","GMTS","*","B","","","LIST")
  F IND=1:1:+LIST("DILIST",0) S OPT=LIST("DILIST","ID",IND,.01)
-  S RESULT=$$OPTDE^XPDUTL(OPT,ACTION)
-  I RESULT=0 D MES^XPDUTL("Could not "_ACT_" option "_OPT)
+ S RESULT=$$OPTDE^XPDUTL(OPT,ACTION)
+ I RESULT=0 D MES^XPDUTL("Could not "_ACT_" option "_OPT)
  ;
  K LIST
  D FIND^DIC(19,"","@;.01","","IBDF PRINT","*","B","","","LIST")
@@ -197,10 +281,11 @@ PROTOCOL(ACT) ;Disable/enable protocols.
  ;=================================
 RENAME(FILENUM,OLDNAME,NEWNAME) ;Rename entry OLDNAME to NEWNAME in
  ;file number FILENUM.
- N DA,DIE,DR,NIEN
- S DA=$$FIND1^DIC(FILENUM,"","BX",OLDNAME)
+ N DA,DIE,DR,NIEN,PXRMINST
+ S DA=$$FIND1^DIC(FILENUM,"","BXU",OLDNAME)
  I DA=0 Q
- S NIEN=$$FIND1^DIC(FILENUM,"","BX",NEWNAME) I NIEN>0 Q
+ S PXRMINST=1
+ S NIEN=$$FIND1^DIC(FILENUM,"","BXU",NEWNAME) I NIEN>0 Q
  S DIE=FILENUM
  S DR=".01///^S X=NEWNAME"
  D ^DIE
@@ -284,7 +369,7 @@ SSPAR(FIND0,NOCC,BDT,EDT) ;Set the finding search parameters.
  I EDT="" S EDT="T"
  S EDT=$$CTFMD^PXRMDATE(EDT)
  ;If EDT does not contain a time set it to the end of the day.
- I EDT'["." S EDT=EDT_".235959"
+ I (EDT'=-1),EDT'["." S EDT=EDT_".235959"
  I $G(PXRMDDOC)'=1 Q
  S ^TMP("PXRMDDOC",$J,$P(FIND0,U,1,11))=BDT_U_EDT
  Q

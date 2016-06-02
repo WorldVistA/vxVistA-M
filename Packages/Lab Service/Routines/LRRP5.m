@@ -1,5 +1,5 @@
 LRRP5 ;DALOI/JBM/WTY - COLLECTION REPORT ;9/22/00
- ;;5.2;LAB SERVICE;**121,201,248**;Sep 27, 1994;Build 25
+ ;;5.2;LAB SERVICE;**121,201,248**;Sep 27, 1994;Build 35
  ;
  ;Reference to ^%DT supported by IA #10003
  ;Reference to ^%ZIS supported by IA #10086

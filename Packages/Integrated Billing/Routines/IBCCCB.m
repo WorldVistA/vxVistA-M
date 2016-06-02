@@ -1,6 +1,6 @@
-IBCCCB ;ALB/ARH - COPY BILL FOR COB ; 2/13/06 10:46am
- ;;2.0;INTEGRATED BILLING;**80,106,51,151,137,182,155,323**;21-MAR-94
- ;;Per VHA Directive 10-93-142, this routine should not be modified.
+IBCCCB ;ALB/ARH - COPY BILL FOR COB ;2/13/06 10:46am
+ ;;2.0;INTEGRATED BILLING;**80,106,51,151,137,182,155,323,436,432,447**;21-MAR-94;Build 80
+ ;;Per VHA Directive 2004-38, this routine should not be modified.
  ;
  ; Copy bill for COB w/out cancelling, update some flds
  ; Primary->Secondary->Tertiary
@@ -12,6 +12,11 @@ ASK ;
  S IBX=$$PB^IBJTU2 S:+IBX=2 IBIFN=$P(IBX,U,2) I +IBX=1 S DFN=$P(IBX,U,2),IBV=1,IBAC=5 D DATE^IBCB
  I '$G(IBIFN) G EXIT
  ;
+ ; IB*2.0*432 Restrict access to only allow claims that are NOT on the new CBW Worklist
+ I $P($G(^DGCR(399,IBIFN,"S1")),U,7)=1,$G(IBMRANOT)'=1 D  G ASK
+ . W !!?4,"This bill appears on the CBW Management Work List.  Please use the"
+ . W !?4,"'CBW Management Menu' options for all processing related to this bill."
+ . Q
  ; Restrict access to this process for REQUEST MRA bills in 2 Cases:
  ; 1. No MRA EOB's on File for bill
  I $P($G(^DGCR(399,IBIFN,0)),U,13)=2,'$$CHK^IBCEMU1(IBIFN) D  G ASK
@@ -125,26 +130,29 @@ NEXTP ; If current bill=MEDICARE WNR and valid 'next payer', use same
 SKIP ; Jump here if skipping over the preceeding reads
  ;
  ; If payer is Medicare (WNR) update payer sequence and quit
- I IBMRAO D  G END
+ I IBMRAO!($G(IBSTSM)=1) D  I $G(IBSTSM)'=1 G END
  . N IBPRTOT,IBTOTCHG,IBPTRESP
  . S IBTOTCHG=0
+ . ;
  . ; Get Total Charges from BILLS/CLAIMS (#399) file
  . S IBTOTCHG=$P($G(^DGCR(399,IBIFN,"U1")),U,1)
- . ; Calculate Patient Responsibility for Bill
- . S IBPTRESP=$$PREOBTOT^IBCEU0(IBIFN)
+ . ; Calculate Patient Responsibility for Bill  
+ . ; IB*2.0*447 If claim's type of plan has effective date multiple, use those calculations
+ . ;S IBPTRESP=$$PREOBTOT^IBCEU0(IBIFN,$G(IBSTSM))
  . ; Calculate Patient Primary/Secondary Prior Payment (field 218 or 219 of File 399)
  . ; These fields are stored in DGCR(399,IBIFN,"U2") pieces 4 and 5 respectively
  . ; Calculate: Prior Payment= Total Submitted Charges - Patient Responsibility
- . S IBPRTOT=IBTOTCHG-IBPTRESP
+ . S:$G(IBSTSM)'=1 IBPTRESP=$S($$MSEDT^IBCEMU4(IBIFN)'="":$$MSPRE^IBCEMU4(IBIFN),1:$$PREOBTOT^IBCEU0(IBIFN,$G(IBSTSM))),IBPRTOT=IBTOTCHG-IBPTRESP
+ . S:$G(IBSTSM)=1 IBPRTOT=$$EOBTOT^IBCEU1(IBIFN,$$COBN^IBCEF(IBIFN)) ;Pat Resp for non-medicare
  . I IBPRTOT<0 S IBPRTOT=0      ; don't allow negative prior payment or offset
  . S IBCOB("U2",IBCOBN+2)=IBPRTOT
- . D COBCHG^IBCCC2(IBIFN,IBMRAIO,.IBCOB)
+ . D:$G(IBSTSM)'=1 COBCHG^IBCCC2(IBIFN,IBMRAIO,.IBCOB)
  . D STAT^IBCEMU2(IBIFN,1.5,1)     ; mra eob status update
  . I $G(IBSILENT) S IBERRMSG=""
  . Q
  ;
  ; We should NOT get to here in silent mode .... just in case
- I $G(IBSILENT) G END    ; currently only MCRWNR in silent mode
+ I $G(IBSILENT),$G(IBSTSM)'=1 G END    ; currently only MCRWNR in silent mode
  ;
  ; Payer is not Medicare (WNR) - Perform additional steps
  S IBCOB(0,15)=""

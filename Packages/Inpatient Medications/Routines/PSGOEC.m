@@ -1,5 +1,5 @@
 PSGOEC ;BIR/CML3-CANCEL ORDERS ;02 Mar 99 / 9:29 AM
- ;;5.0; INPATIENT MEDICATIONS ;**23,58,110,175,201,134**;16 DEC 97;Build 124
+ ;;5.0;INPATIENT MEDICATIONS ;**23,58,110,175,201,134,181,260,288,257,299**;16 DEC 97;Build 1
  ;
  ; Reference to ^PS(55 is supported by DBIA# 2191.
  ; Reference to ^PSSLOCK is supported by DBIA 2789.
@@ -30,9 +30,14 @@ ENO(PSGP,PSGORD) ; single order
  S PSJCOM=+$S(PSGORD["U":$P($G(^PS(55,PSGP,5,+PSGORD,.2)),"^",8),1:$P($G(^PS(53.1,+PSGORD,.2)),"^",8))
  I 'CF,PSJCOM W !!,"This order is part of a complex order and CANNOT be marked for discontinuation." Q
  I $$PNDRNOK(PSGORD) N PSJDCTYP S PSJDCTYP=$$PNDRNA(PSGORD) D:(PSJDCTYP=1!(PSJDCTYP=2)) PNDRN($G(PSJDCTYP),PSGORD) G DONE
+ ;I PSJCOM W !!,"This order is part of a complex order. If you discontinue this order the",!,"following orders will be discontinued too (unless the stop date has already",!,"been reached)." D CMPLX^PSJCOM1(PSGP,PSJCOM,PSGORD)
+ ;F  W !!,"Do you want to ",$S(PSJCOM:"discontinue this series of complex orders",CF:"discontinue this order",1:"mark this order for discontinuation") S %=$S($G(PSJOCFLG):2,1:1) D YN^DICN Q:%  D ENCOM^PSGOEM
+ ;I %<0 S VALMBCK="" Q
  I PSJCOM W !!,"This order is part of a complex order. If you discontinue this order the",!,"following orders will be discontinued too (unless the stop date has already",!,"been reached)." D CMPLX^PSJCOM1(PSGP,PSJCOM,PSGORD)
- F  W !!,"Do you want to ",$S(PSJCOM:"discontinue this series of complex orders",CF:"discontinue this order",1:"mark this order for discontinuation") S %=1 D YN^DICN Q:%  D ENCOM^PSGOEM
- I %<0 S VALMBCK="" Q
+ I PSJCOM F  W !!,"Do you want to discontinue this series of complex orders" S %=$S($G(PSJOCFLG):2,1:1) D YN^DICN Q:%  D ENCOM^PSGOEM
+ I 'PSJCOM,CF,'$D(PSJDCDTF) F  W !!,"Do you want to discontinue this order" S %=$S($G(PSJOCFLG):2,1:1) D YN^DICN Q:%  D ENCOM^PSGOEM I %<0 S VALMBCK="" Q
+ I 'PSJCOM,CF,$D(PSJDCDTF) F  W !!,"Enter DC to discontinue the above order or press <RETURN> to continue:" S %=$S($G(PSJOCFLG):2,1:1) D TST4DC W:%=2 !,"No action taken!" Q:%  D ENDC^PSGOEM I %<0 S VALMBCK="" Q
+ I 'PSJCOM,'CF,'$D(PSJDCDTF) F  W !!,"Do you want mark this order for discontinuation" S %=$S($G(PSJOCFLG):2,1:1) D YN^DICN Q:%  D ENCOM^PSGOEM I %<0 S VALMBCK="" Q
  G:%=1 SOC I $S(PSGORD["U":$D(^PS(55,PSGP,5,+PSGORD,4)),1:$D(^PS(53.1,+PSGORD,4))),$P(^(4),U,12) W !!,"THIS ORDER HAS"
  I  D ENUMK^PSGOEM I %=1 W "..." K DA S:PSGORD["A" PSGAL("C")=PSJSYSU*10+21400,DA=+PSGORD,DA(1)=PSGP D RS,^PSGAL5:PSGORD["A" W " . . . DONE!"
  G DONE
@@ -66,18 +71,26 @@ OUT ;
 DONE ;
  K CF,DA,DIE,DP,DR,ORIFN,ORETURN,PSGAL,PSGALR,PSGDA,SD,ST,T,UCF,Y,PSJDCTYP Q
 ASET ;
- S DIE="^PS(55,"_PSGP_",5,",DR="28////"_$S($P($G(^PS(55,PSGP,5,+$G(PSJORD),0)),U,27)="E":"DE",$D(PSGEDIT):"DE",1:"D")_";Q;34////"_PSGDT_$S(T]"":";49////1",1:"")
+ S DIE="^PS(55,"_PSGP_",5,",DR="136////@;28////"_$S($P($G(^PS(55,PSGP,5,+$G(PSJORD),0)),U,27)="E":"DE",$D(PSGEDIT):"DE",1:"D")_";Q;34////"_PSGDT_$S(T]"":";49////1",1:"")
+ ;DSS/LM/SMP - BEGIN MOD - Append "D" to external Rx# on DC
+ D:$G(^%ZOSF("ZVX"))["VX" VFDU
  Q
 NSET ;
- S DIE="^PS(53.1,",DR="28////"_$S($P($G(^PS(53.1,+$G(PSJORD),0)),U,27)="E":"DE",$D(PSGEDIT):"DE",1:"D")_$S(T]"":";42////1",1:"")_";25////"_PSGDT Q
+ ;S DIE="^PS(53.1,",DR="28////"_$S($P($G(^PS(53.1,+$G(PSJORD),0)),U,27)="E":"DE",$D(PSGEDIT):"DE",1:"D")_$S(T]"":";42////1",1:"")_";25////"_PSGDT Q
+ S DIE="^PS(53.1,",DR="28////"_$S($P($G(^PS(53.1,+$G(PSJORD),0)),U,27)="E":"DE",$D(PSGEDIT):"DE",1:"D")_$S(T]"":";42////1",1:"")_";25////"_PSGDT
+ D:$G(^%ZOSF("ZVX"))["VX" VFDU
+ Q
+ ;DSS/LM/SMP - END MOD
 AC ;
  I 'CF K DA S $P(^PS(55,PSGP,5,+PSGORD,4),U,11,14)="^1^"_DUZ_U_PSGDT,PSGAL("C")=13040,DA=+PSGORD,DA(1)=PSGP D ^PSGAL5
  I 'CF,$D(PSJSYSO) S PSGORD=+PSGORD_"A",PSGPOSA="C",PSGPOSD=PSGDT D ENPOS^PSGVDS
  Q:'CF  K DA,ORIFN S PSGAL("C")=PSJSYSU*10+4000,DA=+PSGORD,DA(1)=PSGP D ^PSGAL5 S $P(^(2),U,3)=$P(^PS(55,PSGP,5,+PSGORD,2),U,4) D ^DIE S ^PS(55,"AUE",PSGP,+PSGORD)=""
+ I '$D(PSJSYSL) S PSJSYSL=""
  I PSJSYSL K DA S $P(^PS(55,PSGP,5,+PSGORD,7),U,1,2)=PSGDT_U_$S($D(PSGEDIT):"DE",1:"D"),PSGTOL=2,PSGUOW=DUZ,PSGTOO=1,DA=+PSGORD,DA(1)=PSGP D ENL^PSGVDS
  S ORIFN=$P($G(^PS(55,PSGP,5,+PSGORD,0)),U,21) D:ORIFN DCOR^PSGOECS
  Q
 NC ;
+ D KILL531^PSJIMO1(PSGP,"",+PSGORD)
  I 'CF S $P(^PS(53.1,+PSGORD,4),"^",11,14)="^1^"_DUZ_U_PSGDT
  I 'CF,$D(PSJSYSO) S PSGORD=+PSGORD_"N",PSGPOSA="C",PSGPOSD=PSGDT D ENPOS^PSGVDS
  Q:'CF  S PSGSTAT=$P($G(^PS(53.1,+PSGORD,0)),U,9),PSGORIFN=$P($G(^(0)),U,21)
@@ -91,6 +104,7 @@ T ;
 RS ;
  ; naked ref below is from variable ND1, ^PS(53.1,PSGDA,4)
  S $P(^(4),U,11,14)="^^^" Q
+ ;
 REQPROV()          ;
  I $G(PSJDCTYP)=2 Q 1
  K PSJDCPRV,DIC,DUOUT,DTOUT,Y
@@ -140,7 +154,8 @@ PNDRN(PSJDCTYP,ORDER) ; Perform Discontinue action for Pending order only or bot
  .N ND5310 S ND5310=$G(^PS(53.1,+PSGORD,0))
  .N PSGORD S PSGORD=$P(ND5310,"^",25) I PSGORD S PSJDCTYP=2 D SOC K PSJDCTYP
  Q
-PNDRNOK(ORDER) ; Execute DC Pending Renew if 
+ ;
+PNDRNOK(ORDER) ; Execute DC Pending Renew enhancement only if 
  ;                  1) Renewal order is pending/non-verified, and 
  ;                  2) Original order is not DC'd or Expired
  Q:'$G(PSGORD)!'($G(PSGORD)["P") 0
@@ -148,3 +163,22 @@ PNDRNOK(ORDER) ; Execute DC Pending Renew if
  .S ORIGSTOP=$S(ORIGORD["U":$P($G(^PS(55,PSGP,5,+ORIGORD,2)),"^",4),ORIGORD["V":$P($G(^PS(55,PSGP,"IV",+ORIGORD,0)),"^",3),1:"")
  Q:'($P($G(^PS(53.1,+PSGORD,0)),U,24)="R") 0
  Q 1
+ ;
+TST4DC ; Test for DC at prompt
+ R X:$S($D(DTIME):DTIME,1:300) I '$T S %=2 Q
+ S %=$S(X="DC":1,X="Dc":1,X="dc":1,X="dC":1,X="D":1,X="d":1,X="":2,X="^":2,X]"":"",1:2)
+ Q
+ ;
+ ;DSS/LM/SMP - BEGIN MOD
+VFDP ;DSS/LM - Append "D" to external Rx# on DC non-verified order
+ Q:$$GET^XPAR("SYS","VFD COPY EXTERNAL RX",+$G(DUZ(2)),"I")=0  ;Division check
+ I $G(PSGORD)["P" N VFDXRX S VFDXRX=$P($G(^PS(53.1,+PSGORD,21600)),"^")
+ I $T,VFDXRX]"",'($E(VFDXRX,$L(VFDXRX))="D") S ^PS(53.1,+PSGORD,21600)=VFDXRX_"D"
+ Q
+VFDU ;DSS/LM - Append "D" to external Rx# on DC active order
+ Q:$$GET^XPAR("SYS","VFD COPY EXTERNAL RX",+$G(DUZ(2)),"I")=0  ;Division check
+ I $G(DFN),DFN=+$G(^PS(55,DFN,0)),$G(PSGORD)["U" N VFDXRX
+ I $T S VFDXRX=$$GET1^DIQ(55.06,+PSGORD_","_+DFN_",",21600) I 1
+ I $T,VFDXRX]"",'($E(VFDXRX,$L(VFDXRX))="D") N VFDFDA
+ I $T S VFDFDA(55.06,+PSGORD_","_DFN_",",21600)=VFDXRX_"D" D FILE^DIE(,$NA(VFDFDA))
+ Q

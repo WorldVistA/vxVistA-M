@@ -1,5 +1,5 @@
-ECFLRPC ;ALB/JAM-Event Capture Filer RPC ;8 Dec 00
- ;;2.0; EVENT CAPTURE ;**25**;8 May 96
+ECFLRPC ;ALB/JAM-Event Capture Filer RPC ;09 MAR 16 
+ ;;2.0; EVENT CAPTURE ;**25,101**;8 May 96;Build 3
  ;
 FILE(RESULTS,ECARY) ;Broker entry point to file data in Event Capture files
  ;This RPC is called when filing any data for ECS.
@@ -23,7 +23,7 @@ FILE(RESULTS,ECARY) ;Broker entry point to file data in Event Capture files
  I ECFILE=4 D ^ECMFLOC,END Q          ; Event Capture Locations
  I ECFILE=200 D USER^ECMFDSSU,END Q   ; Allocate/Deallocate users to Unit
  I ECFILE="200A" D DSSU^ECMFDSSU,END Q  ; Allocate/Deallocate Unts to usr
- I ECFILE=8989.5 D HFS^ECMFLOC,END Q    ; Update HFS directory
+ ;I ECFILE=8989.5 D HFS^ECMFLOC,END Q    ; Update HFS directory
  S ^TMP($J,"ECMSG",1)="0^Filer Not Available"
  ;
 END ;

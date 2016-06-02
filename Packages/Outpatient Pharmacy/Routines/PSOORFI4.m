@@ -1,5 +1,5 @@
-PSOORFI4 ;BIR/SAB-CPRS order checks and display con't ; 6/17/09 1:11pm
- ;;7.0;OUTPATIENT PHARMACY;**46,74,78,99,117,131,207,258,274,300,308**;DEC 1997;Build 11
+PSOORFI4 ;BIR/SAB-CPRS order checks and display con't ;6/17/09 1:11pm
+ ;;7.0;OUTPATIENT PHARMACY;**46,74,78,99,117,131,207,258,274,300,308,251,384,391**;DEC 1997;Build 13
  ;External reference to ^PS(51.2 supported by DBIA 2226
  ;External reference to ^PS(50.607 supported by DBIA 2221
  ;External reference ^PS(55 supported by DBIA 2228
@@ -24,7 +24,6 @@ INST1 ;
  I $P($G(^PS(55,PSODFN,"LAN")),"^") S IEN=IEN+1,^TMP("PSOPO",$J,IEN,0)=" Other Pat Instruct: "_$S($G(PSONEW("SINS"))]"":PSONEW("SINS"),1:"")
  Q
 PROVCOM ;
- I $G(PKI1)=1,'$G(PSORX("VERIFY")) D REA^PSOPKIV1 Q:$G(PSORX("DFLG"))
  I $O(PRC(0)),'$G(PSOPRC) D  D KV^PSOVER1
  .D EN^DDIOL("Provider Comments: ","","!")
  .F I=0:0 S I=$O(PRC(I)) Q:'I  D EN^DDIOL(PRC(I),"","!")
@@ -71,7 +70,7 @@ DOSE ;displays dosing info for pending orders.  called from psoorfi1
  .S PSONEW("DOSE",II)=$P(DOSE1,"^"),PSONEW("DOSE ORDERED",II)=$P(DOSE1,"^",2),PSONEW("UNITS",II)=$P(DOSE,"^",9),PSONEW("NOUN",II)=$P(DOSE,"^",5)
  .S:$P(DOSE,"^",9) UNITS=$P(^PS(50.607,$P(DOSE,"^",9),0),"^")
  .S PSONEW("VERB",II)=$P(DOSE,"^",10),PSONEW("ROUTE",II)=$P(DOSE,"^",8)
- .S:$P(DOSE,"^",8) ROUTE=$P(^PS(51.2,$P(DOSE,"^",8),0),"^")
+ .S ROUTE="" S:$P(DOSE,"^",8) ROUTE=$P(^PS(51.2,$P(DOSE,"^",8),0),"^")
  .S PSONEW("SCHEDULE",II)=$P(DOSE,"^"),PSONEW("DURATION",II)=$P(DOSE,"^",2)
  .S DOENT=$G(DOENT)+1 I $P(DOSE,"^",6)]"" S PSONEW("CONJUNCTION",II)=$S($P(DOSE,"^",6)="S":"T",$P(DOSE,"^",6)="X":"X",1:"A")
  .I 'PSONEW("DOSE ORDERED",II),$G(PSONEW("VERB",II))]"" S IEN=IEN+1,^TMP("PSOPO",$J,IEN,0)="               Verb: "_$G(PSONEW("VERB",II))
@@ -119,14 +118,15 @@ DO I '$G(PSONEW("DOSE ORDERED",I)),$P($G(^PS(55,PSODFN,"LAN")),"^") S IEN=IEN+1,
  Q
 OBX ;formats obx section
  N COM,II
+ S IEN=0
  D:$G(PKI1) L1^PSOPKIV1
- I $O(^PS(52.41,ORD,"OBX",0)) S (T,IEN)=0,IEN=IEN+1,^TMP("PSOPO",$J,IEN,0)="Order Checks:" F  S T=$O(^PS(52.41,ORD,"OBX",T)) Q:'T  D  S IEN=IEN+1,^TMP("PSOPO",$J,IEN,0)=" "
+ I $O(^PS(52.41,ORD,"OBX",0)) S T=0,IEN=IEN+1,^TMP("PSOPO",$J,IEN,0)="CPRS Order Checks:" F  S T=$O(^PS(52.41,ORD,"OBX",T)) Q:'T  D  S IEN=IEN+1,^TMP("PSOPO",$J,IEN,0)=" "
  .S COM=$G(^PS(52.41,ORD,"OBX",T,0))
  .S IEN=IEN+1,^TMP("PSOPO",$J,IEN,0)="     " F II=1:1:$L(COM," ") D
  ..I $L(^TMP("PSOPO",$J,IEN,0)_" "_$P(COM," ",II))>80 S IEN=IEN+1,^TMP("PSOPO",$J,IEN,0)="     "
  ..S ^TMP("PSOPO",$J,IEN,0)=^TMP("PSOPO",$J,IEN,0)_" "_$P(COM," ",II)
  .S IEN=IEN+1,^TMP("PSOPO",$J,IEN,0)="     Overriding Provider: "_$G(^PS(52.41,ORD,"OBX",T,1))
- .S IEN=IEN+1,^TMP("PSOPO",$J,IEN,0)="     Overriding Reason:"
+ .I $O(^PS(52.41,ORD,"OBX",T,2,0)) S IEN=IEN+1,^TMP("PSOPO",$J,IEN,0)="     Overriding Reason:"
  .F T1=0:0 S T1=$O(^PS(52.41,ORD,"OBX",T,2,T1)) Q:'T1  D
  ..S MIG=^PS(52.41,ORD,"OBX",T,2,T1,0)
  ..F SG=1:1:$L(MIG," ") S:$L(^TMP("PSOPO",$J,IEN,0)_" "_$P(MIG," ",SG))>80 IEN=IEN+1,$P(^TMP("PSOPO",$J,IEN,0)," ",23)=" " S ^TMP("PSOPO",$J,IEN,0)=$G(^TMP("PSOPO",$J,IEN,0))_" "_$P(MIG," ",SG)

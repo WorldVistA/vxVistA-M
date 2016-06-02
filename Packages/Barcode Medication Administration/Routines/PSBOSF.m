@@ -1,5 +1,5 @@
 PSBOSF ;BIRMINGHAM/EFC-UNABLE TO SCAN DETAIL REPORT ; 29 Aug 2008  11:33 PM
- ;;3.0;BAR CODE MED ADMIN;**28**;Mar 2004;Build 9
+ ;;3.0;BAR CODE MED ADMIN;**28,52**;Mar 2004;Build 29
  ;Per VHA Directive 2004-038 (or future revisions regarding same), this routine should not be modified.
  ;
  ; Reference/IA
@@ -20,7 +20,7 @@ EN ; UTS Report Entry Point - Report OPTION used by PSB UNABLE TO SCAN (UTS) key
  S PSBSRTBY=$G(PSBRPT(.52)) S:$G(PSBSRTBY)="" PSBSRTBY="2,,"
  D NOW^%DTC S Y=% D DD^%DT S PSBDTTM=Y
  ; Kill the scratch sort file.
- K ^XTMP("PSBO",$J,"PSBLIST"),PSBLIST
+ K ^XTMP("PSBO",$J,"PSBLIST"),^TMP("PSBSF",$J),PSBLIST ;PSB*3*52 will now store report data in ^TMP("PSBSF",$J) instead of PSBOUTP array
  S (PSBLNTOT,PSBTOT,PSBX1)="",PSBPGNUM=0
  S PSBX1=$$FMADD^XLFDT(PSBDTST,,,,-.1)
  ; Get the records from the MSF UTS log by date (PSBX1) and IEN (PSBX2).
@@ -47,7 +47,7 @@ EN ; UTS Report Entry Point - Report OPTION used by PSB UNABLE TO SCAN (UTS) key
  S PSBHDR=$E(PSBHDR,1,($L(PSBHDR)-2))
  ; Add the record to the scratch sort file.
  D BLDRPT
- I PSBTOT=0 S PSBOUTP(0,14)="W !!,""<<<< NO DOCUMENTED BCMA UNABLE TO SCAN EVENTS FOR THIS DATE RANGE >>>>"",!!"
+ I PSBTOT=0 S ^TMP("PSBSF",$J,0,14)="W !!,""<<<< NO DOCUMENTED BCMA UNABLE TO SCAN EVENTS FOR THIS DATE RANGE >>>>"",!!"
  ;
  ; Send the report.
  D WRTRPT
@@ -59,14 +59,14 @@ EN ; UTS Report Entry Point - Report OPTION used by PSB UNABLE TO SCAN (UTS) key
  Q
  ;
 BLDRPT ; Compile the report.
- K PSBOUTP S PSBPGNUM="",PSBX3="" D CREATHDR
+ S PSBPGNUM="",PSBX3="" D CREATHDR
  S PSBPGNUM=1,PSBTOT1=0
  I '$D(^XUSEC("PSB UNABLE TO SCAN",DUZ)) D  Q
- .S PSBOUTP(0,14)="W !!,""<<<< BCMA UNABLE TO SCAN REPORTS HAVE RESTRICTED ACCESS >>>>"",!!"
+ .S ^TMP("PSBSF",$J,0,14)="W !!,""<<<< BCMA UNABLE TO SCAN REPORTS HAVE RESTRICTED ACCESS >>>>"",!!"
  I '$D(PSBSFHD1) D  Q
- .S PSBOUTP(0,14)="W !!,""<<<< Print format NOT SUPPORTED.  80&132 col formats ARE supported. >>>>"",!!"
+ .S ^TMP("PSBSF",$J,0,14)="W !!,""<<<< Print format NOT SUPPORTED.  80&132 col formats ARE supported. >>>>"",!!"
  I '$D(PSBLIST) D  Q
- .S PSBOUTP(0,14)="W !!,""<<<< NO DOCUMENTED BCMA UNABLE TO SCAN EVENTS FOR THIS DATE RANGE >>>>"",!!"
+ .S ^TMP("PSBSF",$J,0,14)="W !!,""<<<< NO DOCUMENTED BCMA UNABLE TO SCAN EVENTS FOR THIS DATE RANGE >>>>"",!!"
  ;
  ; Extract the data for the list of records.
  F  S PSBX3=$O(PSBLIST(PSBX3))  Q:+PSBX3=0  K PSBDATA D
@@ -75,7 +75,10 @@ BLDRPT ; Compile the report.
  .I $P(^PSB(53.77,PSBX3,0),U,2)]"" D
  ..N DFN,VA,VADM S DFN=$P(^PSB(53.77,PSBX3,0),U,2)
  ..D DEM^VADPT,PID^VADPT
- ..S PSBDATA(1)=VADM(1),PSBDATA(1,0)="("_$E(VA("PID"),$L(VA("PID"))-3,999)_")"
+ ..;DSS/SMP - BEGIN MODS
+ ..I $$VFD S PSBDATA(1)=VADM(1),PSBDATA(1,0)="("_$G(VA("MRN"))_")"
+ ..E  S PSBDATA(1)=VADM(1),PSBDATA(1,0)="("_$E(VA("PID"),$L(VA("PID"))-3,999)_")"
+ ..;DSS/SMP - END MODS
  .;
  .; Scan Failure Date/Time
  .S PSBINDAT=$$GET1^DIQ(53.77,PSBX3_",",.04,"I"),Y=PSBINDAT D DD^%DT
@@ -85,7 +88,12 @@ BLDRPT ; Compile the report.
  .S PSBDATA(3)=$P($$GET1^DIQ(53.77,PSBX3_",",.03),"$"),PSBDATA(3,0)="/"_($P($$GET1^DIQ(53.77,PSBX3_",",.03),"$",2))
  .;
  .; UTS Type - Get the parameter from File #53.69, compare it to the value below,and quit if not compatible.
- .S PSBDATA(4)=$S($E($P($$GET1^DIQ(53.77,PSBX3_",",.05)," "),1)="M":"MED",$E($P($$GET1^DIQ(53.77,PSBX3_",",.05)," "),1)="W":"WRIST")
+ .;DSS/SMP - BEGIN MODS
+ .I $$VFD D  I 1
+ ..S PSBDATA(4)=$S($E($P($$GET1^DIQ(53.77,PSBX3_",",.05)," "),1)="M":"MED",$E($P($$GET1^DIQ(53.77,PSBX3_",",.05)," "),1)="W":"PT ID")
+ .E  S PSBDATA(4)=$S($E($P($$GET1^DIQ(53.77,PSBX3_",",.05)," "),1)="M":"MED",$E($P($$GET1^DIQ(53.77,PSBX3_",",.05)," "),1)="W":"WRIST")
+ .I $P($G(PSBRPT(3)),",",1)=1&(PSBDATA(4)="PT ID") Q
+ .;DSS/SMP - END MODS
  .I $P($G(PSBRPT(3)),",",1)=1&(PSBDATA(4)="WRIST") Q
  .I $P($G(PSBRPT(3)),",",1)=2&(PSBDATA(4)="MED") Q
  .;
@@ -190,18 +198,18 @@ CONSTR   .; Construct output from UTS event record.
  .I PSBXORX]"" S PSBXORX="ORD#: "_PSBXORX,$E(PSBTOTX,PSBTAB4+2,PSBTAB4+2+($L(PSBXORX)-1))=PSBXORX
  .K PSBDATA M PSBDATA=@($P(PSBMRG,",",1,PSBSRTNM+4)_")")
  .D BUILDLN
- .S PSBOUTP($$PGTOT,PSBLNTOT)="W """_PSBTOTX_""""
+ .S ^TMP("PSBSF",$J,$$PGTOT,PSBLNTOT)="W """_PSBTOTX_""""
  .F I=1:1:10 Q:'$D(PSBRPLN(I))  D
  ..F J=1:1:7 S $E(PSBRPLN(I),@("PSBTAB"_J))="|"
- ..S PSBOUTP($$PGTOT,PSBLNTOT)="W !,"""_PSBRPLN(I)_""""
+ ..S ^TMP("PSBSF",$J,$$PGTOT,PSBLNTOT)="W !,"""_PSBRPLN(I)_""""
  .S $E(PSBCMNT1,PSBTAB7)="|"
  .I $D(PSBCMNT2) S $E(PSBCMNT2,PSBTAB7)="|"
  .I $D(PSBCMNT3) S $E(PSBCMNT3,PSBTAB7)="|"
- .S PSBOUTP($$PGTOT,PSBLNTOT)="W !,"""_PSBCMNT0_""""
- .S PSBOUTP($$PGTOT,PSBLNTOT)="W !,"""_PSBCMNT1_""""
- .I $D(PSBCMNT2) S PSBOUTP($$PGTOT,PSBLNTOT)="W !,"""_PSBCMNT2_""""
- .I $D(PSBCMNT3) S PSBOUTP($$PGTOT,PSBLNTOT)="W !,"""_PSBCMNT3_""""
- .S PSBOUTP($$PGTOT(2),PSBLNTOT)="W !,$TR($J("""",PSBTAB7),"" "",""-""),!"
+ .S ^TMP("PSBSF",$J,$$PGTOT,PSBLNTOT)="W !,"""_PSBCMNT0_""""
+ .S ^TMP("PSBSF",$J,$$PGTOT,PSBLNTOT)="W !,"""_PSBCMNT1_""""
+ .I $D(PSBCMNT2) S ^TMP("PSBSF",$J,$$PGTOT,PSBLNTOT)="W !,"""_PSBCMNT2_""""
+ .I $D(PSBCMNT3) S ^TMP("PSBSF",$J,$$PGTOT,PSBLNTOT)="W !,"""_PSBCMNT3_""""
+ .S ^TMP("PSBSF",$J,$$PGTOT(2),PSBLNTOT)="W !,$TR($J("""",PSBTAB7),"" "",""-""),!"
  .;
  .; Force a skip to the next record's zero node.
  .S $P(PSBMRG,",",PSBSRTNM+5)="999999)"
@@ -224,10 +232,14 @@ FORMDAT(FLD) ; Format the data.
  .S $E(PSBRPLN(2),@("PSBTAB"_(FLD-1))+2,(@("PSBTAB"_FLD)-1))=PSBVAL(0)
  I ($L(PSBVAL)+(@("PSBTAB"_(FLD-1))))'<(@("PSBTAB"_FLD)-1) D  Q
  .I $F(PSBVAL,",")>1 S PSBVAL1=$E(PSBVAL,1,$F(PSBVAL,",")-1),PSBVAL2=$E(PSBVAL,$F(PSBVAL,","),999)
- .E  S PSBVAL1=$E(PSBVAL,1,$F(PSBVAL," ")-1),PSBVAL2=$E(PSBVAL,$F(PSBVAL," "),999)
+ .;DSS/RAC - BEGIN MODS - Don't break on spaces, break on the 17th characters.  Orgininal line commented out
+ .;E  S PSBVAL1=$E(PSBVAL,1,$F(PSBVAL," ")-1),PSBVAL2=$E(PSBVAL,$F(PSBVAL," "),999)
+ .E  S PSBVAL1=$E(PSBVAL,1,17),PSBVAL2=$E(PSBVAL,18,999)
  .F PSBI=$L(PSBVAL1)+(@("PSBTAB"_(FLD-1))):1:(@("PSBTAB"_FLD)-3) S PSBVAL1=PSBVAL1_" "
  .I $D(PSBVAL2) I ($L(PSBVAL2)+(@("PSBTAB"_(FLD-1))))'<(@("PSBTAB"_FLD)-1) D
- ..S PSBVAL3=$E(PSBVAL2,$F(PSBVAL2," "),999),PSBVAL2=$E(PSBVAL2,1,$F(PSBVAL2," ")-1)
+ ..;S PSBVAL3=$E(PSBVAL2,$F(PSBVAL2," "),999),PSBVAL2=$E(PSBVAL2,1,$F(PSBVAL2," ")-1)
+ ..S PSBVAL3=$E(PSBVAL2,52,999),PSBVAL2=$E(PSBVAL2,1,69)
+ ..;DSS/RAC - END MODS
  ..F PSBI=$L(PSBVAL3)+(@("PSBTAB"_(FLD-1))):1:(@("PSBTAB"_FLD)-3) S PSBVAL3=PSBVAL3_" "
  ..S $E(PSBRPLN(3),@("PSBTAB"_(FLD-1))+2,(@("PSBTAB"_FLD)-1))=PSBVAL3
  .I ($L(PSBVAL1)+(@("PSBTAB"_(FLD-1))))>(@("PSBTAB"_FLD)-2) D
@@ -242,35 +254,41 @@ FORMDAT(FLD) ; Format the data.
  Q
  ;
 WRTRPT   ; Write the report.
- I $O(PSBOUTP(""),-1)<1 D  Q
- .S PSBOUTP(0,14)="W !!,""<<<< NO DOCUMENTED BCMA UNABLE TO SCAN EVENTS FOR THIS DATE RANGE >>>>"",!!"
+ I $O(^TMP("PSBSF",$J,""),-1)<1 D  Q
+ .S ^TMP("PSBSF",$J,0,14)="W !!,""<<<< NO DOCUMENTED BCMA UNABLE TO SCAN EVENTS FOR THIS DATE RANGE >>>>"",!!"
  .D HDR
- .X PSBOUTP($O(PSBOUTP(""),-1),14)
+ .X ^TMP("PSBSF",$J,$O(^TMP("PSBSF",$J,""),-1),14)
  .D FTR
  S PSBPGNUM=1
  D HDR
- S PSBX1="" F  S PSBX1=$O(PSBOUTP(PSBX1)) Q:PSBX1=""  D
+ S PSBX1="" F  S PSBX1=$O(^TMP("PSBSF",$J,PSBX1)) Q:PSBX1=""  D
  .I PSBPGNUM'=PSBX1 D FTR S PSBPGNUM=PSBX1 D HDR
- .S PSBX2="" F  S PSBX2=$O(PSBOUTP(PSBX1,PSBX2)) Q:PSBX2=""  D
- ..X PSBOUTP(PSBX1,PSBX2)
+ .S PSBX2="" F  S PSBX2=$O(^TMP("PSBSF",$J,PSBX1,PSBX2)) Q:PSBX2=""  D
+ ..X ^TMP("PSBSF",$J,PSBX1,PSBX2)
  D FTR
- K ^XTMP("PSBO",$J,"PSBLIST"),PSBOUTP
+ K ^XTMP("PSBO",$J,"PSBLIST"),^TMP("PSBSF",$J)
  Q
  ;
 HDR      ; Write the report header.
  I '$D(PSBHDR) S PSBHDR=""
  W:$Y>1 @IOF W:$X>1 !
- S PSBPG="Page: "_PSBPGNUM_" of "_$S($O(PSBOUTP(""),-1)=0:1,1:$O(PSBOUTP(""),-1))
+ S PSBPG="Page: "_PSBPGNUM_" of "_$S($O(^TMP("PSBSF",$J,""),-1)=0:1,1:$O(^TMP("PSBSF",$J,""),-1))
  S PSBPGRM=PSBTAB7-($L(PSBPG))
  I $P(PSBRPT(0),U,4)="" S $P(PSBRPT(0),U,4)=DUZ(2)
  D CREATHDR
  W !!,"BCMA UNABLE TO SCAN (Detailed)" W ?PSBPGRM,PSBPG
  W !!,"Date/Time: "_PSBDTTM,!,"Report Date Range:  Start Date: "_Y1_"   Stop Date: "_Y2
- W !,"Type of Scanning Failure: ",$S(+$P($G(PSBRPT(3)),",",1)=0:"All",+$P($G(PSBRPT(3)),",",1)=1:"Medication",1:"Wristband")
+ ;DSS/SMP - BEGIN MODS
+ I $$VFD D  I 1
+ .W !,"Type of Scanning Failure: ",$S(+$P($G(PSBRPT(3)),",",1)=0:"All",+$P($G(PSBRPT(3)),",",1)=1:"Medication",1:"Pt Barcode ID")
+ E  W !,"Type of Scanning Failure: ",$S(+$P($G(PSBRPT(3)),",",1)=0:"All",+$P($G(PSBRPT(3)),",",1)=1:"Medication",1:"Wristband")
  W !,"Reason: " D
  .I $P($G(PSBRPT(3)),",",2)=0 W "All Reasons" Q
  .I $P($G(PSBRPT(3)),",",2)=1 W "Damaged Medication Label" Q
- .I $P($G(PSBRPT(3)),",",2)=2 W "Damaged Wristband" Q
+ .I $P($G(PSBRPT(3)),",",2)=2 D  Q
+ ..I $$VFD W "Damaged Pt Barcode ID" Q
+ ..E  W "Damaged Wristband" Q
+ .;DSS/SMP - END MODS
  .I $P($G(PSBRPT(3)),",",2)=3 W "No Bar Code" Q
  .I $P($G(PSBRPT(3)),",",2)=4 W "Scanning Equipment Failure" Q
  .I $P($G(PSBRPT(3)),",",2)=5 W "Unable to Determine" Q
@@ -305,8 +323,14 @@ PGTOT(X) ; Track PAGE Number.
  ;
 CREATHDR ; Create report header.
  K PSBSFHD1
- I IOM'<122 S PSBSFHD1=$P($T(SFHD132A),";",3),PSBSFHD2=$P($T(SFHD132B),";",3),PSBBLANK=$P($T(SF132BLK),";",3)
- I (IOM'>90),(IOM'<75) S PSBSFHD1=$P($T(SFHD80A),";",3),PSBSFHD2=$P($T(SFHD80B),";",3),PSBBLANK=$P($T(SF80BLK),";",3)
+ ;DSS/SMP - BEGIN MODS
+ I $$VFD D  I 1
+ .I IOM'<122 S PSBSFHD1=$P($T(SFHD132A),";",3),PSBSFHD2=$P($T(VFD),";",3),PSBBLANK=$P($T(SF132BLK),";",3)
+ .I (IOM'>90),(IOM'<75) S PSBSFHD1=$P($T(SFHD80A),";",3),PSBSFHD2=$P($T(VFD1),";",3),PSBBLANK=$P($T(SF80BLK),";",3)
+ E  D
+ .I IOM'<122 S PSBSFHD1=$P($T(SFHD132A),";",3),PSBSFHD2=$P($T(SFHD132B),";",3),PSBBLANK=$P($T(SF132BLK),";",3)
+ .I (IOM'>90),(IOM'<75) S PSBSFHD1=$P($T(SFHD80A),";",3),PSBSFHD2=$P($T(SFHD80B),";",3),PSBBLANK=$P($T(SF80BLK),";",3)
+ ;DSS/SMP - END MODS
  I '$D(PSBSFHD1) S PSBTAB7=80 Q
  ; reset tabs
  S PSBTAB0=1 F PSBI=0:1:($L(PSBSFHD1,"|")-2) S:PSBI>0 @("PSBTAB"_PSBI)=($F(PSBSFHD1,"|",@("PSBTAB"_(PSBI-1))+1))-1
@@ -346,3 +370,14 @@ NURLOC(X) ; Nursing Location Name.
  N PSBNULC S PSBNULC=$G(^NURSF(211.4,X,0)) I PSBNULC="" Q PSBNULC
  S PSBNULC=$P($G(^SC(PSBNULC,0)),U,1)
  Q PSBNULC
+ ;
+ ;DSS/SMP - BEGIN MODS
+ ; The following entry point is used as the OSEHRA check and the line
+ ; to replace the text from the line SFHD132B.  VFD1 replaces the text
+ ; from line SFHD80B
+ ;
+VFD() ;;|     (MRN)       |   of UTS  |      WARD/RmBd    | TYPE  |           (ID#)           |      USER'S NAME    |    UTS     |
+ Q $G(^%ZOSF("ZVX"))["VX"
+ ;
+VFD1 ;;|NAME (MRN)|  of UTS | WARD/RmBd|  TYPE |   (ID#)    |   NAME     |  UTS   |
+ Q

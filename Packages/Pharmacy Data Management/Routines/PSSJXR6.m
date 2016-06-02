@@ -1,4 +1,4 @@
-PSSJXR6 ; COMPILED XREF FOR FILE #55.05 ; 03/19/13
+PSSJXR6 ; COMPILED XREF FOR FILE #55.05 ; 01/26/16
  ; 
  S DA=0
 A1 ;
@@ -7,11 +7,11 @@ A1 ;
 A S DA=$O(^PS(55,DA(1),"NVA",DA)) I DA'>0 S DA=0 G END
 1 ;
  S DIKZ(0)=$G(^PS(55,DA(1),"NVA",DA,0))
- S X=$P(DIKZ(0),U,6)
+ S X=$P($G(DIKZ(0)),U,6)
  I X'="" K:$G(PSODEATH) ^PS(55,DA(1),"NVA","APSOD",DA)
- S X=$P(DIKZ(0),U,10)
+ S X=$P($G(DIKZ(0)),U,10)
  I X'="" K ^PS(55,"ADCDT",$E(X,1,30),DA(1),DA)
- S X=$P(DIKZ(0),U,1)
+ S X=$P($G(DIKZ(0)),U,1)
  I X'="" K ^PS(55,DA(1),"NVA","B",$E(X,1,30),DA)
 CR1 S DIXR=464
  K X

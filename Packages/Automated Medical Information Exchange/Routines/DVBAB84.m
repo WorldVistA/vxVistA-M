@@ -1,5 +1,5 @@
-DVBAB84 ;ALB/DK - CAPRI REMOTE NEW PERSON FILE ;11/17/08
- ;;2.7;AMIE;**90,137**;Apr 10, 1995;Build 38
+DVBAB84 ;ALB/DK - CAPRI REMOTE NEW PERSON FILE ;09/28/09
+ ;;2.7;AMIE;**90,137,140,143**;Apr 10, 1995;Build 4
  ;
 START(MSG) ;RPC DVBAB NEW PERSON FILE
  K ^TMP("DVBAB200",$J)
@@ -40,7 +40,6 @@ DUP(Y,NAM,DOB,SSN) ;RPC DVBAB FIND DUPS
  I C S @Y@(0)=C Q
  S:S<0 SSN=$$S(NAM,DOB)
  D DN(.N,NAM),DD(.D,DOB,NAM,SSN),DS(.S,SSN,NAM,DOB),WT(Y,.A,.N,.D,.S)
- D CLEANDOB(Y)
  Q
 DN(A,N) I N=""!A S A=0 Q  ;Dup Name checks
  N K,M S A=0,M=$$N2(N),K=$$N1(M)_"zzzzzzzzzz"
@@ -67,7 +66,7 @@ D0(A,X,Y,P,V) N I,C,Z S I="",C="N D     S",P=$G(P),V=$G(V)
  .I P,'$$M($E(C,P),$P(Z,U,P),V,V,V,5) Q
  .S A=A+1,A(I)=Z
  Q
-VN(X) Q:X="" 0  Q X'?2.U1","2.U  ;Validate Name
+VN(X) Q:X="" 0  Q X'?2.U1","1.U  ;Validate Name
 VD(X) Q:X="" 0  Q:X'?7N 1  N M,D S M=$E(X,4,5),D=$E(X,6,7)  ;Validate DOB
  Q:M<1!(M>12)!(D<0) 1  Q (D>$$D(M,$E(X,1,3)))
 VS(X) Q:X="" 0  Q:$E(X,$L(X))="P" -1  N L S L=$L(X)  ;Validate SSN
@@ -89,7 +88,22 @@ WT(Y,A,N,D,S) N C S C=$$W0(.A,.N,.D,.S),@Y@(0)=C Q:'C  ;Weights
  F  S I=$O(A(I)) Q:'I  F  S J=$O(A(I,J)) Q:'J  D
  .S K=K+1,K(-J,$P(A(I,J),U),K)=I_U_A(I,J)
  F  S I=$O(K(I)) Q:'I  F  S J=$O(K(I,J)) Q:J=""  D
- .F  S L=$O(K(I,J,L)) Q:'L  S C=C+1,@Y@(C)=K(I,J,L)
+ .F  S L=$O(K(I,J,L)) Q:'L  D
+ ..;If SSN or DOB should not be displayed in the Patient File Matches 
+ ..;list in CAPRI replace DOB and SSN with *SENSITIVE* in DOB and SSN 
+ ..;fields in RPC results.
+ ..N DVBADOB,DVBASSN,DVBADFN
+ ..;1st piece in K array is DFN followed by 0th node of DPT record.
+ ..;DOB found in 3rd piece of 0th node and 4th piece K array
+ ..S DVBADFN=+$P($G(K(I,J,L)),"^")
+ ..S DVBADOB=$$DOB^DPTLK1(DVBADFN,2)
+ ..I DVBADOB="*SENSITIVE*" S $P(K(I,J,L),"^",4)=DVBADOB
+ ..;1st piece in K array is DFN followed by 0th node of DPT( record.  
+ ..;SSN found in 9th piece of the 0th node and 10 piece in K array.
+ ..S DVBASSN=$$SSN^DPTLK1(DVBADFN)
+ ..I DVBASSN="*SENSITIVE*" S $P(K(I,J,L),"^",10)=DVBASSN
+ ..S C=C+1
+ ..S @Y@(C)=K(I,J,L)
  Q
 W0(A,N,D,S) Q:N&D&S $$W3(.A,.N,.D,.S)  Q:N&S&'D $$W2(.A,.N,.S)
  Q:D&S&'N $$W2(.A,.D,.S)  Q:N&D&'S $$W2(.A,.N,.D)
@@ -136,22 +150,3 @@ S4(X) N I,J,K,L,M S L=$L(X)
  .F  Q:J=1  S M=$E(X,J-1)  Q:M'>K  S $E(X,J)=M,J=J-1
  .S $E(X,J)=K
  Q X
-CLEANDOB(DVBARRNM) ;Remove all SENSITIVE and partial DOB's
- ;This temporary procedure scans the results of the DVBAB FIND DUPS
- ;and replaces any incomplete (missing month or day) or SENSITIVE
- ;DOB's with an empty string.  This is a workaround for CAPRI
- ;generating Exceptions when these conditions exist.
- ;
- ;  Input:
- ;    DVBARRNM - array reference containing DVBAB FIND DUPS results
- ;
- ;  Output:
- ;    none
- ;
- N DVBI  ;generic counter
- N DVBDOB  ;patient DOB
- S DVBI=0
- F  S DVBI=$O(@DVBARRNM@(DVBI)) Q:'DVBI  D
- . S DVBDOB=$P(@DVBARRNM@(DVBI),U,4)
- . I DVBDOB'?7N!($E(DVBDOB,4,5)="00")!($E(DVBDOB,6,7)="00") S $P(@DVBARRNM@(DVBI),U,4)=""
- Q

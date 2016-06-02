@@ -1,5 +1,5 @@
 RTPSET ;MJK/TROY ISC;Sign-on Parameter Routine; ; 5/7/87  1:50 PM ;
- ;;v 2.0;Record Tracking;;10/22/91 
+ ;;2.0;Record Tracking;**46**;10/22/91 ;Build 46
  ;
  ;entry point to set-up variables for application and file room
  ;X is defined as the application's name
@@ -40,7 +40,7 @@ MR S Y=^DIC(195.4,1,"MAS")
 SETUP D APL1 S Y=+$P(Y,"^",2) D TYPE1^RTUTL K:'$D(RTAPL)!('$D(RTTY)) RTAPL,RTTY Q
  ;
 OVERALL ;entry point for RT OVERALL menu
- Q:$D(RTAPL)&($D(RTSYS))  S XQUIT="",DIC(0)="IAEMQ",DIC="^DIC(195.1," D ^DIC Q:Y<0  K XQUIT D APL1,SET K XQUIT Q
+ Q:$D(RTAPL)&($D(RTSYS))  S XQUIT="",DIC(0)="IAEMQ",DIC="^DIC(195.1," D ^DIC Q:Y<0  K XQUIT D APL1,SET K:'$D(DUOUT) XQUIT K DUOUT Q
  ;
 TYPE K RTTY,RTDIV,RTFR S XQUIT="",DIC(0)="IAQEMZ",DIC="^DIC(195.2,",DIC("S")="I $S('$D(RTAPL):1,$P(^(0),U,3)=+RTAPL:1,1:0),$S('$D(^(""I"")):1,'^(""I""):1,DT'>+^(""I""):1,1:0)",DIC("A")="Select Record Type: " D ^DIC K DIC Q:Y<0
  S RTTY=+Y_";"_Y(0) S Y=$S($D(RTAPL):+RTAPL,1:+$P(Y(0),"^",3)) D APL1

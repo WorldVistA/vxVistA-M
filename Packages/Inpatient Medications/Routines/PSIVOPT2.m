@@ -1,5 +1,5 @@
 PSIVOPT2 ;BIR/PR,MLM-OPTION DRIVER (CONT) ;02 Mar 99 / 9:27 AM
- ;;5.0; INPATIENT MEDICATIONS ;**23,29,58,110,127,133,135,157**;16 DEC 97
+ ;;5.0;INPATIENT MEDICATIONS ;**23,29,58,110,127,133,135,157,181,258,287**;16 DEC 97;Build 1
  ;
  ; Reference to ^PS(55 is supported by DBIA# 2191.
  ; Reference to ^PSSLOCK is supported by DBIA #2789
@@ -25,6 +25,7 @@ D1 N %,DA,DIE,DIU,STP,NSTOP
  S TMP(55.01,""_+ON55_","_DFN_","_"",109)=NSTOP
  S:'$P($G(^PS(55,DFN,"IV",+ON55,2)),U,7) TMP(55.01,""_+ON55_","_DFN_","_"",116)=STP
  S TMP(55.01,""_+ON55_","_DFN_","_"",100)="D"
+ S TMP(55.01,""_+ON55_","_DFN_","_"",157)=""
  S TMP(55.01,""_+ON55_","_DFN_","_"",.03)=NSTOP
  S PSIVACT=1
  D FILE^DIE("","TMP")
@@ -37,15 +38,22 @@ R ; Renew order.
  ;I PSJCOM D RIV^PSJCOMR Q
  I PSJCOM D ^PSJCOMR Q
  I P(17)="D",P(12) N ERR D RI W:$G(ERR)=1 $C(7),"  Order unchanged." I $G(ERR)<2 S COMQUIT=1 Q
- NEW PSGORQF S PSIVRNFG=1 D ORDCHK^PSJLIFN K PSIVRNFG W !
  I $G(PSGORQF) S COMQUIT=1 Q
+ ;PSJOCFLG is killed of after the OC is performed.  The Dosing is still need to trigger(again) if the 
+ ;  user said "no" at OK prompt and a new stop date is entered.
+ NEW PSJOCFLG S PSJOCFLG=1
  ;
 R1 ;
  I $$EXPIRED^PSGOER(DFN,ON55) D  Q
  .W !?3,"  THIS ORDER HAS BEEN INACTIVE FOR ONE OR MORE SCHEDULED ADMINISTRATIONS"
  .W !?20,"  AND CANNOT BE RENEWED!"
+ ;*287 - Prevent renewal if schedule invalid
+ I $G(P(9))]"",'$$DOW^PSIVUTL(P(9)),'$$PRNOK^PSGS0(P(9)) I '$D(^PS(51.1,"AC","PSJ",P(9))) D  Q
+ . W !!?3,"This order contains an invalid schedule and CANNOT be renewed!" D PAUSE^VALM1
+ I '$G(PSGDT) D NOW^%DTC S PSGDT=+$E(%,1,12)  ;*258 - Set PSGDT
  N PSJRNWDT,PSJOSTOP,OREASON S PSJRNWDT=$$DATE2^PSJUTL2(PSGDT) S:$G(ON55) PSJOSTOP=$P($G(^PS(55,DFN,"IV",+ON55,0)),U,3) I '(PSJOSTOP>P(2)),$G(PSGDT) S PSJOSTOP=PSGDT
  S (PSIVOK,EDIT)="25^1" S P2=P(2),P(2)=PSJRNWDT D EDIT^PSIVEDT S P(2)=P2 K P2 I X="^" Q
+ NEW PSGORQF K PSGORQF S PSIVRNFG=1 D:$G(PSJOCFLG) OC^PSIVOC K PSJOCFLG D:'$G(PSGORQF) IN^PSJOCDS($G(ON55),"IV","") K PSIVRNFG W ! Q:$G(PSGORQF)
  S P(11)=$$ENRNAT^PSGOU($P($G(^PS(55,DFN,"IV",+ON55,2)),U,10),+VAIN(4),P(9),P(11))
  D OK G:X["N" R1 I X=U D RD Q
  S PSIVCHG=2
@@ -92,9 +100,9 @@ RI ; Reinstate Auto-DC'ed order.
  ;
 UPDREN(DFN,ORD,RNWDT,PROV,OSTOPDT,PSJNOO) ;
  Q:'DFN!'ORD!'RNWDT!'PROV!'OSTOPDT!(PSJNOO="")
- K DR,DA,DIC,DIE,DD,DO N ND0,PSGOEORD
+ ;*PSJ*5*258
+ N DR,DA,DIC,DIE,DD,DO,ND0,PSGOEORD,DINUM
  S DIC="^PS(55,"_DFN_",""IV"","_+ORD S ND0=$G(@(DIC_",0)")),PSGOEORD=$P(ND0,"^",21) I $G(ON)["P",$G(PSGOLDOE) S PSGOEORD=PSGOLDOE
  S DIC=DIC_",14,",DIC(0)="L",DIC("P")="55.1138DA",ND14=$G(@(DIC_"0)")),DINUM=$P(ND14,"^",3)+1,DA(2)=DFN,DA(1)=+ORD D
  .S DIC("DR")=".01////"_$G(RNWDT)_";1////"_$G(DUZ)_";2////"_$G(PROV)_";3////"_$G(OSTOPDT)_";4////"_+PSGOEORD,X=$G(RNWDT) D FILE^DICN
- .Q
- K DO,DINUM
+ Q

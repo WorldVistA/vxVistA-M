@@ -1,8 +1,10 @@
 PSDPGS ;BIR/JPW-Print Green Sheet (VA FORM 10-2638) ; 30 Aug 94
- ;;3.0; CONTROLLED SUBSTANCES ;;13 Feb 97
+ ;;3.0; CONTROLLED SUBSTANCES ;**69**;13 Feb 97;Build 13
+ ;References to ^PSD(58.8, covered by DBIA2711
+ ;
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- S OK=$S($D(^XUSEC("PSJ RPHARM",DUZ)):1,$D(^XUSEC("PSJ PHARM TECH",DUZ)):1,1:0)
- I 'OK W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access",!,?12,"to print Green Sheets.",!!,"PSJ PHARM or PSJ PHARM TECH security key required.",! K OK Q
+ S OK=$S($D(^XUSEC("PSJ RPHARM",DUZ)):1,$D(^XUSEC("PSJ PHARM TECH",DUZ)):1,$D(^XUSEC("PSD TECH ADV",DUZ)):1,1:0)
+ I 'OK W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access",!,?12,"to print Green Sheets.",!!,"PSJ PHARM, PSJ PHARM TECH or PSD TECH ADV security key required.",! K OK Q
 ASKD ;ask dispensing location
  S PSDS=$P(PSDSITE,U,3),PSDSN=$P(PSDSITE,U,4)
  I $P(PSDSITE,U,5) S PRT=+$P($G(^PSD(58.8,+PSDS,2)),"^",6),ASK=+$G(^(2.5)) G CHKD

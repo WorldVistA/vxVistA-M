@@ -1,77 +1,117 @@
-HLCSQUE ;ALB/MFK HL7 UTILITY FUNCTIONS - 10/4/94 11AM ;05/08/2000  11:07
- ;;1.6;HEALTH LEVEL SEVEN;**14,61,59**;Oct 13, 1995
+HLCSQUE ;ALB/MFK/CJM HL7 UTILITY FUNCTIONS - 10/4/94 11AM ;02/17/2011
+ ;;1.6;HEALTH LEVEL SEVEN;**14,61,59,153**;Oct 13, 1995;Build 11
+ ;Per VHA Directive 2004-038, this routine should not be modified.
 ENQUEUE(IEN,HLDIR) ;Assign a message for queue entry
  ; INPUT: IEN  - Internal Entry Number for file 870 - HL7 QUEUE
  ;        HLDIR  - Direction of queue (IN/OUT)
  ; OUTPUT: BEG - Location in the queue to stuff the message
  ;        -1   - Error
- ; NOTE: All the locks have been commented out.
- N FRONT,BACK,DIC,DA,X,BP,FP,REC,DINUM,ENTRY,Y,RETURN,BPOINTER
- N FPOINTER,HLCNT
+ N FRONT,BACK,DIC,DA,X,DINUM,ENTRY,Y,BPOINTER,NEWREC
  ;  Make sure required variables were given
  S IEN=$G(IEN)
  Q:(IEN="") "-1^Queue not given"
  I +IEN<1 S IEN=$O(^HLCS(870,"B",IEN,""))
  Q:(IEN="") "-1^Invalid queue"
+ ;  Convert direction to a number
  S HLDIR=$G(HLDIR)
- S HLDIR=$S(HLDIR="1":"IN",HLDIR=2:"OUT",1:HLDIR)
- I HLDIR'="IN",(HLDIR'="OUT") Q "-1^Invalid Direction"
- I HLDIR="IN" S HLDIR=1,BPOINTER="IN QUEUE BACK POINTER",FPOINTER="IN QUEUE FRONT POINTER"
- I HLDIR="OUT" S HLDIR=2,BPOINTER="OUT QUEUE BACK POINTER",FPOINTER="OUT QUEUE FRONT POINTER"
- F  L +^HLCS(870,IEN,FPOINTER):1 Q:$T  H 1
- S FRONT=$G(^HLCS(870,IEN,FPOINTER))
- L -^HLCS(870,IEN,FPOINTER)
+ Q:(HLDIR'="IN")&(HLDIR'="OUT")&(HLDIR'=1)&(HLDIR'=2) "-1^Invalid direction"
+ S HLDIR=$S(HLDIR="IN":1,HLDIR="OUT":2,HLDIR=2:2,1:1)
+ S BPOINTER=$S(HLDIR=1:"IN",1:"OUT")_" QUEUE BACK POINTER"
+ S FRONT=$G(^HLCS(870,IEN,$S(HLDIR=1:"IN",1:"OUT")_" QUEUE FRONT POINTER"))
  D DELETE^HLCSQUE1(IEN,HLDIR,FRONT)
- F  L +^HLCS(870,IEN,BPOINTER):1 Q:$T  H 1
+ F  L +^HLCS(870,IEN,BPOINTER):20 Q:$T
  S BACK=$G(^HLCS(870,IEN,BPOINTER))
  ; Set up DICN call
  S DIC="^HLCS(870,"_IEN_","_HLDIR_","
  S ENTRY=HLDIR+18
  S DIC(0)="LNX",DA(1)=IEN,DIC("P")=$P(^DD(870,ENTRY,0),"^",2)
- S (DINUM,X)=BACK+1
+ S NEWREC=BACK+1
+ S (DINUM,X)=NEWREC
  ;  Create Record
  K DD,DO
- F  L +^HLCS(870,IEN,HLDIR):1 Q:$T  H 1
- F HLCNT=0:1 D  Q:Y>0  H HLCNT
- . D FILE^DICN
- S REC=$P(Y,"^",1)
+ F  D  Q:Y>0  H 1
+ .F  L +^HLCS(870,IEN,HLDIR,NEWREC):20 Q:$T
+ .D FILE^DICN
+ .I Y=-1 L -^HLCS(870,IEN,HLDIR,NEWREC) S NEWREC=NEWREC+1,(X,DINUM)=NEWREC
  ;  Set the 'status' to 'S' for stub
- S $P(^HLCS(870,IEN,HLDIR,REC,0),"^",2)="S"
- S ^HLCS(870,IEN,BPOINTER)=BACK+1
- ;  Put queue pointers back
- S RETURN=IEN_"^"_REC
+ S $P(^HLCS(870,IEN,HLDIR,NEWREC,0),"^",2)="S"
+ S ^HLCS(870,IEN,BPOINTER)=NEWREC
 EXIT1 ;  Unlock and return results
- L -^HLCS(870,IEN,HLDIR)
  L -^HLCS(870,IEN,BPOINTER)
- K IEN,HLDIR
- Q RETURN
+ L -^HLCS(870,IEN,HLDIR,NEWREC)
+ Q IEN_"^"_NEWREC
+ ;
 DEQUEUE(IEN,HLDIR) ;Release the next message from the queue
- N MSG,RETURN,FRONT,FP,BACK,POINTER
+ N RETURN,FRONT,FPOINTER
+ ;
+ N FOUND,NOMORE,NEXT,HLRTIME,STATUS
+ ;
  S IEN=$G(IEN)
  Q:(IEN="") "-1^Queue not given"
  I +IEN<1 S IEN=$O(^HLCS(870,"B",IEN,""))
  Q:(IEN="") "-1^Invalid queue"
+ ;  Convert direction to a number
  S HLDIR=$G(HLDIR)
- S HLDIR=$S(HLDIR="1":"IN",HLDIR=2:"OUT",1:HLDIR)
- I HLDIR'="IN",(HLDIR'="OUT") Q "-1^Invalid Direction"
- I HLDIR="IN" S HLDIR=1,POINTER="IN QUEUE FRONT POINTER"
- I HLDIR="OUT" S HLDIR=2,POINTER="OUT QUEUE FRONT POINTER"
- F  L +^HLCS(870,IEN,POINTER):1 Q:$T  H 1
- S FRONT=$G(^HLCS(870,IEN,POINTER))
- L -^HLCS(870,IEN,POINTER)
- D DELETE^HLCSQUE1(IEN,HLDIR,FRONT)
- ;If queue empty or "Stub" record don't dequeue
- F  L +^HLCS(870,IEN,HLDIR,FRONT+1,0):1 Q:$T  H 1
- I '$D(^HLCS(870,IEN,HLDIR,FRONT+1,0)) S RETURN="-1^NO NEXT RECORD" G EXIT2
- I ($P($G(^HLCS(870,IEN,HLDIR,FRONT+1,0)),"^",2)'="P") S RETURN="-1^STUB" G EXIT2
- ; for status "P"
- S ^HLCS(870,IEN,POINTER)=FRONT+1
- S RETURN=IEN_"^"_(FRONT+1)
- ;  Return success
-EXIT2 ;
- L -^HLCS(870,IEN,HLDIR,FRONT+1,0)
- L -^HLCS(870,IEN,POINTER)
+ Q:(HLDIR'="IN")&(HLDIR'="OUT")&(HLDIR'=1)&(HLDIR'=2) "-1^Invalid direction"
+ S HLDIR=$S(HLDIR="IN":1,HLDIR="OUT":2,HLDIR=2:2,1:1)
+ S FPOINTER=$S(HLDIR=1:"IN",1:"OUT")_" QUEUE FRONT POINTER"
+ S HLRTIME=$P($G(^HLCS(870,IEN,0)),"^",22) ; retention time in minutes for stub
+ S:HLRTIME HLRTIME=HLRTIME*60
+ S:(HLRTIME<300) HLRTIME=600
+ L +^HLCS(870,IEN,FPOINTER):1
+ I '$T S RETURN="-1^NO NEXT RECORD" G EXIT2
+ S FRONT=$G(^HLCS(870,IEN,FPOINTER))
+ S (FOUND,NOMORE)=0
+ F NEXT=FRONT+1:1 D  Q:FOUND  Q:NOMORE
+ .F  L +^HLCS(870,IEN,HLDIR,NEXT):20 Q:$T
+ .I '$D(^HLCS(870,IEN,HLDIR,NEXT,0)) D  Q:NOMORE
+ ..;missing record
+ ..L -^HLCS(870,IEN,HLDIR,NEXT)
+ ..;update front pointer
+ ..S:$O(^HLCS(870,IEN,HLDIR,NEXT)) ^HLCS(870,IEN,FPOINTER)=NEXT
+ ..;
+ ..;Is there another record following the missing one?
+ ..S NEXT=$O(^HLCS(870,IEN,HLDIR,NEXT))
+ ..I 'NEXT S NOMORE=1,RETURN="-1^NO NEXT RECORD" Q
+ ..;
+ ..;The next record after missing record has been found - lock it!
+ ..F  L +^HLCS(870,IEN,HLDIR,NEXT):20 Q:$T
+ ..;
+ .;A record has been found.
+ .S STATUS=$P($G(^HLCS(870,IEN,HLDIR,NEXT,0)),"^",2)
+ .;Is it a pending message, a stub, or done?
+ .I STATUS="P" D
+ ..;it is a pending message, so should be returned.
+ ..S FOUND=1,RETURN=IEN_"^"_NEXT
+ ..;
+ .E  D
+ ..;if the record is DONE then the front pointer is wrong - fix it and try again!
+ ..I STATUS="D" S ^HLCS(870,IEN,FPOINTER)=NEXT Q
+ ..;
+ ..;Must be a stub record
+ ..;
+ ..;discard 'old' stub records
+ ..N HLDT1
+ ..S HLDT1=$P($G(^HLCS(870,IEN,HLDIR,NEXT,0)),"^",10)
+ ..I 'HLDT1 D  Q
+ ...;not an old stub record - can not discard
+ ...S $P(^HLCS(870,IEN,HLDIR,NEXT,0),"^",10)=$$NOW^XLFDT,NOMORE=1,RETURN="-1^STUB"
+ ..;
+ ..I $$FMDIFF^XLFDT($$NOW^XLFDT,HLDT1,2)>HLRTIME D
+ ...;Is an old stub record - should continue on to the next record
+ ...S $P(^HLCS(870,IEN,HLDIR,NEXT,0),"^",2)="U"
+ ...;update front pointer
+ ...S ^HLCS(870,IEN,FPOINTER)=NEXT
+ ..E  D
+ ...;not an old stub record - should NOT continue to next record
+ ...S NOMORE=1,RETURN="-1^STUB"
+ .;
+ .L -^HLCS(870,IEN,HLDIR,NEXT)
+ ;
+ S:FOUND ^HLCS(870,IEN,FPOINTER)=NEXT
+EXIT2 L -^HLCS(870,IEN,FPOINTER)
  Q RETURN
+ ;
 CLEARQUE(IEN,HLDIR) ;Empty an entire queue
  ; IEN - Entry number for queue - can be name from "B" X-ref
  ; HLDIR - Can be "IN", "OUT", 1 or 2.

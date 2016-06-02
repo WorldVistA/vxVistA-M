@@ -1,5 +1,5 @@
 LRUPT ;AVAMC/REG/WTY - PATIENT TESTS ORDERED BY DATE ;9/25/00
- ;;5.2;LAB SERVICE;**1,153,201,248**;Sep 27, 1994;Build 25
+ ;;5.2;LAB SERVICE;**1,153,201,248**;Sep 27, 1994;Build 35
  ;
  ;Reference to ^VA(200 supported by IA #10060
  ;Reference to ^%ZIS supported by IA #10086

@@ -1,5 +1,5 @@
 GMRVEE2 ;HIRMFO/YH-ENTERED IN ERROR EDIT (cont.) ;2/6/99
- ;;4.0;Vitals/Measurements;**1,7,11**;Apr 25, 1997
+ ;;4.0;Vitals/Measurements;**1,7,11**;Apr 25, 1997;Build 8
 EN1 ; ENTER NEW DATE/TIME VITALS TAKEN
  S %DT(0)="-NOW",%DT("A")="Enter new date/time vitals were taken: ",%DT="AETRS" D ^%DT K %DT S:X?1"^".E!(+Y'>0) GMROUT=1 Q:GMROUT  S GMRCHC(1)=+Y
  Q
@@ -39,9 +39,18 @@ PRTEED ; PRINT ERROR RECORD
  S GMRTY=$S($D(^GMRD(120.51,GMRX,0)):^(0),1:""),GMRAINP=$S($D(^GMRD(120.51,$P(GMRDAT,"^",3),1))#2:^(1),1:""),GMRVX=$P(GMRTY,"^",2),GMRVX(0)=$P(GMRDAT,U,8),GMRVX(1)=0 D:GMRVX(0)>0 EN1^GMRVSAS0 S GMRVX(1)=$S(GMRVX(1)>0:" *",1:"")
  S GMRZZ="",GMRZZ(1)="" I $P($G(^GMR(120.5,GMRDA,5,0)),"^",4)>0 K GMRVARY S GMRVARY="" D CHAR^GMRVCHAR(GMRDA,.GMRVARY,GMRX) S GMRZZ=$$WRITECH^GMRVCHAR(GMRDA,.GMRVARY,9) S:GMRZZ'="" GMRZZ(1)=" ("_GMRZZ_")"
  I GMRVX="T",GMRVX(0)>0 S GMRVX(0)=GMRVX(0)_" F ("_$J(GMRVX(0)-32*5/9,0,1)_" C)"
- I GMRVX="WT",GMRVX(0)>0 S GMRVX(0)=GMRVX(0)_" lb ("_$J(GMRVX(0)/2.2,0,2)_" kg)"
- I GMRVX="HT",GMRVX(0)>0 S GMRVX(0)=$S(GMRVX(0)\12:GMRVX(0)\12_" ft ",1:"")_$S(GMRVX(0)#12:GMRVX(0)#12_" in",1:"")_" ("_$J(GMRVX(0)*2.54,0,2)_" cm)"
- I GMRVX="CG",GMRVX(0)>0 S GMRVX(0)=GMRVX(0)_" in ("_$J(+GMRVX(0)/.3937,0,2)_" cm)"
+ ;DSS/SMP - BEGIN MOD
+ N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
+ I GMRVX="WT",GMRVX(0)>0 D
+ .I VFD S GMRVX(0)=GMRVX(0)_" lb ("_$$LB2KG^VFDXLF(GMRVX(0),2)_" kg)" Q
+ .S GMRVX(0)=GMRVX(0)_" lb ("_$J(GMRVX(0)/2.2,0,2)_" kg)"
+ I GMRVX="HT",GMRVX(0)>0 D
+ .I VFD S GMRVX(0)=$S(GMRVX(0)\12:GMRVX(0)\12_" ft ",1:"")_$S(GMRVX(0)#12:GMRVX(0)#12_" in",1:"")_" ("_$$IN2CM^VFDXLF(GMRVX(0),2)_" cm)" Q
+ .S GMRVX(0)=$S(GMRVX(0)\12:GMRVX(0)\12_" ft ",1:"")_$S(GMRVX(0)#12:GMRVX(0)#12_" in",1:"")_" ("_$J(GMRVX(0)*2.54,0,2)_" cm)"
+ I GMRVX="CG",GMRVX(0)>0 D
+ .I VFD S GMRVX(0)=GMRVX(0)_" in ("_$$IN2CM^VFDXLF(+GMRVX(0),2)_" cm)" Q
+ .S GMRVX(0)=GMRVX(0)_" in ("_$J(+GMRVX(0)/.3937,0,2)_" cm)"
+ ;DSS/SMP - END MODS
  I GMRVX="CVP",GMRVX(0)>0 S GMRVX(0)=GMRVX(0)_" cmH2O ("_$J(GMRVX(0)/1.36,0,1)_" mmHg)"
  I GMRVX="PO2",GMRVX(0)>0 D
  .N GMRVPO S GMRVPO=$P(GMRDAT,"^",10)

@@ -1,5 +1,5 @@
-SRONASS ;B'HAM ISC/MAM - NO ASSESSMENT REASON ; [ 04/13/04  10:30 PM ]
- ;;3.0; Surgery ;**38,47,83,107,121,100,125**;24 Jun 93
+SRONASS ;BIR/MAM - NO ASSESSMENT REASON ;05/05/10
+ ;;3.0;Surgery;**38,47,83,107,121,100,125,174,178**;24 Jun 93;Build 6
  K SRTN S SRSOUT=0 N SRSEL D ^SROPSEL I '$D(DFN) S SRSOUT=1 G END
  D @$S(SRSEL=2:"^SROPSN",1:"STL^SROPS") I '$D(SRTN) S SRSOUT=1 G END
  S X=$P($G(^SRF(SRTN,"RA")),"^",6) I X="Y" D ASS I 'OK G END
@@ -8,7 +8,7 @@ SRONASS ;B'HAM ISC/MAM - NO ASSESSMENT REASON ; [ 04/13/04  10:30 PM ]
  W ! K DIR S X=$P($G(^SRF(SRTN,"RA")),"^",7) I X'="" D SET S DIR("B")=X
  S DIR(0)="130,102",DIR("A")="Reason an Assessment was not Created" D ^DIR K DIR I $D(DTOUT)!$D(DUOUT)!(Y=""&(X'="@")) S SRSOUT=1 G END
  I X="@" D DELETE G END1
- I X'="" K DR,DA,DIE S DIE=130,DR="102///"_X_";323////N;284////N;Q;235////C",DA=SRTN D ^DIE K DR,DIE,DA
+ I $G(Y)'="" K DR,DA,DIE S DIE=130,DR="102///"_Y_";323////N;284////N;Q;235////C",DA=SRTN D ^DIE K DR,DIE,DA
  D ^SROAEX S SROERR=SRTN D ^SROERR0
 END1 K DA,DIK S DIK="^SRF(",DIK(1)=".232^AQ",DA=SRTN D EN1^DIK
  D EXIT^SROES
@@ -43,5 +43,5 @@ DELETE ; delete no assessment reason
  I "Nn"[SRYN S SRSOUT=1 W !!,"No action taken.",!!,"Press RETURN to continue  " R X:DTIME Q
  W !!,"Updating to non-assessed status..." D DRDEL W !!,"Press RETURN to continue  " R X:DTIME
  Q
-DRDEL K DR,DIE,DA S DIE=130,DA=SRTN,DR="235///@;284///@;393///@;260///@;272///@;323///@;102///@;260.1///@" D ^DIE K DR,DIE,DA
+DRDEL K DR,DIE,DA S DIE=130,DA=SRTN,DR="235///@;284///@;393///@;260///@;272///@;272.1///@;323///@;102///@;260.1///@" D ^DIE K DR,DIE,DA
  Q

@@ -1,5 +1,5 @@
 PSOLLU4 ;BIR/EJW - CHANGE CONTROL CODES ;05/23/2004
- ;;7.0;OUTPATIENT PHARMACY;**161**;DEC 1997;Build 153
+ ;;7.0;OUTPATIENT PHARMACY;**161**;DEC 1997;Build 164
  ;
  ;Read-only reference to %ZIS(2 supported by DBIA 3435
  ;Reference to %ZIS(2 supported by DBIA 3884

@@ -1,8 +1,11 @@
 RARTE7 ;HISC/SM continuation - Delete a Report, Outside Rpt misc;10/10/08 16:05
- ;;5.0;Radiology/Nuclear Medicine;**56,95,97**;Mar 16, 1998;Build 6
+ ;;5.0;Radiology/Nuclear Medicine;**56,95,97,103**;Mar 16, 1998;Build 2
  ;Supported IA #2053 NOW^XLFDT, FILE^DIE, UPDATE^DIE
  ;Supported IA #2052 GET1^DID
  ;Supported IA #2055 ROOT^DILFD
+ ;
+ ;04/06/2010 BP/KAM RA*5*103 Remedy Ticket 324541 Outside Reports does
+ ;                           not generate Imaging Results CPRS Alert
  Q
 MARKDEL ; set field 5 to "X" to mark rpt as deleted
  ; also update activity log, send report deletion bulletin, store then delete
@@ -151,7 +154,8 @@ ALERT ; for Outside Report, ck if new/changed diags require alert
  S I=0
  ; loop RAA2 
  F  S I=$O(RAA2(I)) Q:'I  K:RAA2(I,0)=$G(RAA1(I,0)) RAA2(I,0)
- Q:'$O(RAA2(0))
+ ;04/06/2010 BP/KAM RA*5*103 Rem Tkt 324541 Commented out next line
+ ;Q:'$O(RAA2(0))
  K RAAB
  S I=0 F  S I=$O(RAA2(I)) Q:'I  D
  .I $D(^RA(78.3,+RAA2(I,0),0)),($P(^(0),U,4)="y") S RAAB=1

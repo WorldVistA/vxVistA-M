@@ -1,5 +1,5 @@
 ORQ11 ;slc/dcm-Get patient orders in context ;3/31/04  09:57
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**7,27,48,72,78,99,94,148,141,177,186,190,195,215,243,295**;Dec 17, 1997;Build 7
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**7,27,48,72,78,99,94,148,141,177,186,190,195,215,243,295,322**;Dec 17, 1997;Build 15
 LOOP ; -- main loop through "ACT" x-ref
  I $G(XREF)="AW" D AW Q
  I $G(FLG)=27 D EXPD^ORQ12 Q
@@ -61,6 +61,8 @@ CUR ; 2 -- Active/Current
 CUR1 ; 2 -- secondary pass for Active/Current
  N STOP S STOP=$P(X0,U,9)
  I STS=10 K ^OR(100,"AC",PAT,TM,IFN) Q  ;no delayed orders
+ N EVNT S EVNT=$P(X0,U,17)
+ I STS=13,EVNT,'$D(^ORE(100.2,EVNT,1)) Q  ;DJE/VM *322 no cancelled orders linked to unreleased delay
  I $P(X8,U,4)=2,$P(X8,U,15)=11 G CURX ;incl all unsig/unrel actions
  I '$D(YD),"^1^2^7^12^13^14^"[(U_STS_U) K ^OR(100,"AC",PAT,TM,IFN) Q
  I $D(YD),"^1^2^7^12^13^14^"[(U_STS_U),STOP<YD K ^OR(100,"AC",PAT,TM,IFN) Q
@@ -197,11 +199,10 @@ LPS1 ; 22 -- secondary pass for Lapsed
  Q
  ;
 AVT1 ; 23 -- secondary pass for Active/Pending sts only
- ;DSS/SGM - BEGIN MODS - include WRITTEN status
- I $T(VX^VFDI0000)'="",$$VX^VFDI0000["VX" D  Q
+ ;DSS/SMP - BEGIN MODS - include WRITTEN status
+ I $G(^%ZOSF("ZVX"))["VX" D  Q
  . I "^5^6^100^"[(U_STS_U) D GET^ORQ12(IFN,ORLIST,DETAIL,ACTOR)
  . Q
- ;DSS/SGM - END MODS
  I (STS=6)!(STS=5) D GET^ORQ12(IFN,ORLIST,DETAIL,ACTOR)
  Q
  ;

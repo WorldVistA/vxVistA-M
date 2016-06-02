@@ -1,5 +1,14 @@
-YTQAPI9 ;ALB/ASF- MHA ENTRIES ; 7/23/07 12:47pm
- ;;5.01;MENTAL HEALTH;**85**;Dec 30, 1994;Build 48
+YTQAPI9 ;ALB/ASF- MHA ENTRIES ; 12/12/09 5:02pm
+ ;;5.01;MENTAL HEALTH;**85,96**;Dec 30, 1994;Build 46
+ ;Reference to ^DPT( supported by DBIA #10035
+ ;Reference to VADPT APIs supported by DBIA #10061
+ ;Reference to ^XUSEC( supported by DBIA #10076
+ ;Reference to ^XUSRB APIs supported by DBIA #3277
+ ;Reference to ^VA(200, supported by DBIA #10060
+ ;Reference to VASITE APIs supported by DBIA #10112
+ ;Reference to FILE 8925.1 supported by DBIA #5033
+ ;Reference to TIUSRVA APIs supported by DBIA #5541
+ ;Reference to TIUFLF7 APIs supported by DBIA #5352
  Q
 LEGCR(YSDATA,YS) ;score/report for cr dll
  ;input: YS("ADATE")=date of admin
@@ -59,7 +68,7 @@ INTMP ; SAVE OLD
 OUTTMP ;replace old testing
  M ^YTD(601.2,DFN,1,YSNCODE,1,YSADATE)=^TMP($J,"YTAPI4")
  Q
-NATSET(YSDATA,YS) ; set design evironment to save fm entries <100,000
+NATSET(YSDATA,YS) ; set design environment to save fm entries <100,000
  ;input: NATIONAL as Yes or No
  ;output: YSPROG=1
  N Y1
@@ -98,17 +107,27 @@ PATSEL(YSDATA,YS) ;patient component
 USERQ(YSDATA,YS) ;user info
  ;input DUZ as internal ien file 200 for user to check [optional default is current user]
  ;      KEY as name of security key to check [optional]
+ ;      TITLE as name of Pnote [optional]
  ;output YSDATA(2)= name of user
  ;       YSDATA(3) if key sent 1^holds VS 0^lacks KEY
- N YSKEY,YSDUZ,K
+ ;       YSDATA(4) site info
+ N K,YSKEY,YSDUZ,YSTITLE,DIC,YSCOS,N2,X
+ S YSTITLE=$G(YS("TITLE"),-1)
  S YSDUZ=$G(YS("DUZ"),DUZ)
  S YSKEY=$G(YS("KEY"),-1)
+ S YSTITLE=$G(YS("TITLE"))
  S YSDATA(1)="[DATA]"
  D OWNSKEY^XUSRB(.K,YSKEY,YSDUZ)
  S YSDATA(2)=$P($G(^VA(200,YSDUZ,0)),U)_U_YSDUZ
  I YSKEY=-1 S YSDATA(3)=""
  E  S YSDATA(3)=$S(K(0):"1^holds ",1:"0^lacks ")_YSKEY
  S YSDATA(4)=$$SITE^VASITE_U_$$NAME^VASITE(DT)
+ ;ASF 12/8/2009
+ I YSTITLE="" S YSDATA(5)="^no title sent" Q  ;-->out
+ S Y=+$$DDEFIEN^TIUFLF7(YSTITLE,"TL")
+ I +Y'>0 S YSDATA(5)="^bad pnote title" Q  ;-->out
+ D REQCOS^TIUSRVA(.YSCOS,+Y,"",YSDUZ) ;is cosigner required
+ S YSDATA(5)=YSCOS_U_"cosigner "_$S(YSCOS=1:"required",YSCOS=0:"not required",1:"error")
  Q
 MHREPORT(YSDATA,YS) ;gets a report format from 601.93
  ;Input: CODE as instrument name

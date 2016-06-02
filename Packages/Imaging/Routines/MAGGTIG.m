@@ -1,5 +1,6 @@
-MAGGTIG ;WOIFO/GEK - MAGGT Image Get. Callbacks to Get Image lists ; [ 11/08/2001 17:18 ]
- ;;3.0;IMAGING;**8,48**;Jan 11, 2005
+MAGGTIG ;WOIFO/GEK/SG/NST - MAGGT Image Get. Callbacks to Get Image lists ; 14 Sep 2010 10:15 AM
+ ;;3.0;IMAGING;**8,48,93,117**;Mar 19, 2002;Build 2238;Jul 15, 2011
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGGTIG ;WOIFO/GEK - MAGGT Image Get. Callbacks to Get Image lists ; [ 11/08/200
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -27,7 +27,7 @@ IMAGES(MAGRY,MAGDFN) ;RPC [MAGG PAT IMAGES]
  ;   first, oldest image last.
  ;   User can reorder at the workstation level.
  K MAGRY
- N Y,RDT,PRX,CT,IEN,GBLRET
+ N Y,RDT,PRX,CT,IEN,GBLRET,MAGFILE
  N $ETRAP,$ESTACK S $ETRAP="D ERRA^MAGGTERR"
  S MAGDFN=+MAGDFN
  ;  if no Images for the patient, then quit.
@@ -44,9 +44,10 @@ IMAGES(MAGRY,MAGDFN) ;RPC [MAGG PAT IMAGES]
  . . S IEN=""
  . . F  S IEN=$O(^MAG(2005,"APDTPX",MAGDFN,RDT,PRX,IEN)) Q:'IEN  D
  . . . Q:$P($G(^MAG(2005,IEN,0)),"^",10)  ; CHILD OF GROUP
+ . . . Q:$$ISDEL^MAGGI11(IEN)             ; Deleted image
  . . . S CT=CT+1
  . . . I (CT>100),'GBLRET D ARY2GLB
- . . . S MAGXX=IEN D INFO^MAGGTII
+ . . . S MAGFILE=$$INFO^MAGGAII(IEN,"E")
  . . . S @MAGRY@(CT)="B2^"_MAGFILE
  S @MAGRY@(0)="1^"_CT
  Q
@@ -56,7 +57,7 @@ PHOTOS(MAGRY,MAGDFN) ;RPC [MAGG PAT PHOTOS]
  ;   The Images are returned in Rev Chronological Order, latest image
  ;   first, oldest image last.
  K MAGRY
- N Y,RDT,PRX,CT,IEN,IENS,GBLRET,MAGXX
+ N Y,RDT,PRX,CT,IEN,IENS,GBLRET,MAGFILE
  N $ETRAP,$ESTACK S $ETRAP="D ERRA^MAGGTERR"
  S MAGDFN=+MAGDFN
  ;  if no Photo ID Images for the patient, then quit.
@@ -72,12 +73,13 @@ PHOTOS(MAGRY,MAGDFN) ;RPC [MAGG PAT PHOTOS]
  . S IEN=""
  . F  S IEN=$O(^MAG(2005,"APPXDT",MAGDFN,"PHOTO ID",RDT,IEN)) Q:'IEN  D
  . . ;Q:$P($G(^MAG(2005,IEN,0)),"^",10)  ; CHILD OF GROUP
+ . . Q:$$ISDEL^MAGGI11(IEN)             ; Deleted image
  . . S IENS(IEN)=""
  . . Q
  . Q
  S IEN="" F  S IEN=$O(IENS(IEN),-1) Q:'IEN  D
  . S CT=CT+1
- . S MAGXX=IEN D INFO^MAGGTII
+ . S MAGFILE=$$INFO^MAGGAII(IEN,"E")
  . S @MAGRY@(CT)="B2^"_MAGFILE
  . Q
  S @MAGRY@(0)="1^"_CT
@@ -107,6 +109,7 @@ EACHIMG(MAGRY,MAGDFN,MAX) ;RPC [MAGG PAT EACH IMAGE]
  S CT=0,IEN=""
  F  S IEN=$O(^MAG(2005,"AC",MAGDFN,IEN),-1) Q:'IEN  D  Q:(CT>MAX)
  . Q:$P($G(^MAG(2005,IEN,0)),U,6)=11  ; NOT LISTING GROUP ENTRIES
+ . Q:$$ISDEL^MAGGI11(IEN)             ; Skip deleted images
  . S CT=CT+1
  . I (CT>100),'GBLRET D ARY2GLB
  . S @MAGRY@(CT)=$$CAPINFO(IEN)
@@ -114,8 +117,8 @@ EACHIMG(MAGRY,MAGDFN,MAX) ;RPC [MAGG PAT EACH IMAGE]
  Q
 CAPINFO(IEN) ; RETURN A STRING OF INFORMATION ABOUT THE IMAGE
  ; This is for Capture App
- N RETY,N2
- S MAGXX=IEN D INFO^MAGGTII
+ N RETY,N2,X,MAGFILE
+ S MAGFILE=$$INFO^MAGGAII(IEN,"E")
  S RETY=$P(MAGFILE,U,1,7)_U
  S N2=$G(^MAG(2005,IEN,2))
  S RETY=RETY_$$FMTE^XLFDT($P(N2,U,1),"5P")_U
@@ -132,12 +135,13 @@ ARY2GLB ; Image count is getting big, switch from array to Global return type
  S X=$$RTRNFMT^XWBLIB("GLOBAL ARRAY",1)
  S MAGRY=$NA(^TMP("MAGGTIG",$J))
  Q
-GROUP(MAGRY,MAGIEN,NOCHK) ;RPC [MAGG GROUP IMAGES]
+GROUP(MAGRY,MAGIEN,NOCHK,FLAGS) ;RPC [MAGG GROUP IMAGES]
  ; CalL to Return image list of a Group.
  ; MAGIEN        =  the entry in MAG(2005 we assume it is a group.
  ; NOCHK         =  flag - Do (or) Not Do QI Check.
- N Y,MAGDFN,I,MAGCHILD,MAGCT,MAGTMPAR,MSGX,MAGQI,MAGY
+ N Y,MAGDFN,I,MAGCHILD,MAGCT,MAGTMPAR,MSGX,MAGQI,MAGY,MAGFILE
  N MAGNOCHK
+ S FLAGS=$G(FLAGS)
  ;
  ;Test BigGroup S BKG=+$G(BKG)
  ;Test BigGroup K ^TMP("MAGBGRP")
@@ -182,9 +186,8 @@ GROUP(MAGRY,MAGIEN,NOCHK) ;RPC [MAGG GROUP IMAGES]
  . . . . ; Added for MAGQI integrity check
  . . . . K MAGY
  . . . . D CHKGRPCH^MAGGSQI(.MAGY,MAGIEN,MAGDFN,MAGCHILD) I 'MAGY D INVCH(.MAGY,MAGCHILD) S @MAGRY@(MAGCT)=MAGY Q
- . . . . S MAGXX=MAGCHILD
- . . . . S MAGTMPAR(MAGXX)=""
- . . . . D INFO^MAGGTII
+ . . . . S MAGTMPAR(MAGCHILD)=""
+ . . . . S MAGFILE=$$INFO^MAGGAII(MAGCHILD,"E")
  . . . . S $P(MAGFILE,U,12,13)=INUM_U_SNUM
  . . . . S @MAGRY@(MAGCT)="B2^"_MAGFILE
  . . . . ;Test BigGroup I 'BKG S @MAGRY@(MAGCT)="B2^"_MAGFILE
@@ -204,16 +207,23 @@ GROUP(MAGRY,MAGIEN,NOCHK) ;RPC [MAGG GROUP IMAGES]
  . ;Added for MAGQI integrity check
  . K MAGY
  . D CHKGRPCH^MAGGSQI(.MAGY,MAGIEN,MAGDFN,MAGCHILD) I 'MAGY D INVCH(.MAGY,MAGCHILD) S @MAGRY@(MAGCT)=MAGY Q
- . S MAGXX=MAGCHILD
- . D INFO^MAGGTII
+ . S MAGFILE=$$INFO^MAGGAII(MAGCHILD,"E")
  . S @MAGRY@(MAGCT)="B2^"_MAGFILE
  . ;Test BigGroup        I 'BKG S @MAGRY@(MAGCT)="B2^"_MAGFILE
  . ;Test BigGroup        E  S ^TMP("MAGBGRP",MAGIEN,MAGCT)="B2^"_MAGFILE
+ I FLAGS["D" D  ; Patch 117
+ . ; Get Deleted images
+ . S MAGCHILD=0
+ . F  S MAGCHILD=$O(^MAG(2005.1,"AGP",MAGIEN,MAGCHILD)) Q:'MAGCHILD  D
+ . . S MAGCT=MAGCT+1
+ . . S MAGFILE=$$INFO^MAGGAII(MAGCHILD,"D")
+ . . S @MAGRY@(MAGCT)="B2^"_MAGFILE
+ . . Q
  S @MAGRY@(0)="1^"_MAGCT
  Q
 INVALID(MAGX,MAGZ) ;
  ;
- I $D(^MAG(2005.1,MAGX,0)) S MAGZ="B2^"_MAGX_"^^^INVALID Reference to Deleted Image^^66^^^^^^^^"
+ I $$ISDEL^MAGGI11(MAGX)  S MAGZ="B2^"_MAGX_"^^^INVALID Reference to Deleted Image^^66^^^^^^^^"
  E  S MAGZ="B2^"_MAGX_"^^^INVALID Image ID (IEN)^^67^^^^^^^^"
  ;Added with MAGQI integrity check, 
  S MAGTMPAR(MAGX)=""

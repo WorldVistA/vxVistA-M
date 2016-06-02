@@ -1,9 +1,19 @@
-HBHCUTL ; LR VAMC(IRMS)/MJT-HBHC Utility module, Entry points:  ACTION, STATUS, START, TODAY, HDRPAGE, HDRRANGE, HDR132, HDR132NR ; Mar 2000
- ;;1.0;HOSPITAL BASED HOME CARE;**2,6,8,16**;NOV 01, 1993
+HBHCUTL ;LR VAMC(IRMS)/MJT - HBHC Utility module, Entry points:  ACTION, STATUS, START, TODAY, HDRPAGE, HDRRANGE, HDR132, HDR132NR, HDRXPAGE ;Mar 2000
+ ;;1.0;HOSPITAL BASED HOME CARE;**2,6,8,16,24,25**;NOV 01, 1993;Build 45
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                       --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;HBH*1.0*25   APR  2012   K GUPTA      Support for ICD-10 Coding System
+ ;******************************************************************************
+ ;******************************************************************************
+ ;
 ACTION ; Set appropriate fields/variables for Admit/Reject Action
  K HBHCQ,HBHCKEEP
  S HBHCY0=^HBHC(631,HBHCDFN,0)
- S:X="" Y=$S($D(HBHCUPD):0,1:87) S:X=1 Y=18 S:X=2 HBHCQ=1
+ S:X="" Y=$S($D(HBHCUPD):0,1:87) S:X=1 Y="@2" S:X=2 HBHCQ=1  ;changed to placeholder @2 from field 18
  S HBHCAFLG=0 F HBHCI=19:1:37 Q:HBHCAFLG  S:$P(HBHCY0,U,HBHCI)]"" HBHCAFLG=1
  S HBHCRFLG=0 I ($P(HBHCY0,U,16)]"")!($P(HBHCY0,U,17)]"") S HBHCRFLG=1
  Q:(HBHCAFLG=0)&(HBHCRFLG=0)
@@ -15,7 +25,7 @@ ACTION ; Set appropriate fields/variables for Admit/Reject Action
  D PROCADM I %=1 D:HBHCAFLG ADMIT S:HBHCRFLG $P(^HBHC(631,HBHCDFN,0),U,16)="",$P(^HBHC(631,HBHCDFN,0),U,17)=""
  Q
 PROCADM ; Process 'Delete' & 'Reject' responses
- W *7,!!,"This record contains ",HBHCWRD1," data.  Are you sure you want ",HBHCWRD2," the",!,"Admit/Reject Action field  ('Yes' will delete the ",HBHCWRD1," data)" S %=2 D YN^DICN
+ W $C(7),!!,"This record contains ",HBHCWRD1," data.  Are you sure you want ",HBHCWRD2," the",!,"Admit/Reject Action field  ('Yes' will delete the ",HBHCWRD1," data)" S %=2 D YN^DICN
  W ! W:%=0 !!,"Admit/Reject Action field must either contain ",HBHCWRD3," or the ",HBHCWRD1,!,"data MUST be deleted by responding 'Yes'.",!!
  I %'=1 S Y=$S($D(HBHCUPD):0,1:14) S:$D(HBHCUPD) HBHCKEEP=1
  Q
@@ -44,7 +54,7 @@ STATUS ; Set appropriate fields/variables for Discharge Status
  S:HBHCDIED $P(^HBHC(631,HBHCDFN,1),U,15)=""
  Q
 PROCDIS ; Process 'Delete', '1 or 2', '4', & '3 or 5 or 9' responses
- W *7,!!,"This record contains ",HBHCWRD1," data.  Are you sure you want ",HBHCWRD2," the",!,"Discharge Status field  ('Yes' will delete the ",HBHCWRD1," data)" S %=2 D YN^DICN
+ W $C(7),!!,"This record contains ",HBHCWRD1," data.  Are you sure you want ",HBHCWRD2," the",!,"Discharge Status field  ('Yes' will delete the ",HBHCWRD1," data)" S %=2 D YN^DICN
  W ! W:%=0 !!,"Discharge Status field must contain ",HBHCWRD3," or the ",HBHCWRD1,!,"data MUST be deleted by responding 'Yes'.",!!
  I %'=1 S Y=$S($D(HBHCUPD):0,1:43) S:$D(HBHCUPD) HBHCKEEP=1
  Q
@@ -56,7 +66,7 @@ DISCHRG ; Delete discharge data
 START ; Prompt for beginning/ending report dates
  W ! K %DT S (HBHCBEG1,HBHCEND1,HBHCPAGE)=0,%DT("A")="Beginning Report Date: ",%DT="AEX" D ^%DT S HBHCBEG1=Y Q:HBHCBEG1=-1  D DD^%DT S HBHCBEG2=Y
 END ; Ending date prompt
- S %DT("A")="Ending Report Date: " D ^%DT I (Y>0)&(Y<HBHCBEG1) W *7,!!,"Ending Report Date must be closer to today than the Beginning Report Date",! G END
+ S %DT("A")="Ending Report Date: " D ^%DT I (Y>0)&(Y<HBHCBEG1) W $C(7),!!,"Ending Report Date must be closer to today than the Beginning Report Date",! G END
  S HBHCEND1=Y_.9999 Q:HBHCEND1=-1  D DD^%DT S HBHCEND2=Y
 TODAY ; Obtain current date
  S $P(HBHCZ,"=",81)=""
@@ -81,5 +91,10 @@ HDR132 ; Print 132 column header with Date Range
 HDR132NR ; Print 132 column header with No Date Range 
  S HBHCPAGE=HBHCPAGE+1
  W !?HBHCCOLM,">>> HBPC ",HBHCHEAD," Report <<<",?123,"Page: ",HBHCPAGE,! W !,"Run Date: ",HBHCTDY I $D(HBHCHDR) X HBHCHDR W !
+ W HBHCZ
+ Q
+HDRXPAGE ; Print header with Page & xtra info
+ S HBHCPAGE=HBHCPAGE+1
+ W !?HBHCCOLM,">>> HBPC ",HBHCHEAD," Report <<<",?71,"Page: ",HBHCPAGE,!! I $D(HBHCHDRX) X HBHCHDRX W !!,"Run Date: ",HBHCTDY,! I $D(HBHCHDR) X HBHCHDR W !
  W HBHCZ
  Q

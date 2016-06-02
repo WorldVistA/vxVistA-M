@@ -1,5 +1,5 @@
-MAGDTR02 ;WOIFO/PMK - Unread List for Consult/Procedure Request ; 10 Oct 2006  11:01 AM
- ;;3.0;IMAGING;**46**;16-February-2007;;Build 1023
+MAGDTR02 ;WOIFO/PMK - Unread List for Consult/Procedure Request ; 05/18/2007 11:23
+ ;;3.0;IMAGING;**46,54**;03-July-2009;;Build 1424
  ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -120,9 +120,8 @@ TIMESTMP(UNREAD) ; update the transaction's timestamp and cross-reference
  N LISTDATA ;- read/unread list data
  N ISPECIDX ;- index to specialties - read/unread list sort key
  N IPROCIDX ;- index to procedures - read/unread list sort key (may be null)
- N %,%H,%I
  Q:'$G(UNREAD) ""
- D NOW^%DTC S NEWTIME=%
+ S NEWTIME=$$NOW^XLFDT()
  L +^MAG(2006.5849,UNREAD):1E9
  S LISTDATA=^MAG(2006.5849,UNREAD,0)
  S ACQSITE=$P(LISTDATA,"^",2) I ACQSITE="" Q 0

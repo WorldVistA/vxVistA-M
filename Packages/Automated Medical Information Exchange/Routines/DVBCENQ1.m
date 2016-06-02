@@ -1,5 +1,6 @@
-DVBCENQ1 ;ALB/GTS-557/THM 2507 INQUIRY DISPLAY ; 5/25/91  1:52 PM
- ;;2.7;AMIE;**17,57**;Apr 10, 1995
+DVBCENQ1 ;ALB/GTS,557/THM - 2507 INQUIRY DISPLAY ; 10/14/2009  1:00 PM
+ ;;2.7;AMIE;**17,57,143,149**;Apr 10, 1995;Build 16
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  G START
 CON K OUT I IOST?1"C-".E W !,"Press [RETURN] to continue or ""^"" to stop   " R ANS:DTIME S:ANS=U!('$T) OUT=1 Q:$D(OUT)  D HDR
@@ -8,9 +9,23 @@ CON K OUT I IOST?1"C-".E W !,"Press [RETURN] to continue or ""^"" to stop   " R 
  ;
 START S PGHD="COMPENSATION AND PENSION EXAM INQUIRY",PG=0
  D HDR
- W !!?2,"Name: ",PNAM,?56,"SSN: ",SSN,!?51,"C-Number: ",CNUM,!?56,"DOB: " S Y=DOB X ^DD("DD") W Y,!?2,"Address: ",ADR1,! W:ADR2]"" ?11,ADR2,! W:ADR3]"" ?11,ADR3,!!
- W !?2,"City,State,Zip+4: ",?48,"Res Phone: ",HOMPHON,!?5,CITY,"  ",STATE,"  ",ZIP,?48,"Bus Phone: ",BUSPHON,!
- S EDTA=$S($D(^DPT(DFN,.32)):^(.32),1:""),EOD=$P(EDTA,U,6),RAD=$P(EDTA,U,7)
+ W !?2,"Name: ",PNAM,?56,"SSN: ",SSN
+ W !?51,"C-Number: ",CNUM
+ W !?56,"DOB: " S Y=DOB X ^DD("DD") W Y
+ W !?4,"Address: ",ADR1
+ W ! W:ADR2]"" ?13,ADR2
+ W ! W:ADR3]"" ?13,ADR3
+ W !!?7,"City: ",CITY
+ I $$ISFORGN^DVBCUTIL(COUNTRY) D
+ . W !?3,"Province: ",PROVINCE,?48,"Res Phone: ",HOMPHON
+ . W !,"Postal Code: ",POSTALCD,?48,"Bus Phone: ",BUSPHON
+ E  D
+ . W !?6,"State: ",STATE,?48,"Res Phone: ",HOMPHON
+ . W !?6,"Zip+4: ",ZIP,?48,"Bus Phone: ",BUSPHON
+ I COUNTRY>0 D
+ . W !?4,"Country: ",$$GETCNTRY^DVBCUTIL(COUNTRY),!
+ E  D
+ . W !
  W !,"Entered active service: " S Y=EOD X ^DD("DD") S:Y="" Y="Not specified" W Y,! S Y=RAD X ^DD("DD") S:Y="" Y="Not specified" W "Released active service: " W Y,!
  F LINE=1:1:80 W "="
  W !! D CON Q:$D(OUT)  D ^DVBCENQ2,CON Q:$D(OUT)  D ^DVBCEEXM,CON Q:$D(OUT)  S REQDT=$P(^DVB(396.3,REQDA,0),U,2)

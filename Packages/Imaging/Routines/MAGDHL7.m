@@ -1,5 +1,5 @@
-MAGDHL7 ;WOIFO/PMK,MLH - Routine to copy HL7 data from HLSDATA to ^MAGDHL7 ; 02/07/2007 14:07
- ;;3.0;IMAGING;**11,30,86**;20-February-2007;;Build 1024
+MAGDHL7 ;WOIFO/PMK,MLH - Routine to copy HL7 data from HLSDATA to ^MAGDHL7 ; 05/18/2007 11:23
+ ;;3.0;IMAGING;**11,30,86,54**;03-July-2009;;Build 1424
  ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -27,7 +27,7 @@ MAGDHL7 ;WOIFO/PMK,MLH - Routine to copy HL7 data from HLSDATA to ^MAGDHL7 ; 02/
  ;   EXAMPLE:  Replace xxxx With PACS GATEWAY
  ;
 ENTRY ; Entry point for HL7 1.5 version
- N DA,EDT,DIK,DIR,HLSDT,KDT,MAGN,MAGOUT,POP
+ N DA,EDT,DIK,DIR,HLSDT,IX,KDT,MAGN,MAGOUT,POP
  ; Entry point from ^HLTRANS to copy the data from HLSDATA to ^MAGDHL7(
  ; This code was reset due to a max. string code error.  Peter indicated
  ; he did not need the 5th piece of the OBR segment.
@@ -40,7 +40,7 @@ ENTRY ; Entry point for HL7 1.5 version
  . S IX=$O(HLSDATA(IX))
  . Q
  Q:$D(HLSDT)
- D NOW^%DTC S Y=$$NEWMSG($P(%,".",1))
+ S Y=$$NEWMSG($$NOW^XLFDT()\1)
  S $P(^MAGDHL7(2006.5,+Y,0),"^",2)=$P(HLSDATA(0),"^",9) ; Message type
  S L=1,J=0 S ^MAGDHL7(2006.5,+Y,1,L,0)=HLSDATA(0)
  F  S J=$O(HLSDATA(J)) Q:J'>0  D
@@ -76,7 +76,7 @@ EN2 ;
  ; EdM: I can find no evidence that the label below is invoked from anywhere
  ;      in the released code...
 UPDATE ; Add the entry in the MAGDHL7(2006.5 global.
- D NOW^%DTC S Y=$$NEWMSG($P(%,".",1))
+ S Y=$$NEWMSG($$NOW^XLFDT()\1)
  I +Y<1 Q  ; Entry not made in file.
  S $P(^MAGDHL7(2006.5,+Y,0),"^",2)=MAGTYPE
  ; Add HL7 message into word processing field.

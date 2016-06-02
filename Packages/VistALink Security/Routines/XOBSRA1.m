@@ -1,7 +1,6 @@
 XOBSRA1 ;mjk,esd/alb - VistALink Reauthentication Code ; 05/22/2003  07:00
- ;;1.5;VistALink Security;;Sep 09, 2005
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.0.026]
- ;
+ ;;1.6;VistALink Security;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
  QUIT
  ;
 KILL ; -- clean up partition's local symbol table ; called from INIT^XOBSRA

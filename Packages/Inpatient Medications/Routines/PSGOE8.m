@@ -1,5 +1,5 @@
-PSGOE8 ;BIR/CML3-EDIT ORDERS IN 53.1 ;25 SEP 97 / 10:58 AM
- ;;5.0; INPATIENT MEDICATIONS ;**47,50,65,72,110,111,188,192,113**;16 DEC 97;Build 63
+PSGOE8 ;BIR/CML3-EDIT ORDERS IN 53.1 ; 7/6/11 9:44am
+ ;;5.0;INPATIENT MEDICATIONS ;**47,50,65,72,110,111,188,192,113,223,269,287**;16 DEC 97;Build 1
  ;
  ; Reference to ^PS(50.7 is supported by DBIA# 2180
  ; Reference to ^PS(51.1 is supported by DBIA 2177
@@ -80,8 +80,9 @@ A26 I $$PNDREN($G(PSGORD)) D  Q
  .. I PSGSCH]"" S XX=+$O(^PS(51.1,"AC","PSJ",PSGSCH,0))
  .. S PSGOST=$G(PSGST),PSGST=$P($G(^PS(51.1,XX,0)),"^",5) I PSGST="D" S PSGST="C"  ;DOW schedules are converted to Continuous
  .. S PSGSTN=$$ENSTN^PSGMI(PSGST)
+ . I $G(PSJSYSW0),($P(PSJSYSW0,U,5)'=2),'$G(PSGEFN(8)) W !!,"NOTE: This may cause the Admin Times and the Start Time to be out of sync."
  . W !!,"NOTE: This change in schedule also changes the ADMIN TIMES and SCHEDULE TYPE.",!
- . S MSG=1,PSGOEEF(39)=1
+ . S MSG=1 S:'$G(PSGOEEF(39)) PSGOEEF(39)=1  ;*287 - Prevent infinite loop editing admin times
  . I $G(PSJNEWOE) D PAUSE^VALM1
  I PSGST="O" S PSGOEEF(7)=1
  G DONE
@@ -95,6 +96,10 @@ A7 W !,"SCHEDULE TYPE: "_$S(PSGSTN]"":PSGSTN_"// ",1:"") R X:DTIME S X=$TR(X,"co
  I $$PRNOK^PSGS0($G(PSGSCH)),X="C" W "  ??" G A7
  I X="@"!(X?1."?") W:X="@" $C(7),"  (Required)" S:X="@" X="?" D ENHLP^PSGOEM(53.1,7) G A7
  I $E(X)="^" D ENFF^PSGOE82 G:Y>0 @Y G A7
+ ;*223 Don't allow O sched type on C orders
+ I X="O",$$SCHTP(PSGSCH)'="O" W !,"  SCHEDULE ("_PSGSCH_") is not a ONE TIME Schedule." G A7
+ ;*269 Don't allow C sched type on O orders
+ I X="C",$$SCHTP(PSGSCH)="O" W !,"  SCHEDULE ("_PSGSCH_") is not a CONTINUOUS Schedule." G A7
  S PSGOST=PSGST
  S PSGST=X,PSGSTN=$$ENSTN^PSGMI(X) W:PSGSTN]"" "  ",PSGSTN
  I X="P",$G(PSGAT)]"" S PSGOAT=PSGAT S PSGAT="" D
@@ -130,3 +135,10 @@ PNDREN(PNDON) ;
  I PNDON'["P" Q 0
  S RNWL="^PS(53.1,"_+PNDON_",0)" S RNWL=$G(@(RNWL)) S RNWL=$S($P(RNWL,"^",24)="R":1,1:0)
  Q RNWL
+ ;
+SCHTP(SCH) ; *223 Return SCHedule type
+ N X I SCH="" Q ""
+ S X=$O(^PS(51.1,"APPSJ",SCH,0))
+ Q:'$G(X) ""
+ Q $P(^PS(51.1,X,0),"^",5)
+ ;

@@ -1,5 +1,5 @@
-MAGDTR05 ;WOIFO/PMK - Read a DICOM image file ; 14 Nov 2006  6:24 AM
- ;;3.0;IMAGING;**46**;16-February-2007;;Build 1023
+MAGDTR05 ;WOIFO/PMK,JSL,SAF,NST - Read a DICOM image file ; 18 Jan 2013 10:44 AM
+ ;;3.0;IMAGING;**46,54,123,127**;Mar 19, 2002;Build 4231;Apr 01, 2013
  ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -15,11 +15,11 @@ MAGDTR05 ;WOIFO/PMK - Read a DICOM image file ; 14 Nov 2006  6:24 AM
  ;; | to be a violation of US Federal Statutes.                     |
  ;; +---------------------------------------------------------------+
  ;;
-LOOKUP(OUT,SITENUMB,ISPECIDX,IPROCS,STARTING,DUZREAD,DUZREAD2,LOCKTIME,STATLIST) ; RPC = MAG DICOM CON UNREADLIST GET
+LOOKUP(OUT,STATNUMB,ISPECIDX,IPROCS,STARTING,DUZREAD,DUZREAD2,LOCKTIME,STATLIST,DUZRDSTN) ; RPC = MAG DICOM CON UNREADLIST GET
  ; entry point to lookup entries in file
  ; 
  ; OUT ------- Return array
- ; SITENUMB -- Acquisition Site Number
+ ; STATNUMB -- Acquisition Station Number
  ; ISPECIDX -- Index to Specialties (2005.84)
  ; IPROCS ---- Indexes to Procedures (2005.85) - this is a comma-delimited list
  ; STARTING -- Fileman date/time to begin sequential search
@@ -27,7 +27,10 @@ LOOKUP(OUT,SITENUMB,ISPECIDX,IPROCS,STARTING,DUZREAD,DUZREAD2,LOCKTIME,STATLIST)
  ; DUZREAD2 -- DIC(4) pointer to Reading Site
  ; LOCKTIME -- timeout value for LOCKTIME
  ; STATLIST -- status of entry (C, L, R, U, or W, in any combination)
+ ; DUZRDSTN -- Station Number to Reading Site
  ; 
+ ; DUZRDSTN (Station Number, e.g. 660AA) and DUZREAD2 (IEN in INSTITUTION file (#4), e.g. 6001) describe same site
+ ; Cannot switch to Station Number only. Old GUI client, before P127, sends DUZREAD2 (Site IEN) only
  N ACQSITE ;- site index in Unread List
  N ISTATUS ;-- counter to the status in STATLIST
  N IPROC ;---- counter to IPROCS
@@ -37,12 +40,14 @@ LOOKUP(OUT,SITENUMB,ISPECIDX,IPROCS,STARTING,DUZREAD,DUZREAD2,LOCKTIME,STATLIST)
  N STATUS1 ;-- one status out of the STATLIST
  N UNREAD ;--- pointer to entry in unread list
  ;
- S DUZREAD=$G(DUZREAD,0),DUZREAD2=$G(DUZREAD2,0),LOCKTIME=$G(LOCKTIME,0)
+ S DUZREAD=$G(DUZREAD,0)
+ S DUZREAD2=$$SITEIEN^MAGDTR05($G(DUZREAD2),$G(DUZRDSTN))  ; Resolve the Reading Site Station number
+ S LOCKTIME=$G(LOCKTIME,0)
  S STATLIST=$$UP^MAGDFCNV($G(STATLIST))
  I STATLIST="" S STATLIST="CDLRUW" ; default to all STATUS values
  ;
- S ACQSITE=$$ACQSITE^MAGDTR06(SITENUMB)
- I ACQSITE<0  S OUT="-1, ACQUISITION SITE #"_SITENUMB_" IS NOT DEFINED IN FILE 4" Q
+ S ACQSITE=$$ACQSITE^MAGDTR06(STATNUMB)
+ I ACQSITE<0  S OUT="-1, ACQUISITION STATION NUMBER "_STATNUMB_" IS NOT DEFINED IN FILE 4" Q
  S SITENAME=$P(ACQSITE,"^",2),ACQSITE=$P(ACQSITE,"^",1)
  ;
  I LOCKTIME,DUZREAD2 D UNLOCKER ; automatically unlock timed out studies
@@ -77,7 +82,7 @@ LOOKUP1(UNREAD) ; retrieve one entry from the unread list
  N DFN
  N VADM
  N ICN
- N IFCSITE,IFCIEN,IFCSITEA,IFCRTIME,IFCLTIME,IFCETIME
+ N IFCSITE,IFCSITSN,IFCIEN,IFCSITEA,IFCRTIME,IFCLTIME,IFCETIME
  N LISTDATA ;- read/unread list data
  N QUIT
  N READER
@@ -108,13 +113,14 @@ LOOKUP1(UNREAD) ; retrieve one entry from the unread list
  . Q
  ;
  ; acquisition site identification
- S Z=UNREAD_"|"_GMRCIEN_"|"_SITENUMB_"|"_SITENAME
+ S Z=UNREAD_"|"_GMRCIEN_"|"_STATNUMB_"|"_SITENAME
  ; patient information
  S DFN=$$GET1^DIQ(123,GMRCIEN,.02,"I")
- D DEM^VADPT,PTSEC^DGSEC4(.VIPSTS,DFN)
- S ICN=$$GETICN^MPIF001(DFN)
- S X=$P(VADM(2),"^",1),SHORTID=$E(VADM(1),1)_$E(X,$L(X)-3,$L(X))
- S Z=Z_"|"_VADM(1)_"|"_$P(VADM(2),"^",2)_"|"_ICN_"|"_SHORTID
+ D DEM^VADPT ; Supported IA (#10061)
+ D PTSEC^DGSEC4(.VIPSTS,DFN) ; IA #3027
+ S ICN=$S($T(GETICN^MPIF001)'="":$$GETICN^MPIF001(DFN),1:"-1^NO MPI")  ; IA #2701
+ S X=$TR(VA("PID"),"-",""),SHORTID=$E(VADM(1),1)_$E(X,$L(X)-3,$L(X)) ;P123
+ S Z=Z_"|"_VADM(1)_"|"_VA("PID")_"|"_ICN_"|"_SHORTID ;P123
  S Z=Z_"|"_VIPSTS(1) ; VIP status
  S Z=Z_"|"_$P(^MAG(2005.84,ISPECIDX,0),"^",1)_"|"_$P(^MAG(2005.84,ISPECIDX,2),"^",1)
  S Z=Z_"|"_$P(^MAG(2005.85,IPROCIDX,0),"^",1)_"|"_$P(^MAG(2005.85,IPROCIDX,2),"^",1)
@@ -129,11 +135,11 @@ LOOKUP1(UNREAD) ; retrieve one entry from the unread list
  ;
  ; get inter-facility consult data
  S IFCSITE=$$GET1^DIQ(123,GMRCIEN,.07,"I") ; Routing Facility
+ S IFCSITSN=$S(IFCSITE>0:$$STA^XUAF4(IFCSITE),1:"")  ; Routing Facility Station Number ; Supported IA #2171
  I IFCSITE D  ; inter-facility consult
  . S IFCIEN=$$GET1^DIQ(123,GMRCIEN,.06,"I") ; remote consult file entry
  . ; get IFC site abbreviation
- . S I=$O(^MAG(2006.19,"D",IFCSITE,""))
- . S IFCSITEA=$S(I:$P($G(^MAG(2006.19,I,0)),"^",4),1:"?")
+ . S IFCSITEA=$S(IFCSITSN'="":IFCSITSN,1:"("_IFCSITE_")")  ; Station Number or (site IEN)
  . S IFCLTIME=$P(LISTDATA,"^",5),IFCRTIME=$P(LISTDATA,"^",6)
  . I IFCLTIME,IFCRTIME S IFCETIME=$$FMDIFF^XLFDT(IFCRTIME,IFCLTIME,2)
  . E  S IFCETIME=""
@@ -146,6 +152,7 @@ LOOKUP1(UNREAD) ; retrieve one entry from the unread list
  F I=12:1:16 S Z=Z_"|"_$P(LISTDATA,"^",I) ; reader identification
  S Z=Z_"|"_$P(LISTDATA,"^",17) ; start of reading
  S Z=Z_"|"_$P(LISTDATA,"^",18) ; end of reading
+ S Z=Z_"|"_IFCSITSN  ; 
  S LAST=$G(OUT(1),1) ; first element in the array is the counter
  S LAST=LAST+1,OUT(LAST)=Z,OUT(1)=LAST
  Q
@@ -157,12 +164,12 @@ UNLOCKER ; automatically unlock any timed out studies
  N STATUS
  N UNLOCKTM ;- earliest date/time for a lock (FM format)
  N UNREAD ;--- pointer to entry in unread list
- N %,%H,X
+ N X
  ;
  ; calculate the earliest automatic unlock date/time
  S SECONDS=86400*$H+$P($H,",",2)-(60*LOCKTIME)
- S %H=(SECONDS\86400)_","_(SECONDS#86400)
- D YMD^%DTC S UNLOCKTM=X_% ; convert to FM format
+ ; convert to FM format
+ S UNLOCKTM=$$HTFM^XLFDT((SECONDS\86400)_","_(SECONDS#86400),0)
  ;
  ; traverse the "lock list" and unlock those that have timed out
  F IPROC=1:1:$L(IPROCS,",") S IPROCIDX=$P(IPROCS,",",IPROC) D
@@ -177,3 +184,10 @@ UNLOCKER ; automatically unlock any timed out studies
  . . Q
  . Q
  Q
+ ;
+SITEIEN(IEN,STNUMBER) ; Return Site IEN for station number STNUMBER if defined, otherwise IEN
+ ; IEN      = Site IEN in INSTITUTION file (#4) e.g. 6001
+ ; STNUMBER = Station number, e.g. 660AA. This could be blank. 
+ N SITEIEN
+ S SITEIEN=$$IEN^XUAF4($G(STNUMBER))  ; Supported IA #2171
+ Q $S(SITEIEN>0:SITEIEN,1:$G(IEN,0))

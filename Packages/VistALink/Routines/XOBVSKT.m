@@ -1,11 +1,10 @@
 XOBVSKT ;; mjk/alb - VistaLink Socket Methods ; 07/27/2002  13:00
- ;;1.5;VistALink;;Sep 09, 2005
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.0.026]
- ;
+ ;;1.6;VistALink;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
  QUIT
  ;
  ; ------------------------------------------------------------------------------------
- ;                          Methods for Read fromto TCP/IP Socket
+ ;                          Methods for Read from/to TCP/IP Socket
  ; ------------------------------------------------------------------------------------
 READ(XOBROOT,XOBREAD,XOBTO,XOBFIRST,XOBSTOP,XOBDATA,XOBHDLR) ;
  NEW X,EOT,OUT,STR,LINE,PIECES,DONE,TOFLAG,XOBCNT,XOBLEN,XOBBH,XOBEH,BS,ES,XOBOK,XOBX
@@ -79,7 +78,7 @@ RMORE(LEN,XOBUF) ;
  QUIT
  ;
  ; ------------------------------------------------------------------------------------
- ;                      Methods for Openning and Closing Socket
+ ;                      Methods for Opening and Closing Socket
  ; ------------------------------------------------------------------------------------
 OPEN(XOBPARMS) ; -- Open tcp/ip socket
  NEW I,POP

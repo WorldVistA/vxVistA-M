@@ -1,6 +1,6 @@
-RCXFMSUF ;WISC/RFJ-calculate fms fund code for a bill ;1 Oct 97
- ;;4.5;Accounts Receivable;**90,101,135,157,160,165,170,203,207,173,211,192,220,235**;Mar 20, 1995
- ;;Per VHA Directive 10-93-142, this routine should not be modified.
+RCXFMSUF ;WISC/RFJ-calculate fms fund code for a bill ; 10/20/10 10:37am
+ ;;4.5;Accounts Receivable;**90,101,135,157,160,165,170,203,207,173,211,192,220,235,273**;Mar 20, 1995;Build 3
+ ;;Per VHA Directive 2004-038, this routine should not be modified.
  Q
  ;
  ;
@@ -23,7 +23,7 @@ GETFUNDB(BILLDA,DONTSTOR,RCEFT) ;  return a bills fms fund code
  ;  until all references to the fund are eliminated.
  ;  rceft = 1 if processing an EFT deposit
  ;
- N ACTDATE,CATEGDA,FUND
+ N ACTDATE,CATEGDA,FUND,NEWFUND
  ;
  ;  calculate a bills fund
  I $G(RCEFT)=1 S FUND="5287"_$S(DT<3030926:"",DT'<3030926&(DT<$$ADDPTEDT^PRCAACC()):".4",1:"04") Q FUND
@@ -32,6 +32,10 @@ GETFUNDB(BILLDA,DONTSTOR,RCEFT) ;  return a bills fms fund code
  ;
  ;  piece 5 is new fund, remove spaces
  S FUND=$P($TR($T(@CATEGDA)," "),";",5)
+ ;
+ ;  set fund 528711 for 3rd party RX bills after 4/27/2011
+ I $$TYP^IBRFN(BILLDA)="PH" D
+ . I (CATEGDA=6)!(CATEGDA=7)!(CATEGDA=9)!(CATEGDA=10),$$CHECKRXS(BILLDA) S FUND=528711
  ;
  ;  if category is vendor(17), ex-employee(15), current employee(16)
  ;  federal agency refund(13), federal agency reimb(14), military(12)
@@ -60,8 +64,9 @@ GETFUNDB(BILLDA,DONTSTOR,RCEFT) ;  return a bills fms fund code
  ;
  ;  set the fund for the bill
  I $G(DONTSTOR)'=1 D STORE^RCXFMSUR(BILLDA,"",FUND)
+ ; 
+ I FUND>528704,FUND<528709!(FUND=528710)!(FUND=528711) Q FUND
  ;
- I FUND>528704,FUND<528709!(FUND=528710) Q FUND
  I $G(REPRODT),REPRODT<3030926,$E(FUND,1,4)=5287 Q 5287
  I $G(REPRODT),REPRODT<3031001,$E(FUND,1,4)=5287,$G(REFMS) Q 5287
  I DT<3030926,$E(FUND,1,4)=5287 Q 5287 ; Effective date
@@ -83,6 +88,15 @@ GETFUNDB(BILLDA,DONTSTOR,RCEFT) ;  return a bills fms fund code
  I DT<$$ADDPTEDT^PRCAACC(),FUND=528704 Q 5287.4
  Q FUND
  ;
+CHECKRXS(BILLDA) ; returns true (1) if bill has any scripts on or after 4/27/11
+ N RXNUM,NEWFUND,FILLDT,ARRXS
+ S NEWFUND=0
+ D SET^IBCSC5A(BILLDA,.ARRXS,)
+ S RXNUM=0,FILLDT=""
+ F  S RXNUM=$O(ARRXS(RXNUM)) Q:RXNUM'>0!(NEWFUND)  D
+ .  S FILLDT=$O(ARRXS(RXNUM,0))
+ .  I FILLDT'<3110427 S NEWFUND=1
+ Q NEWFUND
  ;
  ;  this is a listing of all categories and associated funds
  ;  the label is from the internal entry number in the category
@@ -133,3 +147,5 @@ GETFUNDB(BILLDA,DONTSTOR,RCEFT) ;  return a bills fms fund code
 42 ;;CWT PROCEEDS                  ;       ;528707
 43 ;;COMP & PEN PROCEEDS           ;       ;528708
 44 ;;ENHANCED USE LEASE PROCEEDS   ;5358.3 ;528710
+ ;
+ ;    

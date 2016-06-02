@@ -1,12 +1,13 @@
 MPIFA24B ;BP/CMC-BUILD A24 ADD ME MSGS ;JULY 22, 2002
- ;;1.0; MASTER PATIENT INDEX VISTA ;**22,28,31,25,43,44**;30 Apr 99;Build 7
+ ;;1.0; MASTER PATIENT INDEX VISTA ;**22,28,31,25,43,44,51**;30 Apr 99;Build 3
  ;
  ; Integration Agreements Utilized:
  ;  START, EXC, STOP^RGHLLOG - #2796
  ;  BLDEVN, BLDPD1, BLDPID^VAFCQRY - #3630
  ;
-A24(DFN,PID2) ;BUILD AND SEND A24 **43 added PID2 as a parameter - not required.
+A24(DFN,PID2,NOA31) ;BUILD AND SEND A24 **43 added PID2 as a parameter - not required.
  ; if PID2 is defined it will contain the previous ICN data, passed by reference
+ ; **51 ADDED NOA31 as a parameter to stop the sending of an A31 if set to 1
  N RESLT,CNT,MPI,EVN,TCNT,ERR,PD1,PID
  K HLA("HLA"),HLA("HLS")
  S CNT=1
@@ -37,6 +38,8 @@ A24(DFN,PID2) ;BUILD AND SEND A24 **43 added PID2 as a parameter - not required.
  I '+RESLT S ^XTMP("MPIFA24%"_DFN,0)=$$FMADD^XLFDT(DT,5)_"^"_DT_"^"_"A24 message to MPI for DFN "_DFN,^XTMP("MPIFA24%"_DFN,"MPI",0)="A"
  K HLA,HLEID,HLL("LINKS"),COMP,REP,SUBCOMP,HLECH,HLFS,HLA("HLA"),HLA("HLS"),MPIFRSLT
  ;**44 TRIGGER A31 TO UPDATE ANY DEMOGRAPHIC CHANGES
+ ;**51 IF NOT SENDING A31 STOP PROCESSING
+ I $G(NOA31)=1 Q RESLT
  N A31 S A31=$$A31^MPIFA31B(DFN)
  I $P(A31,"^",2)'="" D
  .;log exception about A31 not being sent

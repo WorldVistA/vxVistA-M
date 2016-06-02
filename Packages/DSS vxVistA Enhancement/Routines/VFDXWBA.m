@@ -1,5 +1,5 @@
 VFDXWBA ;DSS/LM/SGM - BROKER AUDIT FOR HIPAA/CCHIT ; 06/23/2011 17:25
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 86
+ ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 6
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  ;This routine is not to be invoked directly.  It is only invoked
@@ -44,7 +44,7 @@ ARCHIVE ;[Option] VFD RPC AUDIT ARCHIVE
  ;
  ;---------------------  called From LOG^XWBDLOG  ---------------------
  ;
-RPCLOG ; called From LOG^XWBDLOG
+RPCLOG ;
  ; 6/22/2011/SGM - only logging RPCs if VFDDFN>0 (patient only)
  ; Mod to XWBTCPM inits to null or sets these variables
  ;   VFDDFN  VFDAUDIT,VFDPMODE,VFDUMODE, VFDHNDL

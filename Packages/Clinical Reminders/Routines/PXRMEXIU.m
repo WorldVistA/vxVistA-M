@@ -1,5 +1,5 @@
-PXRMEXIU ; SLC/PKR/PJH - Utilities for installing repository entries. ;03/16/2010
- ;;2.0;CLINICAL REMINDERS;**4,6,12,17**;Feb 04, 2005;Build 102
+PXRMEXIU ;SLC/PKR/PJH - Utilities for installing repository entries. ;01/18/2013
+ ;;2.0;CLINICAL REMINDERS;**4,6,12,17,18,24,26**;Feb 04, 2005;Build 404
  ;===============================================
 DEF(FDA,NAMECHG) ;Check the reminder definition to make sure the related
  ;reminder exists and all the findings exist.
@@ -28,7 +28,7 @@ DEF(FDA,NAMECHG) ;Check the reminder definition to make sure the related
  ;Sponsor field 101.
  I $D(FDA(811.9,IENS,101)) D
  . S SPONSOR=FDA(811.9,IENS,101)
- . S IEN=$$FIND1^DIC(811.6,"","",SPONSOR)
+ . S IEN=$$FIND1^DIC(811.6,"","U",SPONSOR)
  . I IEN=0 D
  ..;Get replacement.
  .. N DIC,X,Y
@@ -72,29 +72,35 @@ EXISTS(FILENUM,NAME,FLAG) ;Check for existence of an entry with the
  .;it does.
  . S RESULT=$S($E(NAME,$L(NAME))'=" ":NAME_" ",1:NAME)
  . S FLAGS="MX"
- E  S FLAGS="BX"
- I FILENUM=811.6 S FLAGS=FLAGS_"U"
+ E  S FLAGS="BXU"
  ;File 8927.1 only allows upper case .01s.
  I FILENUM=8927.1 S RESULT=$$UP^XLFSTR(NAME)
  S IEN=$$FIND1^DIC(FILENUM,"",FLAGS,RESULT)
  I +IEN>0 Q IEN
  ;If IEN is null then there was an error try FIND^DIC.
- N FILENAME,LIST,MSG,NFOUND,TEXT
+ N IND,FILENAME,LIST,MLIST,MSG,NFOUND,NMATCH,TEXT
  D FIND^DIC(FILENUM,"","",FLAGS,NAME,"","","","","LIST","MSG")
  S NFOUND=+$P(LIST("DILIST",0),U,1)
  I NFOUND=0 Q 0
  I NFOUND=1 Q LIST("DILIST",2,1)
- ;Multiple entries with the same name found. If FLAG="W" display the
- ;warning message, return the first entry on the list and quit.
- I $G(FLAG)="W" D  Q LIST("DILIST",2,1)
+ ;Multiple entries with the same name found, search for a match with
+ ;the .01.
+ S NMATCH=0
+ F IND=1:1:NFOUND D
+ . I LIST("DILIST",1,IND)=NAME S NMATCH=NMATCH+1,MLIST(NMATCH)=IND
+ I NMATCH=1 Q LIST("DILIST",2,MLIST(1))
+ I NMATCH=0 Q 0
+ ;If FLAG="W" display the warning message, return the first entry on 
+ ;the list and quit.
+ I (NMATCH>1),$G(FLAG)="W" D  Q LIST("DILIST",2,1)
  . S FILENAME=$$GET1^DID(FILENUM,"","","NAME")
- . S TEXT(1)="Warning there are "_NFOUND_" "_FILENAME_" entries with the name "_NAME_"!"
+ . S TEXT(1)="Warning there are "_NMATCH_" "_FILENAME_" entries with the name "_NAME_"!"
  . S TEXT(2)="If this is used as a finding, and it is not resolved by FileMan during"
  . S TEXT(3)="installation, any component using this finding will not install."
  . D EN^DDIOL(.TEXT)
  . H 3
  ;If FLAG is not "W" prompt the user for the replacement.
- I NFOUND>1 S IEN=$$GETIEN^PXRMEXU0(NFOUND,.LIST)
+ I NMATCH>1 S IEN=$$GETIEN^PXRMEXU0(NMATCH,.LIST)
  Q IEN
  ;
  ;===============================================
@@ -109,6 +115,7 @@ GETACT(CHOICES,DIR) ;Get the action
  I CHOICES["M" S DIR(0)=DIR(0)_";M:Merge findings"
  I CHOICES["O" S DIR(0)=DIR(0)_";O:Overwrite the current entry"
  I CHOICES["P" S DIR(0)=DIR(0)_";P:Replace with an existing entry"
+ I CHOICES["U" S DIR(0)=DIR(0)_";U:Update"
  I CHOICES["Q" S DIR(0)=DIR(0)_";Q:Quit the install"
  I CHOICES["R" S DIR(0)=DIR(0)_";R:Restart"
  I CHOICES["S" S DIR(0)=DIR(0)_";S:Skip, do not install this entry"
@@ -210,13 +217,13 @@ SFMVPI(FDA,NAMECHG,SFN) ;Search a variable pointer list for items that do not
  ;
  ;===============================================
 TIUOBJ(FDA) ;Resolve the name of the health summary object.
- N END,HSOBJIEN,IENS,TEMP
+ N END,HSOBJIEN,IENS,START,TEMP
  S IENS=$O(FDA(8925.1,""))
  S TEMP=$G(FDA(8925.1,IENS,9))
  I TEMP'["TIU^GMTSOBJ" Q
- S TEMP=$P(TEMP,",",2)
+ S START=$F(TEMP,"DFN,")
  S END=$L(TEMP)-1
- S TEMP=$E(TEMP,1,END)
+ S TEMP=$E(TEMP,START,END)
  S HSOBJIEN=$O(^GMT(142.5,"B",TEMP,""))
  I HSOBJIEN="" D  Q
  . N TEXT
@@ -228,11 +235,13 @@ TIUOBJ(FDA) ;Resolve the name of the health summary object.
  . I '$D(XPDNM) D EN^DDIOL(.TEXT)
  . I $D(XPDNM) D BMES^XPDUTL(.TEXT)
  S FDA(8925.1,IENS,9)="S X=$$TIU^GMTSOBJ(DFN,"_HSOBJIEN_")"
+ S FDA(8925.1,IENS,99)=$H
  Q
  ;
  ;===============================================
 VDLGFIND(ABBR,IEN,ALIST) ;Determine if the finding item associated with a
- ;reminder dialog is active returns a 1 if it is inactive returns a 0.
+ ;reminder dialog is active. Returns a 1 if it is active otherwise
+ ;returns a 0.
  N FILENUM
  S FILENUM=$P(ALIST(ABBR),U,1)
  Q $$FILESCR^PXRMDLG6(IEN,FILENUM)

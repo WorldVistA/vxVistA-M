@@ -1,5 +1,5 @@
 ZOSFONT ;SFISC/AC - SETS UP ^%ZOSF for Cache for NT/VMS ;10/19/06  14:01
- ;;8.0;KERNEL;**34,104,365**;JUL 10, 1995;Build 5
+ ;;8.0;KERNEL;**34,104,365**;JUL 10, 1995;Build 1
  ;For Cache versions 3.2, 4 and 5
  S %Y=1 K ^%ZOSF("MASTER"),^%ZOSF("SIGNOFF")
  N ZO F I="MGR","PROD","VOL" S:$D(^%ZOSF(I)) ZO(I)=^%ZOSF(I)
@@ -93,7 +93,7 @@ Z ;;
  ;;SIZE
  ;;S Y=0 F I=1:1 S %=$T(+I) Q:%=""  S Y=Y+$L(%)+2
  ;;TEST
- ;;I X?1(1"%",1A).7AN,$D(^$ROUTINE(X))
+ ;;I X?1(1"%",1A).ANP,$D(^$ROUTINE(X))
  ;;TMK;;MAGTAPE MARK
  ;;S Y=$ZA\4#2
  ;;TRAP;;S X="^%ET",@^%ZOSF("TRAP"); User $ETRAP

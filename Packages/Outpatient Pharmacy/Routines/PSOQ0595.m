@@ -1,5 +1,5 @@
 PSOQ0595 ;HINES/RMS - TIU OBJECT FOR REMOTE MEDS VIA RDI ; 30 Nov 2007  7:54 AM
- ;;7.0;OUTPATIENT PHARMACY;**294**;DEC 1997;Build 13
+ ;;7.0;OUTPATIENT PHARMACY;**294,365**;DEC 1997;Build 2
  ;
  ;Reference to CKP^GMTSUP supported by DBIA 4231
  ;References to ORRDI1 supported by DBIA 4659
@@ -19,7 +19,7 @@ RDI(DFN,TARGET) ;
  . S PSOQRET=$$GET^ORRDI1(DFN,"PSOO")
  . D USE^%ZISUTL("PSOQHFS")
  . D RMDEV^%ZISUTL("PSOQHFS")
- I PSOQRET=-1 D  G RDIOUT
+ I +PSOQRET=-1 D  G RDIOUT
  . S @TARGET@(1,0)="Connection to Remote Data Not Available"
  I '$D(^XTMP("ORRDI","PSOO",DFN)) D  G RDIOUT
  . S @TARGET@(1,0)="No Remote Data available for this patient"

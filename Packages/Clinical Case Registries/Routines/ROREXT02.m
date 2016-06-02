@@ -1,6 +1,9 @@
-ROREXT02 ;HCIOFO/SG - DEFAULT MESSAGE BUILDER ; 12/7/05 10:44am
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+ROREXT02 ;HCIOFO/SG - DEFAULT MESSAGE BUILDER ;12/7/05 10:44am
+ ;;1.5;CLINICAL CASE REGISTRIES;**10,13,14**;Feb 17, 2006;Build 24
  ;
+ ; This routine uses the following IAs:
+ ;
+ ; #2056    $$GET1^DIQ (supported)
  Q
  ;
  ;***** CHECKS IF DEMOGRAPHIC DATA HAS BEEN UPDATED
@@ -31,8 +34,9 @@ DEMCHK(RGIENLST) ;
  ;               data extraction time frames are stored.
  ;
  ; [HDTMODE]     If this parameter is defined and non-zero, start and
- ;               end dates are specimen collection dates. Otherwise,
- ;               they are dates of the results.
+ ;               end dates are specimen collection dates (historical
+ ;               extraction). Otherwise, they are dates of the results
+ ;               (nightly extraction).
  ;
  ; The function uses node ^TMP("RORTMP",$J) as a temporary storage.
  ;
@@ -101,6 +105,8 @@ LABPROC(ROR8TMP,PTIEN) ;
  . . K SEG
  . ;--- Store the segment
  . D:$D(SEG)>1 ADDSEG^RORHL7(.SEG)
+ . ;check for Lab HCV LOINC during nightly extract
+ . I $G(SEG(0))="OBX",'$G(HDTMODE) D HCV(.SEG,$G(PTIEN),$G(CS))
  Q 0
  ;
  ;***** EXTRACTS PATIENT'S DATA AND CREATES THE MESSAGE BODY
@@ -146,7 +152,7 @@ MESSAGE(PTIEN,RGIENLST,DXDTS,HDTMODE) ;
  ;=== Demographic data segments
  S DEMPTR=$$PTR^RORHL7
  S RC=$$PID^RORHL01(PTIEN)  Q:RC<0 RC
- ;--- Period of Servise
+ ;--- Period of Service
  S RC=$$ZSP^RORHL01(PTIEN)  Q:RC<0 RC
  ;--- Rated Disabilities
  S RC=$$ZRD^RORHL01(PTIEN)  Q:RC<0 RC
@@ -192,6 +198,14 @@ MESSAGE(PTIEN,RGIENLST,DXDTS,HDTMODE) ;
  S RC=$$LABDATA(PTIEN,.DXDTS,HDTMODE)      Q:RC<0 RC
  ;--- Pharmacy
  S RC=$$EN1^RORHL03(PTIEN,.DXDTS)          Q:RC<0 RC
+ ;--- Immunization
+ S RC=$$EN1^RORHL18(PTIEN,.DXDTS)          Q:RC<0 RC
+ ;--- Skin Test Results
+ S RC=$$EN1^RORHL19(PTIEN,.DXDTS)          Q:RC<0 RC
+ ;--- Non-VA Meds
+ S RC=$$EN1^RORHL20(PTIEN,.DXDTS)          Q:RC<0 RC
+ ;--- Purchased Care
+ S RC=$$EN1^RORHL21(PTIEN,.DXDTS)          Q:RC<0 RC
  ;
  ;=== Analyze the structure of the message
  S RORPTR=$$PTR^RORHL7
@@ -202,6 +216,7 @@ MESSAGE(PTIEN,RGIENLST,DXDTS,HDTMODE) ;
  . D ROLLBACK^RORHL7(DEMPTR,1)  S CLINPTR=0
  ;
  ;=== Registry Data
+ N IEN
  S REGIEN=0
  F  S REGIEN=$O(RGIENLST(REGIEN)),RC=0  Q:REGIEN'>0  D  Q:RC<0
  . S IEN=+RGIENLST(REGIEN)  Q:IEN'>0
@@ -243,3 +258,33 @@ REGDATA(RORIEN,PTIEN,DXDTS,HDTMODE) ;
  S RC=$$CSR^RORHL02(IENS,PTIEN)  Q:RC<0 RC
  S RC=$$CSP^RORHL02(IENS,DXDTS)  Q:RC<0 RC
  Q 0
+ ;
+ ;***** CHANGE STATUS FROM PENDING TO CONFIRMED IF POSITIVE LAB HCV TEST RESULT
+ ;Pending patients in the HEPC registry will be confirmed during the nightly
+ ;extract job if they have a positive HCV test result during the extract date range
+ ;
+ ;Input
+ ;  SEG      Array with Lab HL7 segment "OBX"
+ ;  DFN      Patient DFN
+ ;  CS       HL7 Component separator
+ ;
+HCV(SEG,DFN,CS) ;
+ Q:'DFN
+ I $G(CS)="" S CS="^"
+ N SEG3 S SEG3=$P($G(SEG(3)),CS,1) I $G(SEG3)="" Q  ;Lab LOINC
+ N SEG5 S SEG5=$G(SEG(5)) I $G(SEG5)="" Q  ;test result value
+ S SEG5=$TR($G(SEG(5)),"""","") ;get rid of any double quotes around test result
+ I $E($G(SEG5),1,1)=">" D  ;if positive test result
+ . N HEPCIEN S HEPCIEN=$O(^ROR(798.1,"B","VA HEPC",0)) Q:'HEPCIEN  ;HEPC registry IEN
+ . N IEN S IEN=$O(^RORDATA(798,"KEY",DFN,HEPCIEN,0)) Q:(IEN'>0)  ;patient IEN in HEPC registry
+ . D HCVLOAD^RORUPD01 ;load temp ROR HCV LIST array with HVC LOINCs
+ . I $D(^TMP("ROR HCV LIST",$J,SEG3))>0 D  ;patient has HCV LOINC
+ .. ;if status is pending, change to confirmed
+ .. I $P($G(^RORDATA(798,IEN,0)),U,5)=4 D
+ ... N RORFDA,IENS,RORMSG
+ ... S IENS=IEN_","
+ ... S RORFDA(798,IENS,3)=0 ;status=confirmed
+ ... S RORFDA(798,IENS,12)="" ;remove pending comment
+ ... D FILE^DIE(,"RORFDA","RORMSG")
+ K ^TMP("ROR HCV LIST")
+ Q

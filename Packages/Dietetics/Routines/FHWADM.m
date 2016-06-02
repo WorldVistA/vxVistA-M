@@ -1,5 +1,5 @@
 FHWADM ; HISC/REL - Set up admission ;12/4/00  10:35
- ;;5.5;DIETETICS;**5,8**;Jan 28, 2005;Build 28
+ ;;5.5;DIETETICS;**5,8,21**;Jan 28, 2005;Build 6
  ; Changes necessary for new file #115 design:
  ; The .01 (1 piece of 0 node) for inpatients is now "P"_DFN (ie P7623)
  ; Therefore this file is no longer DINUMed to file #2.
@@ -14,7 +14,7 @@ FHWADM ; HISC/REL - Set up admission ;12/4/00  10:35
  S ^FHPT(FHDFN,"A",ADM,0)=X_"^^^^^^^^"
  S FHX1=$G(^DPT(DFN,.108)),FHX2=""
  I FHX1 S FHX1=$O(^FH(119.6,"AR",FHX1,0))
- E  S FHX1=$G(^DPT(DFN,.1)) I FHX1'="" S FHX1=$O(^DIC(42,"B",FHX1,0)) S:FHX1 FHX1=$O(^FH(119.6,"AW",FHX1,0))
+ I 'FHX1  S FHX1=$G(^DPT(DFN,.1)) I FHX1'="" S FHX1=$O(^DIC(42,"B",FHX1,0)) S:FHX1 FHX1=$O(^FH(119.6,"AW",FHX1,0))
  S FHX1=$G(^FH(119.6,+FHX1,0))
  S FHX2=$P(FHX1,"^",16),FHX1=$P(FHX1,"^",15) I 'FHX1,FHX2'="Y" G UPD
  S X=$S(FHX3>%:FHX3,1:%)

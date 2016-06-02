@@ -1,9 +1,11 @@
-XWBSEC ;SFISC/VYD - RPC BROKER ;09/23/2004  13:01
- ;;1.1;RPC BROKER;**3,6,10,35**;Mar 28, 1997
+XWBSEC ;SFISC/VYD - RPC BROKER ;02/03/10  11:37
+ ;;1.1;RPC BROKER;**3,6,10,35,53**;Mar 28, 1997;Build 2
 CHKPRMIT(XWBRP) ;checks to see if remote procedure is permited to run
  ;Input:  XWBRP - Remote procedure to check
  Q:$$KCHK^XUSRB("XUPROGMODE")
+ ;DSS/SGM - BEGIN MODS - allow vxVistA test rig to run
  Q:$G(XQY0)="VFDVX TEST RIG GUI"
+ ;DSS/SGM - END MODS
  N ERR,XWBPRMIT,XWBALLOW
  S U="^",XWBSEC="" ;Return XWBSEC="" if OK to run RPC
  ;
@@ -12,9 +14,14 @@ CHKPRMIT(XWBRP) ;checks to see if remote procedure is permited to run
  S:'$G(DUZ) DUZ=0,XQY0="XUS SIGNON"   ;set up default context
  ;
  ;These RPC's are allowed in any context, so we can just quit
- I "^XWB IM HERE^XWB CREATE CONTEXT^XWB RPC LIST^XWB IS RPC AVAILABLE^XUS GET USER INFO^XUS GET TOKEN^VFD VXVISTA VERSION^"[(U_XWBRP_U) Q
+ I "^XWB IM HERE^XWB CREATE CONTEXT^XWB RPC LIST^XWB IS RPC AVAILABLE^XUS GET USER INFO^XUS GET TOKEN^XUS SET VISITOR^"[(U_XWBRP_U) Q  ;p53
  ;VistAlink RPC's that are always allowed.
  I "^XUS KAAJEE GET USER INFO^XUS KAAJEE LOGOUT^"[(U_XWBRP_U) Q
+ ;DSS/SGM/MBH - BEGIN MODS - allow vxVistA to run selected RPCs
+ I $G(^%ZOSF("ZVX"))["VX","^VFD VXVISTA VERSION^"[(U_XWBRP_U) Q
+ I $G(^%ZOSF("ZVX"))["VX","^VFD AUTH AV CODE^"[(U_XWBRP_U) Q
+ I $G(^%ZOSF("ZVX"))["VX","^VFD XUS TIMEOUT^"[(U_XWBRP_U) Q
+ ;DSS/SGM/MBH - END MODS
  ;
  ;If in Signon context, only allow XUS and XWB rpc's
  I $G(XQY0)="XUS SIGNON","^XUS^XWB^"'[(U_$E(XWBRP,1,3)_U) S XWBSEC="Application context has not been created!" Q

@@ -1,0 +1,87 @@
+VFDHHL02 ;DSS/PDW - EXTEND VFDHHLOT ;06 APR 2011 13:31
+ ;;2012.1.1;VENDOR - DOCUMENT STORAGE SYS;;24 Jun 2013;Build 136
+ ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
+ ;DSS/BUILD - VFDHHL HL7 EXCHANGE 2012.1.1 * 06/23/15 * vxdev64v2k8_VX13 * 2012.1 T22
+ ;DSS/BUILD - VFDHHL HL7 EXCHANGE 2012.1.1 * 02/02/14 * vxdev64v2k8_DEVXOS * 2012.1.1T21
+TABLIST(LIST,VFDHSYS,VFDHTAB,NUM,FR,SCREEN) ; list table packed entries LIST^DIC
+ ;The parameters passed in are identical to (passed on to) LIST^DIC
+ ;VFDHSYS is the IEN or Name of the interface
+ ;VFDHTAB is the IEN or Name or Acronym of the table to be extracted
+ N FILE,IEN,FIELDS,FLAGS,PART,INDX,WRITE,ROOT,MSG
+ S NUM=$G(NUM),FR=$G(FR),SCREEN=$G(SCREEN)
+ N DA,IENS,VFDHSDA,TABDA,ROOT
+ K LIST,^TMP("VFDH",$J)
+ S LIST=$NA(^TMP("VFDH",$J)),ROOT=$NA(^TMP("VFDH0",$J))
+ S VFDHSDA=VFDHSYS
+ I VFDHSDA'=+VFDHSDA S VFDHSDA=$$FIND1^DIC(21625.01,",","XM",VFDHSYS)
+ I VFDHSDA'>0 S @LIST@(0)="-1^SYSTEM NOT FOUND "_VFDHSYS Q
+ S DA(1)=VFDHSDA S IENS=$$IENS^DILF(.DA)
+ S TABDA=VFDHTAB
+ I TABDA'=+TABDA S TABDA=$$FIND1^DIC(21625.0105,IENS,"XM",VFDHTAB)
+ I TABDA'>0 S @LIST@("ERR",0)="-1^TABLE NOT FOUND "_VFDHTAB Q
+ K DA S DA(2)=VFDHSDA,DA(1)=TABDA S IENS=$$IENS^DILF(.DA)
+ K @LIST,@ROOT
+ D LIST^DIC(21625.0106,IENS,".02;.03;.04;.05","P",NUM,.FR,"","",SCREEN,"",ROOT)
+ S XX=0 F  S XX=$O(^TMP("VFDH0",$J,"DILIST",XX)) Q:XX'>0  D
+ .S @LIST@(XX,0)=^TMP("VFDH0",$J,"DILIST",XX,0) ;                                ---use $NA above to define output   
+ K @ROOT
+ Q
+TABVALDA(VFDHIEN,VFDHSYS,HL7TAB,VALUE) ; test /return table VALIEN of entry VALUE
+ K VFDHIEN N IENS,DA,VALIEN
+ I VFDHSYS'=+VFDHSYS S VFDHSYS=$$FIND1^DIC(21625.01,"","XM",VFDHSYS)
+ I 'VFDHSYS S VFDHIEN="-1^SYSTEM NOT FOUND" Q
+ N DA S DA(1)=VFDHSYS S IENS=$$IENS^DILF(.DA)
+ I HL7TAB'=+HL7TAB S HL7TAB=$$FIND1^DIC(21625.0105,IENS,"MO",HL7TAB)
+ I HL7TAB'>0 S VFDHIEN="-1^TABLE NOT FOUND" Q
+ K DA S DA(2)=VFDHSYS,DA(1)=HL7TAB S IENS=$$IENS^DILF(.DA)
+ ;change multiple index lookup to 'B' index only
+ S VFDHIEN=$$FIND1^DIC(21625.0106,IENS,"QO",VALUE,"B")
+ I VFDHIEN'>0 S VFDHIEN="-1^'"_VALUE_"' NOT FOUND" Q
+ Q
+TABVALEX() ;$$ return the EMR external value of the file being pointed to in
+ ;field .07 vxVista file (lookup)
+ N VFDFLDA,VFDEMR
+ S VFDFLDA=$$GET1^DIQ(21625.0105,D1_","_D0_",",.07,"I")
+ I 'VFDFLDA Q ""
+ S VFDEMR=$$GET1^DIQ(21625.0106,D2_","_D1_","_D0_",",.03)
+ Q $$GET1^DIQ(VFDFLDA,VFDEMR,.01)
+ ;
+BUILD(VFDHRSLT,VFDHSEG,VFDHFLAG) ; BUILD/ASSEMBLE SEGMENT FROM SEG(E,R,C,S)=VAL
+ ; VFDHRSLT = ONE STRING OR -1^ERROR MESSAGE)
+ ; VFDHFLAG(offset)=1 ; build the segment according to subscripting HL7, not HLO with -1
+ ; using subscripts equal to the HL7 location notation. E,R,C,S = VALUE
+ ;
+ I VFDHFLAG D
+ .N VFDTMP,II
+ .M VFDTMP=VFDHSEG K VFDHSEG
+ .S II="" F  S II=$O(VFDTMP(II)) Q:(II?.A)  M VFDHSEG(II+1)=VFDTMP(II)
+ .S VFDHSEG("SEGMENT TYPE")=VFDTMP("SEGMENT TYPE")
+ N ESEG,RSEG,CSEG,SSEG,RR,CC,SS
+ N SEG M SEG=VFDHSEG
+ S E=0 F  S E=$O(SEG(E)) Q:E'>0  D ESEG(E)
+ S XX=""
+ S E=0 F  S E=$O(ESEG(E)) Q:E'>0  S $P(XX,"|",E)=ESEG(E)
+ I $D(VFDHSEG(0,1,1,1)) S XX=VFDHSEG(0,1,1,1)_"|"_XX
+ S VFDHRSLT=XX
+ Q
+ESEG(E) ; ASSEMBLE WITHIN REPEATS, ESEG(E)
+ S ESEG(E)=""
+ K RSEG
+ I $G(SEG(E,1,1,1))="^~\&" S ESEG(E)="^~\&" Q  ;adapt for ESCH 
+ S R=0 F  S R=$O(SEG(E,R)) Q:R'>0  D RSEG(R)
+ S R=0 F  S R=$O(RSEG(R)) Q:R'>0  S $P(ESEG(E),"~",R)=RSEG(R)
+ Q
+RSEG(R) ;
+ S RSEG(R)="" K CSEG
+ S C=0 F  S C=$O(SEG(E,R,C)) Q:C'>0  D CSEG(C) S $P(RSEG(R),"^",C)=CSEG(C)
+ S C=0 F  S C=$O(CSEG(C)) Q:C'>0  S $P(RSEG(R),"^",C)=CSEG(C)
+ Q
+CSEG(C) ;
+ S CSEG(C)="" K SSEG
+ S S=0 F  S S=$O(SEG(E,R,C,S)) Q:S'>0  D SSEG(S)
+ S S=0 F  S S=$O(SSEG(S)) Q:S'>0  S $P(CSEG(C),"&",S)=SSEG(S)
+ Q
+SSEG(S) S SSEG(S)=SEG(E,R,C,S)
+ Q
+HISTORY ;6 APR 11 VFDHFLAG parameter offset added to BUILD to use subscript notations
+ ;  equal to the HL7 location notations of items (E,R,C,S)=VALUE

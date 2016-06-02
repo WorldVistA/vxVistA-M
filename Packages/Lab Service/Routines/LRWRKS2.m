@@ -1,5 +1,5 @@
 LRWRKS2 ;SLC/RWF/MILW/JMC - WORK SHEET ACCESSION LIST PART 2 ;2/7/91  14:48 ;
- ;;5.2;LAB SERVICE;**153**;Sep 27, 1994;Build 25
+ ;;5.2;LAB SERVICE;**153**;Sep 27, 1994;Build 35
  ;MILW/JMC commented out line "HED+1", repeated line at "HED+2", set %DT="T", avoid echoing date/time on print out.
  ;MILW/JMC 3/11/92 Commented out lines "LP4+2", "LP4+4", "LP3+2", "HED+5"
  ;                 Inserted lines "LP3+3", "LP4+5", & "HED+6"

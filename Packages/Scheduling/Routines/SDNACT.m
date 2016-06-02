@@ -1,8 +1,9 @@
-SDNACT ;ALB/TMP - INACTIVATE A CLINIC ; 30 APR 85  9:02 am 
- ;;5.3;Scheduling;**63,380**;Aug 13, 1993
+SDNACT ;ALB/TMP - INACTIVATE A CLINIC ;9/16/10  17:38
+ ;;5.3;Scheduling;**63,380,549,568**;Aug 13, 1993;Build 14
  S:'$D(DTIME) DTIME=300 I '$D(DT) D DT^SDUTL
  S SDAY="Sun^Mon^Tues^Wednes^Thurs^Fri^Satur",SDZQ=1
  D DT^DICRW S DIC="^SC(",DIC(0)="AEMZQ",DIC("A")="Select CLINIC NAME: ",DIC("S")="I $P(^(0),""^"",3)=""C"",'$G(^(""OOS""))"
+ D TURNON^DIAUTL(44,".01;8;2502;2503;2505;2506")
  D ^DIC K DIC("A"),DIC("S") G:Y<0 END S SC=+Y,SDX="",SDX1=9999999
  N SDRES S SDRES=$$CLNCK^SDUTL2(SC,0)
  I 'SDRES D
@@ -21,7 +22,7 @@ D S %DT="AEFX",%DT("A")="Enter Date Clinic is to be Inactivated: " D ^%DT K %DT 
 OVR F I=SDDATE-.0001:0 S I=$O(^SC(SC,"ST",I)) Q:'I!(I>SDX1)  K ^(I)
  F I=SDDATE-.0001:0 S I=$O(^SC(SC,"T",I)) Q:'I!(I>SDX1)  K ^(I)
  F I=SDDATE-.0001:0 S I=$O(^SC(SC,"OST",I)) Q:'I!(I>SDX1)  K ^(I)
- S ^SC(SC,"I")=SDDATE_"^"_$P(^SC(SC,"I"),"^",2)
+ S DIE="^SC(",DA=SC,DR="2505///^S X=SDDATE" D ^DIE  ;SD*549 use FM API to update field so Audit Trail functions properly
  W !!,"Clinic will be inactivated effective " S Y=SDDATE D DTS^SDUTL W Y G END
  ;
 CHECK W *7,!,"This clinic is to be inactivated as of " S SDX=+^("I"),Y=SDX D DTS^SDUTL W Y S SDX1=+$P(^("I"),"^",2),Y=SDX1 I Y D DTS^SDUTL W " and reactivated as of ",Y ;NAKED REFERENCE - ^SC(DFN,"I")
@@ -47,4 +48,4 @@ GOT S SD=$O(^SC(SC,"T"_I,0))
  I J>0,SD'=9999999 S ^SC(SC,"T"_I,SDN(I),1)=^SC(SC,"T"_I,J,1),^(0)=SDN(I) K ^SC(SC,"T"_I,J) F J1=J:0 S J1=$O(^SC(SC,"T"_I,J1)) Q:'J1  K ^SC(SC,"T"_I,J1)
  S ^SC(SC,"T"_I,9999999,1)="",^(0)=9999999
  Q
-END K A,DA,CNT,D0,DH,DO,DOW,I,I1,J,J1,POP,SC,SD,SD0,SDAY,SDEL,SDDATE,SDFSW,SDN,SDNL,SDOL,SDREACT,SI,SL,STARTDAY,SDX,SDX1,SDZQ,X,X1,X2,Y,Z Q
+END K A,DA,CNT,D0,DH,DO,DOW,I,I1,J,J1,POP,SC,SD,SD0,SDAY,SDEL,SDDATE,SDFSW,SDN,SDNL,SDOL,SDREACT,SI,SL,STARTDAY,SDX,SDX1,SDZQ,X,X1,X2,Y,Z,DIE,DR,DIC Q

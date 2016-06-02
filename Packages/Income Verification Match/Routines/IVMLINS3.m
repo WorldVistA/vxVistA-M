@@ -1,5 +1,5 @@
-IVMLINS3 ;ALB/KCL - IVM INSURANCE POLICY TRANSFER ; 01-FEB-94
- ;;2.0;INCOME VERIFICATION MATCH;**14,111**; 21-OCT-94
+IVMLINS3 ;ALB/KCL,TDM - IVM INSURANCE POLICY TRANSFER ; 3/9/09 2:01pm
+ ;;2.0;INCOME VERIFICATION MATCH;**14,111,121**; 21-OCT-94;Build 45
  ;;Per VHA Directive 10-93-142, this routine should not be modified.
  ;
  ;
@@ -28,6 +28,7 @@ TRANSFER(IVMAUTO) ; user has chosen to transfer insurance information,
  S IVMIBDAT(20.02)=$E($P(IVMIN1,HLFS,7),1,20) ;phone number
  S IVMIBDAT(21.01)=$E($P(IVMADD,"~",1),1,35) ;street add [line 1]
  S IVMIBDAT(21.02)=$E($P(IVMADD,"~",2),1,30) ;street add [line 2]
+ S IVMIBDAT(21.03)=$E($P(IVMADD,"~",8),1,30) ;street add [line 3]
  S IVMIBDAT(21.04)=$E($P(IVMADD,"~",3),1,25) ;city
  S IVMIBDAT(21.05)=$$STATE1^IVMUFNC4($P(IVMADD,"~",4)) ;state
  S IVMIBDAT(21.06)=$E($P(IVMADD,"~",5),1,20) ;zip

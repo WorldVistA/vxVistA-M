@@ -1,7 +1,6 @@
 XOBSRA ;mjk,esd/alb - VistALink Reauthentication Code ; 05/22/2003  07:00
- ;;1.5;VistALink Security;;Sep 09, 2005
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.0.026]
- ;
+ ;;1.6;VistALink Security;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
  QUIT
  ;
  ; ------------------------------------------------------------------------
@@ -93,15 +92,15 @@ VPID(XOBID,XOBERR) ; -- VPID reauth type
  ;
 APPPROXY(XOBID,XOBERR) ; -- application proxy reauth type
  ;
- NEW XOBANAME,XOBCTYPE
+ NEW XOBANAME,XOBCTYPE,XOBAPFND
  SET XOBID=0,XOBCTYPE="APPPROXY"
  SET XOBANAME=$GET(XOBDATA("XOB RPC","SECURITY","TYPE","VALUE"))
  ;
- ; APFIND^XUSAP(name) -> returns ien^vpid
- IF XOBANAME]"" SET XOBID=$PIECE($$APFIND^XUSAP(XOBANAME),U)
+ ; APFIND^XUSAP(name) -> returns ien^vpid, or (failure) -int^reason
+ IF XOBANAME]"" SET XOBAPFND=$$APFIND^XUSAP(XOBANAME),XOBID=$PIECE(XOBAPFND,U)
  ; file #200 division mult checking not necessary for app proxy user
  IF (+XOBID)<1 DO
- . SET XOBERR=182307_U_XOBANAME_U,XOBID=0
+ . SET XOBERR=182307_U_XOBANAME_U_"["_$P(XOBAPFND,U,2)_"]",XOBID=0
  QUIT
  ;
 CCOW(XOBID,XOBERR) ; -- CCOW reauth type
@@ -188,14 +187,13 @@ LOGINH() ; -- Check if system is currently allowing logins
  ;   181004 : if logins are disabled
  ;        0 : if logins are allowed
  ;
- NEW XOBINH,XQVOL,XUCI,XUENV,XUVOL,X,Y
+ NEW XQVOL,XUCI,XUENV,XUVOL,X,Y
  ;
  ; -- Setup XUENV, XUCI,XQVOL,XUVOL
  DO XUVOL^XUS
  ;
  ; -- Check whether logins are disabled
- SET XOBINH=$$INHIBIT^XUSRB()
- QUIT $SELECT(XOBINH:181004,1:0)
+ QUIT $SELECT($$INHIB1^XUSRB():181004,1:0)
  ;
 NOACCESS(XOBID) ; -- Determine if user is allowed access via user active status & prohibited times checks
  ;
@@ -269,7 +267,8 @@ SITECHK(XOBSTATN) ; check if valid division for this site
  ;         0^error message (if not valid for this site)
  N XOBSTIEN,XOBSTRIP
  SET XOBSTRIP=$$STRPSUFF^XOBSCAV1(XOBSTATN)
- QUIT:((+XOBSTRIP)'=XOBSYS("PRIMARY STATION#")) "0^STATION '"_XOBSTATN_"' is not supported by this M system."
+ ; note: AAC 200M truncated to 200 in both sides of comparison below
+ QUIT:(XOBSTRIP'=XOBSYS("PRIMARY STATION#")) "0^STATION '"_XOBSTATN_"' is not supported by this M system."
  S XOBSTIEN=$$IEN^XUAF4(XOBSTATN)
  QUIT:'+XOBSTIEN "0^STATION '"_XOBSTATN_"' is not a known station number."
  QUIT:'$$ACTIVE^XUAF4(XOBSTIEN) "0^STATION '"_XOBSTATN_"' is not active on this M system."

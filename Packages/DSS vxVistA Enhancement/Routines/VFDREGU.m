@@ -1,5 +1,5 @@
-VFDREGU ;DSS/LM/SMP - Patient Registration Utilities ; 06/04/2013 11:00
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 7
+VFDREGU ;DSS/LM/SMP - Patient Registration Utilities ; 06/08/2015 16:58
+ ;;2013.1;DSS,INC VXVISTA OPEN SOURCE;*53*;11 Jun 2013;Build 5
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  ;  DBIA#  Supported References
@@ -70,11 +70,13 @@ AGE(VFDDOB,VFDATE,FLG) ;;Pediatric-aware age
  Q:'FLG X
  Q RET_U_X
  ;
-AGERPC(VFDRET,DFN,VFDFLG) ; RPC: VFD DG PAT AGE
+AGERPC(VFDRET,DFN,VFDFLG,VFDDATE) ; RPC: VFD DG PAT AGE
  ;    DFN - req - pointer to the patient file
  ; VFDFLG - opt - set of codes indicating single age value to return
  ;                D:days, W:weeks, M:months, Y:years
  ;                default to <null>
+ ;VFDDATE - opt - date to calculate age from
+ ;
  ; RETURN:
  ;   Age string - days^weeks^months^years
  ;   If valid flag, return that single age only
@@ -85,7 +87,9 @@ AGERPC(VFDRET,DFN,VFDFLG) ; RPC: VFD DG PAT AGE
  I $G(DFN)<1 S VFDRET="-1^No patient received" Q
  S VFDFLG=$E($G(VFDFLG)) S:VFDFLG?.E1L.E VFDFLG=$$UP^XLFSTR(VFDFLG)
  S X=$G(^DPT(DFN,0)),DOB=$P(X,U,3),DOD=+$G(^(.35))
- I 'DOB S VFDRET="-1^Patient has no date of birth"
+ I 'DOB S VFDRET="-1^Patient has no date of birth" Q
+ I $G(VFDDATE) S DOD=VFDDATE
+ I DOD,DOD<DOB S VFDRET="-1^Date provided is before the date of birth" Q
  S X=$$AGE(DOB,DOD,1)
  I VFDFLG=""!("DWMY"'[VFDFLG) S VFDRET=X Q
  S Y=VFDFLG

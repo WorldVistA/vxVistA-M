@@ -1,9 +1,11 @@
 PSDRDR ;BIR/BJW-Narc Disp/Rec Report (reprint VA FORM 10-2321) ; 12 Feb 98
- ;;3.0; CONTROLLED SUBSTANCES ;**8**;13 Feb 97
+ ;;3.0; CONTROLLED SUBSTANCES ;**8,69**;13 Feb 97;Build 13
  ;**Y2K compliance**,"P" added to date input string
+ ;References to ^PSD(58.8, covered by DBIA2711
+ ;
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- S OK=$S($D(^XUSEC("PSJ RPHARM",DUZ)):1,$D(^XUSEC("PSJ PHARM TECH",DUZ)):1,1:0)
- I 'OK W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to",!,?12,"process/dispense narcotic supplies.",!!,"PSJ RPHARM or PSJ PHARM TECH security key required.",! K OK Q
+ S OK=$S($D(^XUSEC("PSJ RPHARM",DUZ)):1,$D(^XUSEC("PSJ PHARM TECH",DUZ)):1,$D(^XUSEC("PSD TECH ADV",DUZ)):1,1:0)
+ I 'OK W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to",!,?12,"process/dispense narcotic supplies.",!!,"PSJ RPHARM, PSJ PHARM TECH or PSD TECH ADV security key required.",! K OK Q
 ASKD ;ask dispensing location
  S PSDS=$P(PSDSITE,U,3),PSDSN=$P(PSDSITE,U,4)
  G:$P(PSDSITE,U,5) SUM

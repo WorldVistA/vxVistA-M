@@ -1,5 +1,5 @@
 IBDF18E0 ;ALB/CJM - ENCOUNTER FORM - PCE DEVICE INTERFACE utilities ;04-OCT-94
- ;;3.0;AUTOMATED INFO COLLECTION SYS;**11,25,38,36,23**;APR 24, 1997
+ ;;3.0;AUTOMATED INFO COLLECTION SYS;**11,25,38,36,23,62**;APR 24, 1997;Build 9
  ;
 SETPXCA ;set values from TEMP() into the PXCA()
  ;
@@ -39,7 +39,7 @@ SETPXCA ;set values from TEMP() into the PXCA()
  ;
  ;
 OTHRBUB ; -- check procedure and diagnosis node for other bubble, but no data
- N NODE,CODE
+ N NODE,CODE,OUT,X,XX
  S I=0 F  S I=$O(PXCA("PROCEDURE",I)) Q:I=""  S J=0 F  S J=$O(PXCA("PROCEDURE",I,J)) Q:J=""  D
  .I +$G(PXCA("PROCEDURE",I,J))<1 D  ;no code, may be treatment
  ..I $P($G(PXCA("PROCEDURE",I,J)),"^",6)["OTHER#" D  ;no code, narr=other
@@ -51,10 +51,12 @@ OTHRBUB ; -- check procedure and diagnosis node for other bubble, but no data
  ..S $P(PXCA("PROCEDURE",I,J),"^",6)=$S(+CODE'=-1:$E($P((CODE),"^",3),1,80),1:"")
  ;
  S I=0 F  S I=$O(PXCA("DIAGNOSIS/PROBLEM",I)) Q:I=""  S J=0 F  S J=$O(PXCA("DIAGNOSIS/PROBLEM",I,J)) Q:J=""  D
- .I $P($G(PXCA("DIAGNOSIS/PROBLEM",I,J)),"^",13)="" D
- ..S $P(PXCA("DIAGNOSIS/PROBLEM",I,J),"^",13)=$E($G(^ICD9(+PXCA("DIAGNOSIS/PROBLEM",I,J),1)),1,79)
- .I $P($G(PXCA("DIAGNOSIS/PROBLEM",I,J)),"^",13)["OTHER#" D
- ..S $P(PXCA("DIAGNOSIS/PROBLEM",I,J),"^",13)=$E($G(^ICD9(+PXCA("DIAGNOSIS/PROBLEM",I,J),1)),1,79)
+ .I $P($G(PXCA("DIAGNOSIS/PROBLEM",I,J)),"^",13)="" K OUT D
+ ..S X=$P($$ICDDX^ICDCODE(+$P(PXCA("DIAGNOSIS/PROBLEM",I,J),"^"),$G(DT),"",1),"^",2) D
+ ...S XX=$$ICDD^ICDCODE(X,"OUT"),$P(PXCA("DIAGNOSIS/PROBLEM",I,J),"^",13)=$E($G(OUT(1)),1,79)
+ .I $P($G(PXCA("DIAGNOSIS/PROBLEM",I,J)),"^",13)["OTHER#" K OUT D
+ ..S X=$P($$ICDDX^ICDCODE(+$P(PXCA("DIAGNOSIS/PROBLEM",I,J),"^"),$G(DT),"",1),"^",2) D
+ ...S XX=$$ICDD^ICDCODE(X,"OUT"),$P(PXCA("DIAGNOSIS/PROBLEM",I,J),"^",13)=$E($G(OUT(1)),1,79)
  Q
  ;
 PRO ; -- make sure diagnosis code is added to DIAGNOSIS/PROBLEM node
@@ -87,7 +89,7 @@ CODES ; -- if addt'l codes to pass and qual is prim or sec, send 2nd code
  .D
  ..S X=VALUE
  ..I $G(^ICD9($G(X),0))="" K X S Y="" Q
- ..E  S Y=$P(^ICD9(X,0),"^",3)
+ ..E  S Y=$$ICDDX^ICDCODE(+X,$G(DT),"",1),Y=$P(Y,"^",4)
  .S TEXT=Y
  .S QLFR=$O(^IBD(357.98,"B",$S($E(OQLFR)="S":"SECONDARY",1:"ADD TO PROBLEM LIST"),0))
  .S ITEM=ITEM_"."_IBI
@@ -95,7 +97,7 @@ CODES ; -- if addt'l codes to pass and qual is prim or sec, send 2nd code
  .S ITEM=$P(ITEM,".")
  Q
  ;
-TRACKING(FORMID) ;get form tracking info,sets FORMID array, which should be passed by reference, return 0 if not found
+TRACKING(FORMID) ;get form tracking info,sets FORMID array, which should be pass
  ;
  S NODE=$G(^IBD(357.96,FORMID,0))
  Q:NODE="" 0

@@ -1,5 +1,6 @@
 RMPRPAT2 ;PHX/RFM/JLT/HNC-DISPLAY PATIENT ITEM ACTIVITY ;10/19/1993
- ;;3.0;PROSTHETICS;**32,34,29,44,99,75,137,146**;Feb 09, 1996;Build 4
+ ;;3.0;PROSTHETICS;**32,34,29,44,99,75,137,146,162**;Feb 09, 1996;Build 5
+ N BDAT,HITM
  D HDR N RMPRMERG S RMPRMERG=0
  S (RA,AN,ANS,RK,RZ)=0 K ^TMP($J,"TT"),^TMP($J,"AG"),IT
  MERGE ^TMP($J,"TT")=^RMPR(660,"AC",RMPRDFN)
@@ -18,26 +19,18 @@ RMPRPAT2 ;PHX/RFM/JLT/HNC-DISPLAY PATIENT ITEM ACTIVITY ;10/19/1993
  . .I ND S ND=$P(^RMPR(661.1,ND,0),U,8)
  . .S:ND="" ND=2
  . .S:GN="" GN=BC
- . .S ^TMP($J,"AG",GN,ND,BC)=B
+ . .S ^TMP($J,"AG",GN,BC,ND)=B  ;set linked grouper counter structure differently in array;RMPR*3.0*162
+ ;COMBINE ITEMS FOR CALC FLAG
+ ;modified linked grouper structure determination in patch RMPR*3.0*162
  S B=""
- F  S B=$O(^TMP($J,"AG",B)) Q:+B=0  D
- .S BC=""
- .F  S BC=$O(^TMP($J,"AG",B,BC)) Q:BC'>0  D
- . .Q:BC=2
- . .MERGE ^TMP($J,"AGG")=^TMP($J,"AG",B)
- . .S HC="",GTCST=0
- . .K HCC1
- . .F  S HC=$O(^TMP($J,"AGG",HC)) Q:HC'>0  D
- . . .S HCC=0
- . . .;changes for Surgical Implants
- . . .S BDC=""
- . . .F BDC=1:1 S HCC=$O(^TMP($J,"AGG",HC,HCC)) Q:HCC'>0  D
- . . . .S GTCST=GTCST+$P(^RMPR(660,HCC,0),U,16)
- . . . .I BDC=1&(HC'=2) S HCC1=HCC
- . . . .I BDC'=1 K ^TMP($J,"TT",^TMP($J,"AGG",HC,HCC),HCC)
- . . . .I HC=2 K ^TMP($J,"TT",^TMP($J,"AGG",HC,HCC),HCC)
- . .I $G(HCC1) S $P(^TMP($J,"TT",^TMP($J,"AGG",1,HCC1),HCC1),U,3)=GTCST K HCC1
- . .K GTCST,^TMP($J,"AGG")
+ F  S B=$O(^TMP($J,"AG",B)),ITM=0,HITM=0 Q:+B=0  D
+ .F  S ITM=$O(^TMP($J,"AG",B,ITM)),BC=0 Q:+ITM=0  D
+ . .F  S BC=$O(^TMP($J,"AG",B,ITM,BC)) Q:+BC=0  D
+ . . .I $P($G(^RMPR(660,ITM,0)),U,17) Q
+ . . .I HITM=0,BC=2 Q
+ . . .I BC=1 S HITM=ITM,BDAT=^TMP($J,"AG",B,ITM,BC),^TMP($J,"TTT",B,HITM,HITM)=HITM
+ . . .S $P(^TMP($J,"TT",BDAT,HITM),U,3)=$P(^TMP($J,"TT",BDAT,HITM),U,3)+$P($G(^RMPR(660,ITM,0)),U,16)
+ . . .I BC=2 S ^TMP($J,"TTT",B,HITM,ITM)=HITM K ^TMP($J,"TT",BDAT,ITM)
  K ^TMP($J,"AG"),BDC
  S B=0,RC=1
  F  S B=$O(^TMP($J,"TT",B)) Q:B'>0  D
@@ -48,7 +41,7 @@ RMPRPAT2 ;PHX/RFM/JLT/HNC-DISPLAY PATIENT ITEM ACTIVITY ;10/19/1993
  . .I $P(^TMP($J,"TT",B,RK),U,3) S $P(IT(RC),U,3)=$P(^TMP($J,"TT",B,RK),U,3)
  . .S RC=RC+1
  S RK=0,RZ=0
- K ^TMP($J,"TT"),B
+ K B,^TMP($J,"TT")
  ;
  G:'$D(IT) END
 DIS ;DISPLAY APPLIANCES OR REPAIRS
@@ -58,7 +51,9 @@ END I RC=0 W !,"No Appliances or Repairs exist for this veteran!",!! H 3 G EXIT
  ;
  I RC>0 W !!,"End of Appliance/Repair records for this veteran!" D OVER I $G(RK)+1'>$G(RC)&($G(IT($G(RK)+1))) D DIS
  ;
-EXIT K I,J,L,R0,IT,RA
+EXIT K I,J,L,R0,IT,RA,AMIS,AN,CST,DEL,FL,FRM,ITM,PAGE,QTY,RC,RK,REM
+ K RMPRCNUM,RZ,SN,TRANS,TRANS1,TYPE,VEN
+ K ^TMP($J,"TTT")
  Q:'$D(RMPRDFN)
  W !
  I $D(DUOUT)!($D(DTOUT)) G ASK1^RMPRPAT
@@ -110,8 +105,8 @@ PRT S DATE=$P(Y,U,3),TYPE=$P(Y,U,6),QTY=$P(Y,U,7)
 OVER ;
  N ANS
  S RZ=RK W !,"+=Turned-In  *=Historical Data  I=Initial  X=Repair  S=Spare  R=Replacement",!,"Enter 1-",RK," to show full entry, '^' to exit or `return` to continue.  " R ANS:DTIME S:'$T ANS="^"
- I ANS="^^" S ANS="^" G ASK1^RMPRPAT Q
- I ANS="^" G ASK1^RMPRPAT Q
+ I ANS="^^" S ANS="^" S DUOUT=1 Q  ;modified escape as it left a DO loop hanging due to GOTO, patch RMPR*3.0*162
+ I ANS="^" S DUOUT=1 Q   ;modified escape as it left a DO loop hanging due to GOTO, patch RMPR*3.0*162
  I ANS="",RK+1'>RC&($G(IT(RK+1))) D HDR Q
  I ANS="" Q
  I ANS'?1N.N!(ANS>RK)!(+ANS=0)!(+ANS'=ANS) W $C(7),!," Must be between 1 and ",RK," to be valid" G OVER

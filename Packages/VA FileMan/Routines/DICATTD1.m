@@ -1,6 +1,9 @@
-DICATTD1 ;SFISC/GFT ;10:08 AM  26 Jan 2001;DATE-TIME
- ;;22.0;VA FileMan;**42**;Mar 30, 1999
- ;Per VHA Directive 10-93-142, this routine should not be modified.
+DICATTD1 ;SFISC/GFT- DATE,TIME ;2 FEB 2009
+ ;;22.2;MSC Fileman;;Jan 05, 2015;
+ ;;Submitted to OSEHRA 5 January 2015 by the VISTA Expertise Network.
+ ;;Based on Medsphere Systems Corporation's MSC Fileman 1051.
+ ;;Licensed under the terms of the Apache License, Version 2.0.
+ ;;GFT;**42,160**
  ;
 EARLY ;
  S Y=">X" G Y
@@ -23,8 +26,8 @@ FROMTO K DICATTMN F I=21,22 S Z=$$G(I) Q:Z=""  D
  .I Z="DT" S Y=Z,Z="CURRENT DATE"
  .E  S X=Z D ^%DT S X=Y D DD^%DT S Z=Y,Y=X
  .S DICATTMN(I)=Z,DICATT5N(I)=Y ;Z is readable, Y internal
- I $D(DICATTMN(22)) S DICATTMN="TYPE A DATE BETWEEN "_DICATTMN(21)_" AND "_DICATTMN(22),DICATT5N=DICATT5N_DICATT5N(22)_"<X!("_DICATT5N(21)_">X) X"
- E  I $D(DICATTMN(21)) S DICATTMN="TYPE A DATE NOT EARLIER THAN "_DICATTMN(21),DICATT5N=DICATT5N_DICATT5N(21)_">X X"
+ I $D(DICATTMN(22)) S DICATTMN="Type a date between "_DICATTMN(21)_" and "_DICATTMN(22)_".",DICATT5N=DICATT5N_DICATT5N(22)_"<X!("_DICATT5N(21)_">X) X"
+ E  I $D(DICATTMN(21)) S DICATTMN="Type a date not earlier than "_DICATTMN(21)_".",DICATT5N=DICATT5N_DICATT5N(21)_">X X"
  E  S DICATT5N=DICATT5N_"X<1 X",DICATTMN="(No range limit on date)"
  S DICATTLN=$$G(24)=1*5+7
  S DICATT2N="D",DICATT3N=""

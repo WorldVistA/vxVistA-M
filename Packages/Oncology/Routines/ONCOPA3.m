@@ -1,6 +1,7 @@
-ONCOPA3 ;Hines OIFO/GWB-[PA Print Complete Abstract (132c)]..continued ;05/30/00
- ;;2.11;ONCOLOGY;**13,15,18,25,26,33,34,36,37,44,45,46,47,48**;Mar 07, 1995;Build 13
+ONCOPA3 ;Hines OIFO/GWB - [PA Print Complete Abstract (132c)] continued ;10/07/11
+ ;;2.2;ONCOLOGY;**1**;Jul 31, 2013;Build 8
  ;
+ N ALHS,ALTP,ALZN,CFH,CHST,NOK,OC,OCCP,RCDT,TBHS,TBTP,TBZN,TX,Y
  S NAME="PERSONAL DATA" D FORMAT^ONCOPA1
  W !!,TITLE
  W !!?10,"             Address at Dx: ",ONCAB(165.5,IEN,8)
@@ -20,7 +21,7 @@ ONCOPA3 ;Hines OIFO/GWB-[PA Print Complete Abstract (132c)]..continued ;05/30/00
  W !?8,"Elapsed Months to Completion: ",ONCAB(165.5,IEN,157.1,"E") D P Q:EX=U
  W !?10,"             Abstracted by: ",ONCAB(165.5,IEN,92) D P Q:EX=U
  W !
- W !?1," Previous History of Cancer:  ",ONCAB(165.5,IEN,148,"E") D P Q:EX=U
+ W !?1,"               Other Cancer:  ",ONCAB(165.5,IEN,148,"E") D P Q:EX=U
  W !?1,"                  Cancer #1:  ",ONCAB(165.5,IEN,148.1,"E") D P Q:EX=U
  W !?1,"                  Cancer #2:  ",ONCAB(165.5,IEN,148.2,"E") D P Q:EX=U
  W !?1,"                  Cancer #3:  ",ONCAB(165.5,IEN,148.3,"E") D P Q:EX=U
@@ -29,10 +30,18 @@ ONCOPA3 ;Hines OIFO/GWB-[PA Print Complete Abstract (132c)]..continued ;05/30/00
  W !?1,"Ionizing Radiation Exposure:  ",ONCAB(160,PTIEN,50) D P Q:EX=U
  W !?1,"          Chemical Exposure:  ",ONCAB(160,PTIEN,52) D P Q:EX=U
  W !?1,"          Asbestos Exposure:  ",ONCAB(160,PTIEN,61) D P Q:EX=U
+ W !?1,"            Vietnam Service:  ",ONCAB(160,PTIEN,62) D P Q:EX=U
+ W !?1,"            Lebanon Service:  ",ONCAB(160,PTIEN,55) D P Q:EX=U
+ W !?1,"            Grenada Service:  ",ONCAB(160,PTIEN,63) D P Q:EX=U
+ W !?1,"             Panama Service:  ",ONCAB(160,PTIEN,64) D P Q:EX=U
  W !?1,"       Persian Gulf Service:  ",ONCAB(160,PTIEN,51) D P Q:EX=U
- W !?1,"        Middle East Service:  ",ONCAB(160,PTIEN,55) D P Q:EX=U
  W !?1,"            Somalia Service:  ",ONCAB(160,PTIEN,56) D P Q:EX=U
- W !!?1,"Comorbidity/Complication  1:  ",ONCAB(160,PTIEN,25) D P Q:EX=U
+ W !?1,"         Yugoslavia Service:  ",ONCAB(160,PTIEN,65) D P Q:EX=U
+ W !?1,"  Afghanistan (OEF) Service:  ",ONCAB(160,PTIEN,67) D P Q:EX=U
+ W !?1,"         Iraq (OIF) Service:  ",ONCAB(160,PTIEN,66) D P Q:EX=U
+ W !?1,"          Branch of Service:  ",ONCAB(160,PTIEN,68) D P Q:EX=U
+ W !!?1,"         Source Comorbidity:  ",ONCAB(160,PTIEN,1006) D P Q:EX=U
+ W !?1,"Comorbidity/Complication  1:  ",ONCAB(160,PTIEN,25) D P Q:EX=U
  W !?1,"Comorbidity/Complication  2:  ",ONCAB(160,PTIEN,25.1) D P Q:EX=U
  W !?1,"Comorbidity/Complication  3:  ",ONCAB(160,PTIEN,25.2) D P Q:EX=U
  W !?1,"Comorbidity/Complication  4:  ",ONCAB(160,PTIEN,25.3) D P Q:EX=U
@@ -46,7 +55,7 @@ ONCOPA3 ;Hines OIFO/GWB-[PA Print Complete Abstract (132c)]..continued ;05/30/00
  W !!,TITLE,!
  I $D(^ONCO(160,PTIEN,7,0)) F OC=0:0 S OC=$O(^ONCO(160,PTIEN,7,OC)) Q:OC'>0  D
  .S OCCP=$P($G(^ONCO(160,PTIEN,7,OC,0)),U,1) I OCCP="" Q
- .W !,"    Occupation:  ",$E($P($G(^LAB(61.6,OCCP,0)),U,1),1,24) D P Q:EX=U
+ .W !,"    Occupation:  ",$E(OCCP,1,24) D P Q:EX=U
  .W !,"Usual Industry:  ",$E($P($G(^ONCO(160,PTIEN,7,OC,0)),U,4),1,22) D P Q:EX=U
  .W !  D P Q:EX=U 
  S NAME="TOBACCO AND ALCOHOL USAGE" D FORMAT^ONCOPA1
@@ -86,13 +95,13 @@ ONCOPA3 ;Hines OIFO/GWB-[PA Print Complete Abstract (132c)]..continued ;05/30/00
  W ?100,"   QA Review:  ",ONCAB(165.5,IEN,63) D P Q:EX=U
  W !,"   QA Findings: " F TX=0:0 S TX=$O(^ONCO(165.5,IEN,28,TX)) Q:TX'>0  W !?6,^ONCO(165.5,IEN,28,TX,0) D P Q:EX=U
  ;
- I IOST?1"C".E W ! K DIR S DIR(0)="E",DIR("A")="Enter RETURN to continue with this abstract" D ^DIR Q:'Y  D HDR G PA3A
+ I $E(IOST,1,2)="C-" W ! K DIR S DIR(0)="E",DIR("A")="Enter RETURN to continue with this abstract" D ^DIR Q:'Y  D HDR G PA3A
  D P Q:EX=U
 PA3A D ^ONCOPA3A
  Q
 P ;
  I ($Y'<(LINE-1)) D  Q:EX=U  W !
- .I IOST?1"C".E W ! K DIR S DIR(0)="E",DIR("A")="Enter RETURN to continue with this abstract" D ^DIR I 'Y S EX=U Q
+ .I $E(IOST,1,2)="C-" W ! K DIR S DIR(0)="E",DIR("A")="Enter RETURN to continue with this abstract" D ^DIR I 'Y S EX=U Q
  .D HDR Q
  Q
 HDR ; Header
@@ -100,3 +109,6 @@ HDR ; Header
  W CRA,!
  W ?5," Patient Name:  ",PATNAME,?84,"SSN:  ",SSAN,!
  Q
+ ;
+CLEANUP ;Cleanup
+ K CRA,DATEDX,ESPD,EX,IEN,LINE,NAME,ONCAB,PATNAME,PG,PTIEN,SSAN,TITLE

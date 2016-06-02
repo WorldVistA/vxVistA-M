@@ -1,8 +1,8 @@
 PRCESOE ;WISC/CLH/CTB/SJG/ASU - 1358 OBLIGATION ; 08/22/94  5:11 PM
-V ;;5.1;IFCAP;**148**;Oct 20, 2000;Build 5
+V ;;5.1;IFCAP;**148,153,161,176**;Oct 20, 2000;Build 11
  ;Per VHA Directive 2004-038, this routine should not be modified.
  K PRC,PRCF,Y
- N PRCFSC S PRCFSC=1    ;PRC*5.1*148  ENTERED FROM 1358 OBLIGATE
+ N PRCFSC,PRCREVSW S PRCFSC=1    ;PRC*5.1*148  ENTERED FROM 1358 OBLIGATE
  D OUT
  S PRCF("X")="AB"
  D ^PRCFSITE Q:'%
@@ -34,6 +34,16 @@ SC ; Entry point for rebuild/retransmit
  . W ! D EN^DDIOL("  ** Press RETURN to continue **")
  . R X:DTIME Q
  ; PRC*5.1*148 end
+ ;PRC*5.1*161 adds logic that will allow the user to display the 1358 for
+ ;            compliance review prior to obligating
+REV S PRC("CP")=$P(TRNODE(3),U,3),PRCREVSW=0
+ W !!,"Would you like to review this request?"
+ S %=2 D YN^DICN G REV:%=0 I %=1 D
+ . S HLDZ=Z,HLDN=N,(N,PRCSZ)=DA,PRCSF=1,PRCREVSW=1 D PRF1^PRCSP1
+ . S DA=PRCSZ,Z=HLDZ,N=HLDN
+ . K HLDZ,HLDN,X,PRCSF,PRCSZ,PRC("CP"),RECORD,RECORD1,RECORD10,RECORD2,RECORD3,RECORD4
+ . K %H,%I,DIW,DIWI,DIWT,DIWTC,DIWX,IOHG,IOPAR,IOUPAR,POP,N,Z
+ I PRCREVSW=1 W !!,"Would you like continue obligating this 1358?" S %=1 D YN^DICN G OUT:%'=1
  S FLDCHK=0
  D EN^PRCFFU14(OB) ; edit auto accrual info
  I ACCEDIT=1 G SC
@@ -175,9 +185,14 @@ POBAL ; Enter Obligation Data into Purchase Order Record
  S X=AMT D  W !! G V
  . D TRANS^PRCSES
  . D BULLET^PRCEFIS1
+ . ;Generate 1358 transaction message to OLCS. Messages will be generated
+ . ;upon obligation of a new 1358 or an adjustment. Messages will not be
+ . ;sent for a rebuild or retransmission to FMS.(PRC*5.1*153)
+ . I $D(PRCFA("RETRAN")),'PRCFA("RETRAN") D OLCSMSG^PRCFDO
  . D OUT
  ;
-OUT D K1B^PRCFFUZ
+OUT I $G(PRCFA("TRDA")) L -^PRCS(410,PRCFA("TRDA")) ;Unlock when exiting option, PRC*5.1*176
+ D K1B^PRCFFUZ
  D K1C^PRCFFUZ
  Q
  ;

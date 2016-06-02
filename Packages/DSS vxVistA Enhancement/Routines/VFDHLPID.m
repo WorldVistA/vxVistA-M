@@ -1,5 +1,5 @@
 VFDHLPID ;DSS/LM - HL7 PID Segment Generator ;April 4, 2011
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 153
+ ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 164
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  Q

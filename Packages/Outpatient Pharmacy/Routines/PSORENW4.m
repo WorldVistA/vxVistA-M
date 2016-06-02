@@ -1,5 +1,5 @@
-PSORENW4 ;BIR/SAB - rx speed renew ; 11/13/08 8:50am
- ;;7.0;OUTPATIENT PHARMACY;**11,23,27,32,37,64,46,75,71,100,130,117,152,148,264,225,301**;DEC 1997;Build 2
+PSORENW4 ;BIR/SAB - rx speed renew ;03/06/95
+ ;;7.0;OUTPATIENT PHARMACY;**11,23,27,32,37,64,46,75,71,100,130,117,152,148,264,225,301,390,313**;DEC 1997;Build 5
  ;External reference to ^PSDRUG supported by DBIA 221
  ;External reference to ^PS(50.7 supported by DBIA 2223
  ;External references L, UL, PSOL, and PSOUL^PSSLOCK supported by DBIA 2789
@@ -20,7 +20,11 @@ SELQ K PSORNSPD,RTE,DRET,PRC,PHI S X=PSODFN_";DPT(" D ULK^ORX2,UL^PSSLOCK(PSODFN
  Q
  ;
 PROCESS ; Process one order at a time
- I $$LMREJ^PSOREJU1($P(PSOLST(ORN),"^",2)) W $C(7),!!,"Rx "_$$GET1^DIQ(52,$P(PSOLST(ORN),"^",2),.01)_" has OPEN/UNRESOLVED 3rd Party Payer Rejects!" K DIR,PSOMSG D PAUSE^VALM1 Q
+ W !!,"Now Renewing Rx # "_$$GET1^DIQ(52,$P(PSOLST(ORN),"^",2),.01)_"   Drug: "_$$GET1^DIQ(52,$P(PSOLST(ORN),"^",2),6),!
+ I $$LMREJ^PSOREJU1($P(PSOLST(ORN),"^",2)) D  K DIR,PSOMSG D PAUSE^VALM1 Q
+ . W $C(7),!,"Rx "_$$GET1^DIQ(52,$P(PSOLST(ORN),"^",2),.01)_" has OPEN/UNRESOLVED 3rd Party Payer Rejects!"
+ I $$TITRX^PSOUTL($P(PSOLST(ORN),"^",2))="t" D  K DIR,PSOMSG D PAUSE^VALM1 Q
+ . W $C(7),!,"Rx# "_$$GET1^DIQ(52,$P(PSOLST(ORN),"^",2),.01)_" is marked as 'Titration Rx' and cannot be renewed."
  D PSOL^PSSLOCK($P(PSOLST(ORN),"^",2)) I '$G(PSOMSG) W $C(7),!!,$S($P($G(PSOMSG),"^",2)'="":$P($G(PSOMSG),"^",2),1:"Another person is editing Rx "_$P(^PSRX($P(PSOLST(ORN),"^",2),0),"^")),! K DIR,PSOMSG D PAUSE^VALM1 Q
  K RET,DRET,PRC,PHI S PSORENW("OIRXN")=$P(PSOLST(ORN),"^",2),PSOFROM="NEW"
  S PSORENW("RX0")=^PSRX(PSORENW("OIRXN"),0),PSORENW("RX2")=^(2),PSORENW("RX3")=^(3),PSORENW("STA")=^("STA"),PSORENW("TN")=$G(^("TN")),SIGOK=$P($G(^PSRX(PSORENW("OIRXN"),"SIG")),"^",2)
@@ -61,6 +65,22 @@ PROCESS ; Process one order at a time
  ;.S PRC=^PSRX(PSORENW("OIRXN"),"PRC",0),T=0
  ;.F  S T=$O(^PSRX(PSORENW("OIRXN"),"PRC",T)) Q:'T  S PRC(T)=^PSRX(PSORENW("OIRXN"),"PRC",T,0)
  W !!,"Now Renewing Rx # "_PSORENW("ORX #")_"   Drug: "_$P($G(^PSDRUG(+$G(PSORENW("DRUG IEN")),0)),"^"),!
+ ;DSS/SMP - BEGIN MOD - Ask for RxPad# and Capture NDC
+ I $G(^%ZOSF("ZVX"))["VX" D  G:$G(PSORENW("DFLG")) PROCESSX
+ .I $T(^VFDPSOU1)]"" D  Q:$G(PSORENW("DFLG"))
+ ..S PSODRUG("DEA")=$P($G(^PSDRUG(+$G(PSORENW("DRUG IEN")),0)),U,3)
+ ..I $$VXRX^VFDPSOU1 D  Q:$G(PSORENW("DFLG"))
+ ...N DIR,DA S DIR(0)="52,21600.01" D ^DIR
+ ...I $D(DTOUT)!$D(DUOUT) S PSORENW("DFLG")=1 Q
+ ...S PSORENW("PRESCRIPTION PAD #")=X
+ .I $T(^VFDPSNDC)]"",$$OPON^VFDPSNDC() D  Q:$G(PSORENW("DFLG"))
+ ..S DRG=+$G(PSORENW("DRUG IEN"))
+ ..I $D(PSORENW("OIRXN")) S NDC=$P(^PSRX(PSORENW("OIRXN"),2),U,7)
+ ..D LOOPNDC^VFDPSNDC(DRG,.NDC)
+ ..I NDC="^" S PSORENW("DFLG")=1 Q
+ ..S PSORENW("NDC")=NDC
+ ..S PSORENW("SCANNED CODE")=$G(NDC("SCAN"))
+ ;DSS/SMP - END MOD
  I '$P($G(^PSDRUG($P(PSORENW("RX0"),"^",6),2)),"^") D  G:$G(PSORENW("DFLG")) PROCESSX
  .I $P($G(^PSRX(PSORENW("OIRXN"),"OR1")),"^") S PSODRUG("OI")=$P(^PSRX(PSORENW("OIRXN"),"OR1"),"^"),PSODRUG("OIN")=$P(^PS(50.7,+^("OR1"),0),"^") Q
  .W !!,"Cannot Renew!!  No Pharmacy Orderable Item!" S VALMSG="Cannot Renew!!  No Pharmacy Orderable Item!",PSORX("DFLG")=1
@@ -93,10 +113,15 @@ PROCESSX I PSORENW("DFLG") D  W:'$G(POERR) !,$C(7),"Rx NOT RENEWED. RENEWED RX D
  I $G(PSORDLOK) D PSOUL^PSSLOCK($P(PSOLST(ORN),"^",2))
  D KLIB^PSORENW1
  K PSORDLOK
- S RXN=$O(^TMP("PSORXN",$J,0)) I RXN D
+ S RXN=$O(^TMP("PSORXN",$J,0)) I RXN N ZRXN S ZRXN=RXN D
  .S RXN1=^TMP("PSORXN",$J,RXN) D EN^PSOHLSN1(RXN,$P(RXN1,"^"),$P(RXN1,"^",2),"",$P(RXN1,"^",3))
  .I $P(^PSRX(RXN,"STA"),"^")=5 D EN^PSOHLSN1(RXN,"SC","ZS",$P(RXN1,"^",4))
- K RXN,RXN1,^TMP("PSORXN",$J)
+ .;saves drug allergy order chks pso*7*390
+ .I +$G(^TMP("PSODAOC",$J,1,0)) D
+ .I $G(PSORX("DFLG"))!$G(PSORENW("DFLG")) K ^TMP("PSODAOC",$J) Q
+ .S RXN=ZRXN,PSODAOC="Rx Backdoor "_$S($P(^PSRX(RXN,"STA"),"^")=4:"NON-VERIFIED ",1:"")_"SPEED RENEW Order Acceptance_OP"
+ .D DAOC^PSONEW
+ K ZRXN,RXN,RXN1,^TMP("PSORXN",$J),^TMP("PSODAOC",$J)
  Q
 INIT ;
  D ASK Q:PSORENW("DFLG")

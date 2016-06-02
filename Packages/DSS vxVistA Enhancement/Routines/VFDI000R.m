@@ -1,5 +1,5 @@
 VFDI000R ;DSS/LM/SGM - COMMON KIDS SUPPORT UTILITIES ; 6/7/2013 10:20
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 13
+ ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 164
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  ; this routine first introduced in VFD VXVISTA UPDATE 2011.1.1 Tnn

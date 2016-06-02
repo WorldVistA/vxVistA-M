@@ -1,8 +1,11 @@
-ECXFEKEY ;BIR/DMA,CML-Print Feeder Keys; [ 05/15/96  9:44 AM ] ; 8/15/06 9:10am
- ;;3.0;DSS EXTRACTS;**10,11,8,40,84,92**;Dec 22, 1997;Build 30
+ECXFEKEY ;BIR/DMA,CML-Print Feeder Keys; [ 05/15/96  9:44 AM ] ;5/29/14  12:44
+ ;;3.0;DSS EXTRACTS;**10,11,8,40,84,92,123,132,136,149**;Dec 22, 1997;Build 27
 EN ;entry point from option
+ N ECXPORT,CNT,COL,LECOL,PCOL ;149
+ S ECXPORT=$$EXPORT Q:ECXPORT=-1  ;149
  W !!,"Print list of Feeder Keys:",!
- W !,"Select : 1. CLI",!,?9,"2. ECS",!,?9,"3. LAB",!,?9,"4. NUR",!,?9,"5. NUT",!,?9,"6. PHA",!,?9,"7. RAD",!,?9,"8. SUR",! S DIR(0)="L^1:8" D ^DIR Q:$D(DIRUT)
+ S DIR("?")=$S('$G(ECXPORT):"Select one or more feeder key systems to display",1:"Select one feeder key system to export") ;149
+ W !,"Select : 1. CLI",!,?9,"2. ECS",!,?9,"3. LAB",!,?9,"4. PHA",!,?9,"5. RAD",!,?9,"6. SUR",!,?9,"7. PRO",! S DIR(0)=$S('$G(ECXPORT):"L^1:7",1:"N^1:7:0") D ^DIR Q:$D(DIRUT)  ;136,149 (removed NUT)
  S ECY=Y
  I ECY["2" D
  .W !!,"The Feeder Key List for the Feeder System ECS can be printed by:",!?5,"(O)ld Feeder Key sort by Category-Procedure",!?5,"(N)ew Feeder Key sort by Procedure-CPT Code"
@@ -10,6 +13,17 @@ EN ;entry point from option
  S:ECY["3" ECLAB=$$SELLABKE^ECXFEKE1() ;**Prompt to select Lab Feeder key
  G:($G(ECLAB)=-1) QUIT ;**GOTO Exit point
  G:$D(DIRUT) QUIT
+ I ECXPORT D  Q  ;Section added in 149
+ .K ^TMP($J),^TMP("ECXPORT",$J) ;Temp storage for results as regular report stores in ^TMP($J)
+ .W !!,"Gathering data for export..."
+ .S COL="FEEDER SYSTEM^FEEDER KEY^DESCRIPTION"
+ .S LECOL="SORT METHOD"_U_COL
+ .S PCOL=COL_U_"PRICE PER DISPENSE UNIT"
+ .S CNT=0
+ .D START
+ .M ^TMP($J,"ECXPORT")=^TMP("ECXPORT",$J) ;copy temp into exportable area
+ .D EXPDISP^ECXUTL1
+ .K ^TMP($J),^TMP("ECXPORT",$J)
  K %ZIS,IOP S %ZIS="QM",%ZIS("B")="" D ^%ZIS
  I POP W !,"NO DEVICE SELECTED!!" G QUIT
  I $D(IO("Q")) K IO("Q") D  G QUIT
@@ -20,8 +34,8 @@ EN ;entry point from option
  ;
 START ;queued entry point
  I '$D(DT) S DT=$$HTFM^XLFDT(+$H)
- K ^TMP($J)
- F ECLIST=1:1 S EC=$P(ECY,",",ECLIST) Q:EC=""  D:EC=1 CLI D:EC=2 ECS D:EC=3 LAB D:EC=4 NUR D:EC=5 NUT D:EC=6 PHA D:EC=7 RAD D:EC=8 SUR^ECXFEKE1
+ K:'$G(ECXPORT) ^TMP($J) ;149
+ F ECLIST=1:1 S EC=$P(ECY,",",ECLIST) Q:EC=""  D:EC=1 CLI D:EC=2 ECS D:EC=3 LAB D:EC=4 PHA D:EC=5 RAD D:EC=6 SUR^ECXFEKE1 D:EC=7 PRO ;136,149 Remove NUT
  U IO D PRINT^ECXFEKE1
  Q
 LAB S EC=0
@@ -45,8 +59,8 @@ ECS ;old ECS feeder key list for pre-FY97 data
  S EC=0 I $P($G(^EC(720.1,1,0)),U,2) D  G ECQ
  .F  S EC=$O(^ECJ(EC)) Q:'EC  I $D(^(EC,0)) D
  ..S EC1=$P($P(^(0),U),"-",3,4),EC2=$P(EC1,"-"),EC2=$S(+EC2:EC2,1:"***"),EC4=$S($P($G(^EC(726,+EC2,0)),U)]"":$P(^(0),U),1:"***")
- ..S EC3=$P(EC1,"-",2) Q:'+EC3  S EC3=$S(EC3["ICPT":$P($G(^ICPT(+EC3,0)),U),+EC3<90000:$P($G(^EC(725,+EC3,0)),U,2)_"N",1:$P($G(^EC(725,+EC3,0)),U,2)_"L")
- ..S EC5=$P(EC1,"-",2),EC5=$S(EC5["ICPT":$E($P($G(^ICPT(+EC5,0)),U,2),1,25),EC5["EC":$E($P($G(^EC(725,+EC5,0)),U),1,25),1:"UNKNOWN")
+ ..S EC3=$P(EC1,"-",2) Q:'+EC3  S EC3=$S(EC3["ICPT":$P($$CPT^ICPTCOD(+EC3),U,2),+EC3<90000:$P($G(^EC(725,+EC3,0)),U,2)_"N",1:$P($G(^EC(725,+EC3,0)),U,2)_"L")
+ ..S EC5=$P(EC1,"-",2),EC5=$S(EC5["ICPT":$E($P($$CPT^ICPTCOD(+EC5),U,3),1,25),EC5["EC":$E($P($G(^EC(725,+EC5,0)),U),1,25),1:"UNKNOWN")
  ..S ^TMP($J,"ECS",EC2_" - "_EC3,EC3)=EC4_" - "_EC5
  F  S EC=$O(^ECK(EC)) Q:'EC  I $D(^(EC,0)) S EC1=$P($P(^(0),U),"-",3,4),EC2=$E($P($G(^ECP(+EC1,0)),U),1,25),EC3=$E($P($G(^ECP(+$P(EC1,"-",2),0)),U),1,25),^TMP($J,"ECS",EC1,EC1)=EC2_" - "_EC3
 ECQ K EC1,EC2,EC3,EC4,EC5,EC6,EC7,EC8,EC9,EC10 Q
@@ -59,14 +73,14 @@ ECS2 ;new ECS feeder key list for FY97 data
  S EC=0 I $P($G(^EC(720.1,1,0)),U,2) D  G ECQ
  .F  S EC=$O(^ECJ(EC)) Q:'EC  I $D(^ECJ(EC,0)) D
  ..S EC1=$P($P(^ECJ(EC,0),U),"-",3,4)
- ..S EC3=$P(EC1,"-",2) Q:'+EC3  S EC3=$S(EC3["ICPT":$P($G(^ICPT(+EC3,0)),U),+EC3<90000:$P($G(^EC(725,+EC3,0)),U,2)_"N",1:$P($G(^EC(725,+EC3,0)),U,2)_"L")
- ..S EC5=$P(EC1,"-",2),EC5=$S(EC5["ICPT":$E($P($G(^ICPT(+EC5,0)),U,2),1,25),EC5["EC":$E($P($G(^EC(725,+EC5,0)),U),1,25),1:"UNKNOWN")
+ ..S EC3=$P(EC1,"-",2) Q:'+EC3  S EC3=$S(EC3["ICPT":$P($$CPT^ICPTCOD(+EC3),U,2),+EC3<90000:$P($G(^EC(725,+EC3,0)),U,2)_"N",1:$P($G(^EC(725,+EC3,0)),U,2)_"L")
+ ..S EC5=$P(EC1,"-",2),EC5=$S(EC5["ICPT":$E($P($$CPT^ICPTCOD(+EC5),U,3),1,25),EC5["EC":$E($P($G(^EC(725,+EC5,0)),U),1,25),1:"UNKNOWN")
  ..S EC5=$$LOW(EC5)
  ..I EC1["ICPT" S EC5=$$UPP(EC5),EC3="A;"_EC3
  ..S EC6=$P(EC1,"-",2),EC7="",EC8=""
  ..I EC6["EC(725," D
- ...S EC6=$S(+EC6>0:$P($G(^EC(725,+EC6,0)),U,5),1:"") S EC7=$S(+EC6>0:$P($G(^ICPT(+EC6,0)),U),1:"")
- ...S EC8=$S(+EC6>0:$E($P($G(^ICPT(+EC6,0)),U,2),1,25),1:"")
+ ...S EC6=$S(+EC6>0:$P($G(^EC(725,+EC6,0)),U,5),1:"") S EC7=$S(+EC6>0:$P($$CPT^ICPTCOD(+EC6),U,2),1:"")
+ ...S EC8=$S(+EC6>0:$E($P($$CPT^ICPTCOD(+EC6),U,3),1,25),1:"")
  ...S EC8=$$UPP(EC8),EC3="B;"_EC3
  ..S EC9=$S(EC7'="":EC3_"-"_EC7,1:EC3),EC10=$S(EC8'="":EC5_" - "_EC8,1:EC5)
  ..S ^TMP($J,"ECS",EC9,EC3)=EC10
@@ -117,19 +131,6 @@ CLI S SC=0 F  S SC=$O(^SC(SC)) Q:'SC  I $D(^(SC,0)) S EC=^(0),ECD=$P(EC,U) I $P(
 RAD S EC=0 F  S EC=$O(^RAMIS(71,EC)) Q:'EC  I $D(^(EC,0)) S EC1=^(0),ECD=$P(EC1,U),EC2=$P($G(^ICPT(+$P(EC1,U,9),0)),U) S:EC2="" EC2="Unknown" S ^TMP($J,"RAD",EC2,EC)=ECD
  S ^TMP($J,"RAD",88888,88888)="Portable procedure",^TMP($J,"RAD",99999,99999)="OR procedure"
  Q
-NUR F EC=1:1:11 S EC1=$P($T(@EC),";",3) F EC2=0:1:5 S ^TMP($J,"NUR",$P(EC1,U)_"-"_EC2,EC2)=$P(EC1,U,2)_" LEVEL "_EC2
-1 ;;PSI^PSYCHIATRIC
-2 ;;SUR^SURGICAL
-3 ;;MED^MEDICAL (EXCLUDE SCI)
-4 ;;SCI^MEDICAL (SCI)
-5 ;;NUR^NURSING HOME CARE UNIT
-6 ;;REC^RECOVERY ROOM
-7 ;;ITN^INTENSIVE CARE
-8 ;;HEM^HEMODIALYSIS
-9 ;;INT^INTERMEDIATE CARE
-10 ;;DOM^DOMICILIARY
-11 ;;ALC^ALCOHOL AND DRUG TREATMENT
- Q
 NUT ;Feeder keys for Nutrition and Food Service extract
  N TYP,TIEN,DIET,IN,PRODUCT,KEY,NUMBER,IENS
  S TYP="" F  S TYP=$O(^ECX(728.45,"B",TYP)) Q:TYP=""  S TIEN=0 F  S TIEN=$O(^ECX(728.45,"B",TYP,TIEN)) Q:'TIEN  S DIET="" F  S DIET=$O(^ECX(728.45,TIEN,1,"B",DIET)) Q:DIET=""  S IN=0 F  S IN=$O(^ECX(728.45,TIEN,1,"B",DIET,IN)) Q:IN'>0  D
@@ -137,6 +138,30 @@ NUT ;Feeder keys for Nutrition and Food Service extract
  . S KEY=$$GET1^DIQ(728.451,IENS,1,"E")
  . S ^TMP($J,"ECX",KEY,DIET)=TYP_"  "_$$GET1^DIQ(728.451,IENS,.01,"E")
  Q
+PRO ;Prosthetics Feeder Key section, API added in patch 136
+ N H,HCPCS,CODE,CPTNM,DESC,TYPE,SOURCE,LOC,FKEY,KEY
+ S H=0
+ F  S H=$O(^ECX(727.826,H)) Q:+H<1  D
+ .S HCPCS=$P($G(^ECX(727.826,H,0)),U,33),KEY=$E($P($G(^ECX(727.826,H,0)),U,11),6,20)
+ .I HCPCS'="" I '$D(FKEY(HCPCS_KEY)) S FKEY(HCPCS_KEY)=HCPCS
+ S HCPCS="" F  S HCPCS=$O(FKEY(HCPCS)) Q:HCPCS=""  D
+ .S CODE=$$CPT^ICPTCOD(FKEY(HCPCS)) Q:+CODE=-1
+ .S CPTNM=HCPCS,DESC=$P(CODE,U,3)
+ .I $P(CODE,U,2)=""!(DESC="") Q
+ .S TYPE=$E(HCPCS,6),SOURCE=$E(HCPCS,7),LOC=$S(HCPCS["REQ":"REQ",HCPCS["REC":"REC",1:"")
+ .S DESC=DESC_$S(TYPE="R":"/Rent",TYPE="N":"/New",TYPE="X":"/Repair",1:"")_$S(SOURCE="V":"/VA",SOURCE="C":"/COM",1:"")_$S(LOC="REQ":"/XXX Site REQ",LOC="REC":"/XXX Site REC",1:"")
+ .S ^TMP($J,"PRO",CPTNM,CPTNM)=DESC
+ Q
 QUIT ;
  K ECY,ECPHA,ECECS,ECLAB,ECPPDU,DIR,DIRUT,DUOUT,X,Y
  Q
+EXPORT() ;Function indicates if report output is going to a device or to the screen in exportable format - API added in patch 149
+ N DIR,DIRUT,DTOUT,DUOUT,DIROUT,X,Y,VAL
+ W !
+ S DIR("?",1)="Enter yes if you want the data to be displayed in an '^' delimited format",DIR("?")="that can be captured for exporting."
+ S DIR(0)="SA^Y:YES;N:NO",DIR("B")="NO",DIR("A")="Do you want the output in exportable format? "
+ D ^DIR
+ S VAL=$S($D(DIRUT):-1,Y="N":0,1:1)
+ I VAL=1 W !!,"Please select one feeder key system to display."
+ Q VAL
+ ;

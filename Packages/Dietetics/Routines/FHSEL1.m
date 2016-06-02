@@ -1,9 +1,11 @@
 FHSEL1 ; HISC/REL/NCA/JH/RTK/FAI - Patient Preferences ;10/20/04  10:19
- ;;5.5;DIETETICS;**8**;Jan 28, 2005;Build 28
+ ;;5.5;DIETETICS;**8,24,29,36**;Jan 28, 2005;Build 3
 EN1 ; Enter/Edit Preference File entries
  I $G(FHALGMZ)=1 QUIT
  W ! S (DIC,DIE)="^FH(115.2,",DIC(0)="AEQLM",DIC("DR")=".01;1",DLAYGO=115.2 W ! D ^DIC K DIC,DLAYGO G KIL:U[X!$D(DTOUT),EN1:Y<1
- S (FHDA,DA)=+Y,DR=".01;26;1;S:X=""D"" Y=0;3;20;S:'X Y=99;21;27;99" D ^DIE K DA,DIE,DR
+ S (FHDA,DA)=+Y,DR=".01;26;1;S:X=""D"" Y=0;3;20;S:'X Y=99;21;27;99" D ^DIE
+ I $E($P($G(^FH(115.2,DA,0)),"^"),1,10)="ALLERGY - " S DR="25" D ^DIE
+ K DA,DIE,DR
  I $P($G(^FH(115.2,FHDA,0)),"^",2)'="D"!($D(Y)) G EN1
 TRAN R !!,"Do you want to import Recipes from another Food Preference? N // ",X:DTIME
  G:'$T!(X["^") EN1
@@ -16,7 +18,7 @@ T1 W ! K DIC S DIC="^FH(115.2,",DIC(0)="AEMQ",DIC("S")="I $P(^(0),U,2)=""D""" D 
 DIS S DA=FHDA,DIE="^FH(115.2,",DR="10;27;99" D ^DIE K DA,DIE,DR G EN1
 ADD ; Add dislikes recipes from another food preference
  I $D(^FH(115.2,FHDA,"X","B",+L1)) Q
-A L +^FH(115.2,FHDA,"X",0)
+A L +^FH(115.2,FHDA,"X",0):$S($G(DILOCKTM)>0:DILOCKTM,1:3)
  S FHX1=$G(^FH(115.2,FHDA,"X",0)),FHX2=$P(FHX1,"^",3)+1
  S $P(^FH(115.2,FHDA,"X",0),"^",3)=FHX2
  L -^FH(115.2,FHDA,"X",0) I $D(^FH(115.2,FHDA,"X",FHX2,0)) G A
@@ -83,12 +85,19 @@ P0 I X1'="" W ?12 S X=X1 D P1 S X1=X
 P1 I $L(X)<34 W X S X="" Q
  F KK=35:-1:1 Q:$E(X,KK-1,KK)=", "
  W $E(X,1,KK-2) S X=$E(X,KK+1,999) Q
-SP Q:+X<1  S M1=$P(X,"^",2) Q:M1=""  S:M1="A" M1="BNE" S Z=$G(^FH(115.2,+X,0)) Q:$P(Z,U)=""!$P(Z,U,2)=""  S L1=$P(Z,"^",1),KK=$P(Z,"^",2),M="",DAS=$P(X,"^",4)
+SP ;Build food prefences print array
+ Q:+X<1
+ S M1=$S($P(X,U,2)="":"BNE",$P(X,U,2)="A":"BNE",1:$P(X,U,2))
+ S Z=$G(^FH(115.2,+X,0)) Q:$P(Z,U)=""!$P(Z,U,2)=""
+ S L1=$P(Z,"^",1),KK=$P(Z,"^",2),M="",DAS=$P(X,"^",4)
+ I $P(X,U,2)="" S L1=L1_" *Need Meal*"
  I KK="L" S Q=$P(X,"^",3),L1=$S(Q:Q,1:1)_" "_L1
+ I $P(X,U,2)="" S M="0~No Meal" G SP1
  I M1="BNE" S M="1~All Meals" G SP1
  S Z1=$E(M1,1) I Z1'="" S M=$S(Z1="B":"2~Break",Z1="N":"3~Noon",1:"4~Even")
  S Z1=$E(M1,2) I Z1'="" S M=M_","_$S(Z1="B":"Break",Z1="N":"Noon",1:"Even")
 SP1 S:'$D(P(M,KK,P1)) P(M,KK,P1)="" I $L(P(M,KK,P1))+$L(L1)<255 S P(M,KK,P1)=P(M,KK,P1)_$S(P(M,KK,P1)="":"",1:", ")_L1_$S(DAS="Y":" (D)",1:"")
  E  S:'$D(P(M,KK,K)) P(M,KK,K)="" S P(M,KK,K)=L1_$S(DAS="Y":" (D)",1:"") S P1=K
  Q
-KIL G KILL^XUSCLEAN
+KIL I $G(FHALGMZ) Q
+ G KILL^XUSCLEAN

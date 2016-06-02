@@ -1,5 +1,5 @@
 PSORENW ;BIR/SAB-renew main driver ;4/25/07 8:42am
- ;;7.0;OUTPATIENT PHARMACY;**11,27,30,46,71,96,100,130,148,206**;DEC 1997;Build 39
+ ;;7.0;OUTPATIENT PHARMACY;**11,27,30,46,71,96,100,130,148,206,388,390,417,313**;DEC 1997;Build 5
  ;External reference to ^PSDRUG supported by DBIA 221
  ;External references L, UL, PSOL, and PSOUL^PSSLOCK supported by DBIA 2789
  ;External reference to LK^ORX2 and ULK^ORX2 supported by DBIA 867
@@ -7,6 +7,14 @@ PSORENW ;BIR/SAB-renew main driver ;4/25/07 8:42am
  ;External reference to MAIN^TIUEDIT supported by DBIA 2410
  ;
 ASK ;
+ ;DSS/AMC/SMP - BEGIN MOD - Ask RxPad#
+ N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
+ I VFD,$$VXRX^VFDPSOU1 D  Q:$G(PSORENW("QFLG"))
+ .K PSORENW("PRESCRIPTION PAD #")
+ .N DIR,DA S DIR(0)="52,21600.01" D ^DIR
+ .I $D(DUOUT)!($D(DTOUT)) S PSORENW("DFLG")=0,PSORENW("QFLG")=1 Q
+ .S PSORENW("PRESCRIPTION PAD #")=Y
+ ;DSS/AMC/SMP - END MOD
  K PSORENW("FILL DATE") D FILLDT^PSODIR2(.PSORENW) S:$G(PSORENW("DFLG")) VALMSG="Renew Rx request canceled",VALMBCK="R"
  I PSORENW("DFLG")!('$D(PSORENW("FILL DATE"))) S PSORENW("QFLG")=1,PSORENW("DFLG")=0 G ASKX
  S PSORNW("FILL DATE")=PSORENW("FILL DATE")
@@ -14,20 +22,41 @@ ASK ;
  I PSORENW("DFLG") S PSORENW("QFLG")=1,PSORENW("DFLG")=0 G ASKX
  S PSORNW("MAIL/WINDOW")=PSORENW("MAIL/WINDOW") S PSORX("MAIL/WINDOW")=$S(PSORENW("MAIL/WINDOW")="M":"MAIL",1:"WINDOW")
  D NOORE^PSONEW(.PSORENW) S:$G(PSORENW("DFLG")) VALMSG="Renew Rx request canceled",VALMBCK="R"
+ ;DSS/SMH/SMP - BEGIN MOD - ask NDC Code
+ I VFD,$T(^VFDPSNDC)]"",$$OPON^VFDPSNDC() D
+ .I '$G(RX0) S RX0=^PSRX(PSORENW("OIRXN"),0),RX2=^PSRX(PSORENW("OIRXN"),2)
+ .S PSODRUG("IEN")=$P(RX0,"^",6)
+ .S PSODRUG("NDC")=$P(RX2,"^",7)
+ .S DRG=PSODRUG("IEN")
+ .S NDC=PSODRUG("NDC")
+ .D LOOPNDC^VFDPSNDC(DRG,.NDC)
+ .I NDC="^" S PSORENW("DFLG")=1 D  Q
+ ..S VALMSG="Renew Rx request canceled",VALMBCK="R"
+ .S PSORENW("SCANNED CODE")=NDC("SCAN")
+ .S PSORENW("NDC")=NDC
+ ;DSS/SMH/SMP - END MOD
  I PSORENW("DFLG")!('$D(PSORENW("FILL DATE"))) S PSORENW("QFLG")=1,PSORENW("DFLG")=0
 ASKX Q
  ;
 EOJ ;
  K VERB,RTE,DRET,PSOMSG,PSORNW,PSOLIST,PSORENW,PSORX("BAR CODE"),PSORX("FILL DATE"),PSODIR,PSOID,PSONOOR,PSOCOU,PSOCOUU,PSOID,PSOFDMX,PSODRUG,COPY,PSOBCKDR
- S RXN=$O(^TMP("PSORXN",$J,0)) I RXN D
+ N ZRXN S ZRXN=$G(RXN)
+ S RXN=$O(^TMP("PSORXN",$J,0)) I RXN S ZRXN=RXN D
  .S RXN1=^TMP("PSORXN",$J,RXN) D EN^PSOHLSN1(RXN,$P(RXN1,"^"),$P(RXN1,"^",2),"",$P(RXN1,"^",3))
  .I $P(^PSRX(RXN,"STA"),"^")=5 D EN^PSOHLSN1(RXN,"SC","ZS",$P(RXN1,"^",4))
- K RXN,RXN1,^TMP("PSORXN",$J)
+ .;saves drug allergy order chks pso*7*390
+ .I +$G(^TMP("PSODAOC",$J,1,0)) D
+ ..I $G(PSORX("DFLG")) K ^TMP("PSODAOC",$J) Q
+ ..S RXN=ZRXN,PSODAOC="Rx Backdoor "_$S($P(^PSRX(RXN,"STA"),"^")=4:"NON-VERIFIED ",1:"")_"RENEW Order Acceptance_OP"
+ ..D DAOC^PSONEW
+ K ZRXN,RXN,RXN1,^TMP("PSORXN",$J),^TMP("PSODAOC",$J)
  I $G(PSONOTE) D MAIN^TIUEDIT(3,.TIUDA,PSODFN,"","","","",1)
  K PSONOTE
  Q
 OERR ;entry for renew backdoor
- I $$LMREJ^PSOREJU1($P(PSOLST(ORN),"^",2),,.VALMSG,.VALMBCK) Q
+ I $$TITRX^PSOUTL($P(PSOLST(ORN),"^",2))="t" D  Q
+ . S VALMSG="Cannot Renew a 'Titration Rx'.",VALMBCK="R" W $C(7)
+ I $$LMREJ^PSOREJU1($P(PSOLST(ORN),"^",2),,.VALMSG,.VALMBCK) Q  ; Internally setting VALMSG and VALMBCK
  S PSOPLCK=$$L^PSSLOCK(PSODFN,0) I '$G(PSOPLCK) D LOCK^PSOORCPY S VALMSG=$S($P($G(PSOPLCK),"^",2)'="":$P($G(PSOPLCK),"^",2)_" is working on this patient.",1:"Another person is entering orders for this patient.") K PSOPLCK S VALMBCK="" Q
  K PSOPLCK S X=PSODFN_";DPT(" D LK^ORX2 I 'Y S VALMSG="Another person is entering orders for this patient.",VALMBCK="" D UL^PSSLOCK(PSODFN) Q
  K PSOID,PSOFDMX,PSORX("FILL DATE"),PSORENW("FILL DATE"),PSORX("QS"),PSORENW("QS"),PSOBARCD,COPY
@@ -60,10 +89,16 @@ RENEW(PLACER,PSOCPDRG) ;passes flag to CPRS for front door renews
  I ($P(PSODRUG0,"^",3)[1)!($P(PSODRUG0,"^",3)[2)!($P(PSODRUG0,"^",3)["W") Q "0^Non-Renewable "_$S($P(PSODRUG0,"^",3)["A":"Drug Narcotic.",1:"Drug.")
  I $D(^PS(53,+$P(RX0,"^",3),0)),'$P(^(0),"^",5) Q "0^Non-Renewable Prescription."
  S PSOLC=$P(RX0,"^"),PSOLC=$E(PSOLC,$L(PSOLC)) I $A(PSOLC)'<90 Q "0^Max number of renewals (26) has been reached."
- I ST,ST'=2,ST'=5,ST'=6,ST'=11,ST'=12,ST'=14 Q "0^Prescritpion is in a Non-Renewable Status."
+ I ST,ST'=2,ST'=5,ST'=6,ST'=11,ST'=12,ST'=14 Q "0^Prescription is in a Non-Renewable Status."
  I $P($G(^PSRX(RXN,"OR1")),"^",4) Q "0^Duplicate Rx Renewal Request."
  I $O(^PS(52.41,"AQ",RXN,0)) Q "0^Duplicate Rx Renewal Request."
- K PSORFRM,PSOLC,PSODRG,PSODRUG0,RXN,ST
+ N TITMSG
+ I $$TITRX^PSOUTL(RXN)="t" D  Q TITMSG
+ . S TITMSG="0^Prescription was marked as 'Titration to Maintenance Dose' by Pharmacy and cannot be renewed."
+ . S TITMSG=TITMSG_" To repeat the titration, enter a new prescription or copy the prior titration order."
+ . S TITMSG=TITMSG_" To continue the maintenance dose, refill this prescription if refills are available"
+ . S TITMSG=TITMSG_" or enter a new prescription for the maintenance dose."
+ K PSORFRM,PSOLC,PSODRG,PSODRUG0,RXN,ST,TITMSG
  Q 1_$S($G(PSOIFLAG):"^"_$G(PSONEWOI),1:"")
  ;
 INST1 ;Set Pharmacy Instructions array

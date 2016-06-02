@@ -1,11 +1,11 @@
-HBHCFILE ; LR VAMC(IRMS)/MJT-HBHC populates ^HBHC(632) visit file, & ^HBHC(634), file for transmitting to Austin, calls ^HBHCAPPT, ^HBHCXMC, ^HBHCXMA, ^HBHCXMV, & ^HBHCXMD ; Nov 1999
- ;;1.0;HOSPITAL BASED HOME CARE;**2,5,6,8,9,10,16,21**;NOV 01, 1993
+HBHCFILE ; LR VAMC(IRMS)/MJT-HBHC populates ^HBHC(632) visit file, & ^HBHC(634), file for transmitting to Austin, calls ^HBHCAPPT, ^HBHCXMC, ^HBHCXMA, ^HBHCXMV, ^HBHCXMD, & HBHCXMM ; Nov 1999
+ ;;1.0;HOSPITAL BASED HOME CARE;**2,5,6,8,9,10,16,21,24**;NOV 01, 1993;Build 201
  I $P(^HBHC(631.9,1,0),U,5)="" W !!,"***  NOTICE:  Hospital Number is missing from System Parameter file (#631.9).",!,"Transmission file building CANNOT proceed without this information.  Contact"
  I $P(^HBHC(631.9,1,0),U,5)="" W !,"IRM to enter this information using FileMan.",! H 10 Q
- L +^HBHC(634.5,0):0 I '$T W *7,!!,"Another user has the pseudo SSN file locked." H 3 G EXIT
- I ($D(^HBHC(634.1,"B")))!($D(^HBHC(634.2,"B")))!($D(^HBHC(634.3,"B")))!($D(^HBHC(634.5,"B"))) W *7,!!,"Records containing errors exist and must be corrected before transmit",!,"file can be created or updated.",!! H 3 Q
+ L +^HBHC(634.5,0):0 I '$T W $C(7),!!,"Another user has the pseudo SSN file locked." H 3 G EXIT
+ I ($D(^HBHC(634.1,"B")))!($D(^HBHC(634.2,"B")))!($D(^HBHC(634.3,"B")))!($D(^HBHC(634.5,"B")))!($D(^HBHC(634.7,"B"))) W $C(7),!!,"Records containing errors exist and must be corrected before transmit",!,"file can be created or updated.",!! H 3 Q
 EN ; Entry point
- I $P(^HBHC(631.9,1,0),U,8)]"" W *7,!,"File Update in progress.  Please try again later." H 3 Q
+ I $P(^HBHC(631.9,1,0),U,8)]"" W $C(7),!,"File Update in progress.  Please try again later." H 3 Q
  W !!,"This option builds the file for transmission to Austin.  Do you wish to",!,"continue" S %=2 D YN^DICN
  I %=0 W !!,"A 'Yes' response will add records to the file.  A 'No' response will return",!,"to the menu without updating the file." G EN
  G:%'=1 EXIT
@@ -29,25 +29,27 @@ NUMBER ; Edit Number of Visit Days to Scan system parameter
  I (HBHCDIR'=DIR("B"))&(HBHCDIR?1.3N) K DIE S HBHCDAYS=Y,DIE="^HBHC(631.9,",DA=1,DR="3///^S X=HBHCDAYS" D ^DIE
  ; Check to ensure Number of Visit Days to Scan date < HBHCLSDT
  K %DT S X="T"-($S(HBHCDIR'=DIR("B"):HBHCDIR,1:DIR("B"))) D ^%DT
- I (Y_".9999")'<HBHCLSDT D DD^%DT W *7,!!,"Date Range is invalid.  Transmit Month Ending Date of:  ",HBHCCKDT,"  must",!,"be closer to today than the Number of Days to Scan Date:  ",Y,".",! G NUMBER
+ I (Y_".9999")'<HBHCLSDT D DD^%DT W $C(7),!!,"Date Range is invalid.  Transmit Month Ending Date of:  ",HBHCCKDT,"  must",!,"be closer to today than the Number of Days to Scan Date:  ",Y,".",! G NUMBER
 CLEANUP ; Cleanup ^HBHC(634) if new transmit cycle => all records flagged as transmitted
- I ('$D(^HBHC(631,"AE","F")))&('$D(^HBHC(631,"AF","F")))&('$D(^HBHC(632,"AC","F"))) K ^HBHC(634) S ^HBHC(634,0)="HBHC TRANSMIT^634"
+ I ('$D(^HBHC(631,"AE","F")))&('$D(^HBHC(631,"AF","F")))&('$D(^HBHC(632,"AC","F")))&('$D(^HBHC(633.2,"AC","F"))) K ^HBHC(634) S ^HBHC(634,0)="HBHC TRANSMIT^634"
  ; Flag used to control killing HBHCDAT, HBHCDTE, & HBHCNOW in HBHCAPPT
  S HBHCFLAG=1
 QUEUE ; Queue
  S ZTIO="",ZTDTH=$H,ZTRTN="PLOOP^HBHCFILE",ZTSAVE("HBHC*")="",ZTDESC="HBPC Build Transmit File" D ^%ZTLOAD
- W *7,!!,"Build Transmit File processing has been queued.  Task number:  ",ZTSK H 3
+ W $C(7),!!,"Build Transmit File processing has been queued.  Task number:  ",ZTSK H 3
  G EXIT
 PLOOP ; Loop thru ^HBHC(632,"C" Appointment Date cross-ref & flag as 'P' (Record Prior to Package Startup Date) in Form 4 Transmit Status field if date < Package Startup Date
  S X1=$P(^HBHC(631.9,1,0),U,3),X2=-1 D C^%DTC S HBHCSTDT=X_.9999
  S HBHCAPDT=0,DIE="^HBHC(632,",DR="7///P"
  F  S HBHCAPDT=$O(^HBHC(632,"C",HBHCAPDT)) Q:(HBHCAPDT'>0)!(HBHCAPDT>HBHCSTDT)  S DA="" F  S DA=$O(^HBHC(632,"C",HBHCAPDT,DA)) Q:DA'>0  D:'$D(^HBHC(632,"AC","P",DA)) ^DIE
-POP ; Populate ^HBHC(634) or ^HBHC(634.1/634.2/634.3/634.5 Error files
+POP ; Populate ^HBHC(634) or ^HBHC(634.1/634.2/634.3/634.5/634.7 Error files
  D ^HBHCAPPT,^HBHCXMC,^HBHCXMA,^HBHCXMV,^HBHCXMD
+ ; MFH Sanction Date must exist for MFH data to be included in Austin transmit
+ D:$P(^HBHC(631.9,1,0),U,9)]"" ^HBHCXMM
  ; Cleanup potential scrogged HBHC(632,"AC" cross-ref on Form 4 Transmit Status field (#7) as failsafe
  K ^HBHC(632,"AC") S DIK="^HBHC(632,",DIK(1)=7 D ENALL^DIK
  ; Send mail message
- D:('$D(^HBHC(634.1,"B")))&('$D(^HBHC(634.2,"B")))&('$D(^HBHC(634.3,"B")))&('$D(^HBHC(634.5,"B"))) MAIL
+ D:('$D(^HBHC(634.1,"B")))&('$D(^HBHC(634.2,"B")))&('$D(^HBHC(634.3,"B")))&('$D(^HBHC(634.5,"B")))&('$D(^HBHC(634.7,"B"))) MAIL
 EXIT ; Exit module
  L -^HBHC(634.5,0)
  K DA,DIE,DIR,DIRUT,DR,DTOUT,DUOUT,HBHCAPDT,HBHCCKDT,HBHCDAT,HBHCDAYS,HBHCDTE,HBHCDIR,HBHCFLAG,HBHCLEAP,HBHCLSDT,HBHCNOW,HBHCSTDT,HBHCYEAR,%,TMP,X,X1,X2,Y

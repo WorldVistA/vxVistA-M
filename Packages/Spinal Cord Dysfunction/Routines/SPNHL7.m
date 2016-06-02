@@ -1,5 +1,5 @@
 SPNHL7 ;WDE/SAN-DIEGO;validate then build the z segment
- ;;2.0;Spinal Cord Dysfunction;**10,24**;01/02/97
+ ;;2.0;Spinal Cord Dysfunction;**10,24,26**;01/02/97;Build 7
 CHK(SPNFDFN) ;
  ;       ifn is the record number in SPN(154 it's dinumed to dpt
  ;--------------------------------------------------------------------
@@ -32,6 +32,29 @@ ZAP ;
 AUTO ;this tag is used for loading the AUSTIN system from a server request
  ;this should never be ran from a site unless informed to.
  S SPNIFN=0 F  S SPNIFN=$O(^SPNL(154,SPNIFN)) Q:(SPNIFN="")!('+SPNIFN)  D
+ . D CHK(SPNIFN) I $D(SPNCHK) D AUTO^SPNHL71
+ . K SPNCHK
+ . Q
+ Q
+ ;
+ ;
+NEWAUTO ;Added in SPN*2.0*27
+ ;This is diffent then AUTO^SPNHL7 in that it requires a start date.
+ ;It also uses the end date, but it is optional.
+ ;
+ ;this tag is used for loading the AUSTIN system from a server request
+ ;this should never be ran from a site unless informed to.
+ ;
+ ;
+ N START,END,NODE
+ S START=$G(SPNPARM("STARTDATE"))
+ S END=$G(SPNPARM("ENDATE"))
+ Q:'START
+ ;
+ S SPNIFN=0 F  S SPNIFN=$O(^SPNL(154,SPNIFN)) Q:(SPNIFN="")!('+SPNIFN)  D
+ .S NODE=$G(^SPNL(154,SPNIFN,0))
+ .Q:$P(NODE,"^",5)<START
+ .I END Q:($P(NODE,"^",5)>END)
  . D CHK(SPNIFN) I $D(SPNCHK) D AUTO^SPNHL71
  . K SPNCHK
  . Q

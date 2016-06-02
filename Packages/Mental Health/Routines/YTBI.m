@@ -1,6 +1,6 @@
-YTBI ;ALB/ASF-BECK INVENTORY DRIVERS ;4/5/02  12:02
- ;;5.01;MENTAL HEALTH;**76**;Dec 30, 1994
- ;
+YTBI ;ALB/ASF-BECK INVENTORY DRIVERS ; 2/20/08 10:38am
+ ;;5.01;MENTAL HEALTH;**76,96**;Dec 30, 1994;Build 46
+ ;No external references
  S J=1,(YSRP,B)="",YSBEGIN=DT
  I $P(^YTT(601,YSTEST,0),U,6)]"" S YSCH=$P(^(0),U,6),Y=$P(^(0),U,7) D DD^%DT S YSCD=Y I $D(^YTT(601.3,YSCH,0)) S YSCHN=YSCH,YSCH=$P(^(0),U) D CR^YTDRIV
 NX ;
@@ -41,7 +41,7 @@ B2 ;
 BSIRPT ;
  W !!,"Responses",! S X=^YTD(601.2,YSDFN,1,YSTEST,1,YSED,1),YSLFT=0
  F I=1:1:21 S Y=$E(X,I) I Y?1N S K=0 F  S K=$O(^YTT(601,YSTEST,"Q",I,"T",K)) Q:K'>0  S Z=^(K,0) I $E(Z)=Y D:$Y+4>IOSL WAIT W !,$J(I,2),".(",Y,") ",$P(^(0),"  ",2,9) D BSI2 Q
- Q:X'?.E1"X".E  W !!,"The following questions were refused: " F I=1:1:20 W:$E(X,I)="X" I,", "
+ Q:X'?.E1"X".E  W !!,"The following questions were skipped: " F I=1:1:20 W:$E(X,I)="X" I,", " ;ASF 9/15/04 from refused
  Q
 BSI2 ;
  F  S K=$O(^YTT(601,YSTEST,"Q",I,"T",K)) Q:K'>0  S Z=^(K,0) Q:'Z  W !?3,Z
@@ -68,14 +68,14 @@ BDI2 ;
  S Z2=$S(Z2=0:0,Z2=1:1,Z2=2:1,Z2=3:2,Z2=4:2,Z2=5:3,Z2=6:3,1:"X")
  S Z=$E(Z,1,15)_Z1_$E(Z,17)_Z2_$E(Z,19,21)
  F I=1:1:21 S R=R+$E(Z,I)
- S S=$S(R>28:"severe",R>19:"moderate",R>13:"mild",R<12:"minimal",1:"??")
+ S S=$S(R>28:"severe",R>19:"moderate",R>13:"mild",R<12:"minimal",1:"")
  Q:YSTY'["*"
  S (YSTOUT,YSUOUT)=0
  S X=$P(^YTT(601,YSTEST,"P"),U),A=$P(^("P"),U,2),B=$P(^("P"),U,3),L1=58-A\2,L2=L1+A+4 S:A<9 A=9
  D DTA^YTREPT W !!?(72-$L(X)\2),X,!!!?(A-9\2+L1),"S C A L E",?(L2+1),"RAW  ",B,!
  W !?L1,$P(^YTT(601,YSTEST,"S",1,0),U,2),?L2,$J(R,4,0)
  W "   ",S
- F J=3,2,1 W:Z[J !!,$S(J=3:"Severe",J=2:"Moderate",J=1:"Mild",1:"??")," symptoms",! D  D:IOST?1"C-".E&($Y>21) SCR^YTREPT Q:YSTOUT!YSUOUT
+ F J=3,2,1 W:Z[J !!,$S(J=3:"Severe",J=2:"Moderate",J=1:"Mild",1:"")," symptoms",! D  D:IOST?1"C-".E&($Y>21) SCR^YTREPT Q:YSTOUT!YSUOUT
  . F K=1:1:21 I $E(Z,K)=J W:$X>60 ! W:$X>3 "," W $P(^YTT(601,YSTEST,"G",1,1,K,0),".",2,9) D  D:IOST?1"C-".E&($Y>21) SCR^YTREPT Q:YSTOUT!YSUOUT
  .. I K=16 S G1=$E(G,16) W $S(G1=1:" (more)",G1=3:" (more)",G1=5:" (more)",G1=2:" (less)",G1=4:" (less)",G1=6:" (less)",1:"")
  .. I K=18 S G1=$E(G,18) W $S(G1=1:" (less)",G1=2:" (more)",G1=3:" (less)",G1=4:" (more)",G1=5:" (less)",G1=6:" (more)",1:"")

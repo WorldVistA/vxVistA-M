@@ -1,5 +1,5 @@
-MAGBRTE5 ;WOIFO/PMK - Background Routing - Load Balance ; 12/15/2006 13:49
- ;;3.0;IMAGING;**11,30,51,85**;16-March-2007;;Build 1039
+MAGBRTE5 ;WOIFO/PMK - Background Routing - Load Balance ; 06/08/2007 10:28
+ ;;3.0;IMAGING;**11,30,51,85,54**;03-July-2009;;Build 1424
  ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -112,7 +112,7 @@ BALANCE(IMAGE,RULE) N %,D,DEST,PARENT,PRI,X
  ;
  ; Current version assumes that BALANCE means DOS-Copy, not DICOM...
  D VALDEST^MAGDRPC1(.DEST,X)
- D LOG^MAGBRTE4("Load-Balance Destination is "_X)
+ D LOG("Load-Balance Destination is "_X)
  S PRI=$$PRI^MAGBRTE4($G(RULE(RULE,"PRIORITY")),IMAGE)
  S VRS=$$VRS(VRS,$$SEND(IMAGE,DEST,PRI,1,LOCATION))
  Q
@@ -159,4 +159,33 @@ VRS(OLD,NEW) N OUT
  F  Q:OUT'["^^"  S OUT=$P(OUT,"^^",1)_"^"_$P(OUT,"^^",2,$L(OUT)+2)
  Q:$L(OUT)<100 OUT
  Q $P(OUT,"^",1)_"^...^"_$P(OUT,"^",$L(OUT,"^"))
+ ;
+LOG(X) N D,H,I,M,T
+ S I=$O(^XTMP("MAGEVAL",ZTSK," "),-1)+1
+ S XMSG=$G(XMSG)+1 S:I>XMSG XMSG=I
+ S D=$P("Thu Fri Sat Sun Mon Tue Wed"," ",$H#7+1)
+ S T=$P($H,",",2),H=T\3600,M=T\60#60 S:H<10 H=0_H S:M<10 M=0_M
+ S ^XTMP("MAGEVAL",ZTSK,XMSG)=D_" "_H_":"_M_" "_X
+ Q
+ ;
+WLDMATCH(VAL,WILD) ;
+ ;
+ ; Returns true if VAL=WILD (Val=Actual value, Wild=Wildcard)
+ ;
+ ; Wild characters are:
+ ;   ?   matches any single character
+ ;   *   matches any string of characters
+ ;
+ N I,M
+ F  Q:VAL=""  Q:WILD=""  D
+ . I $E(VAL,1)=$E(WILD,1) S VAL=$E(VAL,2,$L(VAL)),WILD=$E(WILD,2,$L(WILD)) Q
+ . I $E(WILD,1)="?" S VAL=$E(VAL,2,$L(VAL)),WILD=$E(WILD,2,$L(WILD)) Q
+ . I $E(WILD,1)="*" D  Q:M
+ . . I WILD="*" S (VAL,WILD)="",M=1 Q
+ . . S WILD=$E(WILD,2,$L(WILD)),M=0
+ . . F I=1:1:$L(VAL) I $$WLDMATCH($E(VAL,I,$L(VAL)),WILD) S M=1,VAL=$E(VAL,I,$L(VAL)) Q
+ . . Q
+ . S VAL="!",WILD=""
+ . Q
+ Q:VAL'="" 0 Q:WILD'="" 0 Q 1
  ;

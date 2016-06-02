@@ -1,5 +1,5 @@
 BPSUTIL2 ;BHAM ISC/SS - General Utility functions ;08/01/2006
- ;;1.0;E CLAIMS MGMT ENGINE;**7,8**;JUN 2004;Build 29
+ ;;1.0;E CLAIMS MGMT ENGINE;**7,8,10,11**;JUN 2004;Build 27
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  Q
@@ -97,6 +97,7 @@ GETPLN59(BPIEN59) ;
  ;
 GETPLN77(BPIEN77) ;
  N BPINSIEN,BPSINSUR,BPINSDAT
+ I '$G(BPIEN77) Q 0
  S BPINSIEN=0
  ;get the USED FOR THE REQUEST=1 (active) entry in the multiple
  S BPINSIEN=$O(^BPS(9002313.77,BPIEN77,5,"C",1,BPINSIEN))
@@ -108,6 +109,15 @@ GETPLN77(BPIEN77) ;
  S BPINSDAT=$G(^BPS(9002313.78,BPSINSUR,0))
  I BPINSDAT="" Q 0
  Q $P(BPINSDAT,U,8)_"^"_$P(BPINSDAT,U,7)
+ ;
+GETRQST(IEN59) ; Return the BPS Request IEN for a BPS Transaction record
+ N BPTYPE,IEN77
+ I '$G(IEN59) Q ""
+ S BPTYPE=$$GET1^DIQ(9002313.59,IEN59,19,"I")
+ ; If reversal, return the Reversal Request field
+ I BPTYPE="U" Q $$GET1^DIQ(9002313.59,IEN59,405,"I")
+ ; Otherwise, return the Submission Request field
+ Q $$GET1^DIQ(9002313.59,IEN59,16,"I")
  ;
  ;Return the COB (payer sequence) by IEN of the BPS TRANSACTION file
 COB59(BPSIEN59) ;
@@ -174,10 +184,33 @@ PAYBLPRI(BPSSEC59) ;
  S BPSSTAT1=$P($$STATUS^BPSOSRX(BRXIEN,BFILL,0,,1),U,1)
  ; check if the payer IS going to PAY according to the last response
  I +$$PAYABLE^BPSOSRX5(BPSSTAT1)=0 Q 0
- S BPZ=$$RXBILL^IBNCPUT3(BRXIEN,BFILL,"P",$P($G(^BPST(BPSSEC59,12)),U,2),.BPSARR)
+ S BPZ=$$RXBILL^IBNCPUT3(BRXIEN,BFILL,"P","",.BPSARR)
  I +$P(BPZ,U,2)>0 Q +$P(BPZ,U,2)       ; latest bill in AR active status
  S BPZ1=+$O(BPSARR(999999999),-1)      ; latest bill in any status
  I BPZ1>0 Q BPZ1
  Q 0
+ ;
+ ;SLT - BPS*1.0*11
+LASTDOS(BP59,FMT) ;last date of service from most recent claim
+ ; input:
+ ;   BP59 -> claim/transaction
+ ;   FMT  -> Date format indicator (0:MM/DD; 1:Mmm dd,yyyy)
+ ; output:
+ ;   Date of Service e.g. 06/01
+ ;
+ N BPCLAIM,DOSDT,X,Y
+ ;
+ I $G(FMT)="" S FMT=0
+ S BPCLAIM=0,DOSDT=""
+ I $D(^BPST(BP59,4)) S BPCLAIM=$P(^BPST(BP59,4),U)
+ S:'BPCLAIM BPCLAIM=$P(^BPST(BP59,0),U,4)
+ I BPCLAIM]"" D
+ . S DOSDT=$$DOSCLM^BPSSCRLG(BPCLAIM)
+ . S:FMT=0 DOSDT=$P(DOSDT,"/",1,2)
+ . D:FMT=1
+ . . S X=DOSDT D ^%DT
+ . . I Y=-1 S DOSDT="" Q
+ . . D DD^%DT S DOSDT=Y
+ Q DOSDT
  ;
  ;BPSUTIL2

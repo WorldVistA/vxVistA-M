@@ -1,6 +1,6 @@
 VFDXTR09 ;DSS/SGM - DIR PROMPTING UTILITY ; 08/08/2011 15:47
- ;;2.0;DSS,INC VXVISTA OPEN SOURCE;;29 Jul 2011;Build 92
- ;Copyright 1995-2011,Document Storage Systems Inc. All Rights Reserved
+ ;;15.0;DSS,INC VXVISTA OPEN SOURCE;;15 Sep 2015;Build 29
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ;
  ;This routine should only be invoked from other VFDXTR routines
  ;
@@ -189,6 +189,17 @@ ERR(A) ;
  N I,X,Y,Z
  S DIR(0)="SO^S:Save routines;R:Restore routines"
  S DIR("A")="   Option" F I=1:1:6 S DIR("A",I)=$TR($T(13+I),";"," ")
+ Q
+ ;
+14 ; source where to get routine list
+ ;;You can get the list of routines from KIDS Build file entry
+ ;;Or you can select the routines from the routine select utility
+ ;;Or you can get the list of routines from a loaded build
+ N I,X
+ S DIR(0)="SO^F:Free Form;B:Build File;L:Loaded Build",DIR("?")="   "
+ S DIR("A")="Choose Routine Selection Method"
+ F I=1,2 S X=$TR($T(3+I),";"," ") S DIR("?",I)=X
+ D WR("Routine Selection Method")
  Q
  ;
 WR(X,CH) S CH=$G(CH) S:CH="" CH="-" D WR^VFDXTRU(X,CH) Q

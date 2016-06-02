@@ -1,5 +1,5 @@
 IBTUBO2 ;ALB/AAS - UNBILLED AMOUNTS - GENERATE UNBILLED REPORTS ;03 Aug 2004  8:21 AM
- ;;2.0;INTEGRATED BILLING;**19,31,32,91,123,159,192,155,309,347**;21-MAR-94;Build 24
+ ;;2.0;INTEGRATED BILLING;**19,31,32,91,123,159,192,155,309,347,437**;21-MAR-94;Build 11
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
 INPT(DGPM) ; - Check if inpatient episode has bills or final bill; if not,
@@ -101,7 +101,32 @@ RX(IBRX) ; - Check if prescription has been billed; if not,
 RX1 ; - Calculate unbilled amounts.
  S:'IBMRA IBUNB("PRESCRP")=IBUNB("PRESCRP")+1
  I IBMRA S IBUNB("PRESCRP-MRA")=IBUNB("PRESCRP-MRA")+1
- S IBCO=$$BICOST^IBCRCI(IBRT,3,IBDAY,"PRESCRIPTION FILL")
+ ;
+ ; Patch 437 update to call charge master with enough information
+ ; to lookup actual cost of prescription 
+ ;
+ N IBBI,IBRSNEW,IBQTY,IBCOST,IBRFNUM,IBSUBND,IBFEE
+ ;
+ ; check charge master for the type of billing--VA Cost or not
+ S IBBI=$$EVNTITM^IBCRU3(+IBRT,3,"PRESCRIPTION FILL",IBDAY,.IBRSNEW)
+ ;
+ I IBBI["VA COST" D
+ .;  if this is a refill look up the refill info for cost and quantity
+ .  S IBRFNUM=$$RFLNUM^IBRXUTL(IBRX,IBDAY,"")
+ .  I IBRFNUM>0 D
+ ..    S IBSUBND=$$ZEROSUB^IBRXUTL(DFN,IBRX,IBRFNUM)
+ ..    S IBQTY=$P($G(IBSUBND),U,4)
+ ..    S IBCOST=$P($G(IBSUBND),U,11)
+ .;
+ .;  if this was an original fill use the Rx info already in IBND
+ .  I $G(IBQTY)'>0 S IBQTY=$P($G(IBND),U,7)
+ .  I $G(IBCOST)'>0 S IBCOST=$P($G(IBND),U,17)
+ .;
+ .  S IBRSNEW=+$O(IBRSNEW($P(IBBI,";"),0))
+ .  S IBCO=$J($$RATECHG^IBCRCC(+IBRSNEW,IBQTY*IBCOST,IBDAY,.IBFEE),0,2)
+ E  D
+ .  S IBCO=$$BICOST^IBCRCI(IBRT,3,IBDAY,"PRESCRIPTION FILL")
+ ;
  S:'IBMRA IBUNB("UNBILRX")=IBUNB("UNBILRX")+IBCO
  I IBMRA S IBUNB("UNBILRX-MRA")=IBUNB("UNBILRX-MRA")+IBCO
  I $G(IBXTRACT) D  ; For DM extract.

@@ -1,6 +1,6 @@
-RCRJRDEP ;WISC/RFJ-Deposit Reconciliation Report ;1 Mar 98
- ;;4.5;Accounts Receivable;**101,114,203,220**;Mar 20, 1995
- ;;Per VHA Directive 10-93-142, this routine should not be modified.
+RCRJRDEP ;WISC/RFJ-Deposit Reconciliation Report ; 9/7/10 8:19am
+ ;;4.5;Accounts Receivable;**101,114,203,220,273**;Mar 20, 1995;Build 3
+ ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  W !!,"This option will print the Deposit Reconciliation Report.  The report will"
  W !,"display the data on the code sheets sent to FMS on the CR document.  Only"
@@ -100,7 +100,7 @@ DQ ;  report (queue) starts here
  . . S FUND=$P(LINEDATA,"^",6)
  . . I FUND="" S FUND="0160"
  . . S FUNDTOTL(FUND)=$G(FUNDTOTL(FUND))+$P(LINEDATA,"^",20)
- . . ;  totals by rsc for the accrued 5287 funds (01,03,04,09)
+ . . ;  totals by rsc for the accrued 5287 funds (01,03,04,09,11)
  . . S RSC=$P(LINEDATA,"^",10)
  . . I RSC'="",($$PTACCT^PRCAACC(FUND)!(FUND=4032)) S RSCTOTL(RSC)=$G(RSCTOTL(RSC))+$P(LINEDATA,"^",20)
  . I $G(RCRJSUMM)=1 Q
@@ -125,9 +125,9 @@ DQ ;  report (queue) starts here
  .  W !?5,"FUND: ",FUND,?20,$J(FUNDTOTL(FUND),10,2)
  I $G(RCRJFLAG) D Q Q
  I DT<$$ADDPTEDT^PRCAACC() W !!,"TOTAL DEPOSITS BY REVENUE SOURCE CODE FOR THE SERIES OF FUNDS 5287.1,5287.3,5287.4:"
- I DT'<$$ADDPTEDT^PRCAACC() W !!,"TOTAL DEPOSITS BY REVENUE SOURCE CODE FOR THE SERIES OF FUNDS 528701,528703,528704:"
+ I DT'<$$ADDPTEDT^PRCAACC() W !!,"TOTAL DEPOSITS BY REVENUE SOURCE CODE FOR THE SERIES OF FUNDS 528701,528703,528704,528711:"
  S RSC="" F  S RSC=$O(RSCTOTL(RSC)) Q:RSC=""  D  Q:$G(RCRJFLAG)
- . I $Y>(IOSL-4) D:SCREEN PAUSE^RCRJRTR1 Q:$G(RCRJFLAG)  D H W !!,"TOTAL DEPOSITS BY REVENUE SOURCE CODE FOR THE SERIES OF ACCRUED 5287 FUNDS "_$S(DT<$$ADDPTEDT^PRCAACC():"(.1,.3,.4,.9):",1:"(01,03,04,09):")
+ . I $Y>(IOSL-4) D:SCREEN PAUSE^RCRJRTR1 Q:$G(RCRJFLAG)  D H W !!,"TOTAL DEPOSITS BY REVENUE SOURCE CODE FOR THE SERIES OF ACCRUED 5287 FUNDS "_$S(DT<$$ADDPTEDT^PRCAACC():"(.1,.3,.4,.9):",1:"(01,03,04,09,11):")
  . W !?5,"RSC: ",RSC,?17,$$GETDESC^RCXFMSPR(RSC),?70,$J(RSCTOTL(RSC),10,2)
  I $G(RCRJFLAG) D Q Q
  I SCREEN R !,"Press RETURN to continue:",X:DTIME

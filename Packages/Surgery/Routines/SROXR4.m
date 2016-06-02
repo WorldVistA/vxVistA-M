@@ -1,20 +1,22 @@
-SROXR4 ;BIR/MAM - CROSS REFERENCES ;11/05/07
- ;;3.0; Surgery ;**62,83,100,153,166**;24 Jun 93;Build 6
+SROXR4 ;BIR/MAM - CROSS REFERENCES ;01/24/11
+ ;;3.0;Surgery;**62,83,100,153,166,174,175,176**;24 Jun 93;Build 8
  Q
 PRO ; stuff default prosthesis info
  I '$D(SRTN) Q
- S ^SRF(SRTN,1,DA,0)=^SRF(SRTN,1,DA,0)_"^"_$P(^SRO(131.9,X,0),"^",2,99)
+ S ^SRF(SRTN,1,DA,0)=^SRF(SRTN,1,DA,0)_"^"_$P(^SRO(131.9,X,0),"^",2,4)_"^^"_$P(^SRO(131.9,X,0),"^",6,99)
  I $D(^SRO(131.9,X,1)) S ^SRF(SRTN,1,DA,1)=^(1)
  Q
 CAN ; 'SET' logic of the 'ACAN' x-ref on the 'CANCEL REASON'
  ; field in the SURGERY file (130)
  S $P(^SRF(DA,30),"^",2)=$P(^SRO(135,X,0),"^",3) I $P(^SRO(135,X,0),"^",3)="" S $P(^SRF(DA,30),"^",2)="Y"
  I $P(^SRF(DA,30),"^",3)="" S $P(^SRF(DA,30),"^",3)=DUZ
+ D AQ
  S SHEMP=$P($G(^SRF(DA,.2)),"^",10) I SHEMP,$D(^SRF(DA,"RA")) S ZTDESC="Clean up Risk Assessment Information, Canceled Case",ZTRTN="RISK^SROXR4",ZTDTH=$H,ZTSAVE("DA")="" D ^%ZTLOAD
  Q
 KCAN ; 'KILL' logic of the 'ACAN' x-ref on the 'CANCEL REASON'
  ; field in the SURGERY file (130)
  S $P(^SRF(DA,30),"^",2)="" I '$P($G(^SRF(DA,30)),"^") S $P(^SRF(DA,30),"^",3)=""
+ D KAQ
  Q
 AS ; 'SET' logic of the 'AS' x-ref on the SCHEDULED START TIME
  ; field in the SURGERY file (130)
@@ -43,11 +45,11 @@ AQ ; set logic for AQ x-ref
 KAQ ; kill logic for AQ x-ref
  N SRTD,SRLO D AQDT S $P(^SRF(DA,.4),"^",2)="" K ^SRF("AQ",SRTD,DA)
  Q
-AQDT ; get quarterly transmission date
- N SRDAY,SRSDATE,SRQTR,SRX,SRYR S SRSDATE=$E($P(^SRF(DA,0),"^",9),1,7)
- S SRYR=$E(SRSDATE,1,3),SRDAY=$E(SRSDATE,4,7),SRQTR=$S(SRDAY<401:2,SRDAY<701:3,SRDAY<1001:4,1:1) I SRQTR=1 S SRYR=SRYR+1
- S SRTD=SRYR_$S(SRQTR=1:"0214",SRQTR=2:"0515",SRQTR=3:"0814",1:"1114")
- S SRX=$E(DT,1,3),SRLO=SRX-1_"0214"
+AQDT ; get monthly transmission date 45 days after end of the month of the operation
+ N SRD,SRSDATE,SRX,SRYR,M S SRSDATE=$E($P(^SRF(DA,0),"^",9),1,7),SRYR=$E(SRSDATE,1,3),M=+$E(SRSDATE,4,5)
+ S SRD=$S(M=1:"0316",M=2:"0414",M=3:"0515",M=4:"0614",M=5:"0715",M=6:"0814",M=7:"0914",M=8:"1015",M=9:"1114",M=10:"1215",M=11:"0114",1:"0214")
+ S:M=11!(M=12) SRYR=SRYR+1 S SRTD=SRYR_SRD
+ S SRX=$E(DT,1,3),SRLO=SRX-2_"1215"
  Q
 AQ1 ; set logic for AQ1 x-ref
  I X="R" N SRTD,SRLO D AQDT I SRTD'<SRLO S ^SRF("AQ",SRTD,DA)=""

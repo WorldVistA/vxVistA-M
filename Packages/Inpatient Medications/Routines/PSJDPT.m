@@ -1,5 +1,5 @@
 PSJDPT ;BIR/JLC - CENTRALIZED PATIENT LOOKUP FOR IPM ; 7/2/08 3:47pm
- ;;5.0; INPATIENT MEDICATIONS ;**53,124,166,160,198**;16 DEC 97;Build 7
+ ;;5.0;INPATIENT MEDICATIONS;**53,124,166,160,198,267,275**;16 DEC 97;Build 1
  ;
  ; Reference to ^DPT is supported by DBIA 10035
  ; Reference to ^DGSEC4 is supported by DBIA 3027
@@ -33,6 +33,7 @@ CHK(Y,DISP,PAUSE) N RESULT,RES,CHKY,PSGTEMP
  . I RESULT(1)=-1!(RESULT(1)=3)!(RESULT(1)=4) S Y=-1 Q
  . I RESULT(1)=2 D ENCONT I Y=-1 Q
  . D NOTICE^DGSEC4(.RES,Y,XQY0,$S(RESULT(1)=1:1,1:3)) I RES=0 S Y=-1 Q
+ I '$$AA(+Y) S Y=-1 Q
  Q
 ENCONT W !,"Do you want to continue processing this patient record"
  S %=2 D YN^DICN I %<0!(%=2) S Y=-1
@@ -40,8 +41,30 @@ ENCONT W !,"Do you want to continue processing this patient record"
  Q
 DPT I $$DOB^DPTLK1(Y)["*SENSITIVE" G SENS
  S ND=$S($D(^DPT(Y,0)):^(0),1:""),NB=$P(ND,"^",3),NS=$P(ND,"^",9)
- I NS W ?42,$E(NS,1,3),"-",$E(NS,4,5),"-",$E(NS,6,10)," "
+ ;DSS/SMP - BEGIN MOD
+ I $G(^%ZOSF("ZVX"))["VX" W ?42,$$ID^VFDDFN(Y,,,,1,3)," " I 1
+ E  I NS W ?42,$E(NS,1,3),"-",$E(NS,4,5),"-",$E(NS,6,10)," "
+ ;DSS/SMP - END MOD
  I NB W ?55,$E(NB,4,5),"/",$E(NB,6,7),"/",$E(NB,2,3)," "
  I $D(^DPT(Y,.1)) W ?67,$P(^(.1),"^")
  Q
 SENS W ?42,"*SENSITIVE* ",?55,"*SENSITIVE* ",?67,"*SENSITIVE*" Q
+ ;
+AA(DFN) ; Allergy Assessment
+ Q:$G(DFN)<1 0
+ N VAN,VAV,VADM,Y,X D DEM^VADPT
+ Q:+$G(VADM(6)) 1
+ N PSJENTRY S PSJENTRY=$P($G(XQY0),"^") I '(("^PSJU NE^PSJI ORDER^PSJ OE^PSJU VBW^PSJI PROFILE^")[("^"_PSJENTRY_"^")) Q 1
+ N PSGP,Y S (Y,PSGP)=+DFN N DFN S DFN=PSGP
+ I $G(DFN) N PSJAAOK,PSJAACHK,PSJAADPT,PSJRXREQ,GMRA,GMRAL S PSJAADPT=1,PSJAAOK="" D
+ .S GMRA="0^0^111",DFN=PSGP D ^GMRADPT I $G(GMRAL)="" S PSJAACHK=1 F  Q:$G(PSJAAOK)  D
+ ..D CLEAR^VALM1,FULL^VALM1
+ ..W !!,"NO ALLERGY ASSESSMENT exists for " W $P($G(^DPT(+PSGP,0)),"^"),!!,"Would you like to enter one now" S %=2 D YN^DICN
+ ..I $G(%)=2 S PSJAAOK=1 D  Q
+ ...W !!,"Now creating Pharmacy Intervention",!
+ ...S PSJRXREQ="NO ALLERGY ASSESSMENT",PSJDD="" D DIC^PSJRXI
+ ..I $G(%)=1 S VALMBCK="R" D INIT^PSJLMDA I $G(DFN) D NEWALL^PSJLMUTL(DFN) D  Q
+ ...S GMRA="0^0^111" D ^GMRADPT I $G(GMRAL)'="" S PSJAAOK=1
+ ..I $G(%)<0 S PSJAAOK=1 S Y="" Q
+ ..W !!?5,"Enter 'Y' to create an allergy assessment, or 'N'",!?5,"to continue without creating an allergy assessment"
+ Q $S($G(Y)>0:Y,1:0)

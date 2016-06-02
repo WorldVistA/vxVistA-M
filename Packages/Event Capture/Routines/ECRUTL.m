@@ -1,5 +1,5 @@
 ECRUTL ;ALB/ESD - Event Capture Report Utilities ;1 Aug 97
- ;;2.0; EVENT CAPTURE ;**5**;8 May 96
+ ;;2.0; EVENT CAPTURE ;**5,100**;8 May 96;Build 21
  ;
 ASKLOC() ; Ask report location(s) (institution)
  ;   Input:  None
@@ -32,7 +32,7 @@ LOCARRY ;-- Get location(s) from "LOC" xref of DMMS Units (#720) fld of
  ;
  N ECLNAM,ECLNUM,ECCNT
  S (ECCNT,ECLNUM)=0,ECLNAM=""
- F  S ECLNAM=$O(^DIC(4,"LOC",ECLNAM)) Q:ECLNAM=""  F  S ECLNUM=$O(^DIC(4,"LOC",ECLNAM,ECLNUM)) Q:'ECLNUM  S ECCNT=ECCNT+1,ECLOC(ECCNT)=ECLNUM_"^"_ECLNAM
+ F  S ECLNAM=$O(^DIC(4,"LOC",ECLNAM)) Q:ECLNAM=""  F  S ECLNUM=$O(^DIC(4,"LOC",ECLNAM,ECLNUM)) Q:'ECLNUM  S ECCNT=ECCNT+1,ECLOC(ECCNT)=ECLNUM_"^"_ECLNAM,ECLOC1(ECLNUM)=ECLNAM
  Q
  ;
  ;

@@ -1,5 +1,6 @@
-DVBAB82 ;ALB - CAPRI DVBA REPORTS;03/08/02
- ;;2.7;AMIE;**42,90,100,119**;Apr 10, 1995;Build 10
+DVBAB82 ;ALB/DJS - CAPRI DVBA REPORTS ; 01/24/12
+ ;;2.7;AMIE;**42,90,100,119,156,149,179,181,184,185**;Apr 10, 1995;Build 18
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  Q
  ;
 START(MSG,RPID,PARM) ; CALLED BY REMOTE PROCEDURE DVBAB REPORTS
@@ -9,25 +10,41 @@ START(MSG,RPID,PARM) ; CALLED BY REMOTE PROCEDURE DVBAB REPORTS
  ; RPID : Report Identification Number
  ; PARM : Input parameters separated by "^"
  ;
- N DVBHFS,DVBERR,DVBGUI,I
+ N DVBHFS,DVBERR,DVBGUI,I,DVBADLMTD
  K ^TMP("DVBA",$J)
- S DVBGUI=1,DVBERR=0,DVBHFS=$$HFS(),RPID=$G(RPID)
- I RPID<1!(RPID>9) S ^TMP("DVBA",$J,1)="0^Undefined Report ID" G END
+ S DVBGUI=1,(DVBERR,DVBADLMTD)=0,DVBHFS=$$HFS(),RPID=$G(RPID)
+ I RPID<1!(RPID>15) S DVBERR=1,^TMP("DVBA",$J,1)="0^Undefined Report ID" G END
  D HFSOPEN("DVBRP",DVBHFS,"W") I DVBERR G END
  I RPID=1 D CRMS G END
  I RPID=3 D CPRNT G END
- D CHECK I DVBERR G END
+ I RPID=11 D CNHRP G END  ;FNCNH Print Roster
+ D CHECK I DVBERR G END  ;reports below require parameters
  I RPID=2 D CRRR G END
  I RPID=4 D CRPON G END
  I RPID=5 D CIRPT G END
  I RPID=6 D DSRP G END
  I RPID=7 D SDPP G END
  I RPID=8 D SPRPT G END
- I RPID=9 D VIEW
+ I RPID=9 D VIEW G END
+ I RPID=10 D CNHDEOC G END  ;FBCNH Display Episode Of Care
+ I RPID=12 D CNHRAD G END  ;FNCNH Report of Admissions/Discharges
+ I RPID=13 D CNHSE90D G END  ;FNCNH Stays in Excess of 90 Days
+ I RPID=14 D REQSTAT G END  ;REQUEST STATUS BY DATE RANGE
+ I RPID=15 D DVBA8861 G END  ;FORM 28-8861 STATUS REPORT
  ;
 END D HFSCLOSE("DVBRP",DVBHFS)
- S I=0 F  S I=$O(^TMP("DVBA",$J,1,I)) Q:'I  S ^TMP("DVBA",$J,1,I)=^TMP("DVBA",$J,1,I)_$C(13) S:^(I)["$END" ^(I)=""
+ I ($G(DVBADLMTD)&('+DVBERR)) D  Q  ;Create delimited output if no errors
+ .D DLMTRPT^DVBAB82D(RPID)
+ .S I=0 F  S I=$O(^TMP("DVBADLMTD",$J,I)) Q:I=""  D
+ ..I $G(^TMP("DVBADLMTD",$J,I))["##FFFF##" S ^TMP("DVBADLMTD",$J,I)=$TR(^TMP("DVBADLMTD",$J,I),"##FFFF##","")
+ .S MSG=$NA(^TMP("DVBADLMTD",$J))
+ ;Replace "##FFFF##" with Form Feeds - code needed for LINUX environments
+ S I=0 F  S I=$O(^TMP("DVBA",$J,1,I)) Q:'I  D
+ .S:^TMP("DVBA",$J,1,I)["##FFFF##" ^TMP("DVBA",$J,1,I)=$P(^TMP("DVBA",$J,1,I),"##FFFF##")_$C(13,12)_$P(^TMP("DVBA",$J,1,I),"##FFFF##",2)
+ .S ^TMP("DVBA",$J,1,I)=^TMP("DVBA",$J,1,I)_$C(13)
+ .S:^TMP("DVBA",$J,1,I)["$END" ^TMP("DVBA",$J,1,I)=""
  S MSG=$NA(^TMP("DVBA",$J))
+ I ($G(RPID)=5)&($G(DVBADLMTR)=",") S MSG=$NA(^TMP("INSUFF",$J))
  Q
 CHECK ; VALIDATE INPUT PARAMETERS
  I $G(PARM)="" S DVBERR=1,^TMP("DVBA",$J,1)="0^Undefined Input Parameters"
@@ -49,6 +66,7 @@ SDPP ; Report # 7 - Full (Patient Profile MAS) Report
  ; SDTYP(5) : Print means test? 1 OR 0
  ;
  N SDTYP,SDBD,SDED,SDACT,SDPRINT,SDYES,SDRANGE,SDBEG,SDEN
+ S ^XTMP("JAP",$J,$$NOW^XLFDT(),"SDPP")=PARM
  S DFN=$P(PARM,"^",1),SDR=$P(PARM,"^",2),SDBD=$P(PARM,"^",3),SDED=$P(PARM,"^",4)
  S SDP=$P(PARM,"^",5),SDTYP(2)=$P(PARM,"^",6),SDTYP(1)=$P(PARM,"^",7)
  S SDTYP(4)=$P(PARM,"^",8),SDTYP(3)=$P(PARM,"^",9),SDTYP(7)=$P(PARM,"^",10),SDTYP(5)=$P(PARM,"^",11)
@@ -58,34 +76,30 @@ SDPP ; Report # 7 - Full (Patient Profile MAS) Report
  I SDP=1 S SDYES=1,SDPRINT=1
  I 'SDRANGE S (SDBD,SDBEG)=2800101,(SDED,SDEND)=$$ENDDT(),SDHDR=1
  D ENS^%ZISS
- N SDYN,DVB S SDPRINT=1,DVB(1)=SDBD_";"_SDED,DVB(4)=DFN,DVB("FLDS")=1
- ;I $$SDAPI^SDAMA301(.DVB)>0 D
- I $O(^DPT(DFN,"S",SDBD)) D
- . I SDTYP(2)=1 S SDTYP(2)="" Q
- . K SDTYP(2)
- IF $$EXOE^SDOE(DFN,SDBD,SDED) D
- . I SDTYP(1)=1 S SDTYP(1)="" Q
- . K SDTYP(1)
- I $D(^DPT(DFN,"DE")) D
- . I SDTYP(4)=1 S SDTYP(4)="",SDACT=0 Q
- . K SDTYP(4)
- I $D(^DPT(DFN,"DIS")),$S('SDRANGE:1,+$O(^("DIS",9999999-(SDED+.9)))&($O(^(9999999-(SDED+.9)))<(9999999-(SDBD-.1))):1,1:0) D
- . I SDTYP(3)=1 S SDTYP(3)="" Q
- . K SDTYP(3)
- S SDYN=$$LST^DGMTU(DFN) I SDYN D
- . I SDTYP(5)=1 S SDTYP(5)="" Q
- . K SDTYP(5)
- I SDTYP(7)=1 D
- . S SDTYP(7)="",GBL="^TMP(""SDPP"","_$J_")" Q
- . K SDTYP(7)
+ S SDPRINT=1
+ S:(SDTYP(2)=1) SDTYP(2)=""  ;appointments
+ K:(SDTYP(2)=0) SDTYP(2)
+ S:(SDTYP(1)=1) SDTYP(1)=""  ;add/edits
+ K:(SDTYP(1)=0) SDTYP(1)
+ I (SDTYP(4)=1) S SDTYP(4)="",SDACT=0  ;enrollments
+ K:(SDTYP(4)=0) SDTYP(4)
+ S:(SDTYP(3)=1) SDTYP(3)=""  ;dispositions
+ K:(SDTYP(3)=0) SDTYP(3)
+ S:(SDTYP(5)=1) SDTYP(5)=""  ;means test
+ K:(SDTYP(5)=0) SDTYP(5)
+ I SDTYP(7)=1 D  ;team information
+ . S SDTYP(7)="",GBL="^TMP(""SDPP"","_$J_")"
+ K:(SDTYP(7)=0) SDTYP(7)
  D PRINT^SDPPRT
- K ^TMP($J,"SDAMA301") S VALMBCK="R"
+ S VALMBCK="R"
  Q
 ENDDT() ;Calculate end date for "all" date
- N X S X=$O(^DPT(DFN,"S",""),-1) S:X<DT X=DT_.24 Q X
- ;N X,X1,X2,%H S X1=DT,X2=36600
- ;D C^%DTC
- ;Q X_.24
+ N DVBAPPTS,DVBX
+ S DVBAPPTS(1)=2800101,DVBAPPTS(4)=DFN,DVBAPPTS("SORT")="P"
+ S DVBAPPTS("FLDS")=1,DVBAPPTS("MAX")=-1
+ S DVBX=$S(($$SDAPI^SDAMA301(.DVBAPPTS)>0):$O(^TMP($J,"SDAMA301",DFN,0)),1:DT_.24)
+ K ^TMP($J,"SDAMA301")
+ Q DVBX
  ;
 VIEW ; Report # 9 - View Registration Data Report
  ; Parameters
@@ -97,6 +111,7 @@ VIEW ; Report # 9 - View Registration Data Report
  D VAL Q:DVBERR
  D EN1^DGRP
  Q
+ ;
 DSRP ; Report # 6 - Reprint a Notice of Discharge Report
  ; Parameters
  ; % : 1=Report on all veterans for a given day (BDATE required)
@@ -112,7 +127,9 @@ DSRP ; Report # 6 - Reprint a Notice of Discharge Report
  D VAL Q:DVBERR
  I %=1 D  Q
  . S HD="SINGLE NOTICE OF DISCHARGE REPRINTING"
- . D NOPARM^DVBAUTL2 G:$D(DVBAQUIT) KILL^DVBAUTIL S DTAR=^DVB(396.1,1,0),FDT(0)=$$FMTE^XLFDT(DT,"5DZ")
+ . D NOPARM^DVBAUTL2
+ . I $D(DVBAQUIT) D KILL^DVBAUTIL Q  ;CAUTION: Short-circuit
+ . S DTAR=^DVB(396.1,1,0),FDT(0)=$$FMTE^XLFDT(DT,"5DZ")
  . S HEAD="NOTICE OF DISCHARGE",HEAD1="FOR "_$P(DTAR,U,1)_" ON "_FDT(0)
  . I $D(^DVB(396.2,"B",DFN)) D
  . . S DFNIEN=$O(^DVB(396.2,"B",DFN,DFNIEN)),ADM=$P(^DVB(396.2,DFNIEN,0),U,3)
@@ -176,36 +193,40 @@ CIRPT ; Report # 5 - Insufficient Exam Report
  ; BEGDT : Beginning date $H/FileMan
  ; ENDDT : Ending date $H/FileMan
  ; RESANS : Insufficient Reason
+ ; DVBAPRTY : Priority of Exam Code
+ ;    AO  : Agent Orange
+ ;    BDD : Benefits Delivery at Discharge / Quick Start
+ ;    IDES : Integrated Disability Evaluation System
+ ;    ALL : All Others (Original Report w/ all codes except the above)
+ ; DVBADLMTR: 0=non-delimted format, ","=delimiter for .csv file for EXCEL
  ;
+ N DVBAPRTY,RPTTYPE,BEGDT,ENDDT,RESANS
  U IO
  S RPTTYPE=$P(PARM,"^",1),BEGDT=$P(PARM,"^",2),ENDDT=$P(PARM,"^",3),RESANS=$P(PARM,"^",4)
+ S DVBAPRTY=$P(PARM,"^",5)
+ S DVBADLMTR=$P(PARM,"^",6),DVBADLMTR=$S(DVBADLMTR=1:",",1:0)
+ S ENDDT=ENDDT_".2359"
  I RPTTYPE="S" D SUM^DVBCIRPT Q
  I RPTTYPE="D" D
- . I RESANS="" S Y=-1 D INREAS
- . I '$D(DVBAARY("REASON")) S DVBAQTSL=""
- . S DVBCYQ=""
- . I RESANS'="" S Y=RESANS D INREAS
- . K DTOUT,DUOUT
- . S Y=-1 D EXMTPE,DETAIL^DVBCIRP1
+ . D INREAS
+ . Q:($D(^TMP("DVBA",$J,1)))  ;invalid reason sent
+ . D EXMTPE,DETAIL^DVBCIRP1
  Q
  ;
-EXMTPE ;
- N YSAVE,DVBAXIFN
- S YSAVE=Y
+EXMTPE ;exam types (retrieve all for filter)
+ N DVBAXIFN
  F DVBAXIFN=0:0 S DVBAXIFN=$O(^DVB(396.6,DVBAXIFN)) Q:+DVBAXIFN=0  DO
  . S ^TMP($J,"XMTYPE",DVBAXIFN)=""
- S Y=-1
- I +YSAVE>0 S ^TMP($J,"XMTYPE",+YSAVE)=""
- S Y=YSAVE
  Q
-INREAS ;
- N YSAVE,DVBXIFN
- S YSAVE=Y
- F DVBAXIFN=0:0 S DVBAXIFN=$O(^DVB(396.94,DVBAXIFN)) Q:+DVBAXIFN=0  DO
- . S DVBAARY("REASON",DVBAXIFN)=""
- S Y=-1
- I +YSAVE>0 S DVBAARY("REASON",+YSAVE)=""
- S Y=YSAVE
+INREAS ;insufficient reason (validate specific or retrieve all)
+ N DVBAXIFN
+ D:(RESANS="")  ;use all insufficient reasons
+ .F DVBAXIFN=0:0 S DVBAXIFN=$O(^DVB(396.94,DVBAXIFN)) Q:+DVBAXIFN=0  DO
+ .. S DVBAARY("REASON",DVBAXIFN)=""
+ D:(RESANS'="")  ;use specific insufficient reason
+ .I ('$D(^DVB(396.94,+RESANS))) D  ;validate IEN
+ ..S DVBERR=1,^TMP("DVBA",$J,1)="0^Invalid Insufficient Reason IEN"
+ .E  S DVBAARY("REASON",+RESANS)=""
  Q
  ;
 CRMS ; Report # 1 - Regional Office 21- day Certificate Printing Report.
@@ -253,6 +274,63 @@ VAL ; VALIDATE PATIENT
  I Y<0 S DVBERR=1,^TMP("DVBA",$J,1)="0^Invalid Patient Name." G END
  Q
  ;
+VALDATE(DVBADTE) ;Validate Date
+ ;dates must be valid internal FileMan format
+ N X,Y,%DT
+ S %DT="X",X=DVBADTE D ^%DT
+ S:(Y=-1) DVBERR=1,^TMP("DVBA",$J,1)="0^Invalid FileMan formatted date."
+ Q
+ ;
+CNHDEOC ; Report #10 - FBCNH Display Episode of Care
+ ; Parameters
+ ; ==========
+ ;   DFN : IEN in PATIENT (#2) file
+ ;   IFN : IEN in FEE CNH ACTIVITY (#162.3) file
+ ;
+ U IO
+ N DFN,IFN
+ S DFN=$P(PARM,U,1),IFN=$P(PARM,U,2)
+ D ^FBNHDEC  ;DBIA#: 5566
+ Q
+ ;
+CNHRP ; Report #11 - FBCNH Roster Print
+ ; Parameters
+ ; ==========
+ ;   DVBADLMTD : 0 (Standard) or 1 (Delimited)
+ ; 
+ U IO
+ S DVBADLMTD=+$P($G(PARM),U)
+ D START^FBNHROS  ;DBIA#: 5566
+ Q
+ ;
+CNHRAD ; Report #12 - FBCNH Report of Admissions/Discharges
+ ; Parameters
+ ; ==========
+ ;   BEGDATE   : Start date in FM format
+ ;   ENDDATE   : End date in FM format
+ ;   DVBADLMTD : 0 (Standard) or 1 (Delimited)
+ ;
+ U IO
+ N BEGDATE,ENDDATE
+ S BEGDATE=$P(PARM,U,1),ENDDATE=$P(PARM,U,2)
+ S DVBADLMTD=+$P(PARM,U,3)
+ D VALDATE(BEGDATE),VALDATE(ENDDATE)
+ D:('+DVBERR) START^FBNHAMIE  ;DBIA#: 5566
+ Q
+ ;
+CNHSE90D ; Report #13 - FBCNH Stays in Excess of 90 Days
+ ; Parameters
+ ; ==========
+ ;   FBDT      : Effective date in FM format
+ ;   DVBADLMTD : 0 (Standard) or 1 (Delimited)
+ ;
+ U IO
+ N FBDT
+ S FBDT=$P(PARM,U,1),DVBADLMTD=+$P(PARM,U,2)
+ D VALDATE(FBDT)
+ D:('+DVBERR) START^FBNHAMI2  ;DBIA#: 5566
+ Q
+ ;
 HFS() ; -- get hfs file name
  N H
  S H=$H
@@ -264,13 +342,52 @@ HFSOPEN(HANDLE,DVBHFS,DVBMODE) ; Open File
  ;. S ^TMP("DVBA",$J,1)="0^A scratch directory for reports doesn't exist"
  D OPEN^%ZISH(HANDLE,,DVBHFS,$G(DVBMODE,"W")) D:POP  Q:POP
  .S DVBERR=1,^TMP("DVBA",$J,1)="0^Unable to open file "
+ S IOF="$$IOF^DVBAB82"   ;resets screen position and adds page break flag - added to deal with Linux environments.
  Q
  ;
 HFSCLOSE(HANDLE,DVBHFS) ;Close HFS and unload data
  N DVBDEL,X,%ZIS
  D CLOSE^%ZISH(HANDLE)
- S ROOT=$NA(^TMP("DVBA",$J,1)),DVBDEL(DVBHFS)=""
- K @ROOT
+ S DVBDEL(DVBHFS)=""
+ S ROOT=$NA(^TMP("DVBA",$J,1))
+ K:('+DVBERR) @ROOT
  S X=$$FTG^%ZISH(,DVBHFS,$NA(@ROOT@(1)),4)
  S X=$$DEL^%ZISH(,$NA(DVBDEL))
+ Q
+ ;
+IOF() ;used to reset position and insert page break flag when @IOF is executed.
+ S $X=0,$Y=0
+ Q "##FFFF##"_$C(13,10)
+ ;
+REQSTAT ; Report #14 - Request Status by Date Range
+ ; Parameters
+ ; ==========
+ ; BEGDAT        : Start date in FM format
+ ; ENDDAT        : End date in FM format
+ ; REQSTAT       : Request Status filter
+ ; ISDELIM       : 0 (Standard format); 1 (Delimited format)
+ ; ISNODT        : 0 (Use date range); 1 (Ignore date range)
+ U IO
+ N BEGDAT,ENDDAT,REQSTAT
+ S BEGDAT=$P(PARM,U,1),ENDDAT=$P(PARM,U,2)
+ S REQSTAT=$P(PARM,U,3),ISDELIM=$P(PARM,U,4),ISNODT=$P(PARM,U,5)
+ D VALDATE(BEGDAT),VALDATE(ENDDAT)
+ D:('+DVBERR) REQSTAT^DVBARSBD(BEGDAT,ENDDAT,REQSTAT,ISDELIM,ISNODT)
+ Q
+ ;
+DVBA8861 ; Report #15 - Form 28-8861 Status Report
+ ; Parameters
+ ; ==========
+ ; BEGDAT  -  Start date in FM format
+ ; ENDDAT  -  End date in FM format
+ ; ROSTAT  -  Regional Office filter
+ ; REQSTAT -  Request Status filter
+ ; DELIMTER - 0 (Standard format); 1 (Delimited format)
+ ;
+ U IO
+ N BEGDAT,ENDDAT,REQSTAT
+ S BEGDAT=$P(PARM,U,1),ENDDAT=$P(PARM,U,2)
+ S ROSTAT=$P(PARM,U,3),REQSTAT=$P(PARM,U,4),DELIMTER=$P(PARM,U,5)
+ D VALDATE(BEGDAT),VALDATE(ENDDAT)
+ D:('+DVBERR) STATRPT^DVBA8861(BEGDAT,ENDDAT,ROSTAT,REQSTAT,DELIMTER)
  Q

@@ -1,8 +1,8 @@
 VFDXTRU2 ;DSS/SGM - ROUTINE UTILITIES ; 06/21/2011 18:25
- ;;2.0;DSS,INC VXVISTA OPEN SOURCE;;29 Jul 2011;Build 92
- ;Copyright 1995-2011,Document Storage Systems Inc. All Rights Reserved
+ ;;15.0;DSS,INC VXVISTA OPEN SOURCE;;15 Sep 2015;Build 29
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ;
- ;THIS ROUTINE SHOULD ONLY BE INVOKED VIA THE VFDXTRU ROUTINE
+ ;THIS ROUTINE SHOULD ONLY BE INVOKED VIA THE VFDXTRU* ROUTINES
  ;
  ; ICR#  Supported References
  ;-----  -----------------------------------
@@ -11,7 +11,7 @@ VFDXTRU2 ;DSS/SGM - ROUTINE UTILITIES ; 06/21/2011 18:25
  ;---------------------------------------------------------------------
  ;                            %ZISH Wrapper
  ;---------------------------------------------------------------------
-FTG(PATH,FILE,ROOT,INC) ; move HFS file to a global
+FTG() ; move HFS file to a global
  ; ROOT - opt - $NAME value to place file in
  ;              default to ^TMP("VFDXTR",$J,1) and initialize it
  ;  INC - opt - node in ROOT to be incremented; default to $QL(ROOT)
@@ -20,7 +20,7 @@ FTG(PATH,FILE,ROOT,INC) ; move HFS file to a global
  S X=$$ZINIT(12) I X<0 Q X
  Q $$FTG^%ZISH(PATH,FILE,ROOT,INC)
  ;
-GTF(PATH,FILE,ROOT,INC) ; move array to HFS file
+GTF() ; move array to HFS file
  ; ROOT - req - $NAME value which holds data for file
  ;  INC - opt - the node in ROOT to be incremented
  ;              default to $QL(ROOT)
@@ -49,9 +49,9 @@ LIST(PATH,VFLIST,VFRET) ; call list^%zish
  I $G(VFLIST)'="" S VLIST(VFLIST)=""
  E  M VLIST=VFLIST
  I '$D(VLIST) S VLIST("*")=""
- I $G(VFRET)="" S VFDRET="VFDZ"
- S X=$$LIST^%ZISH(PATH,"VLIST",VFDRET)
- I $G(VFLIST)'="",$D(@VFDRET@(VFLIST)) S X=1
+ I $G(VFRET)="" S VFRET="VFDZ"
+ S X=$$LIST^%ZISH(PATH,"VLIST",VFRET)
+ I $G(VFLIST)'="",$D(@VFRET@(VFLIST)) S X=1
  Q X
  ;
 LIST1(VFDV,PATH,EXT,FILES,CASE) ; get list of files
@@ -77,7 +77,7 @@ LIST1(VFDV,PATH,EXT,FILES,CASE) ; get list of files
  S X=$$ZINIT(1) I X<0 Q X
  I $G(VFDV)="" Q 0
  S RETX=$NA(^TMP("VFDXTRU2",$J)) K @RETX
- S VFDZ("*")="",X=$$LIST(PATH,"VFDZ",$NA(@RETX@(1)))
+ S VFDZ("*")="",X=$$LIST(PATH,.VFDZ,$NA(@RETX@(1)))
  S TOT=0,X="",CASE=$G(CASE)
  I $D(FILES) S X="" D
  .F  S X=$O(FILES(X)) Q:X=""  S TMP(1,X)="" S:'CASE TMP(2,$$UP(X))=""
@@ -85,7 +85,7 @@ LIST1(VFDV,PATH,EXT,FILES,CASE) ; get list of files
  I $D(EXT) S X="" D
  .F  S X=$O(EXT(X)) Q:X=""  S TMP(3,X)="" S:'CASE TMP(4,$$UP(X))=""
  .Q
- S X="" F  S X=$O(@RETX@(X)) Q:X=""  D
+ S X="" F  S X=$O(@RETX@(1,X)) Q:X=""  D
  .S L=$L(X,".")
  .I L=1 S FX=X,FX(0)=$$UP(X),EX=" ",EX(0)=" "
  .E  S FX=$P(X,".",1,L-1),EX=$P(X,".",L),FX(0)=$$UP(FX),EX(0)=$$UP(EX)
@@ -100,7 +100,7 @@ LIST1(VFDV,PATH,EXT,FILES,CASE) ; get list of files
  ..E  S @RETX@(3,X)=FX(2)
  ..Q
  .Q
- S X="" F  S X=@O(@RETX@(2,X)) Q:X=""  S Y=^(X) D LISTSET(X,Y,1)
+ S X="" F  S X=$O(@RETX@(2,X)) Q:X=""  S Y=^(X) D LISTSET(X,Y,1)
  S X="" F  S X=$O(@RETX@(3,X)) Q:X=""  S Y=^(X) D
  .Q:$D(@RETX@(2,X))  Q:$D(@VFDV@($P(Y,U),$P(Y,U,2),X))
  .D LISTSET(X,Y,"")

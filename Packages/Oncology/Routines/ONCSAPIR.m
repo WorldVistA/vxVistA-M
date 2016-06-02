@@ -1,5 +1,5 @@
 ONCSAPIR ;Hines OIFO/SG - COLLABORATIVE STAGING (REQUEST)  ; 2/8/07 8:28am
- ;;2.11;ONCOLOGY;**40,41,44,47**;Mar 07, 1995;Build 19
+ ;;2.2;ONCOLOGY;**1**;Jul 31, 2013;Build 8
  ;
  ; ONC8DST ------------- DESCRIPTOR OF THE DESTINATION BUFFER
  ;                       (a parameter of HEADER, PUT, and TRAILER)
@@ -81,7 +81,7 @@ HEADER(ONC8DST,REQUEST,ATTS) ;
  S TAG=REQUEST,I=""
  F  S I=$O(ATTS(I))  Q:I=""  D
  . S TAG=TAG_" "_I_"="""_$$SYMENC^MXMLUTL(ATTS(I))_""""
- S TAG=TAG_" ver=""2.0"" xmlns=""http://websrv.oncology.med.va.gov"""
+ S TAG=TAG_" ver=""2.0"" xmlns=""http://websrv.oncology.domain.ext"""
  D PUT(.ONC8DST,TAG,,1)
  S ONC8DST("REQ")=REQUEST
  Q

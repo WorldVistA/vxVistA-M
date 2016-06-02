@@ -1,5 +1,6 @@
-MAGDRA2 ;WOIFO/LB -Routine for DICOM fix  [ 06/20/2001 08:56 ] ; 06/06/2005  09:28
- ;;3.0;IMAGING;**10,11,51**;26-August-2005
+MAGDRA2 ;WOIFO/LB,JSL,SAF - Routine for DICOM fix ; 13 Jul 2011 10:22 AM
+ ;;3.0;IMAGING;**10,11,51,54,49,123**;Mar 19, 2002;Build 67;Jul 24, 2012
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGDRA2 ;WOIFO/LB -Routine for DICOM fix  [ 06/20/2001 08:56 ] ; 06/06/2005  09:
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -20,7 +20,7 @@ MAGDRA2 ;WOIFO/LB -Routine for DICOM fix  [ 06/20/2001 08:56 ] ; 06/06/2005  09:
  ; manually correcting DICOM FIX files.
 EN ;
  ; MAGDY variable to be created during this execution.
- N MAGBEG,MAGEND,MAGDFN,MAGOUT,MAGX,MAGXX,INFO,MAGNME,MAGSSN
+ N MAGBEG,MAGEND,MAGDFN,MAGOUT,MAGX,MAGXX,INFO,MAGNME,MAGPID
  S MAGBEG=1070101,MAGEND=$$DT^XLFDT
 READ ;
  S (MAGDFN,MAGX)=$$READ^MAGDRA3
@@ -33,7 +33,7 @@ READ ;
  ;
  I MAGDFN=MAGXX D
  . S INFO=$$PTINFO Q:$D(MAGERR)
- . S MAGNME=$P(INFO,"^"),MAGSSN=$P(INFO,"^",2)
+ . S MAGNME=$P(INFO,"^"),MAGPID=$P(INFO,"^",2)
  . K ^TMP($J,"RAE1")  ;Re-established by EN1^RA07PC1 -DBIA available
  . ; Set the beginning and ending date.
  . D EN1^RAO7PC1(MAGDFN,MAGBEG,MAGEND,500)
@@ -47,6 +47,11 @@ READ ;
 PTINFO() ;
  N INFO,MAGOUT
  I '$D(MAGDFN) Q ""
+ I $$ISIHS^MAGSPID() D  Q INFO  ;P123 - MOD for IHS patients with Health Record Numbers (i.e. Chawktaw)
+ . N DFN S DFN=MAGDFN,INFO="" D DEM^VADPT
+ . I $G(VA("PID"))'="" S INFO=$G(VADM(1))_"^"_$TR(VA("PID"),"-")
+ . E  S INFO=$G(VADM(1))_"^"_$P($G(VADM(2)),"^")
+ . Q
  D GETS^DIQ(2,MAGDFN,".01;.09","E","MAGOUT","MAGERR")
  I $D(MAGERR) Q ""
  I $D(MAGOUT) D  Q INFO
@@ -55,8 +60,18 @@ PTINFO() ;
  . Q
  Q ""
  ;
-LCASE(MAGDT,MAGCASE) ;
- Q $TR($TR($$FMTE^XLFDT(MAGDT,"2FD")," ","0"),"/","")_"-"_MAGCASE
+LCASE(MAGDT,MAGCASE) ; return the accession number
+ N ACNUMB,ARESULT
+ S ACNUMB=$TR($TR($$FMTE^XLFDT(MAGDT,"2FD")," ","0"),"/","")_"-"_MAGCASE
+ I $$USESSAN^RAHLRU1(),$$ACCFIND^RAAPI(ACNUMB,.ARESULT)>0 D  ; ICR 5600
+ . ; lookup site-specific accession number
+ . N ACNUMB1,RADFN,RADTI,RACNI
+ . S RADFN=$P(ARESULT(1),"^",1),RADTI=$P(ARESULT(1),"^",2)
+ . S RACNI=$P(ARESULT(1),"^",3)
+ . S ACNUMB1=$$GET1^DIQ(70.03,(RACNI_","_RADTI_","_RADFN),31)
+ . I ACNUMB1'="" S ACNUMB=ACNUMB1
+ . Q
+ Q ACNUMB
  ;
 IMG(MAGRPT) ;
  N INFO,MAGOUT,MAGERR
@@ -78,10 +93,9 @@ ONE ;
  N RARPT,RADFN,RADTI,RACNI ;<--Variables needed for EN1^RAUTL20
  ; RAUTL20 used to retrieve if case is part of a print set.
  S MAGDFN=$P(MAGX,"~"),INFO=$$PTINFO
- S MAGNME=$P(INFO,"^"),MAGSSN=$P(INFO,"^",2)
+ S MAGNME=$P(INFO,"^"),MAGPID=$P(INFO,"^",2)
  S RIEN=$P(MAGX,"~",2)_","_$P(MAGX,"~",1)
- S X1=9999999.9999-$P(MAGX,"~",2),X2=+2 D C^%DTC
- S END=X,BEG=9999999.9999-$P(MAGX,"~",2)
+ S BEG=9999999.9999-$P(MAGX,"~",2),END=$$FMADD^XLFDT(BEG,2)
  K ^TMP($J,"RAE1")
  D EN1^RAO7PC1(MAGDFN,BEG,END,20)
  S RAENTRY=$P(MAGX,"~",2)_"-"_$P(MAGX,"~",3)
@@ -96,7 +110,7 @@ ONE ;
  S (MAGDTI,RADTI)=$P(RAENTRY,"-")
  S (MAGCNI,RACNI)=$P(RAENTRY,"-",2),RADFN=MAGDFN
  S MAGCASE=$$LCASE(CDATE,CASE),MAGPIEN=$$PROC(MAGPRC)
- ; RADTI, RADFN, RACNI variables needed for EN1^RAULT20
+ ; RADTI, RADFN, RACNI variables needed for EN1^RAUTL20
  D EN1^RAUTL20
  S (PSET,MAGPSET)=""
  S PSET=$S(RAMEMLOW:"+",RAPRTSET:".",1:"")
@@ -112,7 +126,7 @@ ONE ;
  . Q
  I $D(RAPRTSET) S PP=$S(MAGCNI>1:".",MAGCNI=1:"+",1:"")
  S MAGCNI=RACNI
- W !,"PATIENT: ",MAGNME,?51,"SSN: ",MAGSSN
+ W !,"PATIENT: ",MAGNME,?51,$$PIDLABEL^MAGSPID(),": ",MAGPID
  W !,"Case No.",?15,"Procedure",?42,"Location",?64,"Exam Date"
  W !,"________",?15,"_________",?42,"________________",?64,"________"
  W !,$G(PP),CASE,$$IMG(MAGRPT),?15,MAGPRC,?42,MAGLOC,?64,MAGDATE
@@ -121,7 +135,8 @@ ONE ;
  Q
  ;
 MAGDY ;
- S MAGDY=MAGDFN_"^"_MAGNME_"^"_MAGSSN_"^"_MAGCASE_"^"_MAGPRC_"^"_MAGDTI
+ S MAGDY=MAGDFN_"^"_MAGNME_"^"_MAGPID_"^"_MAGCASE_"^"_MAGPRC_"^"_MAGDTI
  S MAGDY=MAGDY_"^"_MAGCNI_"^"_MAGPIEN_"^"_$G(MAGPST)_"^"
- K MAGNME,MAGSSN,MAGCASE,MAGPRC,MAGDTI,MAGCNI,MAGPIEN,MAPST
+ K MAGNME,MAGPID,MAGCASE,MAGPRC,MAGDTI,MAGCNI,MAGPIEN,MAPST
  Q
+ ;

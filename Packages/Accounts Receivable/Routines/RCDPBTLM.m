@@ -1,7 +1,8 @@
 RCDPBTLM ;WISC/RFJ - bill transactions List Manager top routine ;1 Jun 99
- ;;4.5;Accounts Receivable;**114,148,153,168,169,198,247**;Mar 20, 1995;Build 5
- ;;Per VHA Directive 10-93-142, this routine should not be modified.
+ ;;4.5;Accounts Receivable;**114,148,153,168,169,198,247,271,276**;Mar 20, 1995;Build 87
+ ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
+ ; Reference to $$REC^IBRFN supported by DBIA 2031
  ;
  ;  called from menu option (19)
  ;
@@ -95,8 +96,13 @@ HDR ;  header code for list manager display
  S DATA=$$ACCNTHDR^RCDPAPLM(RCDEBTDA)
  ;
  S %="",$P(%," ",80)=""
- S VALMHDR(1)=$E("Bill #: "_$G(RCDPDATA(430,RCBILLDA,.01,"E"))_%,1,25)_"Account: "_$P(DATA,"^")_$P(DATA,"^",2)
+ ; PRCA*4.5*276 - get EEOB indicator for 1st/3rd party payment and attach to bill when applicable
+ S PRCOUT=$$COMP3^PRCAAPR(RCBILLDA)
+ I PRCOUT'="%" S PRCOUT=$$IBEEOBCK^PRCAAPR1(RCBILLDA)
+ S VALMHDR(1)=$E("Bill #: "_$G(PRCOUT)_$G(RCDPDATA(430,RCBILLDA,.01,"E"))_%,1,25)_"Account: "_$P(DATA,"^")_$P(DATA,"^",2)
  S VALMHDR(2)=$E("Status: "_$G(RCDPDATA(430,RCBILLDA,8,"E"))_%,1,25)_$E("   Addr: "_$P(DATA,"^",4)_", "_$P(DATA,"^",7)_", "_$P(DATA,"^",8)_"  "_$P(DATA,"^",9)_%,1,55)
+ ; PRCA*4.5*276 - show caption for user
+ S VALMSG="|% EEOB | Enter ?? for more actions |" ; PRCA*4.5*276
  Q
  S VALMHDR(3)="  "_IORVON_$E("Bill Balance: "_$J($P(RCTOTAL,"^")+$P(RCTOTAL,"^",2)+$P(RCTOTAL,"^",3)+$P(RCTOTAL,"^",4)+$P(RCTOTAL,"^",5),0,2)_%,1,23)_IORVOFF_"  Phone: "_$P(DATA,"^",10)
  Q
@@ -192,11 +198,11 @@ SELECME() ;
  ; until a valid ECME# is entered or until the user enters a "^" or null value
  ; output - returns the IEN of the record entry in the ACCOUNT RECEIVABLE file (#430) or "??"
  N RCECME,RCBILL,DIR,DIRUT,Y
- S DIR(0)="FO^7:7^I X'?1.7N W !!,""Cannot contain alpha characters"" K X"
+ S DIR(0)="FO^1:12^I X'?1.12N W !!,""Cannot contain alpha characters"" K X"
  S DIR("A")="Select ECME#"
 RET D ^DIR I $D(DIRUT) Q 0
  S RCECME=$S(+Y>0:Y,1:0)
- S RCBILL=$$REC^IBRFN(RCECME)
+ S RCBILL=$$REC^IBRFN(RCECME)    ; IA 2031
  I RCBILL<0 W !!,"??" G RET
  E  W !!,$P($G(^PRCA(430,+RCBILL,0)),"^")," "
  Q RCBILL

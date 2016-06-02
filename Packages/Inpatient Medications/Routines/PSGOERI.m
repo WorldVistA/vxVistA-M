@@ -1,5 +1,5 @@
 PSGOERI ;BIR/CML3-REINSTATE A DC'D ORDER ;06 Aug 98 / 2:17 PM
- ;;5.0; INPATIENT MEDICATIONS ;**17,27,31,88,110,137**;16 DEC 97
+ ;;5.0; INPATIENT MEDICATIONS ;**17,27,31,88,110,137,181**;16 DEC 97;Build 190
  ;
  ; Reference to ^PS(55 is supported by DBIA# 2191
  ;
@@ -18,7 +18,8 @@ ENRI ;
  ;If a duplicate order exists do not reinstate the older one.  Record in ^TMP for later advice in auto e-mail (PSJADT2)
  D NOW^%DTC
  I $D(PSJUNDC) I $$CHECKDUP^PSGOERI(PSGP,+PSGORD) S ^TMP("PSJNOTUNDC",$J,PSGP,PSGORD_"U")="" G DONE
- S DR=$S(+$P($G(^PS(55,PSGP,5,+PSGORD,4)),U,18)=1:"28///H",+$P($G(^(4)),U,26)=1:"28///H",1:"28////A")_";34////"_PSGFD
+ ;S DR=$S(+$P($G(^PS(55,PSGP,5,+PSGORD,4)),U,18)=1:"28///H",+$P($G(^(4)),U,26)=1:"28///H",1:"28////A")_";34////"_PSGFD_";136////@"
+ S DR=$S(+$P($G(^PS(55,PSGP,5,+PSGORD,4)),U,26)=1:"28///H;136////HP",+$P($G(^(4)),U,18)=1:"28///H;136////@",1:"28////A;136////@")_";34////"_PSGFD
  S Z=$G(^PS(55,PSGP,5,+PSGORD,4)),$P(Z,U,11)="",$P(Z,"^",15,17)="^^" S:'$D(PSJUNDC) $P(Z,"^",PSJSYSU,PSJSYSU+1)=DUZ_"^"_PSGDT S ^(4)=Z W "."
  N CHKIT S CHKIT=$G(^PS(55,PSGP,5,+PSGORD,0)) I $P(CHKIT,U,26)["P",($P(CHKIT,U,27)="R") S DR=DR_";105///@;107///@"
  S DIE="^PS(55,"_PSGP_",5,",DA(1)=PSGP,DA=+PSGORD,PSGAL("C")=$S($D(PSJUNDC):40,1:(PSJSYSU*10))+18500 D ^PSGAL5 W "." D ^DIE W "."

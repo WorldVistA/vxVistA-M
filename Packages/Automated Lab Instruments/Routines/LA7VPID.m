@@ -1,5 +1,5 @@
 LA7VPID ;DALOI/JMC - HL7 PID/PV1 segment builder utility ;08/03/09  15:59
- ;;5.2;AUTOMATED LAB INSTRUMENTS;**46,64,74**;Sep 27, 1994;Build 229
+ ;;5.2;AUTOMATED LAB INSTRUMENTS;**46,64,74**;Sep 27, 1994;Build 3
  ;
  ; Reference to routine $$EN^VAFHLPID supported by DBIA# 263
  ;
@@ -67,6 +67,20 @@ PV1(LRDFN,LA7ARRAY,LA7FS,LA7ECH) ; Build PV1 segment
  S LA7LOC=$$CHKDATA^LA7VHLU3(LA7LOC,LA7FS_LA7ECH)
  S LA7Y(3)=LA7LOC
  ;
+ ;DSS/TFF/RAF - BEGIN MODS - BUILD AN HL SEGMENT
+ ; Allows for component and subcomponent parsing with the intention
+ ; to add the station number&facility name to PV1-3.4
+ ; added most recent VISIT by location to PV1-16 1/8/2014
+ N DIERR,OUT,R44,VFDMSG,VISIT
+ ;
+ S LA7Y(3)=LA7Y(3)_"^^^"_$P(LA7V("CLNT"),"^")_"&"_$P(LA7V("CLNT"),"^",2)
+ ;
+ S R44=$$FIND1^DIC(44,"","MOX",$G(LA7LOC),"C","","VFDMSG")
+ D LIST^ORQQVS(.OUT,DFN,$$FMADD^XLFDT(DT,-(100*365)),DT,R44)
+ S:$D(OUT(1)) VISIT=$$GET1^DIQ(9000010,+OUT(1),29320.01,"E","VFDMSG")
+ S LA7Y(19)=$G(VISIT)
+ ;2/4/2015 10 year look back changed to 100 years after report of missing visit to Cerner
+ ;DSS/TFF/RAF - END MODS
  D BUILDSEG^LA7VHLU(.LA7Y,.LA7ARRAY,LA7FS)
  Q
  ;
@@ -184,3 +198,4 @@ ICN(DFN,LA7ECH) ; Send ICN from MPI
  . S $P(ICN,$E(LA7ECH,1),6)="VA FACILITY ID"_$E(LA7ECH,4)_SITE_$E(LA7ECH,4)_"L"
  ;
  Q ICN
+ ;;2013.1;VENDOR - DOCUMENT STORAGE SYS;**27**;;05 May 2014

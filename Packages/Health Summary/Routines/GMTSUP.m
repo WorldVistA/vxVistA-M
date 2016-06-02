@@ -1,5 +1,5 @@
 GMTSUP ; SLC/KER - Utilities for Paging HS           ; 01/06/2003
- ;;2.7;Health Summary;**2,7,21,27,28,30,35,47,56,58,85**;Oct 20, 1995;Build 24
+ ;;2.7;Health Summary;**2,7,21,27,28,30,35,47,56,58,85**;Oct 20, 1995;Build 1
  ;
  ; External References
  ;   DBIA 10026  ^DIR
@@ -98,7 +98,12 @@ HEADER ; Print Running Header
  N GMTSVDT,DATA S DATA="" I +$G(GMTSPXD1)&+$G(GMTSPXD2) D
  . Q:$G(GMTSOBJ)  S:'$D(GMTSOBJE) DATA="Printed for data "  S:$D(GMTSOBJE) DATA="Include data "
  . I GMTSPXD1=GMTSPXD2 S DATA=DATA_"on "_GMTSPXD1 Q
- . S DATA=DATA_"from "_GMTSPXD2_" to "_GMTSPXD1
+ .;DSS/RJS - BEGIN MOD - When selecting "All Results" the Date Range From shows the date of T-500000
+ .I $G(^%ZOSF("ZVX"))["VX" D
+ .. I $D(DTRANGE),+$G(DTRANGE)=50000 S DATA=DATA_"from Earliest Result to "_GMTSPXD1
+ .. I $D(DTRANGE),+$G(DTRANGE)<50000 S DATA=DATA_"from "_GMTSPXD2_" to "_GMTSPXD1
+ ..I '($G(^%ZOSF("ZVX"))["VX") S DATA=DATA_"from "_GMTSPXD2_" to "_GMTSPXD1
+ .;DSS/RJS - END MOD
  I $D(GMTSCDT(0)),'$D(GMTSOBJ) S GMTSVDT=GMTSCDT(0) S:GMTSDTM'["Printed:" GMTSDTM="Printed: "_GMTSDTM
  ;     Location and Date of Report
  I '$D(GMTSOBJ)!($D(GMTSOBJ("DATE LINE"))) D

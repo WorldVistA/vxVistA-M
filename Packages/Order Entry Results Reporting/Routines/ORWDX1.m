@@ -1,5 +1,5 @@
-ORWDX1 ; SLC/KCM/REV - Utilities for Order Dialogs ;09/09/2008
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**85,187,195,215,243,296**;Dec 17, 1997;Build 7
+ORWDX1 ; SLC/KCM/REV - Utilities for Order Dialogs ; 11/15/10 12:56pm
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**85,187,195,215,243,296,341**;Dec 17, 1997;Build 15
  ;
 WRLST(LST,LOC) ; Return list of dialogs for writing orders
  ; .Y(n): DlgName^ListBox Text
@@ -15,10 +15,10 @@ WRLST1 N ANENT
  . S:'$L(TXT) TXT=$P(X0,U,2)
  . I $P(X0,U,4)="M" S:'FID FID=1001
  . S LST(SEQ)=IEN_";"_FID_";"_DGRP_";"_TYP_U_TXT
- .;DSS/SGM - BEGIN MOD - Conditionally include dll associated with order dialog
- .;                      Subscript 21600 is valued only in the vxVistA context.
+ . ;DSS/SMP - BEGIN MOD - Conditionally include dll associated with order dialog
+ . ; *** Subscript 21600 is valued only in the vxVistA context. ***
  . I $G(^ORD(101.41,+IEN,21600))'="" S LST(SEQ)=LST(SEQ)_U_^(21600)
- .;DSS/SGM - END MOD
+ . ;DSS/SMP - END MOD
  Q
 WRLSTB(LST)     ; return menu from which Write Orders list is built
  N MNU,SEQ,IEN,ITM,TXT,FID,DGRP,X,TYP
@@ -37,11 +37,11 @@ DELPI ; delete PI from ORDIALOG if PI = ""
  N ORPI S ORPI=0
  S ORPI=$O(^ORD(101.41,"B","OR GTX PATIENT INSTRUCTIONS",ORPI))
  Q:'$D(ORDIALOG(ORPI))
- ;DSS/SGM - BEGIN MOD - Conditionally prevent syntax, subscript errors
- I $T(VX^VFDI0000)]"",'($$VX^VFDI0000()="VA") ;non-VA context [OSEHRA]
+ ;DSS/SMP - BEGIN MOD - Conditionally prevent syntax, subscript errors
+ I $G(^%ZOSF("ZVX"))["VX" ;non-VA context [OSEHRA]
  I $T,'$L($G(ORDIALOG(ORPI,1))) K ORDIALOG(ORPI),ORDIALOG("WP",ORPI) Q
- E  I '$D(ORDIALOG(ORPI,1)) K ORDIALOG(ORPI),ORDIALOG("WP",ORPI) Q
- ;DSS/SGM - END MOD
+ I '$D(ORDIALOG(ORPI,1)) K ORDIALOG(ORPI),ORDIALOG("WP",ORPI) Q
+ ;DSS/SMP - END MOD
  N PINODE,PITX
  S PITX="",PINODE=$G(ORDIALOG(ORPI,1))
  S PITX=$G(@PINODE@(1,0))
@@ -144,8 +144,9 @@ ORDMATCH(ORY,DFN,ORYARR) ;
  S CNT=0,MATCH=1
  F  S CNT=$O(ORYARR(CNT)) Q:CNT'>0!(MATCH=0)  D
  . S ORDERID=$P(ORYARR(CNT),U),STATUS=$P(ORYARR(CNT),U,2)
- . I ORDERID=0,$G(ACTION)="" Q
+ . ;*341 Set up Action before validation.
  . S IEN=$P(ORDERID,";"),ACTION=$P(ORDERID,";",2)
+ . I ORDERID=0,$G(ACTION)="" Q 
  . I STATUS=$P($G(^OR(100,IEN,3)),U,3) Q
  . I $P($G(^ORD(100.01,STATUS,0)),U)="DISCONTINUED/EDIT" Q
  . ;S MATCH=0

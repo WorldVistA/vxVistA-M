@@ -1,6 +1,6 @@
 SRSAVL ;B'HAM ISC/MAM - DISPLAY AVAILABILITY ; [ 09/22/98  11:36 AM ]
- ;;3.0; Surgery ;**77,50**;24 Jun 93
-START K SRSDATE S SRSOUT=0
+ ;;3.0; Surgery ;**77,50,165**;24 Jun 93;Build 6
+START K SRSDATE S SRSOUT=0,SRBPRG=1 D CURRENT^SRSBUTL
  S X="IOPTCH10;IOPTCH16" D ENDR^%ZISS S SR10=IOPTCH10,SR16=IOPTCH16 D KILL^%ZISS
  W @IOF,!,"Do you want to view all Operating Rooms on one day ?  YES //  " R SRYN:DTIME I '$T!(SRYN["^") S SRSOUT=1 G END
  S SRYN=$E(SRYN) S:SRYN="" SRYN="Y"
@@ -15,7 +15,7 @@ START K SRSDATE S SRSOUT=0
  W @IOF,!,"Operating Room: "_SROOM,!!,"  DATE   12    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17   18   19   20   21   22   23   24"
  S SRDT=SRSDATE F SRDAZE=0:1:14 S X1=SRDT,X2=SRDAZE D C^%DTC S SRSDATE=X,SRDATE=$E(X,4,5)_"-"_$E(X,6,7)_"-"_$E(X,2,3)_"  " D LINE
 END I 'SRSOUT W !!,"Press RETURN to continue  " R X:DTIME
- S IOP=IO_";80",%ZIS="" D ^%ZIS W SR10 W @IOF K SRTN D ^SRSKILL
+ S IOP=IO_";80",%ZIS="" D ^%ZIS W SR10 W @IOF K SRTN,SRBFLG,SRBSER1,SRBPRG D ^SRSKILL
  Q
 REQ ; list requests ?
  S SREQ=0 W !!,"Do you want to list requests also ?  NO//  " R SRYN:DTIME I '$T!(SRYN["^") S SRSOUT=1 Q

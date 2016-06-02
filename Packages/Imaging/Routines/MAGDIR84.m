@@ -1,5 +1,6 @@
-MAGDIR84 ;WOIFO/PMK - Read a DICOM image file ; 09/30/2003  09:19
- ;;3.0;IMAGING;**11**;14-April-2004
+MAGDIR84 ;WOIFO/PMK - Read a DICOM image file ; 19 Sep 2007 9:43 AM
+ ;;3.0;IMAGING;**11,54**;03-July-2009;;Build 1424
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGDIR84 ;WOIFO/PMK - Read a DICOM image file ; 09/30/2003  09:19
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -15,7 +15,6 @@ MAGDIR84 ;WOIFO/PMK - Read a DICOM image file ; 09/30/2003  09:19
  ;; | to be a violation of US Federal Statutes.                     |
  ;; +---------------------------------------------------------------+
  ;;
- ;
  ; M2MB server
  ;
  ; This routine handles the "PATIENT SAFETY" REQUEST item.
@@ -34,7 +33,6 @@ ENTRY ; entry point from ^MAGDIR8
  N FILE ;----- name of MUMPS file containing 0-node for testing
  N FILENAME ;- human-readable name of file begin tested
  N NEWVALUE ;- updated value for the last pointer
- N NODENAME ;- subscript of "LAST <filename> POINTER" in ^MAGDICOM
  N RESULTS ;-- result string (working variable)
  ;
  N EMAIL,LASTIMG,LASTRAD,SYSTITLE
@@ -90,7 +88,6 @@ CHECK() ; check the last internal entry with that previously saved
  ;
 CHECK1() ; check the last internal entry number against the largest know value
  S LASTIEN=$O(@FILE@(" "),-1) ; changed from piece 3 of zero node - PMK 6/4/02
- S NODENAME="LAST "_FILENAME_" POINTER"
  S NEWVALUE=LASTPTR,LASTPTR=+LASTPTR
  I LASTIEN=LASTPTR Q 0 ; no change
  I LASTIEN>LASTPTR D UPDATE Q 1 ; record last ien in ^MAGDICOM
@@ -100,7 +97,8 @@ CHECK1() ; check the last internal entry number against the largest know value
  Q -1 ; the last entry number is less that it should be
  ;
 UPDATE ; record the largest known internal entry number in ^MAGDICOM
- N %,%H,%I,X,Y
- D NOW^%DTC,YX^%DTC S Y=$P(Y,",")_" at "_$P(Y,"@",2)
- S NEWVALUE=LASTIEN_" "_Y
+ N Y
+ S Y=$$HTE^XLFDT($H,1)
+ S NEWVALUE=LASTIEN_" "_$P(Y,",")_" at "_$P(Y,"@",2)
  Q
+ ;

@@ -1,8 +1,9 @@
 PSOBPSU2 ;BIRM/MFR - BPS (ECME) Utilities 2 ;10/15/04
- ;;7.0;OUTPATIENT PHARMACY;**260,287,289,341,290,358**;DEC 1997;Build 35
+ ;;7.0;OUTPATIENT PHARMACY;**260,287,289,341,290,358,359,385,421**;DEC 1997;Build 15
  ;Reference to File 200 - NEW PERSON supported by IA 10060
  ;Reference to DUR1^BPSNCPD3 supported by IA 4560
  ;Reference to $$NCPDPQTY^PSSBPSUT supported by IA 4992
+ ;Reference to $$CLAIM^BPSBUTL supported by IA 4719
  ; 
 MWC(RX,RFL) ; Returns whether a prescription is (M)ail, (W)indow or (C)MOP
  ;Input: (r) RX   - Rx IEN (#52)
@@ -46,40 +47,58 @@ RXACT(RX,RFL,COMM,TYPE,USR) ; - Add an Activity to the ECME Activity Log (PRESCR
  I '$D(^PSRX(RX)) Q
  ;
  N PSOTRIC S PSOTRIC="",PSOTRIC=$$TRIC^PSOREJP1(RX,RFL,PSOTRIC)
- I $E(COMM,1,7)'="TRICARE",PSOTRIC S COMM=$E("TRICARE-"_COMM,1,75)
+ I PSOTRIC=1,$E(COMM,1,7)'="TRICARE" S COMM=$E("TRICARE-"_COMM,1,75)
+ I PSOTRIC=2,$E(COMM,1,7)'="CHAMPVA" S COMM=$E("CHAMPVA-"_COMM,1,75)
  N X,DIC,DA,DD,DO,DR,DINUM,Y,DLAYGO
  S DA(1)=RX,DIC="^PSRX("_RX_",""A"",",DLAYGO=52.3,DIC(0)="L"
  S DIC("DR")=".02///"_TYPE_";.03////"_USR_";.04///"_$S(TYPE'="M"&(RFL>5):RFL+1,1:RFL)_";.05///"_COMM
  S X=$$NOW^XLFDT() D FILE^DICN
  Q
  ;
-ECMENUM(RX) ; Returns the ECME number for a specific prescription
- N ECMENUM,STS,RF
- S ECMENUM=$E(10000000+RX,2,8)
- S STS=$$STATUS^PSOBPSUT(RX,0)
- I STS="" D
- . S RF=0 F  S RF=$O(^PSRX(RX,RF)) Q:'RF  D  I STS'="" Q
- . . S STS=$$STATUS^PSOBPSUT(RX,RF)
- I STS="" Q ""
+ECMENUM(RX,RFL) ; Returns the ECME number for a specific prescription and fill
+ N ECMENUM
+ I $G(RX)="" Q ""
+ ; Check ECME # for Refill passed in
+ I $G(RFL)'="" S ECMENUM=$$GETECME(RX,RFL) Q ECMENUM
+ ; If Refill is null, check last refill
+ S RFL=$$LSTRFL^PSOBPSU1(RX),ECMENUM=$$GETECME(RX,RFL) I ECMENUM'="" Q ECMENUM
+ ; If no ECME # for last refill, step back through refills in reverse order
+ F  S RFL=RFL-1 Q:(RFL<0)!(ECMENUM'="")  S ECMENUM=$$GETECME(RX,RFL)
+ Q ECMENUM
+ ;
+GETECME(RX,RFL) ;
+ ;Internal function used by ECMENUM to get the ECME # from BPS
+ N ECMENUM
+ I $G(RX)="" Q ""
+ I $G(RFL)="" Q ""
+ S ECMENUM=$P($$CLAIM^BPSBUTL(RX,RFL),U,6)
  Q ECMENUM
  ;
 RXNUM(ECME) ; Returns the Rx number for a specific ECME number
  ;
- N RXNUM,FOUND,MAX,LFT,RAD,I,DIR,RX
- S MAX=$O(^PSRX(999999999999),-1),LFT=0 I $L(MAX)>7 S LFT=$E(MAX,1,$L(MAX)-7)
- S FOUND=0
- F RAD=LFT:-1:0 D
- . S RX=RAD*10000000+ECME I $D(^PSRX(RX,0)),$$ECMENUM(RX)=ECME S FOUND=FOUND+1,FOUND(FOUND)=RX
+ N FOUND,MAX,LFT,RAD,I,DIR,RX,X,Y,DIRUT
+ S ECME=+ECME,LFT=0,FOUND=0
+ S MAX=$O(^PSRX(9999999999999),-1)  ; MAX = largest Rx ien on file
  ;
- I FOUND<2 D
- . I FOUND=0 S FOUND=-1 Q
- . S FOUND=FOUND(1)
- E  D
- . W ! F I=1:1:FOUND W !?5,I,". ",$$GET1^DIQ(52,FOUND(I),.01),?25,$$GET1^DIQ(52,FOUND(I),6)
- . W ! S DIR(0)="NA^1:"_FOUND,DIR("A")="Select one: ",DIR("B")=1
- . D ^DIR I $D(DIRUT) S FOUND=-1 Q
- . S FOUND=FOUND(Y)
+ ; Attempt left digit matching logic in this case only
+ I $L(MAX)>7,$L(ECME)'>7 D
+ . S LFT=$E(MAX,1,$L(MAX)-7)  ; LFT = left most digits
+ . F RAD=LFT:-1:0 S RX=RAD*10000000+ECME I $D(^PSRX(RX,0)),$$ECMENUM(RX)'="" S FOUND=FOUND+1,FOUND(FOUND)=RX
+ . Q
  ;
+ ; Otherwise attempt a normal lookup
+ E  S RX=ECME I $D(^PSRX(RX,0)),$$ECMENUM(RX)'="" S FOUND=FOUND+1,FOUND(FOUND)=RX
+ ;
+ I 'FOUND S FOUND=-1 G RXNUMX            ; Rx not found
+ I FOUND=1 S FOUND=FOUND(1) G RXNUMX     ; exactly 1 found
+ ;
+ ; More than 1 found so build a list and ask
+ W ! F I=1:1:FOUND W !?5,I,". ",$$GET1^DIQ(52,FOUND(I),.01),?25,$$GET1^DIQ(52,FOUND(I),6)
+ W ! S DIR(0)="NA^1:"_FOUND,DIR("A")="Select one: ",DIR("B")=1
+ D ^DIR I $D(DIRUT) S FOUND=-1 G RXNUMX
+ S FOUND=FOUND(Y)
+ ;
+RXNUMX ;
  Q FOUND
  ;
 ELIG(RX,RFL,PSOELIG) ;Stores eligibility flag
@@ -97,21 +116,26 @@ ECMESTAT(RX,RFL) ;called from local mail
  ; 0 for not allowed to print from suspense
  ; 1 for allowed to print from suspense
  ;
- N STATUS,SHDT,PSOTRIC,TRICCK
+ N STATUS,PSOTRIC
  S STATUS=$$STATUS^PSOBPSUT(RX,RFL)
  ;IN PROGRESS claims - try again.  If still IN PROGRESS, do not allow to print
  I STATUS["IN PROGRESS" H 5 S STATUS=$$STATUS^PSOBPSUT(RX,RFL) I STATUS["IN PROGRESS" Q 0
+ ;
  ;no ECME status, allow to print.  This will eliminate 90% of the cases
  I STATUS="" Q 1
- ;check for Tricare rejects, not allowed to go to print until resolved.
- ;it does not matter much for this API but usually Tricare processing is done first.
- S PSOTRIC="",PSOTRIC=$$TRIC^PSOREJP1(RX,RFL,.PSOTRIC)
- ;Add TRIAUD - if RX/RFL is in audit, allow to print even if not payable; PSO*7*358, cnf
- I PSOTRIC,STATUS'["PAYABLE",'$$TRIAUD^PSOREJU3(RX,RFL) Q 0
- ;DUR (88)/RTS (79) reject codes are not allowed to print until resolved.
- I $$FIND^PSOREJUT(RX,RFL,,"79,88") Q 0
+ ;
  ;check for suspense hold date/host reject errors
  I $$DUR(RX,RFL)=0 Q 0
+ ;
+ ;check for any TRICARE/CHAMPVA rejects, not allowed to go to print until resolved.
+ ;But allow to print if RX/RFL is in the TRI/CVA Audit Log with no unresolved rejects
+ S PSOTRIC="",PSOTRIC=$$TRIC^PSOREJP1(RX,RFL,.PSOTRIC)
+ I PSOTRIC,STATUS'["PAYABLE",$$FIND^PSOREJUT(RX,RFL,,,1) Q 0  ; unresolved TRI/CVA rejects - no print  *421
+ I PSOTRIC,STATUS'["PAYABLE",$$TRIAUD^PSOREJU3(RX,RFL) Q 1    ; allow to print - on TRI/CVA Audit log  *421
+ ;
+ ;DUR (88)/RTS (79)/RRR reject codes are not allowed to print until resolved.
+ I $$FIND^PSOREJUT(RX,RFL,,"79,88",,1) Q 0
+ ;
  Q 1
  ;
  ;Description:
@@ -152,7 +176,7 @@ ECMEST2(RX,RFL) ;
  ; 0 = no host rejects exists based on ONE parameter
  ; 1 = host reject exists based on ONE parameter
 HOSTREJ(RX,RFL,ONE) ; called from PSXRPPL2 and this routine
- N IDX,TXT,CODE,HRCODE,HRQUIT,RETV,REJ
+ N IDX,TXT,CODE,HRCODE,HRQUIT,RETV,REJ,I
  S IDX="",(RETV,HRQUIT)=0
  I '$D(ONE) S ONE=1
  ;for print from suspense there will only be primary insurance or an index of 1 in REJ array

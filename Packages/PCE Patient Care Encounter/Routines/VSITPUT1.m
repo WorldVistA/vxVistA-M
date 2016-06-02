@@ -1,5 +1,5 @@
 VSITPUT1 ;ISD/RJP - Continued...Verify/set fields and file visit record ;6/20/96
- ;;1.0;PCE PATIENT CARE ENCOUNTER;**76**;Aug 12, 1996;Build 7
+ ;;1.0;PCE PATIENT CARE ENCOUNTER;**76**;Aug 12, 1996;Build 13
  ; Patch PX*1*76 changes the 2nd line of all VSIT* routines to reflect
  ; the incorporation of the module into PCE.  For historical reference,
  ; the old (VISIT TRACKING) 2nd line is included below to reference VSIT

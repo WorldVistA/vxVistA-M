@@ -1,7 +1,6 @@
-VFDPOAF1 ;DSS/WLC;23 Nov 2010 10:04
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 153
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
- ;;Copyright 1995-2010,Document Storage Systems Inc.,All Rights Reserved
+VFDPOAF1 ;DSS/WLC/LM/SMP;Support Utility for Orders;04/25/2014 10:20
+ ;;2013.0;DSS,INC VXVISTA OPEN SOURCE;**12,22**;28 Jan 2013;Build 1
+ ;Copyright 1995-2014,Document Storage Systems Inc. All Rights Reserved
  ;
  ;DSS/LM - Changes/Extensions to support order-list RPC
  ;         Other modifications as noted
@@ -107,12 +106,20 @@ CK3() ; check prescription status and expiration date
  S VDT=$$GET1(52,VRX,26) I VDT,VDT'>DT Q 8
  Q 0
  ;
+CK4()    ; check order "responses" multiple for response "Processing Option"
+ ; If it exists and is "I"n-House, don't include order
+ ; KThies 31407212
+ N IENPU
+ S IENPU=$O(^OR(100,ORD,4.5,"ID","PICKUP",0)) Q:'IENPU 0
+ I $G(^OR(100,ORD,4.5,IENPU,1))="I" Q 4 ; Response Order Dialog 148=I="In-House"
+ Q 0
+ ;
 CKONE(ORD,VRX) ;Check ONE order and/or PRESCRIPTION
  ; ORD - Order IEN
  ; VRX - Prescription IEN
  ; Return 0 if OK, else return -1^Error message
  N X S ORD=$G(ORD),VRX=$G(VRX)
- I ORD S X=$$CK1 I 'X S X=$$CK2
+ I ORD S X=$$CK1 I 'X S X=$$CK2 I 'X S X=$$CK4 ; KThies 3140721
  I VRX S X=$$CK3
  Q $S('X:0,1:$$ERRMSG(X))
  ;
@@ -137,6 +144,7 @@ DATARX(VRX,VRET) ; return prescription data
  S FLDS=".01;2;4;6;7;8;9;114"
  D GETS^DIQ(52,VRX_",",FLDS,"IE","VFDAT","VFDER")
  S VRET("DATE")=$$FMTE^XLFDT(DT)
+ S VRET("XNOW")=$$FMTE^XLFDT($$NOW^XLFDT) ;DSS/LM - Added 3/31/2014
  Q:$D(DIERR)  K Z M Z=VFDAT(52,VRX_",")
  S VFDDFN=Z(2,"I")
  S VFDPRV=Z(4,"I")

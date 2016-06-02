@@ -1,5 +1,5 @@
-HLTPCK2A ;SF/RSD - Message Header Validation (Con't) ;09/13/2006
- ;;1.6;HEALTH LEVEL SEVEN;**19,57,59,66,108,120,133**;Oct 13, 1995;Build 13
+HLTPCK2A ;SF/RSD - Message Header Validation (Con't) ;09/24/2008 17:11
+ ;;1.6;HEALTH LEVEL SEVEN;**19,57,59,66,108,120,133,142**;Oct 13, 1995;Build 17
  ;Per VHA Directive 2004-038, this routine should not be modified.
  S ERR=""
  S HLPARAM=$$PARAM^HLCS2,HLDOM=$P(HLPARAM,U,2),HLINSTN=$P(HLPARAM,U,6)
@@ -12,7 +12,11 @@ MT ;Validate message type
 AT ;Determine if message is an acknowledgement type
  I (("ACK,ADR,MCF,MFK,MFR,ORF,ORR,RRA,RRD,RRE,RRG,TBR"[ARY("MTN"))&($G(MSA)="")) S:(ERR="") ERR="MSA Segment Missing" Q
  ;commit ack, quit
- I $E($G(MSA))="C" D  Q
+ ; patch HL*1.6*142
+ ; in order to get data for ien of sending application,
+ ; receiving application, and subscriber protocol.
+ ; I $E($G(MSA))="C" D  Q
+ I $E($G(MSA))="C" D
  . ;find original msg.
  . S ARY("MSAID")=$P(MSA,FS,2),ARY("MTIENS")=0
  . I ARY("MSAID")="" S:(ERR="") ERR="Invalid Message Control ID in MSA Segment - No Message ID " Q
@@ -90,6 +94,11 @@ SA ;Validate sending application
  I ('ARY("SAP")) S:(ERR="") ERR="Invalid Sending Application" Q
  ;
 VN ;Validate version number
+ ; patch HL*1.6*142
+ ; do not check version number of commit ACK because the batch commit ACK
+ ; does not have version number in it.
+ I $E($G(MSA))="C" G ET
+ ;
  I (ARY("VER")="") S:(ERR="") ERR="Missing HL7 Version" Q
  S X=0
  S:(ARY("VER")'="") X=+$O(^HL(771.5,"B",ARY("VER"),0))

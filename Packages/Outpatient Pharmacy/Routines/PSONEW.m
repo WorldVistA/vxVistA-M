@@ -1,17 +1,20 @@
 PSONEW ;BIR/SAB-new rx order main driver ;07/26/96
- ;;7.0;OUTPATIENT PHARMACY;**11,27,32,46,94,130,268,225**;DEC 1997;Build 29
+ ;;7.0;OUTPATIENT PHARMACY;**11,27,32,46,94,130,268,225,251,379,390,417,313**;DEC 1997;Build 29
  ;External references L and UL^PSSLOCK supported by DBIA 2789
  ;External reference to ^VA(200 supported by DBIA 224
  ;External reference to ^XUSEC supported by DBIA 10076
  ;External reference to ^ORX1 supported by DBIA 2186
  ;External reference to ^ORX2 supported by DBIA 867
  ;External reference to ^TIUEDIT supported by DBIA 2410
+ ;External reference to SAVEOC4^OROCAPI1 supported by DBIA 5729
+ ;External reference to ^ORD(100.05, supported by DBIA 5731
  ;---------------------------------------------------------------
 OERR ;backdoor new rx for v7
- K PSOREEDT,COPY,SPEED,PSOEDIT,DUR,DRET
+ K PSOREEDT,COPY,SPEED,PSOEDIT,DUR,DRET,PSOTITRX,PSOMTFLG N PSOCKCON,PSODAOC
  S PSOPLCK=$$L^PSSLOCK(PSODFN,0) I '$G(PSOPLCK) D LOCK^PSOORCPY S VALMSG=$S($P($G(PSOPLCK),"^",2)'="":$P($G(PSOPLCK),"^",2)_" is working on this patient.",1:"Another person is entering orders for this patient.") K PSOPLCK S VALMBCK="" Q
  K PSOPLCK S X=PSODFN_";DPT(" D LK^ORX2 I 'Y S VALMSG="Another person is entering orders for this patient.",VALMBCK="" D UL^PSSLOCK(PSODFN) Q
-AGAIN N VALMCNT K PSODRUG,PSOCOU,PSOCOUU,PSONOOR,PSORX("FN") W ! D HLDHDR^PSOLMUTL S (PSONEW("QFLG"),PSONEW("DFLG"))=0,PSOFROM="NEW",PSONOEDT=1
+AGAIN N VALMCNT K PSODRUG,PSOCOU,PSOCOUU,PSONOOR,PSORX("FN"),PSORX("DFLG"),PSOQUIT,POERR S PSORX("DFLG")=0
+ W ! D HLDHDR^PSOLMUTL S (PSONEW("QFLG"),PSONEW("DFLG"),PSOQUIT)=0,PSOFROM="NEW",PSONOEDT=1
  K ORD D FULL^VALM1,^PSONEW1 ; Continue order entry
  I PSONEW("QFLG") G END
  I PSONEW("DFLG") W !,$C(7),"RX DELETED",! S:$G(POERR) POERR("DFLG")=1,VALMBCK="Q" G END
@@ -23,6 +26,10 @@ AGAIN N VALMCNT K PSODRUG,PSOCOU,PSOCOUU,PSONOOR,PSORX("FN") W ! D HLDHDR^PSOLMU
  D EN^PSON52(.PSONEW) ; Files entry in File 52
  D NPSOSD^PSOUTIL(.PSONEW) ; Adds newly added rx to PSOSD array
  S VALMBCK="R"
+ ;
+ ; - Possible Titration prescription
+ I $G(PSONEW("IRXN")) D MARK^PSOOTMRX(PSONEW("IRXN"),0)
+ ;
 END D EOJ ; Clean up          
  I '$G(PSORX("FN")) W ! K DIR,DIRUT,DUOUT,DTOUT S DIR(0)="Y",DIR("B")="YES",DIR("A")="Another New Order for "_PSORX("NAME") D ^DIR K DIR,DIRUT,DUOUT,DTOUT I Y K PSONEW,PSDRUG,ORD G AGAIN
  D ^PSOBUILD,BLD^PSOORUT1 S X=PSODFN_";DPT(" D ULK^ORX2 D UL^PSSLOCK(PSODFN)
@@ -44,12 +51,17 @@ EOJ ;
  K PSONOEDT,PSONEW,PSODRUG,ANQDATA,LSI,C,MAX,MIN,NDF,REF,SIG,SER,PSOFLAG,PSOHI,PSOLO,PSONOOR,PSOCOUU,PSOCOU,PSORX("EDIT")
  D CLEAN^PSOVER1
  K ^TMP("PSORXDC",$J),RORD,ACOM,ACNT,CRIT,DEF,F1,GG,I1,IEN,INDT,LAST,MSG,NIEN,STA,DUR,DRET,PSOPRC
- S RXN=$O(^TMP("PSORXN",$J,0)) I RXN D
+ S (ZRXN,RXN)=$O(^TMP("PSORXN",$J,0)) I RXN D
  .S RXN1=^TMP("PSORXN",$J,RXN) D EN^PSOHLSN1(RXN,$P(RXN1,"^"),$P(RXN1,"^",2),"",$P(RXN1,"^",3))
  .I $P(^PSRX(RXN,"STA"),"^")=5 D EN^PSOHLSN1(RXN,"SC","ZS","")
- K RXN,RXN1,^TMP("PSORXN",$J)
+ .;saves drug allergy order chks pso*7*390
+ .I +$G(^TMP("PSODAOC",$J,1,0)) D
+ ..S RXN=ZRXN,PSODAOC="Rx Backdoor "_$S($P(^PSRX(RXN,"STA"),"^")=4:"NON-VERIFIED ",1:"")_"NEW Order Acceptance_OP"
+ ..D DAOC
+ K ZRXN,RXN,RXN1,^TMP("PSORXN",$J),^TMP("PSODAOC",$J),RET,PSODAOC
  I $G(PSONOTE) D FULL^VALM1,MAIN^TIUEDIT(3,.TIUDA,PSODFN,"","","","",1)
- K PSONOTE
+ K PSONOTE,PSOCKCON
+ ;W !! K DIR S DIR(0)="E",DIR("?")="Press Return to continue",DIR("A")="Press Return to Continue" D ^DIR K DIR,DTOUT,DUOUT
  Q
 NOOR ;asks nature of order
  N PSONOODF
@@ -59,8 +71,11 @@ NOOR ;asks nature of order
  .S PSONOODF=1
  .D DIR I $D(DIRUT) S PSONEW("DFLG")=1 Q
  .S PSONOOR=Y D:$D(^XUSEC("PSORPH",DUZ)) COUN K DIR,DTOUT,DTOUT,DIRUT
+ ;DSS/DLF/SMP - BEGIN MOD - ASK FOR NDC IF APPROPRIATE
+ N NDC Q:$$VFD
+ ;DSS/DLF/SMP - END MOD
  ;backdoor order
- D DIR I $D(DIRUT) S PSONEW("DFLG")=1 Q
+ D DIR I $D(DIRUT) S PSONEW("DFLG")=1,VALMBCK="Q" Q
  S PSONOOR=Y K DIK,DA,DIE,DR,PSOI,DIR,DUOUT,DTOUT,DIRUT
  G:'$D(^XUSEC("PSORPH",DUZ)) NOORX
 COUN ;patient counseling
@@ -88,4 +103,52 @@ DIRX Q
 NOORE(PSONEW) ;entry point for renew
  D NOOR I $D(DIRUT) S PSONEW("DFLG")=1 Q
  S PSONEW("NOO")=PSONOOR
+ Q
+DAOC ;stores drug allergies w/sign/symptoms
+ Q:'$D(^TMP("PSODAOC",$J,1,0))
+ N DA,OCCDT,ORN,ORL,Z,RET S OCCDT=$$NOW^XLFDT,ORN=$P(^PSRX(RXN,"OR1"),"^",2)
+ S ORL(1,1)=ORN_"^"_PSODAOC_"^"_DUZ_"^"_OCCDT_"^3^"
+ S ORL(1,2)="A Drug-Allergy Reaction exists for this medication and/or class"
+ D SAVEOC^OROCAPI1(.ORL,.RET)
+ S DA=$O(RET(1,0)) Q:'DA
+ S $P(^ORD(100.05,DA,0),"^",2)=6
+ S ^ORD(100.05,DA,4,0)="100.517PA^1^1"
+ S ^ORD(100.05,DA,4,1,0)=^TMP("PSODAOC",$J,1,0)
+ S ^ORD(100.05,DA,4,"B",$P(^TMP("PSODAOC",$J,1,0),"^"),1)=""
+ ;
+ I $O(^TMP("PSODAOC",$J,1,0)) F I=0:0 S I=$O(^TMP("PSODAOC",$J,1,I)) Q:'I  D
+ .S ^ORD(100.05,DA,4,1,1,0)="100.5173PA^"_I_"^"_I
+ .S ^ORD(100.05,DA,4,1,1,I,0)=^TMP("PSODAOC",$J,1,I)
+ .S ^ORD(100.05,DA,4,1,1,"B",^TMP("PSODAOC",$J,1,I),I)=""
+ ;
+ I $O(^TMP("PSODAOC",$J,2,0)) S Z=0 F I=0:0 S I=$O(^TMP("PSODAOC",$J,2,I)) Q:'I  S Z=Z+1 D
+ .S ^ORD(100.05,DA,4,1,2,0)="100.5174PA^"_Z_"^"_Z
+ .S ^ORD(100.05,DA,4,1,2,Z,0)=^TMP("PSODAOC",$J,2,I)
+ .S ^ORD(100.05,DA,4,1,2,"B",^TMP("PSODAOC",$J,2,I),Z)=""
+ ;
+ I $O(^TMP("PSODAOC",$J,3,0)) F I=0:0 S I=$O(^TMP("PSODAOC",$J,3,I)) Q:'I  D
+ .S ^ORD(100.05,DA,4,1,3,0)="100.5175PA^"_I_"^"_I
+ .S ^ORD(100.05,DA,4,1,3,I,0)=^TMP("PSODAOC",$J,3,I)
+ .S ^ORD(100.05,DA,4,1,3,"B",^TMP("PSODAOC",$J,3,I),I)=""
+ K ^TMP("PSODAOC",$J)
+ Q
+ ;
+ ;DSS/SMP - BEGIN MODS
+VFD() ;
+ I $G(^%ZOSF("ZVX"))["VX",$T(^VFDPSNDC)]"",$$OPON^VFDPSNDC()
+ I $T,$D(XQORNOD),"Accept"[$P(XQORNOD(0),"^",3) D GETNDC
+ I $G(NDC)=U S (DIRUT,PSONEW("DFLG"))=1,VALMBCK="Q" Q 1
+ Q 0
+ ;
+GETNDC ; Get NDC
+ ; Not checking if VFDPSNDC exists. If we are here, it does.
+ S DRG=PSODRUG("IEN")
+ S NDC=$TR(PSODRUG("NDC"),"-","")
+ ; FOR OMH - REMOVE DEFAULT NDC calculated from NDC field of drug file
+ I $$111^VFDPSNDC() K NDC
+ ; END ONLY OMH
+ D LOOPNDC^VFDPSNDC(DRG,.NDC)
+ I NDC="^" Q
+ S (PSONEW("SCANNED CODE"),PSORENW("SCANNED CODE"))=NDC("SCAN")
+ S (PSODRUG("NDC"),PSONEW("NDC"))=NDC
  Q

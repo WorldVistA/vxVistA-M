@@ -1,5 +1,6 @@
 MAGFILEB ;WOIFO/RED - CREATE FILE REFERENCE FROM ^MAG(2005) ; 10/22/2002  06:39
- ;;3.0;IMAGING;**8,48**;Jan 11, 2005
+ ;;3.0;IMAGING;**8,48,39**;Mar 19, 2002;Build 2010;Mar 08, 2011
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGFILEB ;WOIFO/RED - CREATE FILE REFERENCE FROM ^MAG(2005) ; 10/22/2002  06:39
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -15,6 +15,7 @@ MAGFILEB ;WOIFO/RED - CREATE FILE REFERENCE FROM ^MAG(2005) ; 10/22/2002  06:39
  ;; | to be a violation of US Federal Statutes.                     |
  ;; +---------------------------------------------------------------+
  ;;
+ Q
  ; CALL WITH MAGXX=IEN NUMBER IN IMAGE FILE (2005)
  ;Calling FINDFILE requires FILETYPE to be defined ["FULL"|"ABSTRACT"|"BIG"|"TEXT"]
  ;   returns : 
@@ -96,11 +97,13 @@ FINDFILE ;
  . Q
  ;
  I FILETYPE="BIG" D  Q:MAGERR  ; code for big file
- . N FBIG
+ . N EXT,FBIG  ;
  . S FBIG=$G(^MAG(2005,MAGXX,"FBIG"))
  . I FBIG="" D  Q  ; no big file exists
  . . S MAGPREF="",MAGFILE1="-1~BIG File Does NOT Exist",MAGERR=1
- . S $P(MAGFILE1,".",2)="BIG"
+ . . Q
+ . S EXT=$P(FBIG,"^",3) I EXT="" S EXT="BIG"
+ . S $P(MAGFILE1,".",2)=EXT
  . S MAGREF=$P(FBIG,"^") ; get file from magnetic disk, if possible
  . I MAGREF="" S MAGREF=$P(FBIG,"^",2) ; get file from jukebox
  . Q
@@ -179,7 +182,7 @@ OFFLINE ; Jukebox Cartridge is off-line -- output error message
  S MAGPREF="",MAGFILE1="-1^"_MAGXX_"^"_$P(MAG0,"^",5)_"^OFFLINE"
  Q
 IMOFFLN(FILE) ;Check to see if image is offline (jb platter removed)
- N XX,X
+ N XX,X,Y
  I '$L(FILE) Q 0
  S X=FILE X ^%ZOSF("UPPERCASE") S FILE=Y
  I $D(^MAGQUEUE(2006.033,"B",FILE)) D   Q 1

@@ -1,5 +1,5 @@
-IVMPREC9 ;ALB/KCL/BRM/CKN - PROCESS INCOMING (Z05 EVENT TYPE) HL7 MESSAGES (CON'T) ; 8/15/08 10:25am
- ;;2.0;INCOME VERIFICATION MATCH;**34,58,115**; 21-OCT-94;Build 28
+IVMPREC9 ;ALB/KCL/BRM/CKN,TDM - PROCESS INCOMING (Z05 EVENT TYPE) HL7 MESSAGES (CON'T) ; 6/27/11 6:44pm
+ ;;2.0;INCOME VERIFICATION MATCH;**34,58,115,121,151**; 21-OCT-94;Build 10
  ;;Per VHA Directive 10-93-142, this routine should not be modified.
  ;
  ;
@@ -7,6 +7,7 @@ IVMPREC9 ;ALB/KCL/BRM/CKN - PROCESS INCOMING (Z05 EVENT TYPE) HL7 MESSAGES (CON'
 STORE ; - store HL7 fields that have a different value than DHCP fields in
  ;   the IVM Patient (#301.5) file (#301.511) multiple for uploading
  ;
+ S:$D(AUPFARY(IVMDEMDA)) UPDAUP(IVMDEMDA)=""
  G:IVMFLG STORE2
  S X=$$IEN^IVMUFNC4("PID")
  ;
@@ -44,8 +45,14 @@ LOOK ; Find the current DHCP field value.
  ;  Input:   DR  --   Field number of the field in file #2
  ;          DFN  --   Pointer to the patient in file #2
  ;  Output:   Y  --   Internal value of field
- S DIC="^DPT(",DA=DFN,DIQ="IVM",DIQ(0)="I" D EN^DIQ1
- S Y=$G(IVM(2,DFN,DR,"I"))
+ ;
+ N IVMOUTTY,I
+ ;S DIC="^DPT(",DA=DFN,DIQ="IVM",DIQ(0)="I" D EN^DIQ1
+ S DIQ(0)=$S($G(DIQ(0))="":"I",$G(DIQ(0))="E":"E",1:"I")
+ S IVMOUTTY=DIQ(0)
+ S DIC="^DPT(",DA=DFN,DIQ="IVM" D EN^DIQ1
+ ;S Y=$G(IVM(2,DFN,DR,"I"))
+ S Y=$G(IVM(2,DFN,DR,IVMOUTTY))
  K DIC,DIQ,DR,IVM
  Q
 AUTOEPC(DFN,UPDEPC) ;
@@ -137,3 +144,80 @@ PHONE ; - ask user to delete phone # [Residence] from Patient (#2) file
  S:Y $P(^DPT(DFN,.13),"^")="" W !!,"Patient's Phone Number [Residence] has ",$S(Y:"",1:"not "),"been deleted."
  Q
  ;
+AUTOAUP(DFN,UPDAUP,UPDAUPG) ;
+ ; automated upload of misc information
+ ;  Input:     DFN  -  patient IEN
+ ;          UPDAUP  -  array contains fields for auto-upload
+ ;         UPDAUPG  -  array contains field group flag for auto-upload
+ ;
+ N IVMDA2,IVMDA1,IVMI,MULTFLG,IVMXREF,UFLG,IVMJ,IVMNODE,IVMCFLD,IVMCVAL,Y,IVM30192,MULFIL
+ Q:'$G(DFN)
+ S IVMDA2=$G(IVM3015) Q:'IVMDA2
+ S IVMDA1=$O(^HL(771.3,"B","PID",""))
+ S IVMDA1=$O(^IVM(301.5,IVMDA2,"IN","B",IVMDA1,""),-1) Q:'IVMDA1
+ ;
+ S IVMI="" F  S IVMI=$O(UPDAUP(IVMI)) Q:IVMI=""  D
+ .;
+ .;If DHCP field is a multiple set multiple flag for special filing
+ .S MULTFLG=0
+ .S IVM30192=$G(^IVM(301.92,IVMI,0)),IVMXREF=$P(IVM30192,"^",2)
+ .I IVMXREF="PID10" S MULTFLG=1       ;Race
+ .I IVMXREF="PID117C" S MULTFLG=1     ;Conf Addr Category
+ .I IVMXREF="PID22" S MULTFLG=1       ;Ethnicity
+ .;
+ .;Don't file if part of a group & group update flag not set
+ .S UFLG=1 I AUPFARY(IVMI)'="",'UPDAUPG(AUPFARY(IVMI)) S UFLG=0
+ .;
+ .S IVMJ=0 F  S IVMJ=$O(^IVM(301.5,IVMDA2,"IN",IVMDA1,"DEM","B",IVMI,IVMJ)) Q:IVMJ']""  D
+ ..S IVMNODE=$G(^IVM(301.5,IVMDA2,"IN",IVMDA1,"DEM",IVMJ,0))
+ ..I $G(AUPFARY(+$P(IVMNODE,"^")))'="",(($P(IVMNODE,"^",2)="")!($P(IVMNODE,"^",2)="""""")) S $P(IVMNODE,"^",2)="@"
+ ..I +$G(ZEMADRUP(IVMXREF)),$P(IVMNODE,"^",2)="" S $P(IVMNODE,"^",2)="@"
+ ..I ('+IVMNODE)!($P(IVMNODE,"^",2)']"") Q
+ ..S IVMCFLD=$P($G(^IVM(301.92,+IVMNODE,0)),"^",5)
+ ..S IVMCVAL=$P(IVMNODE,"^",2)
+ ..;
+ ..I UFLG D
+ ...I MULTFLG D AUTOAUPM(+DFN,IVM30192,IVMCVAL)         ;file mult fld
+ ...I 'MULTFLG D UPLOAD^IVMLDEM6(+DFN,IVMCFLD,IVMCVAL)  ;file non-mult
+ ..D DELENT^IVMLDEMU(IVMDA2,IVMDA1,IVMJ)          ;remove from 301.511
+ ..; - if no display or uploadable fields left, delete the PID segment
+ ..I '$$DEMO^IVMLDEM5(IVMDA2,IVMDA1,0),'$$DEMO^IVMLDEM5(IVMDA2,IVMDA1,1) D
+ ...D DELETE^IVMLDEM5(IVMDA2,IVMDA1," ") ; Dummy up name parameter
+ Q
+ ;
+AUTOAUPM(DFN,IVM30192,IVMVALUE) ;
+ ;  Input:       DFN  -  as patient IEN
+ ;          IVM30192  -  as '0' node of the 301.92 entry
+ ;          IVMVALUE  -  as the value of the field
+ ;
+ ; Output: None
+ ;
+ N MFIL,MFLD,DDINFO,DDMNOD,DDMFLD,DA,DIK,DGENDA,MULFIL,DATA,SUB
+ S MFIL=$P(IVM30192,"^",4),MFLD=$P(IVM30192,"^",5)
+ S DDINFO=$G(^DD(MFIL,MFLD,0))
+ S DDMNOD=$P($P(DDINFO,"^",4),";"),DDMFLD=+$P(DDINFO,"^",2)
+ ;
+ ; - delete values currently in the multiple field
+ S DA(1)=DFN,DIK="^DPT("_DFN_","""_DDMNOD_""","
+ S DA=0 F  S DA=$O(^DPT(DFN,DDMNOD,DA)) Q:'DA  D ^DIK
+ ;
+ ; - add new values to multiple field
+ S DGENDA(1)=DFN
+ ;
+ I DDMFLD=2.02 D
+ .S DATA(.02)=$$FIND1^DIC(10.3,,,"SELF IDENTIFICATION")
+ .S SUB="" F  S SUB=$O(IVMRACE(2,SUB)) Q:SUB=""  D
+ ..S DATA(.01)=SUB
+ ..I $$ADD^DGENDBS(DDMFLD,.DGENDA,.DATA)
+ ;
+ I DDMFLD=2.06 D
+ .S DATA(.01)=IVMVALUE
+ .S DATA(.02)=$$FIND1^DIC(10.3,,,"SELF IDENTIFICATION")
+ .I $$ADD^DGENDBS(DDMFLD,.DGENDA,.DATA)
+ ;
+ I DDMFLD=2.141 D
+ .S DATA(1)="Y"
+ .S SUB="" F  S SUB=$O(CONFADCT(SUB)) Q:SUB=""  D
+ ..S DATA(.01)=SUB
+ ..I $$ADD^DGENDBS(DDMFLD,.DGENDA,.DATA)
+ Q

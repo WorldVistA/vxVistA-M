@@ -1,5 +1,5 @@
-VADPT1 ;ALB/MRL/MJK,ERC - PATIENT VARIABLES ; 8/1/08 1:29pm
- ;;5.3;Registration;**415,489,516,614,688**;Aug 13, 1993;Build 29
+VADPT1 ;ALB/MRL/MJK,ERC,TDM - PATIENT VARIABLES ; 7/28/09 1:54pm
+ ;;5.3;Registration;**415,489,516,614,688,754**;Aug 13, 1993;Build 46
 1 ;Demographic [DEM]
  N W,Z,NODE
  ;
@@ -74,6 +74,9 @@ VADPT1 ;ALB/MRL/MJK,ERC - PATIENT VARIABLES ; 8/1/08 1:29pm
  ; -- employment status [7 - ES]
  S VAX=$S($D(^DPT(DFN,.311)):^(.311),1:""),W="EMPLOYED FULL TIME^EMPLOYED PART TIME^NOT EMPLOYED^SELF EMPLOYED^RETIRED^ACTIVE MILITARY DUTY^UNKNOWN"
  S Z=$P(VAX,"^",15),@VAV@($P(VAS,"^",7))=Z_$S(Z:"^"_$P(W,"^",Z),1:"")
+ ;
+ ; -- PHONE NUMBER [WORK] [8 - WP]
+ I $D(^DPT(DFN,.13)) S @VAV@($P(VAS,"^",8))=$P(^(.13),"^",2)
  Q
  ;
 3 ;Address [ADD]
@@ -127,6 +130,8 @@ CA ;Confidential Address
  I @VAV@($P(VAS,U,28))]"" D
  . I '$D(^HL(779.004,$P(VAX,U,16),0)) Q
  . S $P(@VAV@($P(VAS,U,28)),U,2)=$$CNTRYI^DGADDUTL($P(VAX,U,16))
+ ; -- CONFIDENTIAL PHONE NUMBER [29 - CPN]
+ I $D(^DPT(DFN,.13)) S @VAV@($P(VAS,"^",29))=$P(^(.13),"^",15)
 Q3 K VABEG,VAEND,VAZIP4 Q
  ;
 4 ;Other Address [OAD]

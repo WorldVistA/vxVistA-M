@@ -1,5 +1,6 @@
-HLUOPT1 ;AISC/SAW - Purging Entries in file #772 and #773 ;02/04/2004  09:58
- ;;1.6;HEALTH LEVEL SEVEN;**10,13,21,36,19,47,62,109,108**;Oct 13, 1995
+HLUOPT1 ;AISC/SAW - Purging Entries in file #772 and #773 ;12/30/2010
+ ;;1.6;HEALTH LEVEL SEVEN;**10,13,21,36,19,47,62,109,108,153**;Oct 13, 1995;Build 11
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  ; Purge data of the HL7 message in file #772 and #773.
  ;
@@ -110,16 +111,23 @@ CHK773(HLPDT,HLDELCNT,HLEXIT) ; Check file 773
  S HLLT773=$O(^HLMA(";"),-1) ; last ien for 773
  S HLIEN=0
  F  S HLIEN=$O(^HLMA(HLIEN)) Q:'HLIEN  D  Q:HLEXIT  Q:$$FAIL(773)  ;HL*1.6*109
+ .N NODE0,NODEP
  . D CHK4STOP(.HLEXIT) Q:HLEXIT
  . S XTMP(773,"REV")=$G(XTMP(773,"REV"))+1,XTMP(773,"LAST")=HLIEN,XTMP(773,"FAIL")=$G(XTMP(773,"FAIL"))+1 ; HL*1.6*109
  . ;
  . ;check if the record is reserved for FAST PURGE
  . I ($P($G(^HLMA(HLIEN,2)),"^",2)\1)>FPDATE Q
  . ;
- . S HLPTR=+$G(^HLMA(HLIEN,0)) Q:'HLPTR
+ . S NODE0=$G(^HLMA(HLIEN,0))
+ . S HLPTR=+NODE0 Q:'HLPTR
  . S HLMADT=+$G(^HL(772,HLPTR,0))
  . ;HLY=status, HLMADT1=processed date
- . S HLY=+$G(^HLMA(HLIEN,"P")),HLMADT1=+$G(^("S"))
+ . S NODEP=$G(^HLMA(HLIEN,"P"))
+ . S HLY=+NODEP,HLMADT1=+$G(^("S"))
+ .;** P153 START CJM
+ . ;Delete incoming duplicate records as if completed, despite error status
+ . I HLY>3,HLY<7,'(HLMADT1>HLPDT("COMP")),$P(NODE0,"^",3)="I",$P(NODEP,"^",4)=109 D KILL773(HLIEN,HLLT773,.HLDELCNT) Q
+ .;** P153 END CJM
  . ;error status, quit if flag set to no
  . I HLY>3,HLY<8,'HLPDT("ERR") Q
  . ;check if date entered is less than purge all date
@@ -237,5 +245,9 @@ CHK4STOP(HLEXIT) ;
  Q
  ;
 FAIL(FILE) ; Has number entries w/o purging any been exceeded?
- QUIT $S($G(XTMP(FILE,"FAIL"))>200000:1,1:"")
+ ; **P153 START CJM **
+ ;This check is causing the purge to fail
+ ;QUIT $S($G(XTMP(FILE,"FAIL"))>200000:1,1:"")
+ Q ""
+ ; **p153 end cjm **
  ;

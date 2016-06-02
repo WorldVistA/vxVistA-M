@@ -1,5 +1,5 @@
 VFDI0005 ;DSS/SGM - ENV/PRE/POST VXVISTA 2013.0 ; 6/11/2013 18:22
-V ;;2013.0;;;;Build 6
+V ;;2013.0;;;;Build 13
  ;
  ; This is the entry point for the environmental check for vxVistA
  ; 2013.0 and the corresponding GUIs for vxCPRS, vxVitals, vxBCMA

@@ -1,5 +1,6 @@
 RAHLRPT ;HISC/CAH AISC/SAW-Compiles HL7 'ORU' Message Type ; 4/26/01 10:40am
- ;;5.0;Radiology/Nuclear Medicine;**2,12,10,25,81,80,84**;Mar 16, 1998;Build 13
+ ;;5.0;Radiology/Nuclear Medicine;**2,12,10,25,81,80,84,103**;Mar 16, 1998;Build 2
+ ; 12/15/2009 BP/KAM RA*5*103 Outside Report Status Code needs 'F'
 EN ; Called from RA RPT and RA RPT 2.3 protocol entry action
  ; Input variables:
  ;   RADFN=file 2 IEN (DFN)
@@ -83,7 +84,10 @@ OBR ;Compile 'OBR' Segment
  S $P(X1,HLFS,37)=$$FMTHL7^XLFDT(OBR36)
  ;
  S RADTV=HLDT1 I $P(RARPT0,"^",5)="V",$P(RARPT0,"^",7) K RADTV S RADTV=$$HLDATE^HLFNC($P(RARPT0,"^",7))
- S $P(X1,HLFS,23)=RADTV,$P(X1,HLFS,26)=$S($P(RARPT0,"^",5)="V":"F",1:"R")
+ ;04/06/2010 BP/KAM RA*5*103 Remedy Call 363538 Changed next line to
+ ;                                              test for 'EF' or 'V'
+ ;S $P(X1,HLFS,23)=RADTV,$P(X1,HLFS,26)=$S($P(RARPT0,"^",5)="V":"F",1:"R")
+ S $P(X1,HLFS,23)=RADTV,$P(X1,HLFS,26)=$S(($P(RARPT0,"^",5)="V")!($P(RARPT0,"^",5)="EF"):"F",1:"R")
  ;Principal Result Interpreter = Verifying Physician
  S $P(X1,HLFS,33)="" I $P(RARPT0,"^",9) D
  .S X2=$$GET1^DIQ(200,$P(RARPT0,"^",9),.01) Q:X2']""

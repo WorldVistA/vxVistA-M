@@ -1,5 +1,5 @@
 IBCBB7 ;ALB/BGA - CONT. OF MEDICARE EDIT CHECKS ;09/10/98
- ;;2.0;INTEGRATED BILLING;**51,137,240**;21-MAR-94
+ ;;2.0;INTEGRATED BILLING;**51,137,240,447,488**;21-MAR-94;Build 184
  ;;Per VHA Directive 10-93-142, this routine should not be modified.
  ;
  ; Revenue Codes
@@ -21,8 +21,9 @@ IBCBB7 ;ALB/BGA - CONT. OF MEDICARE EDIT CHECKS ;09/10/98
  . . ;
  . . S IBREVD=IBREV1(IBREVC,IBI),IBREVC12=$E(IBREVC,1,2),IBBCPT=$P(IBREVD,U,2)
  . . ;
+ . . ; IB*2.0*447/TAZ Removed this error so that zero dollar revenue codes can process on the 837
  . . ; No charge associated with rev code
- . . I '$P(IBREVD,U,3),IBREVC12'=18 S IBQUIT=$$IBER^IBCBB3(.IBER,185) Q:IBQUIT
+ . . ;I '$P(IBREVD,U,3),IBREVC12'=18 S IBQUIT=$$IBER^IBCBB3(.IBER,185) Q:IBQUIT
  . . ;
  . . ; Charges cannot be negative dollar amounts
  . . I $P(IBREVD,U,5)<0 S IBQUIT=$$IBER^IBCBB3(.IBER,213) Q:IBQUIT
@@ -60,12 +61,12 @@ IBCBB7 ;ALB/BGA - CONT. OF MEDICARE EDIT CHECKS ;09/10/98
  . . ; OUTPATIENT ANCILLARY only Rev Codes edit rec 61-04
  . . I IBREV1(IBREVC)="AO" D  Q
  . . . ;
- . . . ; Rev codes with different HCPCS codes can be duplicated
- . . . I $$FT^IBCEF(IBIFN)=3,$O(IBREV1(IBREVC,1))  D  Q:IBQUIT
- . . . . N IBMOD
- . . . . S IBMOD=$P(IBREVD,U,9)
- . . . . I IBI=1 K IBREVDUP S IBREVDUP(IBBCPT_" "_IBMOD)=""
- . . . . I '$$ISRX^IBCEF1(IBIFN),IBI>1,$D(IBREVDUP(IBBCPT_" "_IBMOD)),IBER'["IB192;" S IBQUIT=$$IBER^IBCBB3(.IBER,192)
+ . . . ; Rev codes with different HCPCS codes can be duplicated => baa ; 488 ; removed to allow splitting.
+ . . . ;I $$FT^IBCEF(IBIFN)=3,$O(IBREV1(IBREVC,1))  D  Q:IBQUIT
+ . . . ;. N IBMOD
+ . . . ;. S IBMOD=$P(IBREVD,U,9)
+ . . . ;. I IBI=1 K IBREVDUP S IBREVDUP(IBBCPT_" "_IBMOD)=""
+ . . . ;. I '$$ISRX^IBCEF1(IBIFN),IBI>1,$D(IBREVDUP(IBBCPT_" "_IBMOD)),IBER'["IB192;" S IBQUIT=$$IBER^IBCBB3(.IBER,192)
  . . . ;
  . . . ; Rev Code 49x can not be entered with 36x and 37x
  . . . I IBREVC12=49,$O(IBREV1(380),-1)'<360 S IBQUIT=$$IBER^IBCBB3(.IBER,195) Q:IBQUIT

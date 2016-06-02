@@ -1,17 +1,17 @@
 SROAPCA2 ;BIR/MAM - PRINT OPERATIVE DATA ;06/28/06
- ;;3.0; Surgery ;**38,71,95,125,153**;24 Jun 93;Build 11
+ ;;3.0;Surgery;**38,71,95,125,153,174,175**;24 Jun 93;Build 6
  S SRA(206)=$G(^SRF(SRTN,206)),SRA(207)=$G(^SRF(SRTN,207)),SRA(209)=$G(^SRF(SRTN,209)),SRA(207.1)=$G(^SRF(SRTN,207.1))
  S SRAO(1)=$P(SRA(207),"^")_"^365"
  S SRAO(2)=$P(SRA(207),"^",2)_"^366"
  S SRAO(3)=$P(SRA(207),"^",24)_"^464"
  S SRAO(4)=$P(SRA(207),"^",25)_"^465"
  S SRAO(5)=$P(SRA(207),"^",20)_"^416"
- S NYUK=$P(SRA(207),"^",3) D YN S SRAO(6)=SHEMP_"^367"
- S NYUK=$P(SRA(207),"^",4) D YN S SRAO(7)=SHEMP_"^368"
- S NYUK=$P(SRA(207),"^",5) D YN S SRAO(8)=SHEMP_"^369"
- S NYUK=$P(SRA(207),"^",6) S SRAO(9)=$S(NYUK="Y":"YES",NYUK="N":"NO",NYUK=1:"AORTIC",NYUK=2:"MITRAL",NYUK=3:"TRICUSPID",NYUK=4:"OTHER/COMBINATION",NYUK=5:"NONE",1:"")_"^370"
+ S NYUK=$P(SRA(207),"^",3) D VL^SROACR1 S SRAO(6)=SHEMP_"^367"
+ S NYUK=$P(SRA(207),"^",4) D VL^SROACR1 S SRAO(7)=SHEMP_"^368"
+ S NYUK=$P(SRA(207),"^",5) D VL^SROACR1 S SRAO(8)=SHEMP_"^369"
+ S NYUK=$P(SRA(207),"^",28) D VL^SROACR1 S SRAO(9)=SHEMP_"^493"
  S NYUK=$P(SRA(207),"^",7) D YN S SRAO(10)=SHEMP_"^371"
- S NYUK=$P(SRA(209),"^",9) D YN S SRAO(11)=SHEMP_"^481"
+ S NYUK=$P(SRA(209),"^",9) S SHEMP=$S(NYUK="N":"NONE",NYUK="B":"BRIDGE TO TRANSPLANT",NYUK="D":"DESTINATION THERAPY",1:"") S SRAO(11)=SHEMP_"^481"
  S NYUK=$P(SRA(209),"^",11) D YN S SRAO(12)=SHEMP_"^483"
  S NYUK=$P(SRA(209),"^",14) S SHEMP=$S(NYUK="F":"FULL MAZE",NYUK="N":"NO MAZE PERFORMED",NYUK="M":"MINI MAZE",1:"") S SRAO(13)=SHEMP_"^512"
  S NYUK=$P(SRA(207),"^",12) D YN S SRAO(14)=SHEMP_"^376"
@@ -31,18 +31,20 @@ SROAPCA2 ;BIR/MAM - PRINT OPERATIVE DATA ;06/28/06
  S Y=$P(SRA(207),"^",27),C=$P(^DD(130,469,0),"^",2) D:Y'="" Y^DIQ S SRAO(27)=Y_"^469"
  S NYUK=$P(SRA(209),"^",13) D YN S SRAO(29)=SHEMP_"^502"
  W !!,"VI. OPERATIVE DATA"
- W !,"Cardiac surgical procedures with or without cardiopulmonary bypass",!,"CABG distal anastomoses:",?40,"Bridge to transplant/Device:",?75,$P(SRAO(11),"^")
- W !,?2,"Number with Vein:",?33,$P(SRAO(1),"^"),?40,"TMR:",?75,$P(SRAO(12),"^")
- W !,?2,"Number with IMA:",?33,$P(SRAO(2),"^"),?40,"Maze procedure:",?61,$J($P(SRAO(13),"^"),17)
- W !,?2,"Number with Radial Artery:",?33,$P(SRAO(3),"^"),?40,"ASD repair:",?75,$P(SRAO(14),"^")
- W !,?2,"Number with Other Artery:",?33,$P(SRAO(4),"^"),?40,"VSD repair:",?75,$P(SRAO(15),"^")
- W !,?2,"Number with Other Conduit:",?33,$P(SRAO(5),"^"),?40,"Myectomy for IHSS:",?75,$P(SRAO(16),"^")
- W !,"Aortic Valve Replacement:",?33,$P(SRAO(6),"^"),?40,"Myxoma resection:",?75,$P(SRAO(17),"^")
- W !,"Mitral Valve Replacement:",?33,$P(SRAO(7),"^"),?40,"Other tumor resection:",?75,$P(SRAO(18),"^")
- W !,"Tricuspid Valve Replacement:",?33,$P(SRAO(8),"^"),?40,"Cardiac transplant:",?75,$P(SRAO(19),"^")
- W !,"Valve Repair:",?33,$P(SRAO(9),"^"),?40,"Great Vessel Repair:",?75,$P(SRAO(21),"^")
- W !,"LV Aneurysmectomy:",?33,$P(SRAO(10),"^"),?40,"Endovascular Repair:",?75,$P(SRAO("21H"),"^")
+ W !,"Cardiac surgical procedures with or without cardiopulmonary bypass",!,"CABG distal anastomoses:",?40,"Maze procedure:",?61,$J($P(SRAO(13),"^"),17)
+ W !,?2,"Number with Vein:",?33,$P(SRAO(1),"^"),?40,"ASD repair:",?75,$P(SRAO(14),"^")
+ W !,?2,"Number with IMA:",?33,$P(SRAO(2),"^"),?40,"VSD repair:",?75,$P(SRAO(15),"^")
+ W !,?2,"Number with Radial Artery:",?33,$P(SRAO(3),"^"),?40,"Myectomy:",?75,$P(SRAO(16),"^")
+ W !,?2,"Number with Other Artery:",?33,$P(SRAO(4),"^"),?40,"Myxoma resection:",?75,$P(SRAO(17),"^")
+ W !,?2,"Number with Other Conduit:",?33,$P(SRAO(5),"^"),?40,"Other tumor resection:",?75,$P(SRAO(18),"^")
+ W !,"LV Aneurysmectomy:",?33,$P(SRAO(10),"^"),?40,"Cardiac transplant:",?75,$P(SRAO(19),"^")
+ W !,"Bridge to transplant/Device:",?33,$E($P(SRAO(11),"^"),1,5),?40,"Great Vessel Repair:",?75,$P(SRAO(21),"^")
+ W !,"TMR:",?33,$P(SRAO(12),"^"),?40,"Endovascular Repair:",?75,$P(SRAO("21H"),"^")
  W !,?40,"Other Cardiac procedure(s):",?75,$P(SRAO(29),"^")
+ W !,"Aortic Valve Procedure:",?33,$P(SRAO(6),"^")
+ W !,"Mitral Valve Procedure:",?33,$P(SRAO(7),"^")
+ W !,"Tricuspid Valve Procedure:",?33,$P(SRAO(8),"^")
+ W !,"Pulmonary Valve Procedure:",?33,$P(SRAO(9),"^")
  W !,"* Other Cardiac procedures (Specify): " I $P(SRAO(20),"^")'="" S SRQ=0 S X=$P(SRAO(20),"^") W:$L(X)<49 X,! I $L(X)>48 S Z=$L(X) D
  .I X'[" " W ?29,X Q
  .S I=0,LINE=1 F  S SRL=$S(LINE=1:48,1:80) D  Q:SRQ

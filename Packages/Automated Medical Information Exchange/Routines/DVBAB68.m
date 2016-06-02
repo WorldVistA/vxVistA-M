@@ -1,10 +1,8 @@
 DVBAB68 ;ALB/SPH - CAPRI C&P EXAM DETAIL REPORT ;09/11/00
- ;;2.7;AMIE;**35**;Apr 10, 1995
+ ;;2.7;AMIE;**35,149**;Apr 10, 1995;Build 16
  ;
 EN ;only need DFN to return data
  I '$D(^DVB(396.4,"APE",DFN)) S ZMSG(DVBABCNT)="No Requests are currently on file.",DVBABCNT=DVBABCNT+1 Q
- ;;;I '$D(^DVB(396.4,"APE",DFN)) W !!,"Press [RETURN] to continue"
- ;;;I '$D(^DVB(396.4,"APE",DFN)) R DVBCIN:DTIME K DVBCIN Q
  S ZMSG(DVBABCNT)="Requested exams currently on file:",DVBABCNT=DVBABCNT+1
  D SORT
  S ZMSG(DVBABCNT)="--------------------------------------------------------------------------------",DVBABCNT=DVBABCNT+1
@@ -16,18 +14,6 @@ STAT S DVBAST=$P(^DVB(396.4,DVBADA,0),U,4)
  S DVBAST=$S(DVBAST="C":"Completed",DVBAST="RX":"Cancelled by RO",DVBAST="X":"Cancelled by MAS",DVBAST="F":"Cancelled, failed to report",DVBAST="O":"Open",DVBAST="T":"Transferred",1:"Unknown status")
  Q
  ;
-CON I $Y>12,IOST?1"C-".E W !
- ;!,"Press [RETURN] to continue or ""^"" to end display of existing exams" R ANS:DTIME W ! I '$T!(ANS=U) S DVBADONE=1
- I $Y>12,IOST?1"C-".E ;W:(DVBADONE'=1) @IOF,"Exams currently on file, continued --",!!!
- I ($Y>45),(IOST?1"P-".E) D HDR
- Q
- ;
-HDR S PG=PG+1
- W @IOF,!,"Date: ",FDT(0),?(80-$L(PGHD)\2),PGHD,?71,"Page: ",PG,!,?(80-$L($$SITE^DVBCUTL4)\2),$$SITE^DVBCUTL4 I PG>1 W !!,"Name: ",PNAM,?44,"SSN: ",SSN,?63,"C-NUM: ",CNUM
- W ! F XLINE=1:1:80 W "="
- W !!,"Requested exams currently on file:",!
- W ! Q
- ;
 SORT ;  ** Explore 396.4 file; display exams already requested **
  N DVBAEXM,DVBADA,DVBADONE,DVBAPDT,DVBAST,DVBARO,DVBARQDT
  S (DVBAEXM,DVBADA,DVBADONE,DVBAPDT,DVBAST,DVBARO,DVBARQDT)=""
@@ -35,7 +21,7 @@ SORT ;  ** Explore 396.4 file; display exams already requested **
  Q
  ;
 FLOOP ;  **  Final loop of "APE" index **
- F  S DVBADA=$O(^DVB(396.4,"APE",DFN,DVBAEXM,DVBARQDT,DVBADA)) Q:DVBADA=""  D BLD,CON Q:DVBADONE=1  D PRINT
+ F  S DVBADA=$O(^DVB(396.4,"APE",DFN,DVBAEXM,DVBARQDT,DVBADA)) Q:DVBADA=""  D BLD Q:DVBADONE=1  D PRINT
  Q
  ;
 BLD ;  ** Set variables to be printed to screen **

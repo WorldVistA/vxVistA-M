@@ -1,5 +1,5 @@
 PSOHELP ;BHAM ISC/SAB-outpatient utility routine ; 10/17/07 7:41am
- ;;7.0;OUTPATIENT PHARMACY;**3,23,29,48,46,117,131,222,268,206,276**;DEC 1997;Build 15
+ ;;7.0;OUTPATIENT PHARMACY;**3,23,29,48,46,117,131,222,268,206,276**;DEC 1997;Build 29
  ;External reference ^PS(51 supported by DBIA 2224
  ;External reference ^PSDRUG( supported by DBIA 221
  ;External reference ^PS(56 supported by DBIA 2229
@@ -70,6 +70,9 @@ MAX S:$G(EXH) P(7)=$P(^PSRX(DA,0),"^",8),P(5)=$P(^(0),"^",6),P(2)=+$P(^(0),"^",3
  I 'PSOELSE D
  .S PSOX1=PTRF,PSOT=$S(PSOX1=11:11,1:PSOX1),PSOT=$S('PSOT:0,P(7)=90:3,1:PSOT)
  .S PSDY1=$S(P(7)<60:11,P(7)'<60&(P(7)'>89):5,P(7)=90:3,1:0) S MAX=$S(PSOT'>PSDY1:PSOT,1:PSDY1)
+ .;DSS/SMP - BEGIN MODS
+ .I $G(^%ZOSF("ZVX"))["VX",'CS,$G(P(7)) S MAX=366\P(7)-1 S:MAX<0 MAX=0
+ .;DSS/SMP - END MODS
  K PSODEA,PSOELSE,PSOT,PSOX1,PSDY,PSDY1,DEA,CS
  I $D(X) S MIN=0 I $D(DA) F REF=0:0 S REF=$O(^PSRX(DA,1,REF)) Q:'REF  I $D(^(REF,0)) S MIN=MIN+1
  I $G(EXH) D EN^DDIOL("Enter a number Between "_MIN_" AND "_MAX_".","","!?10") K P(2),P(5),P(7),MAX,MAX1,MIN,REF

@@ -1,9 +1,9 @@
-ONCSG3 ;Hines OIFO/GWB - AUTOMATIC STAGING TABLES ;07/15/02
- ;;2.11;ONCOLOGY;**35**;Mar 07, 1995
+ONCSG3 ;Hines OIFO/GWB - Automatic Staging Tables ;02/23/11
+ ;;2.2;ONCOLOGY;**1**;Jul 31, 2013;Build 8
  ;
  ;SKIN
  ;
-CS ;Carcinoma of the Skin - all editions
+CS ;Carcinoma of the Skin - 3rd, 4th, 5th and 6th editions
  K SG
  I $E(M)=1 S SG=4
  E  I $E(M)=0 D SKNRP
@@ -17,6 +17,60 @@ SKNRP ;Carcinoma of the Skin
  .E  I (T=2)!(T=3) S SG=2
  .E  I T=4 S SG=3
  Q
+ ;
+CSC ;Cutaneous Squamous Cell/Other Cutaneous Carcinoma - 7th edition
+ I $E(HT,1,4)=8247,ONCOED=7 G MCC
+ S TNM=T_$E(N,1)_M
+ D  K TNM Q
+ .I TNM="IS00" S SG=0 Q     ;0    Tis   N0    M0
+ .I TNM=100 S SG=1 Q        ;I    T1    N0    M0
+ .I TNM=200 S SG=2 Q        ;II   T2    N0    M0
+ .I TNM=300 S SG=3 Q        ;III  T3    N0    M0
+ .I TNM=110 S SG=3 Q        ;     T1    N1    M0
+ .I TNM=210 S SG=3 Q        ;     T2    N1    M0
+ .I TNM=310 S SG=3 Q        ;     T3    N1    M0
+ .I TNM=120 S SG=4 Q        ;IV   T1    N2    M0
+ .I TNM=220 S SG=4 Q        ;     T2    N2    M0
+ .I TNM=320 S SG=4 Q        ;     T3    N2    M0
+ .I N=3,M=0 S SG=4 Q        ;     Any T N3    M0
+ .I T=4,M=0 S SG=4 Q        ;     T4    Any N M0
+ .I M=1 S SG=4 Q            ;     Any T Any N M1
+ ;
+MCC ;Merkel Cell Carcinoma - 7th edition
+ I STGIND="C" D MCCC Q
+ I STGIND="P" D MCCP Q
+ Q
+ ;
+MCCC ;Merkel Cell Carcinoma - 7th edition (Clinical Stage Grouping)
+ S TNM=T_N_$E(M,1)
+ D  K TNM Q
+ .I TNM="IS00" S SG=0 Q        ;0    Tis   N0    M0
+ .I TNM=100 S SG="1B" Q        ;IB   T1    N0    M0
+ .I TNM=200 S SG="2B" Q        ;IIB  T2    N0    M0
+ .I TNM=300 S SG="2B" Q        ;     T3    N0    M0
+ .I TNM=400 S SG="2C" Q        ;IIC  T4    N0    M0
+ .I N="1A",M=0 S SG="3A" Q     ;IIIA Any T N1a   M0
+ .I N=1,M=0 S SG="3B" Q        ;IIIB Any T N1    M0
+ .I N="1B",M=0 S SG="3B" Q     ;     Any T N1b   M0
+ .I N=2,M=0 S SG="3B" Q        ;     Any T N2    M0
+ .I $E(M,1)=1 S SG=4 Q         ;IV   Any T Any N M1
+ ;
+MCCP ;Merkel Cell Carcinoma - 7th edition (Pathologic Stage Grouping)
+ N CLINN
+ S CLINN=$P($G(^ONCO(165.5,D0,2)),U,26)
+ S TNM=T_N_$E(M,1)
+ D  K TNM Q
+ .I TNM="IS00" S SG=0 Q                    ;0    Tis   N0    M0
+ .I TNM=100 S SG="1A" Q                    ;IA   T1    pN0   M0
+ .I T=1,N="X",CLINN=0,M=0 S SG="1B" Q      ;IB   T1    cN0   M0
+ .I TNM=200 S SG="2A" Q                    ;IIA  T2    pN0   M0
+ .I TNM=300 S SG="2A" Q                    ;     T3    pN0   M0
+ .I T=2,N="X",CLINN=0,M=0 S SG="2B" Q      ;IIB  T2    cN0   M0
+ .I T=3,N="X",CLINN=0,M=0 S SG="2B" Q      ;     T3    cN0   M0
+ .I TNM=400 S SG="2C" Q                    ;IIC  T4    N0    M0
+ .I N="1A",M=0 S SG="3A" Q                 ;IIIA Any T N1a   M0
+ .I N="1B",M=0 S SG="3B" Q                 ;IIIB Any T N1b   M0
+ .I M=1 S SG=4 Q                           ;IV   Any T Any N M1
  ;
 MMS3 ;Melanoma of the Skin - 3rd edition
  I M[1 S SG=4
@@ -161,3 +215,29 @@ BRST6 ;Breast - 6th edition
  .I N=3,M=0 S SG="3C" Q       ;IIIC Any T N3    M0
  .I M=1 S SG=4 Q              ;IV   Any T Any N M1
  ;
+BRST7 ;Breast - 7th edition 
+ I T="IS" S TNM=T_$E(N,1)_$E(M,1)
+ E  S TNM=$E(T,1)_$E(N,1)_$E(M,1)
+ D  K TNM Q
+ .I TNM="IS00" S SG=0 Q          ;0    Tis   N0    M0
+ .I TNM=100 S SG="1A" Q          ;IA   T1    N0    M0
+ .I T=0,N="1MI",M=0 S SG="1B" Q  ;IB   T0    N1mi  M0
+ .I T=1,N="1MI",M=0 S SG="1B" Q  ;     T1    N1mi  M0
+ .I TNM="010" S SG="2A" Q        ;IIA  T0    N1    M0
+ .I TNM=110 S SG="2A" Q          ;     T1    N1    M0
+ .I TNM=200 S SG="2A" Q          ;     T2    N0    M0
+ .I TNM=210 S SG="2B" Q          ;IIB  T2    N1    M0
+ .I TNM=300 S SG="2B" Q          ;     T3    N0    M0
+ .I TNM="020" S SG="3A" Q        ;IIIA T0    N2    M0
+ .I TNM=120 S SG="3A" Q          ;     T1    N2    M0
+ .I TNM=220 S SG="3A" Q          ;     T2    N2    M0
+ .I TNM=310 S SG="3A" Q          ;     T3    N1    M0
+ .I TNM=320 S SG="3A" Q          ;     T3    N2    M0
+ .I TNM=400 S SG="3B" Q          ;IIIB T4    N0    M0
+ .I TNM=410 S SG="3B" Q          ;     T4    N1    M0
+ .I TNM=420 S SG="3B" Q          ;     T4    N2    M0
+ .I $E(N,1)=3,M=0 S SG="3C" Q    ;IIIC Any T N3    M0
+ .I M=1 S SG=4 Q                 ;IV   Any T Any N M1
+ ;
+CLEANUP ;Cleanup
+ K D0,HT,M,N,ONCOED,STGIND,T

@@ -1,32 +1,37 @@
-ORD21 ; COMPILED XREF FOR FILE #100 ; 03/19/13
+ORD21 ; COMPILED XREF FOR FILE #100 ; 01/26/16
  ; 
  S DIKZK=2
  S DIKZ(0)=$G(^OR(100,DA,0))
- S X=$P(DIKZ(0),U,2)
+ S X=$P($G(DIKZ(0)),U,2)
  I X'="" D KILALL^ORDD100(DA)
- S X=$P(DIKZ(0),U,2)
+ S X=$P($G(DIKZ(0)),U,2)
  I X'="" X ^DD(100,.02,1,5,2)
- S X=$P(DIKZ(0),U,2)
+ S X=$P($G(DIKZ(0)),U,2)
  I X'="" X ^DD(100,.02,1,7,2)
- S X=$P(DIKZ(0),U,2)
+ S X=$P($G(DIKZ(0)),U,2)
  I X'="" D WK^ORDD100
- S X=$P(DIKZ(0),U,2)
+ S X=$P($G(DIKZ(0)),U,2)
  I X'="" D OI2^ORDD100A(DA)
- S X=$P(DIKZ(0),U,2)
+ S X=$P($G(DIKZ(0)),U,2)
  I X'="" X ^DD(100,.02,1,11,2)
+ S X=$P($G(DIKZ(0)),U,2)
+ I X'="" K:X["DPT(" ^OR(100,"AVFDDPT",+X,DA)
  S DIKZ(0)=$G(^OR(100,DA,0))
- S X=$P(DIKZ(0),U,8)
+ S X=$P($G(DIKZ(0)),U,8)
  I X'="" D SK^ORDD100
- S X=$P(DIKZ(0),U,8)
+ S X=$P($G(DIKZ(0)),U,8)
  I X'="" D WK^ORDD100
- S X=$P(DIKZ(0),U,8)
+ S X=$P($G(DIKZ(0)),U,8)
  I X'="" D OI2^ORDD100A(DA)
- S X=$P(DIKZ(0),U,9)
+ S X=$P($G(DIKZ(0)),U,9)
  I X'="" D EK^ORDD100A
- S X=$P(DIKZ(0),U,11)
+ S X=$P($G(DIKZ(0)),U,11)
  I X'="" D WK^ORDD100
- S X=$P(DIKZ(0),U,11)
+ S X=$P($G(DIKZ(0)),U,11)
  I X'="" X ^DD(100,23,1,3,2)
+ S DIKZ(21600)=$G(^OR(100,DA,21600))
+ S X=$P($G(DIKZ(21600)),U,3)
+ I X'="" K ^OR(100,"AVFD",$E(X,1,30),DA)
 CR1 S DIXR=187
  K X
  S DIKZ(0)=$G(^OR(100,DA,0))

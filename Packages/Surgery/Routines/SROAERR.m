@@ -1,5 +1,5 @@
-SROAERR ;B'HAM ISC/MAM - UPDATE ASSESSMENTS ENTERED IN ERROR ; [ 01/23/01  2:09 PM ]
- ;;3.0; Surgery ;**38,65,100**;24 Jun 93
+SROAERR ;BIR/MAM - UPDATE ASSESSMENTS ENTERED IN ERROR ;05/05/10
+ ;;3.0; Surgery ;**38,65,100,174**;24 Jun 93;Build 8
 TRANS ; update assessments transmitted in error
  I '$D(SRSTAT) S SRSTAT="T"
  S SRSOUT=0 K SRNEW D ^SROASS I '$D(SRTN) S SRSOUT=1 G END
@@ -12,7 +12,7 @@ ASK W !!,"Are you sure that you want to change the status of this assessment"
  E  W !!,"No action taken." G END
  Q
 STAT K DR S DIE=130,DA=SRTN,DR="235////I;393////"_$S(SRASTAT="T":1,1:"") D ^DIE K DR
- I SRASTAT="C"&($P($G(^SRF(SRTN,"RA")),"^",3)'="1") K DR S DIE=130,DA=SRTN,DR="272////@" D ^DIE K DR
+ I SRASTAT="C"&($P($G(^SRF(SRTN,"RA")),"^",3)'="1") K DR S DIE=130,DA=SRTN,DR="272///@;272.1///@" D ^DIE K DR
  W !!,"The Assessment Status has been changed to 'INCOMPLETE'."
  D UNLOCK^SROUTL(SRTN)
 END I 'SRSOUT W !!,"Press <RET> to continue  " R X:DTIME

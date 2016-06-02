@@ -1,0 +1,762 @@
+VFDHHLUT ;DSS/PDW - HL7X UTILITIES ; 9/2/09 2:09pm
+ ;;2012.1.1;VENDOR - DOCUMENT STORAGE SYS;;24 Jun 2013;Build 136
+ ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
+ ;DSS/BUILD - VFDHHL HL7 EXCHANGE 2012.1.1 * 06/23/15 * vxdev64v2k8_VX13 * 2012.1 T22
+ ;DSS/BUILD - VFDHHL HL7 EXCHANGE 2012.1.1 * 02/02/14 * vxdev64v2k8_DEVXOS * 2012.1.1T21
+EN ;
+HLTEST ;
+ W !,"HL 1.6 Utilities"
+ W !," 1) Find HL7 773 message by text in MSH w/wo other elements in message"
+ W !," 2) Send HFS into TCP"
+ W !," 3) Re-serve a message w executable"
+ W !," 4) Edit HL7 TCPIP reserving port"
+ W !," 5) Profile the Interface Details of a Build"
+ W !," 6) TCP/IP Link (Address:Port) connection Check "
+ K DIR S DIR(0)="NO^1:6" D ^DIR
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) Q
+ I Y=1 K VFDLSTDT,VFD1STDT,VFDRSRVM D HL16SCAN G HLTEST
+ I Y=2 D MSG2TCP G HLTEST
+ I Y=3 D HL16REDO G HLTEST
+ I Y=4 D HL7TCPIP G HLTEST
+ I Y=5 D BUILDINQ G HLTEST
+ I Y=6 D TCPIPCHK D E G HLTEST
+ I Y=7 D HLSCANLG G HLTEST
+ Q
+DATEQUES ;
+ K DIR S DIR(0)="DO^:"_$$FMADD^XLFDT(DT,1)_":T",DIR("A")="Last Date/Time"
+ S:$G(VFDLSTDT) DIR("B")=$$FMTE^XLFDT(VFDLSTDT)
+ D ^DIR
+ ;I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) 
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) K VFDLSTDT,VFD1STDT Q
+ I Y'>1 K VFDLSTDT,VFD1STDT Q
+ S VFDLSTDT=+Y W !,$$FMTE^XLFDT(VFDLSTDT)
+ K DIR S DIR(0)="DO^:"_VFDLSTDT_":T",DIR("A")="1st Date/Time"
+ S:$G(VFD1STDT) DIR("B")=$$FMTE^XLFDT(VFD1STDT)
+ D ^DIR
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) K VFDLSTDT,VFD1STDT Q
+ I Y'>1 K VFDLSTDT,VFD1STDT Q
+ S VFD1STDT=+Y
+ W !,$$FMTE^XLFDT(VFD1STDT)
+ K VFDRSRVM
+ Q
+DATETEST(MSG,VFD1STDT) ; return 1 if msg date<VFD1STDT
+ N DA2,DA2DT
+ S VFD1STDT=$G(VFD1STDT)
+ I 'VFD1STDT Q 0
+ S DA2=$$GET1^DIQ(773,MSG_",",.01,"I")
+ S DA2DT=$$GET1^DIQ(772,DA2_",",.01,"I")
+ I DA2DT<VFD1STDT Q 1
+ Q 0
+HLSCANLG ; do a large uninterupted scan
+ S VFDRSRV=1 ;set to ask dates and reveal brief messages
+ D HL16SCAN ;return VFDSRVM(MSGIEN) array
+ I '$D(VFDRSRVM)  K VFDRSRV Q
+ ZW VFDRSRVM
+ I $D(VFDRSRV),$D(VFDRSRVM) N IEN S IEN=0 F  S IEN=$O(VFDRSRVM(IEN)) Q:IEN'>0  D
+ .D MSGIDISP(IEN,"PID")
+ K VFDRSRV,VFDRSRVM
+ K DIR S DIR(0)="YO",DIR("B")="Y",DIR("A")="Perform another scan?" D ^DIR
+ I Y=1 G HLSCANLG
+ Q
+ ;
+HL16SCAN ; 
+ I $G(VFDRSRV) D DATEQUES ; ask date range create VFDLSTM,VFD1STDT
+ N TEXT,TXT,N,MSG,MSG,HL16LN,VFDSCR,VFDSCROK,TSCR
+ ; set RM=240 5/17/2013
+ N VFDRM
+ K DIR S DIR(0)="FOU",DIR("A")="Enter Text in Header to Find " D ^DIR
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) D  K VFDLSTDT,VFD1STDT Q
+ . I $G(VFDIOM) S X=VFDIOM X ^%ZOSF("RM")
+ S TEXT=Y Q:Y=""
+ ;DSS/PDW 20131226 uppercase
+ S TEST=$$UP^XLFSTR(TEXT)
+ ;DSS/PDW 20131226 uppercase
+ F I=1:1 K DIR S DIR(0)="FOU",DIR("A")="Enter Text(s) in Message to Find " D  Q:X=""  Q:X["^"
+ .D ^DIR Q:X=""  Q:X="^"   I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) Q
+ .;DSS/PDW 20131226 uppercase
+ . S Y=$$UP^XLFSTR(Y)
+ .;DSS/PDW 20131226 uppercase
+ .S TXT(I)=Y
+ I '$D(TXT) W !,"No sperate text elements"
+ ;W !,"Enter $T executable code phrase that sets $T."
+ ;K DIR S DIR(0)="FOU",DIR("A")="X " S:$G(VFDSCR)'="" DIR("B")=VFDSCR D ^DIR
+ ;I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) K VFDLSTDT,VFD1STDT Q
+ ;S VFDSCR=Y
+ W !!,"Looking for:",?20,TEXT
+ I $D(TXT) W !,"With:" F I=1:1 Q:'$D(TXT(I))  S C=(I-1)*15 W ?(20+C),TXT(I)
+ K STOP
+ S MSG=$O(^HLMA("A"),-1)+10
+ I $G(VFDLSTDT) S VFDLSTDT=$O(^HLMA("AD",VFDLSTDT)),MSG=$O(^HLMA("AD",VFDLSTDT,0)) D
+ . W !,"Starting:",?15,$$FMTE^XLFDT(VFD1STDT),?40,"Ending:",?55,$$FMTE^XLFDT(VFDLSTDT)
+ S VFDIOM=IOM N X S X=250 X ^%ZOSF("RM")
+ F III=1:1 S MSG=$O(^HLMA(MSG),-1) Q:MSG'>0  D  Q:$G(STOP)  I $G(VFD1STDT),$$DATETEST(MSG,VFD1STDT) Q
+ . S MSH=$G(^HLMA(MSG,"MSH",1,0)) Q:MSH'[TEXT
+ . S MSG772DA=+^HLMA(MSG,0),MSGDT=+^HL(772,MSG772DA,0)\1
+ . I '(III#5000) W !!,III,?15,"Messages scanned back to: ",$$FMTE^XLFDT(MSGDT) ;D E Q:$G(STOP)
+ . S MID=$P(MSH,"|",10)
+ . S HLMSG=+^HLMA(MSG,0),HL16LN=0 ;772 ien
+ . ;look for all text
+ . K Y S VFDSCROK=0,TSCR=0
+ . F  S HL16LN=$O(^HL(772,HLMSG,"IN",HL16LN)) Q:HL16LN'>0  S X=^(HL16LN,0) D
+ ..;assemble full line here if needed
+ ..;test content of line and accumulate instances
+ .. S NE=$O(TXT("A"),-1) F N=1:1:NE I X[TXT(N) D
+ ... I $D(Y(N)) S Y(N)=Y(N)_"."_HL16LN Q  ;accumulate original & instances
+ ... S Y(N)=HL16LN_"@"_X ;LINE TEXT of ist
+ ..  ;TEST for code screen in VFDSCR each line; where X=Line 
+ .. ;I $G(VFDSCR)'="" X VFDSCR I $T S VFDSCROK=1 ;
+ .;S T=1 F N=1:1:NE I '$D(Y(N)) 
+ .S T=1 F N=1:1:NE I '$D(Y(N)) S T=0 ; all designated must be present
+ .Q:'T
+ .;I $G(VFDSCR)'="",'VFDSCROK Q ; CODED SCREEN if present must pass
+ .;W !!,MSG,!,^HLMA(MSG,"MSH",1,0)
+ .D MSGIDISP(MSG)
+ .;W ! ZW MSH,TEXT,TXT,Y
+ .D:'$G(VFDRSRV) E
+ .I $G(VFDRSRV) S VFDRSRVM(MSG)=""
+ S X=VFDIOM X ^%ZOSF("RM")
+ G HL16SCAN
+ Q
+ ;I X["PID|" N Y X XX2 Q Y
+ ;N TXT S TXT="" S Y=0 F  S TXT=$O(TEXT(TXT)) Q:TXT=""  I X[TXT S Y=1
+FINDAPT ; find appointment
+ N VFDSYS,VFDIENS,APTIEN
+ S VFDSYS=$O(^VFD(21607.01,"ADT",1,0)) Q:'VFDSYS ""
+ K DIR S DIR(0)="FO",DIR("A")="IDXID " D ^DIR I $L(Y)>2 D
+ .S VFDXID=Y,APTIENS=$$IENSXID^VFDSD001(VFDXID) W !,"IENS = ",APTIENS G DISPAPT
+ K DIC S DIC=2,DIC(0)="AEQZ" D ^DIC Q:Y'>0  S DFN=+Y,PATNM=Y(0,0)
+ K DIR S DIR(0)="PO^44" D ^DIR
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) Q
+ Q:Y'>0  S LOC=+Y,LOCNM=$P(Y,U,2)
+ S %DT="AERX" D ^%DT Q:Y'>0  S DTM=+Y D DT^DILF("ER",X,.RDTM) W RDTM(0)
+ W !,PATNM,?32,LOCNM,?64,RDTM(0)
+ S APTIESN=$O(^VFD(21607,02,VFDSYS,1,"DFNDTLOC",DFN,DTM,LOC,0))
+ W !,APTIENS
+DISPAPT K DA D DA^DILF(APTIENS,.DA)
+ S DIC=$$ROOT^DILFD(21607.0201,APTIENS)
+ D EN^DIQ
+ G FINDAPT
+APT ;appointments IDX vs today in CPRS
+ S DFN=0
+DFN F  S DFN=$O(^DPT(DFN)) Q:DFN'>0  D
+ . Q:'$D(^DPT(DFN,"S"))
+ . W !,DFN D Q("^DPT(DFN,0)"),Q("^DPT(DFN,""S"")")
+ . K LIST D VST^ORWCV(.LIST,DFN)
+ . D Q("LIST")
+ . R X:10
+ Q
+MSG(MID) ;;Display VistA HL7 message
+ ; MID=HL7 message ID
+ ; 
+ ;N %,DA2,DA3
+ I $D(^HLMA("C",MID)) S DA3=$O(^HLMA("C",MID,0)) I 1
+ E  Q
+ ;S DA3=$$FIND1^DIC(773,,"QX",MID,"C","I $P(^(0),U,2)="_""""_MID_"""") Q:'DA3
+ D MSGIDISP(DA3)
+ Q
+MSGIDISP(DA3,SEG,ELM) ;use msgien
+ W !!,DA3,!,^HLMA(DA3,"MSH",1,0)
+ S MID=$P(^HLMA(DA3,0),U,2),SEG=$G(SEG),ELM=$G(ELM)
+ S DA2=$$GET1^DIQ(773,DA3_",",.01,"I")
+ ;W !,$$GET1^DIQ(772,DA2,.01) ;W !!,?10,MID,?40,DA3,!,$$GET1^DIQ(772,DA2,.01)
+ ;W:'$L(SEG) !,$G(^HLMA(DA3,"MSH",1,0))
+ F %=1:1 Q:'$D(^HL(772,DA2,"IN",%))  D
+ .S X=^(%,0)
+ .;I $L(SEG),$P(X,"|")'=SEG Q
+ .;I $L(SEG),'$G(ELM) D
+ .;.
+ .;.N Y S Y=$E(X,1,3) I '$D(^HL(779.001,"B",Y)) W X Q
+ .;I $L(SEG),+ELM W !,SEG,":",ELM,?15,$P(X,"|",ELM+1) Q
+ .I $E(X,4)'="|" W X Q
+ .N Y S Y=$E(X,1,3) I '$D(^HL(771.3,"B",Y)) W X Q
+ .W:$L(X) !,X
+ D
+ .N DA,DIC,DR
+ .S DIC="^HLMA(",DA=DA3,DR="P" D EN^DIQ
+ W !,?5,DA3,?30,DA2,?55,$$GET1^DIQ(772,DA2,.01)
+ Q
+IN1 ;
+ S INSNM=$P(XX,"|",5) I $D(^DIC(36,"B",INSNM)) Q
+ ;W !,XX 
+ S X5=$P(XX,"|",5),X3=$P(XX,"|",3)
+ S ZZ="",$P(ZZ,"|",1)=$P(XX,"|",4),$P(ZZ,"|",2,3)=$P(XX,"|",6,7)
+ S ^TMP($J,"INS",X5,X3,ZZ,DA2)=""
+ Q
+SCANHL7 ; scan HLMA
+ S %DT="AET" D ^%DT Q:Y'>0
+ S HLM=$O(^HLMA("AD",+Y)),HLM=$O(^HLMA("AD",HLM,0)) Q:HLM'>0
+ ;LOAD TEXT INTO TEXT(I)="TEXT"
+ ;K ^TMP($J,"PT")
+HLMK F K=1:1  S HLM=$O(^HLMA(HLM)) Q:HLM'>0  W:'(K#1000) K D
+ . S X=$G(^HLMA(HLM,"MSH",1,0)) Q:X["|ACK|"
+ . D MSGLNS
+ . Q
+MSGLNS ;SCAN MSG FOR CONTENT
+ ;W !,X
+ S DA2=$$GET1^DIQ(773,HLM_",",.01,"I")
+ Q:'DA2  S G=$NA(^HL(772,DA2,"IN"))
+ S XL=0 F  S XL=$O(@G@(XL)) Q:XL'>0  D
+ . S X=$G(@G@(XL,0)) Q:X'["PID|"
+ . W:'(K#1000) !,K,?10,X S PT=$P(X,"|",6) S:$L(PT) ^TMP($J,"PT",PT,HLM)=""  ;R ZZ:60
+ . S E=$P(X,"|",4),E=$P(E,U) S:$L(E) ^TMP($J,"E",E,HLM)=""
+ Q
+EDISP ;DISPLAY FROM ^TMP e RECORD TRANSMISSIONS
+ S DIR(0)="FO",DIR("A")="E record " D ^DIR
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) Q
+ Q:$L(Y)=0  S EREC=Y
+ S HLM=0 F  S HLM=$O(^TMP($J,"E",EREC,HLM)) Q:HLM'>0  D MSGIDISP(HLM)
+ Q
+WMRN ;SCAN Ws
+ S MRN="W" F  S MRN=$O(^DPT("VFD",WMRN)) Q:$E(WMRN)'="E"  D WPAT
+ Q
+WPAT S DFN=$O(^DPT("VFD",WMRN,0))
+ Q
+ASCII(ARR) ;WRITE OUT ARRAY SHOWING ASCII MARKERS
+ S LC=0 F  S LC=$O(ARR(LC)) Q:LC'>0  S LN=ARR(LC,0) D
+ . W !
+ . F I=1:1:$L(LN) S X=$E(LN,I),A=$A(X) W $S(A<33:"<"_A_">",A>127:"<"_A_">",1:X)
+ Q
+HLOLOOP ;
+ S FC=1 F CC=1:1:5001 W:'(CC#1000) !,CC,! Q:$G(QUIT)  S DTM=$O(^HLA("B",DTM),WAY) Q:'DTM  D
+ .S HLA=$O(^HLA("B",DTM,0)),HLM=$O(^HLB("C",HLA,0))
+ .;I $L(TEXT),X'[TEXT Q
+ .;I $L(TEXT),X[TEXT D  Q
+ . W !!,FC,?8,HLM," ",DTM," ",HLA,!,X S FC=FC+1
+ . D HLODSP(HLM,$G(SEG),$G(ELM))
+ . I '(FC#REP) S CC=1 R ZZ:60 I ZZ["^" S QUIT=1
+ .Q  ;I '$L(TEXT) D
+ .;. W !!,FC,?8,HLM," ",DTM," ",!,X S FC=FC+1
+ .;. D HLODSP(HLM,$G(SEG),$G(ELM))
+ .;. I '(FC#REP) S CC=1 R ZZ:60 I ZZ["^" S QUIT=1
+ Q
+HLODSP(HLMSGIEN,SEG,ELM) ; SCAN DISPLAY HLO MESSAGES
+ W HLMSGIEN
+ I '$$STARTMSG^HLOPRS(.HLMSTATE,HLMSGIEN,.HDR) Q
+HLOBHS ;Incomming is batch
+ S HDR=HDR(1)_HDR(2)
+ I $P(HDR,"|")="MSH" G HLOMSH
+ W !,HDR
+ I $D(^HLB(HLMSGIEN,4)) W !,"{ACK}",$P(^HLB(HLMSGIEN,4),U,3)
+ F  S XX=$$NEXTMSG^HLOPRS(.HLMSTATE,.HDR) Q:'XX  D HLOMSH
+ Q
+HLOMSH ; pull individual messages from batch
+ ;
+ S MSH=HDR(1)_HDR(2)
+ I $L($G(TEXT)),MSH'[TEXT Q
+ I $D(TEXT2) Q:MSH'[TEXT2 
+ W !,MSH
+ I $D(^HLB(HLMSGIEN,4)) W !,"{ACK}",$P(^HLB(HLMSGIEN,4),U,3)
+ F  Q:'$$HLNEXT^HLOMSG(.HLMSTATE,.SEG)  D
+ . S SEGD="",CNT=0 F  S CNT=$O(SEG(CNT)) Q:'CNT  S SEGD=SEGD_SEG(CNT)
+ . I $L($G(SEG)),$E(SEGD,1,3)'=SEG Q
+ . I +$G(ELM) W !,$P(SEGD,"|",ELM) Q
+ . W !,SEGD
+ Q
+Q(VAL) ; DISPLAY VAR WITH $Q
+ N X,X1 S (X,X1)=VAL
+ Q:'$D(@VAL)
+ I $E(X,$L(X))=")" S X1=$E(X,1,$L(X)-1)
+ I $D(@X)#10 W !,X,"=",@X
+ F  S X=$Q(@X) Q:X'[X1  W !,X,"=",@X
+ Q
+HL16REDO ;(MSGIEN) ; reprocess a HL 1.6 message
+ ;K DIR S DIR(0)="NO",DIR("A")="HLMTIEN 773 " D ^DIR
+ S DIC=773,DIC(0)="AEQM" D ^DIC
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) Q
+ Q:Y'>0
+ G:'$D(^HLMA(+Y)) HL16REDO
+ S MSGIEN=+Y
+ N HDR,INT,EVENT,TYPE,RTN
+ S HDR=$G(^HLMA(MSGIEN,"MSH",1,0)) Q:'$L(HDR)
+ ;W !,HDR I '$L(HDR) Q
+ D PARSE^VFDHHLOT(.INT,HDR)
+ ;D Q("INT")
+ S EVENT=$G(INT(9,1,1,1)),TYPE=$G(INT(9,1,2,1))
+ ;Q:EVENT'="SIU"
+ W !!,MSGIEN,?10,EVENT,?20,TYPE,!,HDR,!
+ S RTN=$$RTN773^VFDXX1(MSGIEN)
+ I RTN="" D E Q
+ W !!,"Protocol executes ",RTN,!
+ K DIR S DIR(0)="FOU",DIR("A")="Enter Executable Code '|' for '^', or @ to clear"
+ S:$D(^TMP($J,"EXECUTE")) DIR("B")=^TMP($J,"EXECUTE")
+ D ^DIR
+ I $D(DTOUT) Q
+ I (X="^")!(X="@")!($G(DIRUT)) K ^TMP($J,"EXECUTE") S Y=""
+ I $L(Y) D  Q:$G(STOP)
+ . S ^TMP($J,"EXECUTE")=Y,Y=$TR(Y,"|","^") X Y W !!,"EXECUTED: ",Y
+ . D E W !
+ S XX=$$REPROC^HLUTIL(MSGIEN,RTN)
+ W ?30,XX
+ Q
+LOOPHLMA(MSGSTART) ;
+ ;loop throough all messages 1.6 starting with START
+ S MSGIEN=MSGSTART-1
+ F  S MSGIEN=$O(^HLMA(MSGIEN)) Q:MSGIEN'>0  D HL16REDO(MSGIEN)
+ Q
+ ;APIs
+ ;CLEAR   Clear the tracking global, remove breaking
+ ;ZB      run the executable code tracking internal information without
+ ;        interuption
+ ;INTERUPT run the executable code, record tacking information
+ ;        stop the executable with an error, record information
+ ;        recover the stack and proceed on to the next loop level
+ ;ZW      List the ^XTMP("HLTEST") information
+ ;
+CLEAR ; REMOVING TRACKING GLOBAL , REMOVE BREAKING
+ K ^XTMP("HLTEST")
+ ;ZB /C
+ Q
+ZW D Q("^XTMP(""HLTEST"")")
+ Q
+MSGFIND  ;find a hl7 message
+ ;K DIR S DIR(0)="FO",DIR("A")="CONTENT : " D ^DIR
+ W !,"CONTENT ? " R Y:40
+ Q:$L(Y)'>2
+ S TXT=Y
+ K DIR S DIR(0)="DO",DIR("A")="BEGIN DATE TIME" D ^DIR M XB=Y
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) Q
+ I Y'>0 Q
+ K DIR S DIR(0)="DO",DIR("A")="END DATE TIME" D ^DIR M XE=Y
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) Q
+ I Y'>0 Q
+ ;K DIR S DIR(0)="FO",DIR("A")="CONTENT" D ^DIR S TXT=Y
+ ;I $G(DUOUT) Q
+ S DTM=XB
+ F A=1:1  W:'(A#50) !,DTM S DTM=$O(^HL(772,"B",DTM)) Q:DTM'>0  Q:DTM>XE 
+ D
+ . S HLIEN=$O(^HL(772,"B",DTM,0))
+ . S LN=0 F  S LN=$O(^HL(772,HLIEN,"IN",LN)) Q:LN'>0  S LINE=^(LN,0) D
+ .. I $E(LINE,1,3)="SCH" S SCH=LINE
+ .. I LINE[TXT W !,HLIEN,?20,LINE,!,$O(^HLMA("B",HLIEN,0)) D Q("^HL(772,HLIEN,""IN"")") D
+ ...S ^TMP("HLCLN",$J,$O(^HLMA("B",HLIEN,0)))=SCH ;D E
+ .. ;S HL($O(^HLMA("B",HLIEN,0))=""
+ Q
+LIST(DSICP,FILE,IENS,FIELD,FLAGS,NUMBER,FROM,PARTIAL,INDEX,SCREEN,IDENTIFY) ;
+ N PAR,PARL
+ S PARL="DSICP,FILE,IENS,FIELD,FLAGS,NUMBER,FROM,PARTIAL,INDEX,SCREEN,IDENTIFY"
+ F I=1:1 S PAR=$P(PARL,",",I) Q:PAR=""  S @PAR=$G(PAR)
+SEGPRINT(SYS,SEG) ; PRINT OUT SEGMENT 
+ N DEF,SEGNM,INT,V,E,R,S,MSGID,DEFID,DEFIEN,V1,V2
+ S SEGNM=$P(SEG,"|")
+ D PARSE^VFDHHLOT(.INT,SEG)
+ D SEGDEF^VFDHHLOT(SYS,SEGNM,.DEF)
+ S INTREF="INT(1,1,1,1)"
+ F  S INTREF=$Q(@INTREF) Q:INTREF="INT(""SEGMENT TYPE"")"  D SEGPRTLP(INTREF)
+ Q
+SEGPRTLP(VREF) ;print 1 value of INT(E,R,C,S)
+ S ID=$P(VREF,")"),ID=$P(ID,"(",2) ;W ID
+ ;reorder the subscripting from E,R,C,S to E,C,S,R
+ F I=1:1:4 S V=$E("ERCS",I),@V=$P(ID,",",I) ;W !,V," ",@V
+ S E=E-1 ; offset per kernel HLO between dictionary and array location
+ F I=1:1:4 S V=$E("ECSR",I),$P(MSGID,".",I)=@V ;W !,V,@V
+ S DEFID=$O(DEF("B",MSGID),-1),ITEMID=DEFID,$P(ITEMID,".",4)=R
+ S DEFIEN=$O(DEF("B",DEFID,0))
+ M IT=DEF(DEFIEN) ; pull ITEM characteristics into IT
+ S V1=@VREF,V2=$$TRANS^VFDHHLOT("ADT",IT(.04),V1,"FM")
+ ;W !,ITEMID,!,IT(.02),!,IT(.04),!,V1,!,V2
+ W !,ITEMID,?10,$E(IT(.02),1,18),?30,IT(.04),?40,V1,?50,V2
+ Q
+CPRSLROK(Y,SYS,TAB) ; .ref :process screening against HL7 system and table
+ ;bld referrence GBL
+ ;SYS="QUEST",TAB="VXLRORDER" FOR QUEST
+ N REF,FILE,IENS,XX,YY
+ D TABPATH^VFDHHLOT(.REF,SYS,TAB) ;REF=21625.0106^502,15,
+ S FILE=+REF,IENS="1,"_$P(REF,U,2)
+ S GBL=$$ROOT^DILFD(FILE,IENS,1) ;^VFDH(21625.01,15,30,502,10)
+ S GBL=$NA(@GBL@("D")) ;
+ M XX=Y,YY=Y K Y ; SAVE OFF ORIGINAL LIST, CLEAR RETURN LIST Y
+ ;LOOP Y ARRAY
+ S I=0 F  S I=$O(YY(I)) Q:I'>0  D
+ .S IENORD=+$P(YY(I),U),IEN60=+$P(^ORD(101.43,IENORD,0),U,2)
+ .I '$D(@GBL@("D",IEN60)) K YY(I)
+ .W !,IEN60,?10,$G(YY(I))
+ ; rebuild return list Y from YY
+ S N=0 F I=1:1 S N=$O(YY(N)) Q:N'>0  S Y(I)=YY(N)
+ Q
+MSG2TCP ;scan HLS sending .HL7 to TCP/IP server
+ K NSEQ,FSEQ,VLIST
+ K VLIST
+HFSQ1 ;
+ K DIR S DIR(0)="FO",DIR("A")="Enter HFS Path "
+ S:$D(^TMP($J,"HFSPATH")) DIR("B")=^TMP($J,"HFSPATH")
+ D ^DIR I X="^" Q
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) Q
+ I $L(Y) S HFSPATH=Y,^TMP($J,"HFSPATH")=Y
+ Q:$L(Y)=0
+HFSQ2 ;
+ W !!,"PATH is ",HFSPATH,!
+ S GLIST("*.*")=""
+ K VLIST S Y=$$LIST^%ZISH(HFSPATH,"GLIST","VLIST")
+ K DIR S DIR(0)="FO",DIR("A")="ENTER FILE: "
+ S:$D(^TMP($J,"HFSFILE")) DIR("B")=^TMP($J,"HFSFILE")
+ D ^DIR
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) K VLIST,^TMP($J,"HFSFILE") Q
+ I X="^" K VLIST,^TMP($J,"HFSFILE") G HFSQ1
+ I '$D(VLIST(Y)) W !,?7,Y,!,"Not FOUND IN ",HFSPATH G HFSQ2
+ I $L(Y)>2 S HFSFILE=Y,^TMP($J,"HFSFILE")=Y,VLIST(HFSFILE)=""
+HFSQ3 ;
+ K DIR S DIR(0)="FO",DIR("A")="ENTER TCP Address"
+ S:$D(^TMP($J,"HL7ADD")) DIR("B")=^TMP($J,"HL7ADD")
+ D ^DIR
+ I X["^" K VLIST,^TMP($J,"HL7ADD") G HFSQ2
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) K VLIST G HFSQ2
+ I $L(Y)>2 S HL7ADD=Y,^TMP($J,"HL7ADD")=Y
+ ;I '$D(^TMP($J,"HL7PORT")) D ^%SS
+ K DIR S DIR(0)="N0",DIR("A")="Enter HL7 port "
+ S:$D(^TMP($J,"HL7PORT")) DIR("B")=^TMP($J,"HL7PORT")
+ D ^DIR
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) Q
+ Q:'+Y
+ I +Y S HL7PORT=+Y,^TMP($J,"HL7PORT")=+Y I 1
+ W !!,"LOADING ",!,"PATH: ",?10,HFSPATH,!,"FILE:",?10,$G(HFSFILE),!!
+ I '$D(VLIST) K ^XTMP("VFDHHLUT") D  Q
+ . I ($E(IOST)="C"),('$D(ZTQUEUED)) I 1
+ . E  Q
+ . W !,"No information to load at this time"
+ . W !,"= = = ="
+ . D E
+ ; reorder nnn.hl7 into proper numeric, not alpha, sequence
+ I $E(IOST)="C",'$D(ZTQUEUED) U IO(0) W !,"Processing files"
+ ;**** TESTING POINT
+ ;S NNM="" F KK=1:1 S NNM=$O(VLIST(NNM)) Q:NNM=""  D
+ ;.S FILENM=NNM
+ ;.S DTMSNOW=$$NOW^XLFDT()
+ ;.S ^XTMP("VFDHHLUT",$J)=DTMSNOW_U_FILENM_"^Processing"
+ ;.;I LIMIT<500 S ^XTMP("VFDHHLUT",$J,DTMSNOW)=FILENM
+ ;. D PROCESS(.GMSG,HFSPATH,FILENM)
+ ;. D CONTINUE
+ ;.;I $E(IOST)="C",'$D(ZTQUEUED) U IO(0) W "." I '(II#100) W II,"|",FILENM
+HANG ;H 2 I $E(IOST)="C",'$D(ZTQUEUED) W !,"HANG 2" ;****
+ ;G GETMORE ;**** TESTING POINT
+ D PROCESS(.GMSG,HFSPATH,HFSFILE)
+ D CLEAR ; clear all related XTMP
+ Q
+PROCESS(GMSG,PATH,FILENM) ;
+ W !!,"Path: ",HFSPATH,!,"FILE: ",FILENM,!
+ N OBRLN,OBRTYPE
+ N GBL,FILEPATH,HOST,PORT,FORMAT,WAIT,MAXLINES,DTMSNOW,RESULT
+ N SAVEFILE,XX,XXX,MSH,GBL,MSGTYPE,INT
+ S GBL=$NA(^TMP("VFDHHLUT",$J,1))
+ S GMSG=$NA(^TMP("VFDHHLUT",$J)) K @GMSG
+ K ^TMP("VFDHHLUT",$J)
+ S YY=$$FTG^%ZISH(PATH,FILENM,GBL,3)
+ I 'YY,$E(IOST)="C",'$D(ZTQUEUED) U IO(0) W !,"ERROR File To Global ",PATH,FILENM D E Q
+ S XX=@GMSG@(1) N MSH,XXX ;test MSH
+ S LL=$O(@GMSG@("A"),-1)
+ ;Segments maybe very long and GTF builds ,"OVF", subnodes
+ F LN=1:1:LL S XX=@GMSG@(+LN) D  S @GMSG@(+LN)=XX ;$E(XX,1,145) I $L(XX)>145 S @GMSG@(+LN,"OVF",1)=$E(XX,145,290)
+ . I $D(@GMSG@(+LN,"OVF")) D  K @GMSG@(+LN,"OVF") ;long lines >245 (^%ZISH documentation)
+ ..N I,X S I=0 F  S I=$O(@GMSG@(+LN,"OVF",I)) Q:I'>0  D  ;check for and clear long line overflow
+ ...S XX=XX_@GMSG@(+LN,"OVF",I) K @GMSG@(+LN,"OVF",I)
+ W !!,"DATA IN GLOBAL ",GMSG,!
+CONTINUE ;
+ S DTMSNOW=+$$NOW^XLFDT()
+ S MSGID="dss"_$E(DTMSNOW,4,12)
+ S XX=@GMSG@(1) I XX'["MSH|" W !,"Not MSH ",!,XX D E Q
+ D PARSE^VFDHHLOT(.INT,XX)
+ S INT(10,1,1,1)=INT(10,1,1,1)_MSGID
+ D BUILD^VFDHHLOT(.MSH,.INT)
+ S @GMSG@(1)=MSH
+ D Q(GMSG)
+SENDTCP ; Send into TCP
+ I $G(HL7ADD) S HOST=HL7ADD I 1
+ E  S HOST="127.0.0.1"
+ S FORMAT=1,WAIT=2,MAXLINES=600
+ D CALL^%ZISTCP(HOST,HL7PORT,10)
+ I POP W !,"TCP/IP connect failed" Q
+ N TCPIO S TCPIO=IO
+ ; Next is based on WRITE^HLCSTCP2
+ N LINENO,X S LINENO=0
+ ;F  U FILEIO Q:$$STATUS^%ZISH!(MAXLINES&(LINENO>MAXLINES))  R X:5 Q:'$T  D
+ F  S LINENO=$O(@GMSG@(LINENO)) Q:LINENO'>0  S X=@GMSG@(LINENO)  D
+ . Q:MAXLINES&(LINENO>MAXLINES)
+ .S:LINENO=1 X=$C(11)_X
+ .U TCPIO
+ .I FORMAT=1 W:X]"" X_$C(13),!
+ .;I FORMAT=2 W X,! W:X="" $C(13),!
+ .Q
+ U TCPIO W $C(28,13),! ;End of message
+ H $G(WAIT,0) D CLOSE^%ZISTCP
+ W !,"SENT TO: ",HL7PORT,!,FILENM,!,HFSPATH,!,MSH,!
+SENDTCPQ Q
+MSGPROC ;
+E ;returns STOP=1 if "^" entered
+ I $E(IOST)="C",'$D(ZTQUEUED) K DIR,STOP
+ S DIR(0)="E",DIR("A")="<CR> - Continue """"^"""" - STOP" W ! D ^DIR K DIR
+ W !
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) S STOP=1 Q
+ S:Y=0 STOP=1
+ Q
+HFSLOAD ;ask load HFS into ^TMP(
+ W !!,"Reading in a host file",!
+ K NSEQ,FSEQ,VLIST
+ K VLIST
+HFSLQ1 ;
+ K DIR S DIR(0)="FO",DIR("A")="Enter HFS Path "
+ S:$D(^TMP($J,"HFSPATH")) DIR("B")=^TMP($J,"HFSPATH")
+ D ^DIR I X="^" Q
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) Q
+ I $L(Y) S HFSPATH=Y,^TMP($J,"HFSPATH")=Y
+ Q:$L(Y)=0
+HFSLQ2 ;
+ W !!,"PATH is ",HFSPATH,!
+ K DIR S DIR(0)="FO",DIR("A")="ENTER FILE or null for *.HL7"
+ S:$D(^TMP($J,"HFSFILE")) DIR("B")=^TMP($J,"HFSFILE")
+ D ^DIR
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) K VLIST,^TMP($J,"HFSFILE") Q
+ I X="^" K VLIST,^TMP($J,"HFSFILE") G HFSLQ1
+ I $L(Y)>2 S HFSFILE=Y,^TMP($J,"HFSFILE")=Y,VLIST(HFSFILE)=""
+ W !!,"LOADING ",!,"PATH: ",?10,HFSPATH,!,"FILE:",?10,$G(HFSFILE),!!
+ ;load hfs unto global
+ D PROCESS(.GMSG,HFSPATH,HFSFILE) ;returns data in .GMSG ^TMP("VFDHHLUT",$J,LN)=A<tab>B<tab>
+ Q
+HL7TCPIP ; edit the TCPIP port to be used for reserving messages into vxVista
+ N Y,PAR
+ W !!!,"The parameter being edited is 'VFDHHL HL7 TCPIP PORT'"
+ W !,"Set it to the Kernel HL7 Multilistener Port"
+ S DIC=8989.51,DIC(0)="XM",X="VFDHHL HL7 TCPIP PORT"
+ D ^DIC
+ I Y'>0 W !,"VFDHHL HL7 TCPIP PORT not found" D E Q
+ S PAR=+Y D EDITPAR^XPAREDIT(PAR)
+ Q
+DISPBLD(VFDFILE,VFDIENS,VFDFLDS,VFDTYP,VFDTXT) ; quick easy display
+ ; VFDTYPE NULL/1 ONE COLUMN ; 2 - 2 COLUMN
+ ; .VFDTXT=return text
+ Q  ;indevelopment
+ N VFDTARF,VFDTARG,VFDMSG,VFDFLDS,VFDFLD,VFDFLDIE,VFDFLDNN,VFDTXTR
+ K VFDTARF,VFDTARG,VFDMSG
+ I VFDIENS'["," S VFDIENS=VFDIENS_"," ;make it easy
+ D GETS^DIQ(VFDFILE,VFDIENS,VFDFLDS,,"VFDTARG","VFDMSG")
+ M VFDFLDS=VFDTARG(VFDFILE,VFDIENS)
+ S VFDFLDNN=0
+ ;I $G(VFDTYP)=2 G DISPBLD2 ;2 columns ;in development
+ S VFDFLD=0 F  S VFDFLD=$O(VFDFLDS(VFDFLD)) Q:VFDFLD'>0  D
+ .S VFDFLDIE="" F VFDFLDIE=$O(VFDFLDS(VFDFLD,VFDFLDIE)) Q:VFDFLDIE=""  D
+ ..
+XBNEW(XBRT,XBNS) ;PEP XBRT=TAG^ROUTINE  XBNS=varialbe list ";" with * allowed
+ NEW XB,XBN,XB,XBY,XBL,XBKVAR,XBRET
+ S XBRET=XBRT_":"_XBNS
+S ;
+ I XBRET'[":" S XBRET=XBRET_":"
+ S XBN="XBRET",XBKVAR=$P($T(XBKVAR),";;",2),XBNS=$P(XBRET,":",2)
+ I XBNS="" G RETURN
+ F XBI=1:1 S (XB,XBY)=$P(XBNS,";",XBI) Q:XB=""  D
+ . I XB'["*" S XBN=XBN_","_XB Q
+ . S (XB,XBY)=$P(XB,"*"),XBN=XBN_","_XB,XBL=$L(XB)
+ . F  S XBY=$O(@XBY) Q:((XBY="")!(XB'=$E(XBY,1,XBL)))  S XBN=XBN_","_XBY
+ .Q
+RETURN ;
+ S XBN="("_XBN_","_XBKVAR_")",$P(XBRET,":",2)=XBN
+NEW ;
+ NEW @($P(XBRET,":",2))
+ D @($P(XBRET,":",1))
+ Q
+ ;
+BUILDINQ ; document interface details of a build
+ N DIC,G,Y,VFDBLDA,VFDFLNN,VFDCMPNM,VFDCMPDA,VFDBLDDT
+ K DIC,Y
+ S DIC=9.6,DIC(0)="AEQMZ" D ^DIC
+ Q:Y'>0
+ S VFDBLDA=+Y
+ S VFDBLDNM=$$GET1^DIQ(9.6,VFDBLDA,.01)
+ S VFDBLDDT=$$GET1^DIQ(9.6,VFDBLDA,.02)
+ S G=$NA(^XPD(9.6,VFDBLDA,"KRN"))
+ S VFDFLNN=0
+ D ^%ZIS
+ U IO W !,VFDBLDNM,?40,VFDBLDDT
+ ;F  S VFDFLNN=$O(@G@(VFDFLNN)) Q:VFDFLNN'>0  D BUILDNN
+ F VFDFLNN=101,771,870,8989.51,8994 D BUILDNN
+ D ^%ZISC
+ G BUILDINQ
+ Q
+BUILDNN ;
+ W !,VFDFLNN,?10,$$GET1^DIQ(1,VFDFLNN,.01)
+ S VFDCMPNM=""
+ F  S VFDCMPNM=$O(^XPD(9.6,VFDBLDA,"KRN",VFDFLNN,"NM","B",VFDCMPNM)) Q:VFDCMPNM=""  D
+ .N DIC,X S X=VFDCMPNM,DIC=$$ROOT^DILFD(VFDFLNN),DOC(0)="EQXM" D ^DIC S VFDCMPDA=+Y
+ . U IO W !,VFDFLNN,?15,VFDCMPNM,?50,VFDCMPDA
+ . U IO I VFDCMPDA S DA=VFDCMPDA D EN^DIQ
+ Q
+END ;--------------------------------------------------------------
+ ; the following taken from the variable list in KILL^XUSCLEAN from  KERNEL
+XBKVAR ;;DUZ,DTIME,DT,DISYS,IO,IOF,IOBS,IOM,ION,IOSL,IOST,IOT,IOS,IOXY,U,XRTL,ZTSTOP,ZTQUEUED,ZTREQ
+ ;-------------------------------------------------------------- 
+ Q
+KIDPOST ;post init to ask user to set Parameter VFDHHL HL7 TCPIP PORT
+ Q
+ D HL7TCPIP
+ Q
+DFTP03CK ; check encounters to see if they made it to VFD ADT INTERFACE Mappings file
+ N VFDISTDT,VFDLSTDT,VFDDTM,VFDPCEDA,VFDCNT
+ D DATEQUES
+ I $G(VFDLSTDT),$G(VFD1STDT) I 1
+ E  Q
+ S VFDDTM=$$FMADD^XLFDT(VFD1STDT,,,,-10)
+ F  S VFDDTM=$O(^SCE("B",VFDDTM)) Q:VFDDTM'>0  Q:VFDDTM>VFDLSTDT  D
+ . S VFDPCEDA=0 F  S VFDPCEDA=$O(^SCE("B",VFDDTM,VFDPCEDA)) Q:VFDPCEDA'>0  D PCECHK(VFDPCEDA)
+ W !,"Missing Visits ",VFDCNT Q
+PCECHK(VFDPCEDA) ;
+ N VFDVSTDA
+ S VFDVSTDA=$$GET1^DIQ(409.68,VFDPCEDA,.05,"I")
+ W !,VFDPCEDA,?10,VFDVSTDA
+ S VFDCNT=$G(VFDCNT)+1,VFDVST(VFDVSTDA)=""
+ I $D(^VFD(21607.02,1,1,"VSIT",VFDVSTDA)) D
+ .W ?20,VFDVSTDA  S VFDCNT=$G(VFDCNT)-1 K VFDVST(VFDVSTDA)
+ Q
+DFTP03RE ;RE SET visits VFDVST(n)
+ N VFDVSTDA,PXAVISIT
+ S VFDVSTDA=0 F  S VFDVSTDA=$O(VFDVST(VFDVSTDA)) Q:VFDVSTDA'>0  S PXAVISIT=VFDVSTDA D DQPCE^VFDHHLD1
+ Q
+TCPIPCHK ;Test Link or IP:Port
+ N DIC,DA,VFDLNK,VFDLNKDA,VFDLNKNM,VFDIPADD,VFDIPORT,VFDTMP,VFDMSG
+TCPIP2 ; try again API
+ K DIC,DA,VFDLNK,VFDLNKDA,VFDLNKNM,VFDIPADD,VFDIPORT,VFDTMP,VFDERMSG,ANS
+ N VFDTCPIP
+ W !!,"Selet a Link or enter IP:Port to test connectivity.",!
+ ;W !,"This uses the basic API CALL^%ZISTCP(""IP_ADDRESS"",PORT #,Time)",!!
+ K DIC,VFDIPADD,VFDIPORT
+ S DIC=870,DIC(0)="AEQMZ"
+ I $D(^TMP("VFDHIP",$J,"LINK")) S VFDLNKNM=$G(^("LINK")) S DIC("B")=VFDLNKNM
+ D ^DIC
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) K VFDLNKNM,^TMP("VFDHIP",$J,"LINK") G IPASK
+ I Y>0 D
+ . S VFDLNKDA=+Y,VFDLNKNM=Y(0,0),^TMP("VFDHIP",$J,"LINK")=VFDLNKNM
+ . D GETS^DIQ(870,VFDLNKDA_",","400.01;400.02",,"VFDLNK","VFDERMSG")
+ . I $D(VFDERMSG) D Q("VFDERMSG") K VFDLNKDA,VFDLNKNM,VFDLNK D E Q
+ . S VFDIPADD=VFDLNK(870,VFDLNKDA_",",400.01),VFDIPORT=VFDLNK(870,VFDLNKDA_",",400.02)
+ I '$D(VFDIPADD) D
+ .I $D(^TMP("VFDHIP",$J,"IPADD")) D
+ ..S VFDIPADD=^("IPADD"),VFDIPORT=^("PORT")
+ ..I $D(^TMP("VFDHIP",$J,"LINK")) S VFDLNKNM=$G(^("LINK"))
+ I $D(VFDIPADD) G IPADDOK
+IPASK ;
+ N ANS
+ K DIR,VFDTCPIPVFDIPADD,VFDIPORT
+ I $D(^TMP("VFDHIP",$J,"PORT")) D
+ .S VFDIPADD=^TMP("VFDHIP",$J,"IPADD"),VFDIPORT=^TMP("VFDHIP",$J,"PORT")
+ .S VFDTCPIP=VFDIPADD_":"_VFDIPORT
+ I $D(VFDTCPIP) S DIR("B")=VFDTCPIP
+ S DIR(0)="FO",DIR("A")="ENTER IP:PORT " D ^DIR
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) Q
+ I Y="" Q
+ S ANS=Y I ANS'[":" Q
+ S VFDIPADD=$P(ANS,":"),VFDIPORT=$P(ANS,":",2)
+IPADDOK ;
+ W !!,$G(VFDLNKNM),?45,VFDIPADD,":",VFDIPORT,!
+ K DIR S DIR(0)="YO",DIR("A")="Is the above correct ?",DIR("B")="Y" D ^DIR
+ I Y'=1 K ^TMP("VFDHIP",$J) G TCPIP2
+ S:$D(VFDLNKNM) ^TMP("VFDHIP",$J,"LINK")=VFDLNKNM
+ S ^TMP("VFDHIP",$J,"PORT")=VFDIPORT,^TMP("VFDHIP",$J,"IPADD")=VFDIPADD
+ N LINE S $P(LINE,"-",78)=""
+ W !,!,"This may wait five seconds if not connecting",!
+ D CALL^%ZISTCP(VFDIPADD,VFDIPORT,5) S VFDPOP=POP
+ D ^%ZISC
+ I VFDPOP=1 D  G TCPIP2
+ .W !,LINE,!!,?5,">>>> No Connection to: ",$E($G(VFDLNKNM),1,20),?22,VFDIPADD,":",VFDIPORT," <<<<",!
+ .W !,LINE
+ W !,LINE,!!,?5,">>>> Connection Established to ",$E($G(VFDLNKNM),1,20),"   ",VFDIPADD,":",VFDIPORT," <<<<",!
+ W !,LINE
+ G TCPIP2
+ ;
+CHANGES ; log of changes
+ ; added edit of parameter VFDHHL HL7 TCPIP PORT for reserving pre-processed messages
+ ;correct for searching for ACKs and text
+ ; 8 NOV use hl16scan for search
+ ; 29MAR11 changed Q(@GMSG) to Q(GMSG)
+ ; 25 MAY 11 SEND TCPIP WAS HARD CODED TO 127.0.0.1 NOT USXING HL7ADD
+ ;15 Jun 11 added status+ to message scanning display
+ ;30 NOV 2011 will build array of found messages in/if VFDRSRV=1 VFDRSRVM()
+ ;6 DEC 2011  date range asked if VFDRSRV=1
+ ;28 DEC remove %SS call from IP port question
+ ;10 JAN added sectiion of BUILDINQ
+ ;24 FEB PCE Visit Checker
+ ;27 FEB 2012 TEMP added DFTP03CK , DFTP03RE
+ ;15 JAN 2012 Fixed report of date scanned backward to:
+ ;  if search, then prints MSH-PID IENS stored in VRSRSRVM (clear by hand)
+ ;10/16/2012 Reserve now uses ^DIC for 773 and if no protocol routine it quits
+ ;10/18/2012 create encounter from a visit entry
+ ;APRIL 17 2013
+DESIGN ;area for designing code
+VSIT2PCE(VFDVSTDA,VFDPRVDA,VFDPRVID) ;
+ENCBUILD ; build encounter from scratch
+ ; BUILD ENCOUNTER from
+ ; VFDVSTDA - VISIT IEN
+ ; VFDPRVDA - needed if visit does not have a provider or VFDPRVID ccan be supplied
+ ; VFDPRVID - needed if VFDPRVDA needed but not available
+ ;REQUIREDS
+ ;$$DATA2PCE^PXAPI(INPUT_ROOT,PKG,SOURCE,.VISIT,USER,ERRDISP,.ERRARRAY,PPEDIT,.ERRPROB,.ACCOUNT)
+ ;INPUT_ROOT-CLOSED VFDENC
+ ;PKG P9.4, SOURCE P839.5, VISIT P9000010, USER P200, ERRDISP 1/0, .ERRORARRAY, PPEDIT 1/0, .ERRPROB,
+ N ENC,DTN,ARRAY,PROBLEM,Y,VLOC,VST,VFDVSTG,VFDVSTDA
+ K ENC,DTN,ARRAY,PROBLEM,Y,VLOC,VST,VFDVSTG,VFDVSTDA
+ K DIC S DIC=9000010,DIC(0)="AEQMZ" D ^DIC K DIC
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) Q
+ I Y>0 S VFDVSTDA=+Y D   Q:$G(STOP)  G PROV ;I STOP QUIT ===>PROV as visit provided
+ .N DIC S DIC="^AUPNVSIT(",DA=VFDVSTDA D EN^DIQ D E
+DTM ;
+ N XX
+ S XX=$$NOW^XLFDT
+ K DIR S DIR(0)="DO^:"_XX_":AERP",DIR("A")="Visit Date" D ^DIR
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) Q
+ I +Y'>0 G DTM
+ S VFDVSTDM=Y
+PAT ;
+ K DIC S DIC=2,DIC(0)="AEQMZ" D ^DIC K DIC
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) Q
+ S (VFDDFN,DFN)=+Y
+LOC ;
+ K DIR S DIR(0)="PO^44",DIR("S")="I +$P(^(0),U,7)" D ^DIR
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) Q
+ S VFDLOCDA=+Y
+ ;
+VSITCNT1 ;
+PROV ;
+ K DIC S DIC=200,DIC(0)="AEQMZ" D ^DIC K DIC
+ I ($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) Q
+ S:Y>0 VFDPRVDA=+Y
+ ;set variables for call to DATA2PCE
+ K ENC,DTN,ARRAY,PROBLEM,Y,VLOC,VST
+ S ENC="VFDENC" K @ENC
+ ;
+ I $G(VFDVSTDA)>0 G VSITCNT2
+ ;below provided by visit
+ S @ENC@("ENCOUNTER",1,"ENC D/T")=VFDVSTDM
+ S @ENC@("ENCOUNTER",1,"HOS LOC")=VFDLOCDA
+ S @ENC@("ENCOUNTER",1,"PATIENT")=DFN
+VSITCNT2 ;
+ S @ENC@("ENCOUNTER",1,"SERVICE CATEGORY")="A"
+ S @ENC@("ENCOUNTER",1,"ENCOUNTER TYPE")="P"
+ S:$G(VFDLOCDA) @ENC@("ENCOUNTER",1,"DSS ID")=$$GET1^DIQ(44,VFDLOCDA,8,"I") ;295 ;from file 44
+ I $G(VFDPRVDA) D
+ .S @ENC@("PROVIDER",1,"NAME")=VFDPRVDA
+ .S @ENC@("PROVIDER",1,"PRIMARY")=1
+ S PKG=$$FIND1^DIC(9.4,,"X","SISI","C")
+ S SRC="SISI",ERRDISP=0 ;VST=64
+ K Y,ARRAY,PROBLEM,VST,PXKERROR,PXAERROR
+ S:$G(VFDVSTDA)>0 VST=+VFDVSTDA
+ S Y=$$DATA2PCE^PXAPI("VFDENC",PKG,SRC,.VST,,.ARRAY,0,.PROBLEM)
+ I $E(IOST)="C" W !,"Y: ",Y
+ I $D(ARRAY),$E(IOST)="C" W ! ZW ARRAY
+ I $D(PROBLEM),$E(IOST)="C" W ! ZW PROBLEM
+ I $D(@ENC@("DIERR")),$E(IOST)="C" W ! ZW @ENC@("DIERR")
+ K @ENC
+ I $G(VST) S Y=Y_U_VST
+ Q Y
+SISIKILL ; Clear SISI Files
+ N VFDFLDA
+ S VFDFLDA=29320-.1
+ W !,"Saving a copy in ^PWSISI" K ^PWSISI 
+ M ^PWSISI=^SISIADT
+ W !,"^PWSISI cleared and reloaded"
+ F VFDFLDA=29320.4,29320.5,29320.6,29320.7,29320.75,29320.8,29320.9  D
+ . S XXX=^SISIADT(VFDFLDA,0) K ^SISIADT(VFDFLDA)
+ . S $P(XXX,"^",3,4)="^"
+ . S ^SISIADT(VFDFLDA,0)=XXX
+ . W !,VFDFLDA,?15,^SISIADT(VFDFLDA,0)
+ Q
+HISTORY ;
+ ;5/13/2013 special line handling taken out of msgdisp for wrap and capture
+ ;($D(DUOUT)!$D(DIRUT)!$D(DTOUT)) added in several places
+ ;Test TCPIP added Links
+ ;8/29 2013 S X=250 X ^%ZOSF("RM") & D ^%ZISC for scans
+ ;01/23/2014  SISIKILL added

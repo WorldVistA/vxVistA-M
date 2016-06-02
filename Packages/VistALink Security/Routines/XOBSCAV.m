@@ -1,7 +1,6 @@
 XOBSCAV ;; kec/oak - VistaLink Access/Verify Security ; 12/09/2002  17:00
- ;;1.5;VistALink Security;;Sep 09, 2005
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.0.026]
- ;;
+ ;;1.6;VistALink Security;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
  QUIT
  ;
  ; ---------------------------------------------------------------------
@@ -92,6 +91,10 @@ ERROR(XOBR,XOBFCODE,XOBFSTR,XOBCODE,XOBSTR) ; -- send security error back to cli
  DO POST^XOBVSKT
  ; -- log the error/fault unless it's "too many invalid login attempts"
  IF XOBCODE'=183005 DO
+ .SET:$DATA(XOBDATA("XOB SECAV","AVCODE")) XOBDATA("XOB SECAV","AVCODE")="<masked>"
+ .SET:$DATA(XOBDATA("XOB SECAV","OLDVC")) XOBDATA("XOB SECAV","OLDVC")="<masked>"
+ .SET:$DATA(XOBDATA("XOB SECAV","NEWVC")) XOBDATA("XOB SECAV","NEWVC")="<masked>"
+ .SET:$DATA(XOBDATA("XOB SECAV","NEWVCCHECK")) XOBDATA("XOB SECAV","NEWVCCHECK")="<masked>"
  .DO ^%ZTER
  KILL XOBDATA("XOB SECAV")
  QUIT
@@ -128,7 +131,7 @@ LOGGEDON() ; -- checks if the environment was previously properly set up, e.g.,
  ; logon succeeded in some previous call
  QUIT +$GET(DUZ)
  ;
-CRCONTXT(XOBOPTNM) ; -- create the contxt if it doesn't already exist
+CRCONTXT(XOBOPTNM) ; -- create the context if it doesn't already exist
  ; INPUT VALUE: XOBOPTNM encoded with Kernel encoding algorithm
  ; RETURN VALUE: +result will be 1 if successful, or 0 if unsuccessful
  ; if unsuccessful, result may (or may not) also contain the textual reason for failure

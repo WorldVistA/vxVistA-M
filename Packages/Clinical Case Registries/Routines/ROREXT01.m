@@ -1,6 +1,22 @@
-ROREXT01 ;HCIOFO/SG - EXTRACTION & TRANSMISSION PROCESS ; 1/22/06 12:40pm
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+ROREXT01 ;HCIOFO/SG - EXTRACTION & TRANSMISSION PROCESS ;1/22/06 12:40pm
+ ;;1.5;CLINICAL CASE REGISTRIES;**10,21**;Feb 17, 2006;Build 45
  ;
+ ; This routine uses the following IAs:
+ ;
+ ; #10063  $$S^%ZTLOAD (supported)
+ ; #10103  $$FMDIFF^XLFDT (supported)
+ ; #10103  $$NOW^XLFDT (supported)
+ ;
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                 --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*21   NOV 2013    T KOPP       Output # of reports run for all local
+ ;                                      registries
+ ;******************************************************************************
+ ;******************************************************************************
  Q
  ;
  ;***** INTERNAL ENTRY POINT FOR DATA EXTRACTION
@@ -70,7 +86,7 @@ INTEXT(REGLST,RORTASK) ;
  ;
  ;***** RETURNS THE NEXT PATIENT FOR DATA EXTRACTION
  ;
- ; PTIEN         Patient IEN (DFN)
+ ; PTIEN         Patient IEN (DFN in file #2)
  ;
  ; .RGIENLST     Reference to a local array containing registry
  ;               IENs as subscripts. The IENs of the corresponding
@@ -90,10 +106,10 @@ NEXTPAT(PTIEN,RGIENLST) ;
  . . S RGIENLST(REGIEN)=0
  . . S IEN=+$O(^RORDATA(798,"KEY",PTIEN,REGIEN,""))
  . . Q:IEN'>0
- . . ;--- Skip all inactive records except marked for deletion
- . . I '$$ACTIVE^RORDD(IEN,,.STATUS)  Q:STATUS'=5
- . . ;--- Skip a record tagged as "DON'T SEND"
- . . Q:$P($G(^RORDATA(798,IEN,2)),U,4)
+ . . ;With patch 10, status is irrelevant
+ . . ;I '$$ACTIVE^RORDD(IEN,,.STATUS)  Q:STATUS'=5
+ . . ;--- Skip a record tagged as "DON'T SEND" or if test patient
+ . . I (($P($G(^RORDATA(798,IEN,2)),U,4))!($$TESTPAT^RORUTL01(PTIEN))) Q
  . . ;--- Consider the record
  . . S RGIENLST(REGIEN)=IEN,CNT=CNT+1
  Q $S(PTIEN>0:PTIEN,1:0)
@@ -133,6 +149,12 @@ PROCESS(REGLST) ;
  S REGIEN=0
  F  S REGIEN=$O(RGIENLST(REGIEN))  Q:REGIEN'>0  D  Q:RC<0
  . S RC=$$REGSTATE^ROREXT03(REGIEN)
+ Q:RC<0 RC
+ ;
+ ;Output # of reports run for all local registries
+ S REGIEN=0
+ F  S REGIEN=$O(^ROR(798.1,REGIEN))  Q:REGIEN'>0  D  Q:RC<0
+ . I '$D(RGIENLST(REGIEN)) S RC=$$REGSTATE^ROREXT03(REGIEN)
  Q:RC<0 RC
  ;
  ;--- Loop through the patients of the registries

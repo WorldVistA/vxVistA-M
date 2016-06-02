@@ -1,5 +1,5 @@
-PSOHLDS1 ;BIR/LC,PWC-Build HL7 Segments for Automated Interface ; 7/25/08 1:28pm
- ;;7.0;OUTPATIENT PHARMACY;**156,232,255,200,305,336**;DEC 1997;Build 1
+PSOHLDS1 ;BIR/LC,PWC-Build HL7 Segments for Automated Interface ; 2/5/10 10:01am
+ ;;7.0;OUTPATIENT PHARMACY;**156,232,255,200,305,336,351,434**;DEC 1997;Build 2
  ;HLFNC       supp. by DBIA 10106
  ;PSNAPIS     supp. by DBIA 2531
  ;VASITE      supp. by DBIA 10112
@@ -40,7 +40,7 @@ GETDATA ; this is the place to set all data needed for several segments
  . S VPHARMID=$S($P(^PSRX(IRXN,1,FPN,0),"^",5)'="":$P(^(0),"^",5),1:$P(^PSRX(IRXN,2),"^",10))
  . S EBY=$S($P(^PSRX(IRXN,1,FPN,0),"^",5):$P(^(0),"^",5),1:$P(^(0),"^",7)),PVDR=$P(^(0),"^",17),PSONDC=$S($P($G(^PSRX(IRXN,1,FPN,1)),"^",3):$P(^(1),"^",3),1:$P(^PSRX(IRXN,2),"^",7))
  I $G(FP)="P"&($G(FPN)) D  ;partial
- . S FDT=$P(^PSRX(IRXN,"P",FPN,0),"^"),MW=$P(^(0),"^",2),QTY=$P(^(0),"^",4),DASPLY=$P(^(0),"^",10),DISPDT=$P(^(0),"^",13),PVDR=$P(^(0),"^",17),EXDT=$P(^PSRX(IRXN,2),"^",6)
+ . S FDT=$P(^PSRX(IRXN,"P",FPN,0),"^"),MW=$P(^(0),"^",2),QTY=$P(^(0),"^",4),DASPLY=$P(^(0),"^",10),DISPDT=FDT,PVDR=$P(^(0),"^",17),EXDT=$P(^PSRX(IRXN,2),"^",6)
  . S EBY=$S($P(^PSRX(IRXN,"P",FPN,0),"^",5):$P(^(0),"^",5),1:$P(^(0),"^",7)),VPHARMID=$S($P(^(0),"^",5)'="":$P(^(0),"^",5),1:$P(^PSRX(IRXN,2),"^",10)),PVDR=$P(^PSRX(IRXN,"P",FPN,0),"^",17)
  . S PSONDC=$S($P(^PSRX(IRXN,"P",FPN,0),"^",12):$P(^(0),"^",12),1:$P(^PSRX(IRXN,2),"^",7))
  S EFDT=$P(^PSRX(IRXN,2),"^",2) S:$G(EFDT) EFDT=$$HLDATE^HLFNC(EFDT,"DT")
@@ -94,7 +94,7 @@ PID(PSI) ;patient ID segment
  Q:'$D(DFN)!$D(PAS)
  S HLFS=HL1("FS"),HLECH=HL1("ECH"),HLQ=HL1("Q"),HLVER=HL1("VER")
  K PSPID,PSPID1
- D BLDPID^VAFCQRY(DFN,"","3,5,7,8,11,13",.PSPID,.HL1,.ERR)
+ D BLDPID^VAFCQRY(DFN,"","3,4,5,7,8,11,13",.PSPID,.HL1,.ERR)
  ; put PID in format needed for segment parser
  S PSPID=PSPID(1) K PSPID(1)
  S (X,Y)=1 F  S X=+$O(PSPID(X)) Q:'X  S PSPID(Y)=PSPID(X),Y=Y+1 K PSPID(X)

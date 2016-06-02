@@ -1,5 +1,5 @@
-MAGGTAU ;WOIFO/GEK - RPC Calls to Update the Imaging Windows Workstation file ; [ 03/25/2001 11:20 ]
- ;;3.0;IMAGING;**7,16,8,59**;Nov 27, 2007;Build 20
+MAGGTAU ;WOIFO/GEK/SG - RPC Calls to update the IMAGING WINDOWS WORKSTATION file ; 7/17/08 3:39pm
+ ;;3.0;IMAGING;**7,16,8,59,93**;Dec 02, 2009;Build 163
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -17,80 +17,126 @@ MAGGTAU ;WOIFO/GEK - RPC Calls to Update the Imaging Windows Workstation file ; 
  ;; +---------------------------------------------------------------+
  ;;
  Q
-UPD(MAGRY,DATA) ;RPC [MAGG WRKS UPDATES]
- ; Called after User login. Local and RIV.
- ; Updates information in the IMAGING WINDOWS WORKSTATION
  ;
- ; DATA is '^' delimited piece
- ; 1 Workstation name            2 Date/Time of capture app.
- ; 3 Date/Time of Display App.
- ; 4 Location of workstation      5 Date/Time of MAGSETUP
- ; 6 Version of Display          7 Version of Capture
- ; 8  1=Normal startup 2=Started by CPRS 3=Import API
- ; 9 OS Version                 10 VistaRad Version
- ; 11 RPCBroker Server    12 RPCBroker Port
- N X,Y,Z
- N MAGNAME,MAGCDT,MAGDDT,MAG0,MAGLOC,MAGIEN,MAGSETUP,MAGSTART,MAGSRV
- N MAGVERSD,MAGVERSC,MAGMODE,MAGOSVER,MAGVERVR,MAGPL,MAGVERX
+ ;***** UPDATES INFORMATIONS IN THE IMAGING WINDOWS WORKSTATION
+ ; RPC: MAGG WRKS UPDATES
+ ;
+ ; .MAGRY        Reference to a local variable where the results
+ ;               are returned to.
+ ;
+ ; DATA          Data that should be stored in the IMAGING WINDOWS
+ ;               WORKSTATION file (#2006.81):
+ ;                 ^01: Workstation name
+ ;                 ^02: Date/Time of Capture application (external)
+ ;                 ^03: Date/Time of Display application (external)
+ ;                 ^04: Location of the workstation
+ ;                 ^05: Date/Time of the MAGSETUP (external)
+ ;                 ^06: Version of the Display application
+ ;                 ^07: Version of the Capture application
+ ;                 ^08: Startup mode: 1 = Normal startup,
+ ;                      2 = Started by CPRS, 3 = Import API
+ ;                 ^09: OS Version
+ ;                 ^10: VistaRad version
+ ;                 ---- Patch MAG*3*59 ----
+ ;                 ^11: RPCBroker server
+ ;                 ^12: RPCBroker port
+ ;                 ---- Patch MAG*3*93 ----
+ ;                 ^13: Clinical Utilities version
+ ;                 ^14: TeleReader version
+ ;                 ^15: Date/Time of the Clinical Utilities (external)
+ ;                 ^16: Date/Time of the TeleReader (external)
+ ;                 ^17: Date/Time of the VistaRad (external)
+ ; 
+ ; Return Values
+ ; =============
+ ;
+ ; Zero value of the first '^'-piece of the MAGRY indicates that
+ ; an error occurred during the execution of the procedure. In this
+ ; case, the MAGRY is formatted as follows:
+ ;
+ ; MAGRY                 Result descriptor
+ ;                         ^01: 0
+ ;                         ^02: Error message (optional)
+ ;
+ ; Otherwise, first '^'-piece of the MAGRY contains the session
+ ; number (IEN in the IMAGING WINDOWS SESSIONS file (#2006.82)):
+ ;  
+ ; MAGRY                 Result descriptor
+ ;                         ^01: Session IEN (file #2006.82)
+ ;                         ^02: Message
+ ;
+ ; Notes
+ ; =====
+ ;
+ ; This remote procedure is called after user login (local and remote 
+ ; image view).
+ ;
+UPD(MAGRY,DATA) ;RPC [MAGG WRKS UPDATES]
+ N MAG0,MAGI,MAGIEN,MAGLOC,MAGMODE,MAGNAME,MAGOSVER,MAGPL
+ N MAGSRV,MAGSTART,MAGVERVR,MAGVERX,X,Y,Z
  K MAGGFDA,MAGXERR,MAGXIEN
+ ;
  S MAGNAME=$P(DATA,U,1)
- S MAGCDT=$P(DATA,U,2)
- S MAGDDT=$P(DATA,U,3)
  S MAGLOC=$P(DATA,U,4)
- S MAGSETUP=$P(DATA,U,5)
- S MAGVERSD=$P(DATA,U,6)
- I MAGVERSD S MAGJOB("DISPLAY")=""
- S MAGVERSC=$P(DATA,U,7)
- I MAGVERSC S MAGJOB("CAPTURE")=""
+ S:$P(DATA,U,6) MAGJOB("DISPLAY")=""
+ S:$P(DATA,U,7) MAGJOB("CAPTURE")=""
  S MAGMODE=$P(DATA,U,8)
  S MAGOSVER=$P(DATA,U,9)
  S MAGVERVR=$P(DATA,U,10)
- I $P(DATA,U,11)]"" S MAGJOB("RPCSERVER")=$P(DATA,U,11)
- I $P(DATA,U,12)]"" S MAGJOB("RPCPORT")=$P(DATA,U,12)
- S MAGIEN=0
- I $L(MAGNAME) S MAGIEN=$O(^MAG(2006.81,"B",MAGNAME,""))
- I 'MAGIEN D NEWWRKS(MAGNAME,MAGLOC,.MAGIEN)
- I MAGIEN<1 S MAGRY="0^Workstation Not on file" Q
+ S:$P(DATA,U,11)]"" MAGJOB("RPCSERVER")=$P(DATA,U,11)
+ S:$P(DATA,U,12)]"" MAGJOB("RPCPORT")=$P(DATA,U,12)
  ;
- S %DT="T",X=MAGCDT D ^%DT S MAGCDT=Y
- S %DT="T",X=MAGDDT D ^%DT S MAGDDT=Y
- S %DT="T",X=MAGSETUP D ^%DT S MAGSETUP=Y
+ S MAGIEN=$S($L(MAGNAME):$O(^MAG(2006.81,"B",MAGNAME,"")),1:0)
+ I 'MAGIEN   D NEWWRKS(MAGNAME,MAGLOC,.MAGIEN)
+ I MAGIEN<1  S MAGRY="0^Workstation Not on file"  Q
+ ;
  S MAG0=^MAG(2006.81,MAGIEN,0) ; '0' node for use later.
  L +^MAG(2006.81,"LOCK",MAGIEN):0
  S MAGIEN=+MAGIEN_","
- S MAGGFDA(2006.81,MAGIEN,.01)=MAGNAME ; Computer Name
- I MAGCDT>-1 S MAGGFDA(2006.81,MAGIEN,4)=MAGCDT ;TELE19N.EXE dttm
- I MAGDDT>-1 S MAGGFDA(2006.81,MAGIEN,5)=MAGDDT ;IMGVWP10.EXE dttm
- I MAGSETUP>-1 S MAGGFDA(2006.81,MAGIEN,7)=MAGSETUP ; MAGSETUP.EXE dttm
- S MAGGFDA(2006.81,MAGIEN,8)=1 ; Active or not.
- S MAGGFDA(2006.81,MAGIEN,6)=MAGLOC ; location free text from .INI
- S MAGGFDA(2006.81,MAGIEN,3)="@" ; delete logoff time for this job.
- S MAGGFDA(2006.81,MAGIEN,10)="@" ; delete session pointer
- S MAGGFDA(2006.81,MAGIEN,11)="@" ; reset the session error count.
- S MAGGFDA(2006.81,MAGIEN,9)=MAGVERSD ; IMGVWP10.EXE Version Info
- S MAGGFDA(2006.81,MAGIEN,9.5)=MAGVERSC ; TELE19N.EXE Version Info
- S MAGGFDA(2006.81,MAGIEN,9.7)=MAGVERVR ; VistARad.EXE Version Info
- S MAGGFDA(2006.81,MAGIEN,13)=MAGOSVER ; Operating System Version.
+ S MAGGFDA(2006.81,MAGIEN,.01)=MAGNAME ; Computer name
+ S MAGGFDA(2006.81,MAGIEN,3)="@"  ; Delete logoff time for this job
+ S MAGGFDA(2006.81,MAGIEN,6)=MAGLOC    ; Location free text from .INI
+ S MAGGFDA(2006.81,MAGIEN,8)=1         ; Active or not
+ S MAGGFDA(2006.81,MAGIEN,10)="@"      ; Delete session pointer
+ S MAGGFDA(2006.81,MAGIEN,11)="@"      ; Reset the session error count
+ S MAGGFDA(2006.81,MAGIEN,13)=MAGOSVER ; Operating system version
+ ;
+ ;=== Process the client date/time values (MAG*3*93)
+ F MAGI="2^5.5","3^5","5^7","15^5.9","16^5.3","17^5.7"  D
+ . ;--- Convert date/time into internal format
+ . S %DT="T",X=$P(DATA,U,+MAGI)  D ^%DT
+ . S $P(DATA,U,+MAGI)=Y
+ . ;--- Prepare the date/time for storage
+ . S:Y>-1 MAGGFDA(2006.81,MAGIEN,$P(MAGI,U,2))=Y
+ . Q
+ ;
+ ;=== Process the client version numbers (MAG*3*93)
+ S MAGVERX=""
+ F MAGI="6^9","7^9.5","10^9.7","13^9.9","14^9.3"  D
+ . S X=$P(DATA,U,+MAGI)  Q:X=""
+ . ;--- Prepare the version number for storage
+ . S MAGGFDA(2006.81,MAGIEN,$P(MAGI,U,2))=X
+ . ;--- Whatever application calls, we'll use that version (MAG*3*8)
+ . S:MAGVERX="" MAGVERX=X
+ . Q
  ;
  S X=$P(MAG0,U,12)
  S MAGGFDA(2006.81,MAGIEN,12)=X+1 ; Sess count for wrks.
  ; Keep PLACE that this wrks logged in.
- S MAGPL=0 I $D(DUZ(2)) S MAGPL=+$$PLACE^MAGBAPI(DUZ(2)) ; DBI
- I MAGPL S MAGGFDA(2006.81,MAGIEN,.04)=MAGPL ; DBI
+ S MAGPL=$S($G(DUZ(2)):+$$PLACE^MAGBAPI(DUZ(2)),1:0) ; DBI
+ S:MAGPL MAGGFDA(2006.81,MAGIEN,.04)=MAGPL ; DBI
  ;
- S X=$$NOW^XLFDT
- S MAGSTART=$E(X,1,12)
+ S MAGSTART=$E($$NOW^XLFDT,1,12)
  I $G(DUZ) D
  . S MAGGFDA(2006.81,MAGIEN,1)=DUZ
  . S MAGGFDA(2006.81,MAGIEN,2)=MAGSTART
+ . Q
  ;
  D UPDATE^DIE("S","MAGGFDA","MAGXIEN","MAGXERR")
  I $D(DIERR) D RTRNERR(.MAGRY) Q
  ; The MAGJOB( array is used by Imaging routines that are
  ; called from the Delphi App. 
  ; 
- ; 3.0.8 Whatever App calls this, we'll use that Version number.
- S MAGVERX=$S(MAGVERSD]"":MAGVERSD,MAGVERSC]"":MAGVERSC,MAGVERVR]"":MAGVERVR,1:0)
  S MAGJOB("WRKSIEN")=+MAGIEN
  S MAGJOB("VERSION")=MAGVERX
  S MAGRY="1^"
@@ -109,7 +155,7 @@ UPD(MAGRY,DATA) ;RPC [MAGG WRKS UPDATES]
  ; DBI - save the logon PLACE in the Session file.
  I MAGPL S MAGGFDA(2006.82,"+1,",.04)=MAGPL ; User's Institution (Imaging site param entry)
  ;
- ;3.0.8  new fields 9 Client Ver, 9.2 Host Version, 9.4 OS Version 
+ ; 3.0.8  new fields 9 Client Ver, 9.2 Host Version, 9.4 OS Version 
  S MAGGFDA(2006.82,"+1,",9)=MAGVERX ;
  S MAGGFDA(2006.82,"+1,",9.2)=$$VERSION^XPDUTL("IMAGING") ;
  S MAGGFDA(2006.82,"+1,",9.4)=MAGOSVER ;

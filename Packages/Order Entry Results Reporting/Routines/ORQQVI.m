@@ -1,5 +1,9 @@
 ORQQVI ; slc/STAFF - Functions which return patient vital and I/O data ;10/26/06  11:44
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**10,198,215,250,260,285**;Dec 17, 1997;Build 7
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**10,198,215,250,260,285,286**;Dec 17, 1997;Build 29
+ ;
+ ; DBIA 1446   ^GMRVUT0
+ ; DBIA 3647   ^GMVPXRM
+ ;
 VITALS(ORY,DFN,ORSDT,OREDT) ; return patient's vital measurements taken between start date/time and end date/time
  ;ORY: return variable, results are returned in the format:
  ;     vital measurement ien^vital type^date/time taken^rate
@@ -10,11 +14,10 @@ VITALS(ORY,DFN,ORSDT,OREDT) ; return patient's vital measurements taken between 
  ;DBIA for ^GMVPXRM is 3647
  ;DBIA for ^GMRVUT0 is 1446
  K ^UTILITY($J,"GMRVD")
- ;DSS/LM - BEGIN MODS - Accommodate pediatric vitals
- ; original line is now argument of line starting with 'E  '
- I $$VFD S GMRVSTR="BP;HT;WT;T;R;P;PN;EDD;LEN;LMP"
- E  S GMRVSTR="BP;HT;WT;T;R;P;PN" ;dee 2/12/99 added PN
- ;DSS/LM - END MODS
+ S GMRVSTR="BP;HT;WT;T;R;P;PN" ;dee 2/12/99 added PN
+ ;DSS/SMP - BEGIN MOD
+ I $$VFD S GMRVSTR=GMRVSTR_";EDD;LEN;LMP"
+ ;DSS/SMP - END MOD
  S GMRVSTR(0)=ORSDT_"^"_OREDT_"^"_"^"
  D EN1^GMRVUT0
  N ORT,ORD,ORI,I
@@ -91,12 +94,12 @@ FASTVIT(ORY,DFN,F1,F2) ; return patient's most recent vital measurements
  D VITAL("CENTRAL VENOUS PRESSURE","CVP",DFN,.ORY,.CNT,DT1,DT2)
  D VITAL("CIRCUMFERENCE/GIRTH","CG",DFN,.ORY,.CNT,DT1,DT2)
  D VITAL("BODY MASS INDEX","BMI",DFN,.ORY,.CNT,DT1,DT2)
- ;DSS/RAC - BEGIN MOD - Additional vitals returned
+ ;DSS/SMP - BEGIN MOD - Return additional vitals
  Q:'$$VFD
  D VITAL("LAST MENSTRUAL PERIOD","LMP",DFN,.ORY,.CNT,DT1,DT2)
  D VITAL("ESTIMATED DELIVERY DATE","EDD",DFN,.ORY,.CNT,DT1,DT2)
  D VITAL("LENGTH","LEN",DFN,.ORY,.CNT,DT1,DT2)
- ;DSS/RAC - END MOD
+ ;DSS/SMP - END MOD
  Q
  ;
 VITAL(VITAL,ABBREV,DFN,ORY,CNT,F1,F2) ;
@@ -135,14 +138,17 @@ VITAL(VITAL,ABBREV,DFN,ORY,CNT,F1,F2) ;
  ...S ORY(CNT)=ORY(CNT)_"^"_VALUE_$S($E(VALUE):" in",1:"")
  ...S MVAL=+VALUE
  ...Q:'MVAL
- ...S MVAL=$J((MVAL*2.54),3,1)
+ ...;DSS/SMP - BEGIN MODS
+ ...I $$VFD S MVAL=$$IN2CM^VFDXLF(MVAL,1) I 1
+ ...E  S MVAL=$J((MVAL*2.54),3,2)
  ...S ORY(CNT)=ORY(CNT)_"^("_MVAL_" cm)"
  ..I $P(ORY(CNT),"^",2)="WT" D  ; Weight.
  ...S ORY(CNT)=ORY(CNT)_"^"_VALUE_$S($E(VALUE):" lb",1:"")
  ...S MVAL=+VALUE
  ...Q:'MVAL
  ...; changed 2.2 to 2.20462262 per CQ 10637
- ...S MVAL=$J((MVAL/2.20462262),3,1)
+ ...I $$VFD S MVAL=$$LB2KG^VFDXLF(MVAL,1) I 1
+ ...E  S MVAL=$J((MVAL/2.20462262),3,2)
  ...S ORY(CNT)=ORY(CNT)_"^("_MVAL_" kg)"
  ..I $P(ORY(CNT),"^",2)="PN" D   ; Pain
  ...S ORY(CNT)=ORY(CNT)_"^"_VALUE
@@ -160,15 +166,16 @@ VITAL(VITAL,ABBREV,DFN,ORY,CNT,F1,F2) ;
  ...S ORY(CNT)=ORY(CNT)_"^"_$P(ORY(CNT),"^",3)
  ...S MVAL=$P(ORY(CNT),"^",3)
  ...I MVAL'=+MVAL,+MVAL=0 S ORY(CNT)=ORY(CNT)_"^",$P(ORY(CNT),U,7)="" Q
- ...S MVAL=$J((MVAL*2.54),3,1)
+ ...I $$VFD S MVAL=$$IN2CM^VFDXLF(MVAL,1) I 1
+ ...E  S MVAL=$J((MVAL*2.54),3,1)
  ...S ORY(CNT)=ORY(CNT)_" in^("_MVAL_" cm)"
- .. ;DSS/SGM - BEGIN MODS
- .. I $$VFD D VFD1
- .. ;DSS/SGM - END MODS
+ ..I $$VFD D VFD1
+ ..;DSS/SMP - END MODS
  ..S $P(ORY(CNT),U,7)=QUALS(CNT)
  Q
- ;DSS/SGM - BEGIN MODS - accommodate pediatric vitals
-VFD() Q $S($T(VX^VFDI0000)="":0,1:$$VX^VFDI0000["VX")
+ ;
+ ;DSS/SMP - BEGIN MODS - accommodate pediatric vitals
+VFD() Q $G(^%ZOSF("ZVX"))["VX"
  ;
 VFD1 ;
  I $P(ORY(CNT),"^",2)="EDD" D:+VALUE  ; Est. Delivery Date
@@ -179,7 +186,7 @@ VFD1 ;
  .S ORY(CNT)=ORY(CNT)_"^"_VALUE_$S($E(VALUE):" in",1:"")
  .S MVAL=+VALUE
  .Q:'MVAL
- .S MVAL=$J((MVAL*2.54),3,1)
+ .S MVAL=$$IN2CM^VFDXLF(MVAL,1)
  .S ORY(CNT)=ORY(CNT)_"^("_MVAL_" cm)"
  .Q
  Q

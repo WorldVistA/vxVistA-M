@@ -1,5 +1,5 @@
 PSOMGCM1 ;BHAM ISC/JMB,SAB - management data compile/recompile ;4/15/05 3:10pm
- ;;7.0;OUTPATIENT PHARMACY;**20,28,175,185,198**;DEC 1997
+ ;;7.0;OUTPATIENT PHARMACY;**20,28,175,185,198**;DEC 1997;Build 1
  ;Ref. to $$RXSUM^FBRXUTL supp. by IA# 4395
  ;Ref. to ^PSDRUG(, supp. by IA# 221
  ;PSO*198 correct begin date to previous day @ time 999999
@@ -43,6 +43,9 @@ Q S ZTDTH="",ZTRTN="BEG^PSOMGCM1",ZTDESC="Outpatient Pharmacy Management Data Re
  Q
 BEG S DIK="^PS(59.12,",DA=SDT-1 F  S DA=$O(^PS(59.12,DA)) Q:'DA!(DA>EDT)  D ^DIK
  K DA,DIK F NDT=SDT:1:EDT D BEG1
+ ;DSS/RAC - BEGIN MOD - Skip FBA is vxVistA 
+ I $G(^%ZOSF("ZVX"))["VX" G END
+ ;DSS/RAC - END MOD
  D FBA G END
  Q
  ;PSO*198 seed loop to previous day @ time 999999

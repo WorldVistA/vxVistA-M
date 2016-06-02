@@ -1,30 +1,12 @@
 VFDXTRU ;DSS/SGM - ROUTINE UTILITIES ; 07/28/2011 14:37
- ;;2.0;DSS,INC VXVISTA OPEN SOURCE;;29 Jul 2011;Build 92
- ;Copyright 1995-2011,Document Storage Systems Inc. All Rights Reserved
+ ;;15.0;DSS,INC VXVISTA OPEN SOURCE;;15 Sep 2015;Build 29
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ;
  ; ICR#   Description
  ;------  -------------------------------------------------------
  ;        $$CJ^XLFSTR
  ;        ^%ZOSF - all nodes can be referenced
  ;
- ;
- ;=============  ASK FOR METHOD TO GET LIST OF ROUTINES  ==============
-ASK(VFDR,NOINIT,SOURCE) ;  7/28/2011 - DEPRECATED - see ^VFDXTR
- ; select routines from routine selector or get from Build file
- Q $$ASK^VFDXTRU1
- ;
- ;=========================  ASK FOR FILENAME  ========================
-ASKFILE() ;  7/28/2011 - DEPRECATED - see ^VFDXTR
- ;  file not verified as to whether it exists or not
- ;  return user input or (null or -n if problems)
- Q $$DIR^VFDXTR09(4)
- ;
- ;====================  ASK FOR PATH OR DIRECTORY  ====================
-ASKPATH(VPATH) ;  7/28/2011 - DEPRECATED - see ^VFDXTR
- ; syntax of path is not verified
- ; VPATH - opt - default path
- ; return user input or <null>
- Q $$ASKPATH^VFDXTRU1
  ;
  ;===============  GET LIST OF ROUTINES FROM BUILD FILE  ==============
 BLD(VFDR,VAL,KU) ;
@@ -34,6 +16,19 @@ BLD(VFDR,VAL,KU) ;
 BLDNM(VFDVAL) ;
  Q $$BLDNM^VFDXTRU1(.VFDVAL)
  ;
+ ;=============================  READER  ==============================
+DIR(DIR) ;
+ Q $$DIR^VFDXTRU1(.DIR)
+ ;
+ ;========================== FILE TO GLOBAL ===========================
+FTG(PATH,FILE,ROOT,INC) ;
+ Q $$FTG^VFDXTRU2
+ ;
+ ;========================== GLOBAL TO FILE ===========================
+GTF(PATH,FILE,ROOT,INC) ;
+ Q $$GTF^VFDXTRU2
+ ;
+ ;====================== DISPLAY LIST OF ROUTINES =====================
 ROUDSP(VFDR,TITLE) ;
  S VFDR=$G(VFDR),TITLE=$G(TITLE) D ROUDSP^VFDXTRU1
  Q
@@ -50,31 +45,6 @@ WR(X,CJ,SLF,ELF,LINE) ;
  ;================  RETURN THE CONTENTS OF ^%ZOSF NODE  ===============
 ZOSF(NODE) ;
  Q $$ZOSF^VFDXTRU1
- ;
- ;====================== DISPLAY LIST OF ROUTINES =====================
- ; R - opt - named reference which contains routine names
- ;  Default to ^UTILITY($J)
- ; TITLE - opt - title to display before list of routines 
- ;Expects @R@(routine name)=value
- ;  value is usually null.  If it is equal to a single punctuation char
- ;    then append that char to beginning of routine name
- ;
-LIST(R,TITLE) ; display list of routines
- N I,X,Y,Z,SP,TOT
- S TITLE=$G(TITLE) I TITLE'="" D WR(TITLE," ",1,,12)
- S (X,TOT)=0,$P(SP," ",15)=""
- W ! F  S X=$O(@R@(X)) Q:X=""  S Y=@R@(X) D
- .S Z=X,TOT=1+TOT
- .I Y?1P,Y'=" " S Z=Y_X,TOT(Y)=1+$G(TOT(Y))
- .W $E(Z_SP,1,10) W:$X>70 !
- .Q
- W !!,"Total number of routines: "_TOT
- I $O(TOT(0)) S X=0 D
- .F  S X=$O(TOT(X)) Q:X=""  W !,"Total routines with "_X_":    "_TOT(X)
- .Q
- I TITLE'="" D WR(,,-1,1,2)
- Q
- ;
  ;
  ;===================== CALCULATE SIZE OF ROUTINE =====================
 SIZE(X,VFDS) ; calculate size of routine
@@ -101,3 +71,19 @@ SIZE(X,VFDS) ; calculate size of routine
  .E  S ZTOT(2)=ZTOT(2)+Y
  .Q
  Q ZTOT(1)_U_ZTOT(2)_U_ZTOT(3)_U_ZTOT(4)
+ ;
+ ;
+ ;===================== GET LIST OF HFS FILES =====================
+HFLIST(VFRET,PATH,VFLIST) ;
+ ;  VFRET  - req - $name of array in which to return files found
+ ;  PATH   - req - folder or directory where hfs files reside
+ ; .VFLIST - opt - list of HFS files to get.  VFLIST(name)="" where
+ ;           name is any acceptable value for list^%zish
+ ;           name=full_hfs_filename
+ ;           name=<char(s))_"*" eg. vflist("C*")
+ ;           if vflist=filename, then look for that filename only
+ ;              in this case, vfret need not be passed in
+ ;           default to vflist("*") if no value passed in
+ N X,Y,I
+ S X=$$LIST^VFDXTRU2(PATH,.VFLIST,VFRET)
+ Q X

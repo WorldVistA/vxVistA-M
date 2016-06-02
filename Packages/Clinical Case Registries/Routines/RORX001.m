@@ -1,11 +1,29 @@
-RORX001 ;HCIOFO/SG - LIST OF REGISTRY PATIENTS ; 9/15/05 2:13pm
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORX001 ;HOIFO/SG,VAC - LIST OF REGISTRY PATIENTS ;4/16/09 11:53am
+ ;;1.5;CLINICAL CASE REGISTRIES;**8,10,14,17,19,21**;Feb 17, 2006;Build 45
  ;
  ; This routine uses the following IAs:
  ;
+ ; #2051         LIST^DIC (supported)
+ ; #2056         GET1^DIQ, GETS^DIQ (supported)
  ; #10061        DEM^VADPT (supported)
+ ; #10103        FMADD^XLFDT (supported)
  ;
+ ; This routine modified March 2009 to handle ICD9 Filter for Include
+ ;    or Exclude
  Q
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                       --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*14   APR  2011   A SAUNDERS   Added column and data for 'FIRSTDIAG'.
+ ;ROR*1.5*17   AUG  2011   C RAY        Added params 'CONFIRM_AFTER', 'CONFDT_AFTER' 
+ ;ROR*1.5*19   FEB  2012   K GUPTA      Support for ICD-10 Coding System
+ ;ROR*1.5*21   SEP 2013    T KOPP       Added ICN as last report column if
+ ;                                      additional identifier option selected
+ ;******************************************************************************
+ ;******************************************************************************
  ;
  ;***** OUTPUTS THE REPORT HEADER
  ;
@@ -28,13 +46,16 @@ HEADER(PARTAG) ;
  . S TMP=$$ADDVAL^RORTSK11(RORTSK,"COLUMN",,COLUMNS)
  . D ADDATTR^RORTSK11(RORTSK,TMP,"NAME",COL)
  ;--- Additional columns
- F COL="DOD","CSSN","LAST4","SELRULES","SELDT","CONFDT"  D
+ F COL="DOD","CSSN","LAST4","SELRULES","SELDT","CONFDT","PENDCOMM","FIRSTDIAG"  D
  . Q:'$$OPTCOL^RORXU006(COL)
  . S TMP=$$ADDVAL^RORTSK11(RORTSK,"COLUMN",,COLUMNS)
  . D ADDATTR^RORTSK11(RORTSK,TMP,"NAME",COL)
+ ; --- ICN if selected must be last column on report
+ I $$PARAM^RORTSK01("PATIENTS","ICN") D ICNHDR^RORXU006(RORTSK,COLUMNS)
  ;---
  S:$$OPTCOL^RORXU006("CONFDT") RORFLDS=RORFLDS_";2"
  S:$$OPTCOL^RORXU006("SELDT") RORFLDS=RORFLDS_";3.2"
+ S:$$OPTCOL^RORXU006("PENDCOMM") RORFLDS=RORFLDS_";12"
  Q 0
  ;
  ;***** ADDS THE PATIENT DATA TO THE REPORT
@@ -47,9 +68,9 @@ HEADER(PARTAG) ;
  ;        0  Ok
  ;
 PATIENT(IENS,PARTAG) ;
- N DFN,IATIME,NAME,RC,RORBUF,RORMSG,TMP,VA,VADM,VAHOW,VAROOT
- D GETS^DIQ(798,IENS,RORFLDS,"I","RORBUF","RORMSG")
- Q:$G(DIERR) $$DBS^RORERR("RORMSG",-9,,,798,IENS)
+ N DFN,IATIME,NAME,RC,RORBUF,RORMSG,TMP,VA,VADM,VAHOW,VAROOT,PTAG
+ K RORMSG D GETS^DIQ(798,IENS,RORFLDS,"I","RORBUF","RORMSG")
+ Q:$G(RORMSG("DIERR")) $$DBS^RORERR("RORMSG",-9,,,798,IENS)
  S DFN=$G(RORBUF(798,IENS,.01,"I"))
  ;--- Load the demographic data
  D DEM^VADPT
@@ -79,12 +100,22 @@ PATIENT(IENS,PARTAG) ;
  D:$$OPTCOL^RORXU006("CONFDT")
  . S TMP=$$DATE^RORXU002($G(RORBUF(798,IENS,2,"I"))\1)
  . D ADDVAL^RORTSK11(RORTSK,"CONFDT",TMP,PTAG,1)
- ;--- Patient IEN (DFN)
- ;S:$$OPTCOL^RORXU006("DFN") TMP=$$ADDVAL^RORTSK11(RORTSK,"DFN",DFN,PTAG)
- ;--- Integration Control Number
- ;D:$$OPTCOL^RORXU006("ICN")
- ;. S TMP=$$ICN^RORUTL02(DFN)
- ;. D ADDVAL^RORTSK11(RORTSK,"ICN",$P(TMP,"V"),PTAG,1)
+ ;--- Pending Comment
+ D:$$OPTCOL^RORXU006("PENDCOMM")
+ . S TMP=$G(RORBUF(798,IENS,12,"I"))
+ . S TMP=$S($L(TMP)>0:TMP,1:"")
+ . D ADDVAL^RORTSK11(RORTSK,"PENDCOMM",TMP,PTAG,1)
+ ;--- First Healthcare Setting to Diagnose HIV
+ D:$$OPTCOL^RORXU006("FIRSTDIAG")
+ . K RORBUF,RORMSG D GETS^DIQ(799.4,IENS,12.08,"I","RORBUF","RORMSG")
+ . S TMP=$G(RORBUF(799.4,IENS,12.08,"I"))
+ . S TMP=$S($G(TMP)=1:"Yes",$G(TMP)=0:"No",$G(TMP)=9:"Unknown",1:"")
+ . D ADDVAL^RORTSK11(RORTSK,"FIRSTDIAG",$G(TMP),PTAG,1)
+ ;--- ICN
+ I $$PARAM^RORTSK01("PATIENTS","ICN") D
+ . S:'$D(DFN) DFN=$G(RORBUF(798,IENS,.01,"I"))
+ . D ICNDATA^RORXU006(RORTSK,DFN,PTAG)
+ ;
  Q 0
  ;
  ;***** COMPILES A LIST OF REGISTRY PATIENTS
@@ -102,17 +133,23 @@ REGPTLST(RORTSK) ;
  N RORREG        ; Registry IEN
  ;
  N BODY,CNT,ECNT,IEN,IENS,MODE,PTNAME,RC,REPORT,SFLAGS,TMP,XREFNODE
+ N RCC,FLAG,RORCDT,PARAMS
  ;--- Root node of the report
  S REPORT=$$ADDVAL^RORTSK11(RORTSK,"REPORT")
  Q:REPORT<0 REPORT
  ;
  ;--- Get and prepare the report parameters
  S RORREG=$$PARAM^RORTSK01("REGIEN")
- S RC=$$PARAMS^RORXU002(.RORTSK,REPORT,,,.SFLAGS)  Q:RC<0 RC
+ S PARAMS=$$PARAMS^RORXU002(.RORTSK,REPORT,,,.SFLAGS)  Q:PARAMS<0 PARAMS
  S SFLAGS=$TR(SFLAGS,"DG")
- S:'$$PARAM^RORTSK01("PATIENTS","CONFIRMED") SFLAGS=SFLAGS_"C"
+ I '$$PARAM^RORTSK01("PATIENTS","CONFIRMED"),'$$PARAM^RORTSK01("PATIENTS","CONFIRM_AFTER") S SFLAGS=SFLAGS_"C"
  S:'$$PARAM^RORTSK01("PATIENTS","PENDING") SFLAGS=SFLAGS_"G"
+ S RORCDT=$$PARAM^RORTSK01("PATIENTS","CONFDT_AFTER")
  D ADDVAL^RORTSK11(RORTSK,"TYPE",SFLAGS,REPORT)
+ ;--- After date range
+ I RORCDT D
+ . S SFLAGS=SFLAGS_"P"
+ . S RORCDT=$$FMADD^XLFDT(RORCDT,1)  ;add one day
  ;
  ;--- Initialize constants and variables
  S RORPTN=$$REGSIZE^RORUTL02(+RORREG)  S:RORPTN<0 RORPTN=0
@@ -126,6 +163,7 @@ REGPTLST(RORTSK) ;
  ;
  ;--- Browse through the registry records
  S PTNAME="",(CNT,RC)=0
+ S FLAG=$G(RORTSK("PARAMS","ICDFILT","A","FILTER"))
  F  S PTNAME=$O(@XREFNODE@(PTNAME))  Q:PTNAME=""  D  Q:RC<0
  . S IEN=0
  . F  S IEN=$O(@XREFNODE@(PTNAME,IEN))  Q:IEN'>0  D  Q:RC<0
@@ -133,7 +171,15 @@ REGPTLST(RORTSK) ;
  . . S RC=$$LOOP^RORTSK01(TMP)  Q:RC<0
  . . S IENS=IEN_",",CNT=CNT+1
  . . ;--- Check if the patient should be skipped
- . . Q:$$SKIP^RORXU005(IEN,SFLAGS)
+ . . Q:$$SKIP^RORXU005(IEN,SFLAGS,RORCDT)
+ . .;--- Check the patient against the ICD Filter
+ . . S DFN=$$PTIEN^RORUTL01(+IENS)
+ . . S RCC=0
+ . . I FLAG'="ALL" D
+ . . . S RCC=$$ICD^RORXU010(DFN)
+ . . I (FLAG="INCLUDE")&(RCC=0) Q
+ . . I (FLAG="EXCLUDE")&(RCC=1) Q
+ . .;--- End of filter check
  . . ;--- Process the registry record
  . . I $$PATIENT(IENS,BODY)<0  S ECNT=ECNT+1  Q
  ;---
@@ -151,8 +197,9 @@ REGPTLST(RORTSK) ;
 SELRULES(IENS,PARTAG) ;
  N CNT,I,RORBUF,RORMSG,RT,SRLTAG,TMP
  ;--- Load the list of selection rules
- D LIST^DIC(798.01,","_IENS,"@;.01I;1I",,,,,"B",,,"RORBUF","RORMSG")
- Q:$G(DIERR) $$DBS^RORERR("RORMSG",-9,,,798.01,IENS)
+ K RORMSG D LIST^DIC(798.01,","_IENS,"@;.01I;1I",,,,,"B",,,"RORBUF","RORMSG")
+ ;Q:$G(DIERR) $$DBS^RORERR("RORMSG",-9,,,798.01,IENS)
+ Q:$G(RORMSG("DIERR")) $$DBS^RORERR("RORMSG",-9,,,798.01,IENS)
  ;--- The <SELRULES> ... </SELRULES> tags
  S SRLTAG=$$ADDVAL^RORTSK11(RORTSK,"SELRULES",,PARTAG)
  ;--- Add the selection rules to the report
@@ -160,8 +207,9 @@ SELRULES(IENS,PARTAG) ;
  F  S I=$O(RORBUF("DILIST","ID",I))  Q:I=""  D
  . S RT=$$ADDVAL^RORTSK11(RORTSK,"RULE",,SRLTAG),CNT=CNT+1
  . S TMP=$G(RORBUF("DILIST","ID",I,.01))
- . S TMP=$$GET1^DIQ(798.2,TMP_",",4,,,"RORMSG")
- . Q:$G(DIERR)!(TMP="")
+ . K RORMSG S TMP=$$GET1^DIQ(798.2,TMP_",",4,,,"RORMSG")
+ . ;Q:$G(DIERR)!(TMP="")
+ . Q:$G(RORMSG("DIERR"))!(TMP="")
  . D ADDATTR^RORTSK11(RORTSK,RT,"DESCR",TMP)
  . S TMP=$$DATE^RORXU002($G(RORBUF("DILIST","ID",I,1))\1)
  . D:TMP'="" ADDATTR^RORTSK11(RORTSK,RT,"DATE",TMP)
@@ -169,4 +217,7 @@ SELRULES(IENS,PARTAG) ;
  D:CNT'>0
  . S RT=$$ADDVAL^RORTSK11(RORTSK,"RULE",,SRLTAG)
  . D ADDATTR^RORTSK11(RORTSK,RT,"DESCR","Manual Entry")
+ ;
  Q 0
+ ;
+         

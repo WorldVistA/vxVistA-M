@@ -1,5 +1,5 @@
 LR7OB1 ;slc/dcm - Build message, backdoor Lab from file 69 ;8/11/97
- ;;5.2;LAB SERVICE;**121,187,238**;Sep 27, 1994;Build 25
+ ;;5.2;LAB SERVICE;**121,187,238**;Sep 27, 1994;Build 35
  ;
 NEW(ODT,SN,CONTROL,NAT,TESTS,LRSTATI) ;Set-up order message
  ;Need ODT & SN of entry in ^LRO(69,ODT,1,SN)

@@ -1,6 +1,6 @@
-MAGGTII ;WOIFO/GEK - RETURN IMAGE INFO ; [ 11/08/2001 17:18 ]
- ;;3.0;IMAGING;**8,48,63,59**;Nov 27, 2007;Build 20
- ;;Per VHA Directive 2004-038, this routine should not be modified.
+MAGGTII ;WOIFO/GEK - RETURN IMAGE INFO ; 08 Jan 2010 2:28 PM
+ ;;3.0;IMAGING;**8,48,63,59,83**;Mar 19, 2002;Build 1690;Mar 29, 2010
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -30,7 +30,8 @@ INFO ;Get info for an Image File entry
  ; $P(8)       display date
  ; $P(9)       to return the PARENT DATA FILE image pointer
  ; $p(10)      return the ABSTYPE  'M' magnetic 'W' worm  'O' offline
- ; $p(11)      is  'A' accessible   'O' offline
+ ; change $p(11) from A or O to 'M' 'W' or 'O'.  Same as Abs
+ ; $p(11)      is 'M' magnetic 'W' worm  'O' offline for FullType
  ; $p(12^13)   Dicom Series Number  $p(12) and   Image Number  $p(13)
  ; $p(14)      is count of images in group, 1 if single image.
  ; VISN15
@@ -93,12 +94,13 @@ INFO ;Get info for an Image File entry
  S ABSFILE=MAGPREF_MAGFILE1
  ;
  ;    now lets get the Full Path and file name FULL RES image.
- S FULLTYPE="A" ; Accessible
+ ;p83 S FULLTYPE="A" ; Accessible
  S FILETYPE="FULL" K MAGFILE1("ERROR")
  S MAGPREF="" D FINDFILE^MAGFILEB
  S MAGFILE1=$TR(MAGFILE1,"^","~") ; MAGFILE1 has '^' in it if errors
  I $D(MAGFILE1("ERROR")) S MAGFILE1=MAGFILE1("ERROR")
- I MAGOFFLN S FULLTYPE="O" ; Offline
+ ;p83 MAGTYPE is "MAG... " or "WORM...", use instead of 'A'
+ S FULLTYPE=$E(MAGTYPE,1) I MAGOFFLN S FULLTYPE="O"
  ;  here we have to do the same test as above. for bad data.
  S MAGPREF=$G(MAGPREF)
  S FULLFILE=MAGPREF_MAGFILE1

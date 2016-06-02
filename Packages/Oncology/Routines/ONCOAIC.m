@@ -1,5 +1,5 @@
-ONCOAIC ;Hines OIFO/GWB - CREATE FIRST PRIMARY RECORD ;7/20/93
- ;;2.11;ONCOLOGY;**1,24,25,27,32,42,44,45**;Mar 07, 1995
+ONCOAIC ;Hines OIFO/GWB - Create first primary for a patient ;03/08/11
+ ;;2.2;ONCOLOGY;**1**;Jul 31, 2013;Build 8
  ;
 EN ;Create first ONCOLOGY PRINMARY (165.5) record
  D KILL
@@ -8,7 +8,7 @@ EN ;Create first ONCOLOGY PRINMARY (165.5) record
  W:$D(ONCONM) ?5,"PATIENT: ",ONCONM
  ;
 LOOK1 ;Select first primary
- K DIC
+ K DIC,ONCOPN,ONCOSIT
  S DIC="^ONCO(164.2,",DIC(0)="AEQM"
  S DIC("A")="     Select first Primary SITE/GP: "
  S DIC("S")="I '$P(^(0),U,3)"
@@ -28,7 +28,7 @@ A K DO
  W !,?5,"Creating a new Primary record for ",ONCONM
  S DIC="^ONCO(165.5,",DIC(0)="Z"
  S X=ONCOSIT
- S DIC("DR")="2000////^S X=DUZ(2)"
+ S DIC("DR")="2000////^S X=DUZ(2);236////^S X=DT;244////^S X=DUZ"
  D FILE^DICN
  K DIC,X G EX:Y<0
  S ONCOD0P=+Y
@@ -42,13 +42,13 @@ NAN ;New ACCESSION NUMBER (165.5,.05)
  S Y=$G(^ONCO(165.5,"ACAY"))
  W ! D ^DIR
  I Y[U!(Y="") S Y=ONCOD0P D KLN Q
- I $L(Y)'=4 W *7,!!?5,"ACCESSION YEAR must be 4 digits!" G NAN
+ I $L(Y)'=4 W !!?5,"ACCESSION YEAR must be 4 digits!" G NAN
  S YR=Y,^ONCO(165.5,"ACAY")=YR,AC=$O(^ONCO(165.5,"ACD",Y,0))
  I AC'="" S AC=Y_AC,SEQ="00" G DIE
 NA S MR=YR_"00001",XR=999999999-((YR+1)_"00000")
  S NR=$O(^ONCO(165.5,"AF",XR))
  G AC:NR=""
- I NR<(999900002-MR) W *7,!!?5,"SYSTEM appears out of numbers.  Looking for unassigned ones" D FND G DIE:Y'="",EX
+ I NR<(999900002-MR) W !!?5,"SYSTEM appears out of numbers.  Looking for unassigned ones" D FND G DIE:Y'="",EX
  I NR>(999999999-MR) S NR=""
 AC S AC=$S(NR="":YR_"00001",1:(1000000000-NR)),SEQ="00"
  S AC=$S($L(AC)=1:"00000"_AC,$L(AC)=2:"0000"_AC,$L(AC)=3:"000"_AC,$L(AC)=4:"00"_AC,$L(AC)=5:"0"_AC,1:AC)
@@ -71,7 +71,7 @@ ASK W !
 FND ;Search for unused accession numbers
  S NR=YR_"00000",MR=(YR+1)_"00000"
 NR S NR=NR+1 I NR<MR G:$D(^ONCO(165.5,"AA",NR)) NR S AC=NR,SEQ="00",Y=1 Q
- W *7,!!?10,"OUT of ACCESSION Numbers for "_YR S Y=""
+ W !!?10,"OUT of ACCESSION Numbers for "_YR S Y=""
  Q
  ;
 PID ;Continue defining Primary Record
@@ -85,10 +85,13 @@ KLN ;KILL entry
  Q
  ;
 KILL ;KILL variables 
- K AC,ACN,DA,DIC,DIE,DIK,DIR,D0,DR,DUOUT,DTOUT
+ K AC,ACN,DA,DIC,DIE,DIK,DIR,DR
  K MR,NR,SEQ,X,XX,XD0,XR,YR
  Q
  ;
 EX ;Exit
  D KILL S Y=0
  Q
+ ;
+CLEANUP ;Cleanup
+ K ONCOACN,ONCOD0,ONCONM,Y

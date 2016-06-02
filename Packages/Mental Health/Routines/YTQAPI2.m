@@ -1,5 +1,6 @@
-YTQAPI2 ;ASF/ALB- MHAX REMOTE PROCEDURES cont ;6/10/03 10:19am ; 4/3/07 11:41am
- ;;5.01;MENTAL HEALTH;**85**;Dec 30, 1994;Build 48
+YTQAPI2 ;ASF/ALB- MHAX REMOTE PROCEDURES cont ;6/10/03 10:19am ; 7/16/08 11:53am
+ ;;5.01;MENTAL HEALTH;**85,96**;Dec 30, 1994;Build 46
+ ;Reference to ^DPT( supported by DBIA #10035
  Q
 LISTER(YSDATA,YS) ;list entries
  ;input: CODE as test name
@@ -26,17 +27,21 @@ ALLANS(YSDATA,YS) ;get all answers
  ;output: [DATA]
  ; ADMIN ID^DFN^INSTRUMENT^DATE GIVEN^IS COMPLETE
  ;QUESTION #^seq^ANSWER
- N G,G1,N,YSAD,YSQN
+ N G,G1,N,YSAD,YSQN,YSTSTN,YSEQ,YSICON
  S YSAD=$G(YS("AD"))
  I YSAD'?1N.N S YSDATA(1)="[ERROR]",YSDATA(2)="bad ad num" Q  ;-->out
  I '$D(^YTT(601.85,"AC",YSAD)) S YSDATA(1)="[ERROR]",YSDATA(2)="no such reference" Q  ;-->out
+ S YSTSTN=$P(^YTT(601.84,YSAD,0),U,3)
  S YSDATA(1)="[DATA]"
  S YSDATA(2)=YSAD_U_$$GET1^DIQ(601.84,YSAD_",",1,"I")_U_$$GET1^DIQ(601.84,YSAD_",",2,"E")_U_$$GET1^DIQ(601.84,YSAD_",",3,"I")_U_$$GET1^DIQ(601.84,YSAD_",",8,"I")
  S YSQN=0,N=2
  F  S YSQN=$O(^YTT(601.85,"AC",YSAD,YSQN)) Q:YSQN'>0  S G=0 D
  . S G=$O(^YTT(601.85,"AC",YSAD,YSQN,G)) Q:G'>0  S G1=0 D
- .. S:$P(^YTT(601.85,G,0),U,4)?1N.N N=N+1,YSDATA(N)=YSQN_"^1^"_$P(^YTT(601.85,G,0),U,4)
- .. F  S G1=$O(^YTT(601.85,G,1,G1)) Q:G1'>0  S N=N+1,YSDATA(N)=YSQN_U_G1_U_$G(^YTT(601.85,G,1,G1,0))
+ .. S YSICON=$O(^YTT(601.76,"AF",YSTSTN,YSQN,0))
+ .. S YSEQ=1
+ .. I YSICON?1N.N S YSEQ=$P(^YTT(601.76,YSICON,0),U,3)
+ .. S:$P(^YTT(601.85,G,0),U,4)?1N.N N=N+1,YSDATA(N)=YSQN_U_YSEQ_U_$P(^YTT(601.85,G,0),U,4)
+ .. F  S G1=$O(^YTT(601.85,G,1,G1)) Q:G1'>0  S N=N+1,YSDATA(N)=YSQN_U_YSEQ_";"_G1_U_$G(^YTT(601.85,G,1,G1,0))
  Q
 SETANS(YSDATA,YS) ;save an answer
  ;input: AD = ADMINISTRATION #
@@ -56,7 +61,7 @@ SETANS(YSDATA,YS) ;save an answer
  . S YSIENS=""
  . S YSIENS=$$NEW^YTQLIB(601.85)
  . Q:YSIENS'?1N.N
- . L +^YTT(601.85,YSIENS)
+ . L +^YTT(601.85,YSIENS):0
  . S ^YTT(601.85,YSIENS,0)=YSIENS_U_YSAD_U_YSQN
  . L -^YTT(601.85,YSIENS)
  . S ^YTT(601.85,0)="MH ANSWERS^601.85^"_YSIENS_U_($P(^YTT(601.85,0),U,4)+1)
@@ -75,13 +80,13 @@ SETANS(YSDATA,YS) ;save an answer
  S YSOP=$P($G(^YTT(601.71,YSCODE,2)),U,2)
  S:YSOP="Y" $P(^YTT(601.71,YSCODE,2),U,5)="Y"
  Q
-ADMINS(YSDATA,YS) ;administration retrevial
+ADMINS(YSDATA,YS) ;administration retrieval
  ;input : DFN
  ;output:AdministrationID=InstrumentName^DateGiven^DateSaved^OrderedBy^AdministeredBy^Signed^IsComplete^NumberOfQuestionsAnswered
  N N,G,DFN,YSIENS
  S DFN=$G(YS("DFN"))
- I DFN'?1N.N S YSDATA(1)="[ERROR]",YSDATA(2)="bad DFN" Q  ;-->out
- I '$D(^DPT(DFN,0)) S YSDATA(1)="[ERROR]",YSDATA(2)="nO pt" Q  ;-->out
+ I DFN'?1N.NP S YSDATA(1)="[ERROR]",YSDATA(2)="bad DFN" Q  ;-->out asf 2/22/08
+ I '$D(^DPT(DFN,0)) S YSDATA(1)="[ERROR]",YSDATA(2)="no pt" Q  ;-->out
  S YSIENS=0,N=2
  S YSDATA(1)="[DATA]"
  F  S YSIENS=$O(^YTT(601.84,"C",DFN,YSIENS)) Q:YSIENS'>0  D

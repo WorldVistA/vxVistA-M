@@ -1,5 +1,5 @@
-DGENPTA ;ALB/CJM,ERC,CKN - Patient API - Retrieve Data ; 8/15/08 11:17am
- ;;5.3;Registration;**121,122,147,688**;Aug 13,1993;Build 29
+DGENPTA ;ALB/CJM,ERC,CKN,TDM,PWC - Patient API - Retrieve Data ; 5/25/11 4:25pm
+ ;;5.3;Registration;**121,122,147,688,754,838,841,842**;Aug 13,1993;Build 33
  ;
 VET(DFN) ;returns 1 if the patient is an eligible veteran
  ;returns 0 if not a veteran or not eligible
@@ -65,7 +65,7 @@ DEATH(DFN) ;
  Q +DATE
  ;
 GET(DFN,DGPAT) ;
- ;Description: Returns DGPAT() array with identifing infor for patient
+ ;Description: Returns DGPAT() array with identifying info for patient
  ;  Input:
  ;    DFN - ien, PATIENT file
  ;  Output:
@@ -80,11 +80,25 @@ GET(DFN,DGPAT) ;
  ;      "NAME" - patient name
  ;      "PATYPE" - patient type
  ;      "PID" - Primary Long ID
- ;      "PREFAC" - prefered facility
+ ;      "PREFAC" - preferred facility
+ ;      "PFSRC" - preferred facility source designation
  ;      "SSN" - Social Security Number
  ;      "SEX" - M=male, F=female
  ;      "VETERAN" - VETERAN (Y/N)? - "Y"=YES,"N"=NO
  ;      "AG/ALLY" - Agency/Allied Country
+ ;      "SPININJ" - Spinal Cord Injury
+ ;      "MOH" - Medal of Honor
+ ;      "PENAEFDT" - Pension Award Effective Date
+ ;      "PENTRMDT" - Pension Terminated Date
+ ;      "PENAREAS" - Pension Award Reason
+ ;      "PENTRMR1" - Pension Terminated Reason 1
+ ;      "PENTRMR2" - Pension Terminated Reason 2
+ ;      "PENTRMR3" - Pension Terminated Reason 3
+ ;      "PENTRMR4" - Pension Terminated Reason 4
+ ;      "DENTC2IN" - Class II Dental Indicator - "Y"=YES,"N"=NO
+ ;      "DENTC2DT" - Dental Appl Due Before Date
+ ;      "PILOCK"   - Pension Indicator Lock
+ ;      "PALOCK"   - Pension Award Lock
  ;
  N NODE
  Q:'$G(DFN) 0
@@ -101,11 +115,27 @@ GET(DFN,DGPAT) ;
  S DGPAT("PATYPE")=$P($G(^DPT(DFN,"TYPE")),"^")
  S DGPAT("VETERAN")=$P($G(^DPT(DFN,"VET")),"^")
  S DGPAT("PREFAC")=$P($G(^DPT(DFN,"ENR")),"^",2)
+ S DGPAT("PFSRC")=$P($G(^DPT(DFN,"ENR")),"^",3)
  S DGPAT("INELDATE")=$P($G(^DPT(DFN,.15)),"^",2)
  S DGPAT("INELREA")=$P($G(^DPT(DFN,.3)),"^",7)
  S DGPAT("INELDEC")=$P($G(^DPT(DFN,"INE")),"^",6)
  S DGPAT("PID")=$P($G(^DPT(DFN,.36)),"^",3)
  S DGPAT("AG/ALLY")=$P($G(^DPT(DFN,.3)),"^",9)
+ S DGPAT("SPININJ")=$P($G(^DPT(DFN,57)),"^",4)
+ S DGPAT("MOH")=$P($G(^DPT(DFN,.54)),"^",1)
+ ;
+ S NODE=$G(^DPT(DFN,.385))
+ S DGPAT("PENAEFDT")=$P(NODE,"^")
+ S DGPAT("PENAREAS")=$P(NODE,"^",2)
+ S DGPAT("PENTRMDT")=$P(NODE,"^",3)
+ S DGPAT("PENTRMR1")=$P(NODE,"^",4)
+ S DGPAT("PENTRMR2")=$P(NODE,"^",5)
+ S DGPAT("PENTRMR3")=$P(NODE,"^",6)
+ S DGPAT("PENTRMR4")=$P(NODE,"^",7)
+ S DGPAT("DENTC2IN")=$P(NODE,"^",8)
+ S DGPAT("DENTC2DT")=$P(NODE,"^",9)
+ S DGPAT("PILOCK")=$P(NODE,"^",10)
+ S DGPAT("PALOCK")=$P(NODE,"^",11)
  Q 1
  ;
 SSN(DFN) ;

@@ -1,5 +1,6 @@
-MAGDHLE ;WOIFO/SRR - PACS INTERFACE PID TRIGGERS ; [ 06/20/2001 08:56 ]
- ;;3.0;IMAGING;;Mar 01, 2002
+MAGDHLE ;WOIFO/SRR - PACS INTERFACE PID TRIGGERS ; 04 Jan 2011 8:38 AM
+ ;;3.0;IMAGING;**54,49**;Mar 19, 2002;Build 2033;Apr 07, 2011
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGDHLE ;WOIFO/SRR - PACS INTERFACE PID TRIGGERS ; [ 06/20/2001 08:56 ]
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -19,20 +19,13 @@ SET ;Set Logic from MUMPS x-ref on fields .01,.03,.09 of ^DD(2 (^DPT)
  ;Kill logic: S MAGKPID=X for all 3 fields
  ;IN - MAGKPID = old value
  ;   - MAGKTYP = Message type (from field)
- Q:'$G(^MAG(2006.1,"APACS"))
  Q
- G EX:'$D(MAGKPID),EX:MAGKPID=X
- S DFN=DA,MAGKTYP=8,MAGDPTCL="Pt. Demo."
- G TSK
  ;
 KIL ;Kill logic "AKn" cross references
- Q:'$G(^MAG(2006.1,"APACS"))
- Q
- S MAGKPID=X
  Q
  ;
 ADT ;ADT EVENTS ;From EVENT driver
- ;Protocol = MAGK DHCP-PACS ADT EVENTS
+ ;Protocol = MAGD DHCP-PACS ADT EVENTS
  ;IN ;DFN
  ;DGPMDA = IFN Primary Movement
  ;DGPMA = 0th node Primary Movement AFTER movement
@@ -43,11 +36,15 @@ ADT ;ADT EVENTS ;From EVENT driver
  Q:'$D(MAGKTYP)  I MAGKTYP=2,$P(^UTILITY("DGPM",$J,2,DGPMDA,"A"),U,6)=$P(^("P"),U,6) G EX
 TSK ;CREATE TASK to make HL7 messages
  S ZTSAVE("MAGKTYP")="",ZTSAVE("MAGDPTCL")=""
- S ZTSAVE("DFN")="",ZTDTH=$H,ZTIO=""
+ S ZTSAVE("DGPMDA")="",ZTSAVE("DGNOW")="",ZTSAVE("DGPMA")=""
+ S ZTSAVE("DFN")="",ZTSAVE("DGPMT")="",ZTDTH=$H,ZTIO=""
  S ZTRTN="HL7^MAGDHLE",ZTDESC=$S(MAGKTYP=8:"PID",1:"ADT")_" HL7 PACS MESSAGE"
- W !?5,"*** HL7 TASK FOR PACS ***" D ^%ZTLOAD G EX
+ W !?5,"*** HL7 TASK FOR PACS ***"
+ D @$S($$PROD^XUPROD:"^%ZTLOAD",1:"HL7^"_$T(+0)) ; enable debugging in development
+ G EX
  ;
 HL7 ;Create HL7 message
+ I $P($G(^MAG(2006.1,1,"IHE")),"^",1)="Y" G ADT^MAGDHLI
  Q:'$D(^DPT(DFN,0))
  S N0=^DPT(DFN,0),HLNDAP="PACS GATEWAY",HLMTN="ADT"
  D INIT^HLTRANS
@@ -62,7 +59,7 @@ EVN ;EVENT SEGMENT
  S HLSDATA(2)="EVN^"_$P($T(ETYP+MAGKTYP),";",3)_"^"_$$HLDATE^HLFNC(DT)
  Q
 PID ;PID SEGMENT
- I '$P(N0,U,9) S NO=^DPT(DFN,0)
+ I '$P(N0,U,9) S N0=^DPT(DFN,0)
  S $P(N1,U,1,7)="PID^^^"_$$M11^HLFNC(DFN)_"^^"_$$HLNAME^HLFNC($P(N0,U))_"^^"_$$HLDATE^HLFNC($P(N0,U,3))_"^"_$P(N0,U,2)
  S $P(N1,U,20)=$P(N0,U,9),HLSDATA(3)=N1
  Q
@@ -86,5 +83,5 @@ ETYP ;EVENT TYPE; for later possible use
  Q
 HLDT1 ;TEMP FIX FOR HLTRANS UNDEF
  Q
-FIX ;D NOW^%DTC S HLDT=%,HLDT1=$$HLDATE^HLFNC(HLDT)
+FIX ;
  Q

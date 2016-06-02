@@ -1,5 +1,6 @@
-ONCODSP ;Hines OIFO/GWB - MISCELLANEOUS OPTIONS ;05/05/00
- ;;2.11;ONCOLOGY;**1,5,6,13,18,22,23,25,26,39,40,44,48**;Mar 07, 1995;Build 13
+ONCODSP ;Hines OIFO/GWB,RTK - MISCELLANEOUS OPTIONS ;05/05/10
+ ;;2.2;ONCOLOGY;**1**;Jul 31, 2013;Build 8
+ ;
 TR ;[TR Define Tumor Registry Parameters]
  W ! S DIC="^ONCO(160.1,",DIC(0)="AEMLQ",DLAYGO=160.1 D ^DIC
  I Y=-1 G EX
@@ -9,7 +10,9 @@ TR ;[TR Define Tumor Registry Parameters]
  S DR=""
  S DR(1,160.1,1)=".01  HOSPITAL NAME....."
  S DR(1,160.1,2)=".02  STREET ADDRESS...."
- S DR(1,160.1,3)=".03  ZIP CODE.........."
+ S DR(1,160.1,3)=".03  ZIPCODE..........."
+ ;S DR(1,160.1,3.1)="W !,""  CITY..............: "",$$GET1^DIQ(160.1,DA,66)"
+ ;S DR(1,160.1,3.2)="W !,""  STATE.............: "",$$GET1^DIQ(160.1,DA,67)"
  S DR(1,160.1,4)=".04  REFERENCE DATE...."
  S DR(1,160.1,5)="1  TUMOR REGISTRAR..."
  S DR(1,160.1,6)="1.02  PHONE NUMBER......"
@@ -20,13 +23,20 @@ TR ;[TR Define Tumor Registry Parameters]
  S DR(1,160.1,10)="7  VISN.............."
  S DR(1,160.1,10.1)="19  CS/EDITS URL......"
  S DR(1,160.1,11)="6  DIVISION.........."
+ S DR(1,160.1,11.1)="68  COC ACCREDITATION."
  S DR(1,160.1,12)="W !"
  S DR(1,160.1,13)="8  AFFILIATED DIVISION."
  S DR(1,160.1,14)="W !"
  S DR(1,160.1,15)="5  AUTHORZIED QA USER.."
+ S DR(1,160.1,16)="W !"
+ S DR(1,160.1,17)="105  ABSTRATOR/REGISTRAR"
  D ^DIE
  W ! K DIR S DIR(0)="E" D ^DIR S:$D(DIRUT) OUT="Y"
  G EX
+ ;
+TDSNIT() ;Input Transform for 3 Digit State Number multiple (160.1,105)
+ I $D(^ONCO(160.1,"E",X,DA(1))) W !!,"That number has already been assigned!! " Q 1
+ W ! Q 0
  ;
 DIVID ;DIVISION (160.1,6) identifier
  S ONCDIV=""
@@ -73,7 +83,7 @@ A ;[RS Registry Summary Reports - Annual]
  S DIR("B")="YES"
  S DIR(0)="Y"
  S DIR("?")=" "
- S DIR("?",1)=" Answer 'YES' if you want only analytic cases (CLASS OF CASE 0-2) displayed."
+ S DIR("?",1)=" Answer 'YES' if you want only analytic cases (CLASS OF CASE 00-22) displayed."
  S DIR("?",2)=" Answer  'NO' if you want all cases (analytic and non-analytic) displayed."
  D ^DIR
  I $D(DIRUT) Q
@@ -107,17 +117,25 @@ TK ;Tasked [RS Registry Summary Reports - Today] report
  S YR=ONCOS("T")
  G AN:YR'="T"
  S V(9)=0,F(8)=0 F I=0,1 S G(I)=0,V(I)=0,F(I)=0
- S G=0,XD0=0 F  S XD0=$O(^ONCO(165.5,"AG",G,XD0)) Q:XD0'>0  I $$DIV^ONCFUNC(XD0)=DUZ(2) S G(G)=G(G)+1
- S G=1,XD0=0 F  S XD0=$O(^ONCO(165.5,"AG",G,XD0)) Q:XD0'>0  I $$DIV^ONCFUNC(XD0)=DUZ(2) S G(G)=G(G)+1
+ ;S G=0,XD0=0 F  S XD0=$O(^ONCO(165.5,"AG",G,XD0)) Q:XD0'>0  I $$DIV^ONCFUNC(XD0)=DUZ(2) S G(G)=G(G)+1
+ ;S G=1,XD0=0 F  S XD0=$O(^ONCO(165.5,"AG",G,XD0)) Q:XD0'>0  I $$DIV^ONCFUNC(XD0)=DUZ(2) S G(G)=G(G)+1
+ S G=0,XD0=0 F  S XD0=$O(^ONCO(165.5,"AG",G,XD0)) Q:XD0'>0  I $$DIV^ONCFUNC(XD0)=DUZ(2),$P($G(^ONCO(165.5,XD0,7)),"^",2)'="A" S G(G)=G(G)+1
+ S G=1,XD0=0 F  S XD0=$O(^ONCO(165.5,"AG",G,XD0)) Q:XD0'>0  I $$DIV^ONCFUNC(XD0)=DUZ(2),$P($G(^ONCO(165.5,XD0,7)),"^",2)'="A" S G(G)=G(G)+1
  S W=0,X0=0 F  S X0=$O(^ONCO(160,"ADX",X0)) Q:'X0  S X1=0 F  S X1=$O(^ONCO(160,"ADX",X0,X1)) Q:'X1  S X2=0 F  S X2=$O(^ONCO(160,"ADX",X0,X1,X2)) Q:'X2  I $$SUSDIV^ONCFUNC(X1,X2)=DUZ(2) S W=W+1
- F I=0:1:3 S W(I)=0
- F I=0:1:3 S X0=0 F  S X0=$O(^ONCO(165.5,"AS",I,X0)) Q:X0'>0  I $$DIV^ONCFUNC(X0)=DUZ(2) S W(I)=W(I)+1
+ ;F I=0:1:3 S W(I)=0
+ ;F I=0:1:3 S X0=0 F  S X0=$O(^ONCO(165.5,"AS",I,X0)) Q:X0'>0  I $$DIV^ONCFUNC(X0)=DUZ(2) S W(I)=W(I)+1
+ F I=0,1,2,3,"A" S W(I)=0
+ F I=0,1,2,3,"A" S X0=0 F  S X0=$O(^ONCO(165.5,"AS",I,X0)) Q:X0'>0  I $$DIV^ONCFUNC(X0)=DUZ(2) S W(I)=W(I)+1
  W !!?30,"Analytical: ",$J(G(1),5)
  W !?26,"Non-Analytical: ",$J(G(0),5)
+ W !?26,"Accession Only: ",$J(W("A"),5)
  W !?42,"-----"
- W !?35,"Total: ",$J(G(0)+G(1),5),!!
+ ;W !?35,"Total: ",$J(G(0)+G(1),5),!!
+ W !?35,"Total: ",$J(G(0)+G(1)+W("A"),5),!!
  W !,?30,"WORKLOAD STATISTICS",!!
- W "Suspense: ",W,?15,"Incomplete: ",W(0),?35,"Minimal: ",W(1),?50,"Partial: ",W(2),?65,"Complete: ",W(3),!!
+ ;W "Suspense: ",W,?15,"Incomplete: ",W(0),?35,"Minimal: ",W(1),?50,"Partial: ",W(2),?65,"Complete: ",W(3),!!
+ W "Suspense: ",W,!!,"Incomplete: ",W(0),?19,"Minimal: ",W(1),?34,"Partial: ",W(2),?49,"Complete: ",W(3),?65,"Acc Only: ",W("A"),!
+ W "---------------",!,"Total: ",W(0)+W(1)+W(2)+W(3)+W("A")
  Q
  ;
 AN ;[RS Registry Summary Reports - Annual]
@@ -127,6 +145,7 @@ AN ;[RS Registry Summary Reports - Annual]
  S ^TMP($J,"ANNSUM","YR")=YR
  S XD0=0 F  S XD0=$O(^ONCO(164.08,XD0)) Q:XD0'>0  S ^TMP($J,"ANNSUM",XD0,0)=$G(^ONCO(164.08,XD0,0)) F J="CC","RS","SG" S ^TMP($J,"ANNSUM",XD0,J)=""
  S XD0=0 F  S XD0=$O(^ONCO(165.5,"AY",YR,XD0)) Q:XD0'>0  I $$DIV^ONCFUNC(XD0)=DUZ(2) S X0=^ONCO(165.5,XD0,0),CSG=$P($G(^ONCO(165.5,XD0,2)),U,20),PSG=$P($G(^ONCO(165.5,XD0,2.1)),U,4),SG=$P($G(^ONCO(165.5,XD0,2)),U,28) D
+ .I $P($G(^ONCO(165.5,XD0,7)),U,2)="A" Q
  .S COCANAL=$$GET1^DIQ(165.5,XD0,.042)
  .I ACO=1,COCANAL="NONANALYTIC" Q
  .I SG'="" S SG=$S(SG=0:0,SG="I":1,SG="II":2,SG="III":3,SG="IV":4,SG="U":99,SG="NA":88,1:"")
@@ -146,6 +165,9 @@ PRT ;Print report
 EX ;EXIT
  K BY,BYR,CC,CSG,EYR,F,FLDS,FR,G,I,IC,J,L,NUMBER,ONCOS,ONCOUT
  K P0,PSG,PT,R,RC,RS,SG,ST,SX,TO,V,W,X,X0,X1,X2,XD0,Y,YR
- K DA,DIC,DIE,DIR,DIRUT,DLAYGO,DR
+ K DA,DIC,DIE,DIR,DIRUT,DLAYGO,DR,SITEPARAM
  K ^TMP($J)
  Q
+ ;
+CLEANUP ;Cleanup
+ K %ZIS,ACO,COCANAL,OUT,POP,S,ZTDESC,ZTRTN,ZTSAVE

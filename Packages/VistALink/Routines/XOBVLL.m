@@ -1,7 +1,6 @@
 XOBVLL ;; mjk/alb - VistALink Listen and Spawn Code ; 07/27/2002  13:00
- ;;1.5;VistALink;;Sep 09, 2005
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.0.026]
- ;
+ ;;1.6;VistALink;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
  QUIT
  ;
  ; ***deprecated*** tag ; Use START^XOBVTCP instead
@@ -15,7 +14,7 @@ UCX ; -- VMS TCPIP (UCX) multi-thread entry point
  GOTO UCX^XOBVTCP
  ;
 SPAWN ; -- spawned process
- NEW X,XOBSTOP,XOBPORT,XOBHDLR,XOBLASTR
+ NEW X,XOBSTOP,XOBPORT,XOBHDLR,XOBLASTR,XOBCMREF
  ;
  SET XOBSTOP=0
  SET XOBPORT=IO
@@ -44,8 +43,15 @@ SPAWN ; -- spawned process
  ; -- change job name if possible
  DO SETNM^%ZOSV("VLink_"_$$CNV^XLFUTL($J,16))
  ;
+ ; -- setup for Connection Mgr: get ref; kill data @ ref
+ SET XOBCMREF=$$GETREF^XOBUZAP1()
+ DO KILL^XOBUZAP0(XOBCMREF)
+ ;
  ; -- loop until told to stop
  FOR  DO NXTCALL QUIT:XOBSTOP
+ ;
+ ; -- kill ^XTMP ref node
+ DO KILL^XOBUZAP0(XOBCMREF)
  ;
  ; -- final/clean tcp processing variables
  DO FINAL^XOBVSKT
@@ -65,13 +71,20 @@ NXTCALL ; -- do next call
  NEW DIQUIET SET DIQUIET=1
  SET U="^",DTIME=$GET(DTIME,900),DT=$$DT^XLFDT()
  ;
+ ; -- set ^XTMP for Connection Mgr usage if DUZ not 1st piece
+ IF '$$GETDUZ^XOBUZAP0(XOBCMREF) DO
+ . NEW XOBDUZ,XOBIP
+ . SET XOBDUZ=$GET(XOBSYS("DUZ"),$GET(DUZ))
+ . SET XOBIP=$GET(IO("IP"))
+ . DO SETVI^XOBUZAP0(XOBCMREF,XOBDUZ,XOBIP,$$GETDESC^XOBUZAP1())
+ ;
  ; -- initialize 'current' request handler to empty string
  SET XOBHDLR=""
  ;
  ; -- # of chars to get on first read / read 11 for Broker initial read
  SET XOBREAD=11
  ;
- ; -- get J2SE heartbet rate for timeout plus network latency factor
+ ; -- get J2SE heartbeat rate for timeout plus network latency factor
  SET XOBTO=$$GETRATE^XOBVLIB()+$$GETDELTA^XOBVLIB()
  ;
  ; -- get J2EE timeout value for app serv environment
@@ -153,7 +166,7 @@ ERROR(XOBEC,XOBMSG,XOBPORT) ; -- send error message
  QUIT
  ;
 KILL ; -- new VistALink variables and then do big KILL
- NEW XOBPORT,XOBSTOP,XOBNULL,XOBOS,XOBSYS,XOBHDLR,XOBOK
+ NEW XOBPORT,XOBSTOP,XOBNULL,XOBOS,XOBSYS,XOBHDLR,XOBOK,XOBLASTR,XOBCMREF
  DO KILL^XUSCLEAN
  QUIT
  ;

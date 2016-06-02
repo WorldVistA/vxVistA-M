@@ -1,7 +1,9 @@
-DIDU ;SEA/TOAD-VA FileMan: DD Tools, External Format ;6/15/00  13:29
- ;;22.0;VA FileMan;**31,48**;Mar 30, 1999
- ;Per VHA Directive 10-93-142, this routine should not be modified.
- ;11960;7754722;5858;
+DIDU ;SEA/TOAD-VA FileMan: DD Tools, External Format ;21AUG2009
+ ;;22.2;MSC Fileman;;Jan 05, 2015;
+ ;;Submitted to OSEHRA 5 January 2015 by the VISTA Expertise Network.
+ ;;Based on Medsphere Systems Corporation's MSC Fileman 1051.
+ ;;Licensed under the terms of the Apache License, Version 2.0.
+ ;;GFT;**31,48,999,1004,1036**
  ;
 EXTERNAL(DIFILE,DIFIELD,DIFLAGS,DINTERNL,DIMSGA) ;
  ;
@@ -24,7 +26,7 @@ E2 ; handle bad input variables
  I $G(DINTERNL)="" Q ""
  S DIMSGA=$G(DIMSGA)
  S DIFLAGS=$G(DIFLAGS)
- I DIFLAGS'?.1(1"F",1"L",1"U",1"i",1"h") D ERR(DIMSGA,301,"","","",DIFLAGS) Q ""
+ I DIFLAGS'?.1(1"F",1"L",1"U",1"i",1"h",1"A") D ERR(DIMSGA,301,"","","",DIFLAGS) Q ""
  I $G(DIFIELD)'>0 D ERR(DIMSGA,202,"","","","FIELD") Q ""
  ;
 E3 ; get field definition and type, handle bad file or field
@@ -128,17 +130,17 @@ E12 ; handle illegal data types (pointers, word processings, and multiples)
 E13 ; handle sets of codes
  ;
  I DITYPE["S" D  Q DIEXTRNL
- . N DICODES S DICODES=";"_$P(DINODE,U,3)
- . N DISTART S DISTART=$F(DICODES,";"_DINTERNL_":")
+ . N DICODES S DICODES=$P(DINODE,U,3)
+ . N DISTART S DISTART=$F(";"_DICODES,";"_DINTERNL_":")
  . I 'DISTART S DIEXTRNL="" D  Q
  . . I 'DICHAIN D ERR(DIMSGA,730,DIFILE,"",DIFIELD,DINTERNL,"code") Q
  . . D ERR(DIMSGA,630,DIFILE,DIFIELD,"",DIEN,DINTERNL,"code")
- . S DIEXTRNL=$P($E(DICODES,DISTART,$L(DICODES)),";")
+SET . S DISTART=DINTERNL D PARSET^DIQ(DICODES,.DISTART) S DIEXTRNL=DISTART
  ;
 E14 ; handle dates, and return all others as they are
  ;
  I DITYPE["D",DINTERNL D  Q DIEXTRNL
- . S DIEXTRNL=$$FMTE^DILIBF(DINTERNL,"1U")
+ . S DIEXTRNL=$$DATE^DIUTL(DINTERNL) ;**CCO/NI
  . I DIEXTRNL'="" Q
  . I 'DICHAIN D ERR(DIMSGA,330,"","","",DINTERNL,"date") Q
  . D ERR(DIMSGA,630,DIFILE,"",DIFIELD,DIEN,DINTERNL,"date")
@@ -165,6 +167,7 @@ ERR(DIMSGA,DIERN,DIFILE,DIIENS,DIFIELD,DI1,DI2,DI3) ;
  ; error logging procedure
  ; EXTERNAL
  ;
+ I $G(DIFLAGS)["A",$$ALLOW(DIERN) S DIDONE=1 Q
  N DIPE,DI F DI="FILE","IENS","FIELD",1:1:3 S DIPE(DI)=$G(@("DI"_DI))
  D BLD^DIALOG(DIERN,.DIPE,.DIPE,DIMSGA,"F")
  S DIERR=$G(DIERR)+DICLERR_U_($P($G(DIERR),U,2)+$P(DICLERR,U,2))
@@ -179,9 +182,12 @@ ERRPTR(DITYPE) ;
  D ERR(DIMSGA,520,DIFILE,"",DIFIELD,DITYPE)
  Q
  ;
+ALLOW(X) ;If ALLOW appears, do not call erroneous data an error
+ N I,T F I=3:1 S T=$T(ALLOW+I) Q:T?.P  I T[X Q:T'["ALLOW"  K T Q
+ Q '$D(T)
  ; 202    The input parameter that identifies the |1
  ; 301    The passed flag(s) '|1|' are unknown or in
- ; 330    The value '|1|' is not a valid |2|.
+ ; 330    The value '|1|' is not a valid |2|.           ALLOW
  ; 348    The passed value '|1|' points to a file th
  ; 401    File #|FILE| does not exist.
  ; 403    File #|FILE| lacks a Header Node.
@@ -191,7 +197,7 @@ ERRPTR(DITYPE) ;
  ; 520    A |1| field cannot be processed by this ut
  ; 537    Field #|FIELD| in File #|FILE| has a corru
  ; 603    Entry #|1| in File #|FILE| lacks the requi
- ; 630    In Entry #|1| of File #|FILE|, the value '
+ ; 630    In Entry #|1| of File #|FILE|, the value '    ALLOW
  ; 648    In Entry #|1| of File #|FILE|, the value '
- ; 730    The value '|1|' is not a valid |2| accordi
+ ; 730    The value '|1|' is not a valid |2| accordi    ALLOW
  ;

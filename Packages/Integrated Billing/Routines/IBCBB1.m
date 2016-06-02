@@ -1,11 +1,38 @@
 IBCBB1 ;ALB/AAS - CONTINUATION OF EDIT CHECK ROUTINE ;2-NOV-89
- ;;2.0;INTEGRATED BILLING;**27,52,80,93,106,51,151,148,153,137,232,280,155,320,343,349,363,371,395,384**;21-MAR-94;Build 74
+ ;;2.0;INTEGRATED BILLING;**27,52,80,93,106,51,151,148,153,137,232,280,155,320,343,349,363,371,395,384,432,447,488**;21-MAR-94;Build 184
  ;;Per VHA Directive 2004-038, this routine should not be modified.
+ ;
+ ; *** Begin IB*2.0*488 VD  (Issue 46 RBN)
+ N I
+ S I=""
+ S X=+$G(^DGCR(399,IBIFN,"MP"))
+ I 'X,$$MCRWNR^IBEFUNC(+$$CURR^IBCEF2(IBIFN)) S X=+$$CURR^IBCEF2(IBIFN)
+ I X,+$G(^DIC(36,X,3)) S I=$P(^(3),U,$S($$FT^IBCEF(IBIFN)=2:2,1:4))
+ S I=$$UP^XLFSTR(I)
+ I (I'=""&(I["PRNT")&($G(IBER)'["IB488")) D 
+ . S IBER=$G(IBER)_"IB488;"
+ ;
+ ; Cause an error if FORCED TO PRINT TO CLEARINGHOUSE
+ I $P($G(^DGCR(399,IBIFN,"TX")),U,8)=2 D
+ . S IBER=$G(IBER)_"IB489;"
+ ;
+ ; Cause a fatal error if the claim has no procedures & is NOT a UB-04 Inpatient claim.
+ I +$O(^DGCR(399,IBIFN,"CP",0))=0 D
+ .I $$INPAT^IBCEF(IBIFN,1),$$INSPRF^IBCEF(IBIFN) Q   ; inpatient UB-04 check
+ .I '$$INPAT^IBCEF(IBIFN,1),$$INSPRF^IBCEF(IBIFN) D  Q      ; Outpatient Institutional Claim.
+ ..I IBER["IB352" Q
+ ..S IBER=IBER_"IB352;"
+ .;
+ .; Professional claim
+ .I IBER["IB353" Q
+ .S IBER=IBER_"IB353;"
+ .Q
+ ; *** End IB*2.0*488 -- VD
  ;
  ;MAP TO DGCRBB1
  ;
 % ;Bill Status
- N Z,Z0,Z1
+ N Z,Z0,Z1,IBFT
  I $S(+IBST=0:1,1:"^1^2^3^4^7^"'[(U_IBST_U)) S IBER=IBER_"IB045;"
  ;
  ;Statement Covers From
@@ -23,7 +50,8 @@ IBCBB1 ;ALB/AAS - CONTINUATION OF EDIT CHECK ROUTINE ;2-NOV-89
  S IBTFY=$$FY^IBOUTL(IBTDT)
  ;
  ;Total Charges
- I +IBTC'>0!(+IBTC'=IBTC) S IBER=IBER_"IB064;"
+ ; IB*2.0*447/TAZ Removed this error so that zero dollar revenue codes can process on the 837
+ ;I +IBTC'>0!(+IBTC'=IBTC) S IBER=IBER_"IB064;"
  ;
  ;Billable charges for secondary claim
  I $$MCRONBIL^IBEFUNC(IBIFN)&(($P(IBNDU1,U,1)-$P(IBNDU1,U,2))'>0) S IBER=IBER_"IB094;"
@@ -54,11 +82,15 @@ IBCBB1 ;ALB/AAS - CONTINUATION OF EDIT CHECK ROUTINE ;2-NOV-89
  ;
  ; Check for Physician Name
  K IBXDATA D F^IBCEF("N-ATT/REND PHYSICIAN NAME",,,IBIFN)
- I $P($G(IBXDATA),U)="" S IBER=IBER_"IB303;"
+ ; IB*2.0*432 - CMS1500 no longer needs a claim level rendering
+ S IBFT=$$FT^IBCEF(IBIFN)
+ I IBFT'=2,$P($G(IBXDATA),U)="" S IBER=IBER_"IB303;"
  ;
  N FUNCTION,IBINS
- S FUNCTION=$S($$FT^IBCEF(IBIFN)=3:4,1:3)
- I IBER'["IB303;" D
+ ; IB*2.0*432 - CMS1500 no longer needs a claim level rendering
+ ;S FUNCTION=$S($$FT^IBCEF(IBIFN)=3:4,1:3)
+ S FUNCTION=$S(IBFT=3:4,1:3)
+ I IBFT'=2,IBER'["IB303;" D
  . F IBINS=1:1:3 D
  .. S Z=$$GETTYP^IBCEP2A(IBIFN,IBINS)
  .. I Z,$P(Z,U,2) D  ; Rendering/attending prov secondary id required
@@ -68,7 +100,8 @@ IBCBB1 ;ALB/AAS - CONTINUATION OF EDIT CHECK ROUTINE ;2-NOV-89
  ... S Q0=0 F  S Q0=$O(IBID(1,FUNCTION,Q0)) Q:'Q0  I $P(IBID(1,FUNCTION,Q0),U,9)=+Z S IBOK=1 Q
  ... I 'IBOK S IBER=IBER_$S(IBINS=1:"IB236;",IBINS=2:"IB237;",IBINS=3:"IB238;",1:"")
  ;
- D PRIIDCHK^IBCBB11
+ ; Patch 432 enh5:The IB system shall no longer prevent users from authorizing(fatal error message)a claim because the system cannot find the providersSSNorEIN
+ ; D PRIIDCHK^IBCBB11
  ;
  N IBM,IBM1
  S IBM=$G(^DGCR(399,IBIFN,"M"))
@@ -92,7 +125,11 @@ IBCBB1 ;ALB/AAS - CONTINUATION OF EDIT CHECK ROUTINE ;2-NOV-89
  ;
  ; Must be one and only one division on bill
  S IBZ=$$MULTDIV^IBCBB11(IBIFN,IBND0)
- I IBZ S IBER=IBER_$S(IBZ=1:"IB095;",IBZ=2:"IB104;",1:"IB105;")
+ ; I IBZ S IBER=IBER_$S(IBZ=1:"IB095;",IBZ=2:"IB104;",1:"IB105;")
+ ; Allow multi-divisional for OP instutional claims
+ I IBZ,$$INPAT^IBCEF(IBIFN)!'($$INSPRF^IBCEF(IBIFN)) S IBER=IBER_$S(IBZ=1:"IB095;",IBZ=2:"IB104;",1:"IB105;")
+ ; Still need error msg on OP Institutional if No Default division
+ I IBZ=3,'$$INPAT^IBCEF(IBIFN),$$INSPRF^IBCEF(IBIFN) S IBER=IBER_"IB105;"
  ; Division address must be defined in institution file
  I $P(IBND0,U,22) D
  . N Z,Z0,Z1
@@ -100,6 +137,14 @@ IBCBB1 ;ALB/AAS - CONTINUATION OF EDIT CHECK ROUTINE ;2-NOV-89
  . S Z1=$G(^DIC(4,+$P($G(^DG(40.8,+$P(IBND0,U,22),0)),U,7),1))
  . I $P(Z0,U,2)="" S IBER=IBER_"IB097;" Q
  . F Z=1,3,4 I $P(Z1,U,Z)="" S IBER=IBER_"IB097;" Q
+ ;
+ ; IB*2.0*432 Check ambulance addresses, COB Non-covered amt. & Attachment Control
+ I $$AMBCK^IBCBB11(IBIFN)=1 S IBER=IBER_"IB329;"
+ I $$COBAMT^IBCBB11(IBIFN)=1 S IBER=IBER_"IB330;"
+ I $$TMCK^IBCBB11(IBIFN)=1 S IBER=IBER_"IB331;"
+ I $$ACCK^IBCBB11(IBIFN)=1 S IBER=IBER_"IB332;"
+ I $$COBMRA^IBCBB11(IBIFN)=1 S IBER=IBER_"IB342;"
+ I $$COBSEC^IBCBB11(IBIFN)=1 S IBER=IBER_"IB343;"
  ;
  ;CHAMPVA Rate Type and Primary Insurance Carriers Type of Coverage must match
  S (IBRTCHV,IBPICHV)=0
@@ -120,6 +165,14 @@ IBCBB1 ;ALB/AAS - CONTINUATION OF EDIT CHECK ROUTINE ;2-NOV-89
  D F^IBCEF("N-UB-04 PROCEDURES","IBZPRCUB",,IBIFN)
  ; Does this bill have ANY prescriptions associated with it?
  ; Must bill prescriptions separately from other charges
+ ;
+ ; DEM;432 - Call line level provider edit checks.
+ D LNPROV^IBCBB12(IBIFN)  ; DEM;432 - If there are line provider edits, then routine LNPROV^IBCBB12(IBIFN) updates IBER string.
+ ; DEM;432 - Call to Other Operating/Operating Provider edit checks.
+ I $$OPPROVCK^IBCBB12(IBIFN)=1 S IBER=IBER_"IB337;"  ; DEM;432
+ ; DEM;432 - Line level Attachment Control edits.
+ I $$LNTMCK^IBCBB11(IBIFN)=1 S IBER=IBER_"IB331;"  ; DEM;432
+ I $$LNACCK^IBCBB11(IBIFN)=1 S IBER=IBER_"IB332;"  ; DEM;432
  ;
  I $$ISRX^IBCEF1(IBIFN) D
  . N IBZ,IBRXDEF
@@ -147,7 +200,9 @@ IBCBB1 ;ALB/AAS - CONTINUATION OF EDIT CHECK ROUTINE ;2-NOV-89
  ;        Diagnosis Coding, if MT copay - check for other co-payments
  ;
  I $P(IBNDTX,U,8),$$REQMRA^IBEFUNC(IBIFN) S IBER=IBER_"IB121;"   ; can't force MRAs to print
- I $P(IBNDTX,U,8)!$P(IBNDTX,U,9) D WARN^IBCBB11($S($$REQMRA^IBEFUNC(IBIFN)&($P(IBNDTX,U,9)):"MRA Secondary ",1:"")_"Bill has been forced to print "_$S($P(IBNDTX,U,8)=1!($P(IBNDTX,U,9)=1):"locally",1:"at clearinghouse"))
+ I $P(IBNDTX,U,8)!$P(IBNDTX,U,9) D
+ . Q:$P(IBNDTX,U,8)=2    ; Don't want to do this for option 2 any more.
+ . D WARN^IBCBB11($S($$REQMRA^IBEFUNC(IBIFN)&($P(IBNDTX,U,9)):"MRA Secondary ",1:"")_"Bill has been forced to print "_$S($P(IBNDTX,U,8)=1!($P(IBNDTX,U,9)=1):"locally",1:"at clearinghouse"))
  N IBXZ,IBIZ F IBIZ=12,13,14 S IBXZ=$P(IBNDM,U,IBIZ) I +IBXZ S IBXZ=$P($G(^DPT(DFN,.312,IBXZ,0)),U,18) I +IBXZ S IBXZ=$G(^IBA(355.3,+IBXZ,0)) I +$P(IBXZ,U,12) D
  . D WARN^IBCBB11($P($G(^DIC(36,+IBXZ,0)),U,1)_" requires Amb Care Certification")
  ;
@@ -158,9 +213,32 @@ IBCBB1 ;ALB/AAS - CONTINUATION OF EDIT CHECK ROUTINE ;2-NOV-89
  ;
  ;Check ROI
  N ROIERR
- S ROIERR=0 I $P($G(^DGCR(399,IBIFN,"U")),U,5)=1,$P($G(^DGCR(399,IBIFN,"U")),U,7)=0 S ROIERR=1 ; screen 7 sensitive record and no ROI
+ S ROIERR=0 I $P($G(^DGCR(399,IBIFN,"U")),U,5)=1,+$P($G(^DGCR(399,IBIFN,"U")),U,7)=0 S ROIERR=1 ; screen 7 sensitive record and no ROI
  I $$ROICHK^IBCBB11(IBIFN,DFN,+IBNDMP) S ROIERR=1 ; check file for sensitive Rx and missing ROI
  I ROIERR S IBER=IBER_"IB328;"
+ ;
+ ;Verify Line Charges Match Claim Total Charge. IB*2.0*447 BI
+ I +$$GET1^DIQ(399,IBIFN_",",201)'=+$$IBLNTOT^IBCBB13(IBIFN) S IBER=IBER_"IB344;"
+ ;
+ ;Test for valid EIN/SY ID Values. IB*2.0*447 BI
+ I $$IBSYEI^IBCBB13(IBIFN) S IBER=IBER_"IB345;"
+ ;
+ ;Test for a missing ICN. IB*2.0*447 BI
+ I $$IBMICN^IBCBB13(IBIFN) S IBER=IBER_"IB346;"
+ ;
+ ;Test for a ZERO charge amounts. IB*2.0*447 BI
+ I $$IBRCCHK^IBCBB13(IBIFN) D WARN^IBCBB11("Claim contains revenue codes with no associated charges.")
+ ;
+ ;Test for missing "Patient reason for visit". IB*2.0*447 BI
+ I $$FT^IBCEF(IBIFN)=3,'$$INPAT^IBCEF(IBIFN),$$IBPRV3^IBCBB13(IBIFN) S IBER=IBER_"IB347;"
+ ;
+ ;Test for missing Payer ID. IB*2.0*447 BI
+ ;I $$IBMPID^IBCBB13(IBIFN) S IBER=IBER_"IB348;"
+ ;Changed Error to Warning. IB*2.0*447 TAZ
+ I $$IBMPID^IBCBB13(IBIFN) D WARN^IBCBB11("Not all payers have Payer IDs.")
+ ;
+ ;Test for missing "Priority (Type) of Admission" for UB-04. IB*2.0*447 BI
+ I $$FT^IBCEF(IBIFN)=3,$$GET1^DIQ(399,IBIFN_",",158)="" S IBER=IBER_"IB349;"
  ;
 END ;Don't kill IBIFN, IBER, DFN
  I $O(^TMP($J,"BILL-WARN",0)),$G(IBER)="" S IBER="WARN" ;Warnings only

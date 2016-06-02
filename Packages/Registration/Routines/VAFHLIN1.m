@@ -1,5 +1,5 @@
-VAFHLIN1 ;ALB/KCL/SCK/PHH - CREATE HL7 INSURANCE (IN1) SEGMENT ; 02/09/2007
- ;;5.3;Registration;**122,190,670,740**;Aug 13, 1993;Build 2
+VAFHLIN1 ;ALB/KCL/SCK/PHH,TDM - CREATE HL7 INSURANCE (IN1) SEGMENT ; 1/21/09 4:05pm
+ ;;5.3;Registration;**122,190,670,740,754**;Aug 13, 1993;Build 46
  ;
  ;
  ;  This generic function was designed to return the HL7 IN1 (Insurance)
@@ -13,7 +13,7 @@ VAFHLIN1 ;ALB/KCL/SCK/PHH - CREATE HL7 INSURANCE (IN1) SEGMENT ; 02/09/2007
  ;  2.  The Insurance API does not support Line 2 or Line 3 of the address.
  ;  The API returns a single address line.
  ;
-EN(DFN,VAFSTR,VAFHLQ,VAFHLFS,VAFARRY) ; --
+EN(DFN,VAFSTR,VAFHLQ,VAFHLFS,VAFARRY,VAFHLECH) ; --
  ; Entry point to return HL7 IN1 segments.
  ;
  ;  Input:
@@ -25,6 +25,7 @@ EN(DFN,VAFSTR,VAFHLQ,VAFHLFS,VAFARRY) ; --
  ;   VAFARRY - (optional) user-supplied array name which will hold
  ;             HL7 IN1 segments.  Otherwise, ^TMP("VAFIN1",$J) will
  ;             be used.
+ ;  VAFHLECH - (optional) HL7 encoding characters.
  ;
  ; Output:
  ;      Array of HL7 IN1 segments
@@ -37,6 +38,7 @@ EN(DFN,VAFSTR,VAFHLQ,VAFHLFS,VAFARRY) ; --
  ;
  ; if VAFHLQ or VAFHLFS not passed, use default HL7 variables
  S VAFHLQ=$S($D(VAFHLQ):VAFHLQ,1:$G(HLQ)),VAFHLFS=$S($D(VAFHLFS):VAFHLFS,1:$G(HLFS))
+ S VAFHLECH=$S($D(VAFHLECH):VAFHLECH,1:$G(HLECH))
  ;
  ; if DFN not passed, exit
  I '$G(DFN) S @VAFARRY@(1,0)="IN1"_VAFHLFS_1 G ENQ
@@ -49,7 +51,7 @@ EN(DFN,VAFSTR,VAFHLQ,VAFHLFS,VAFARRY) ; --
  ; if no active insurance on file for patient, build IN1
  I VAFX'=1 D
  .; Build a null array if no insurance data returned
- . F VAFI=1:1:22 S VAFINS(1,VAFI)=""
+ . F VAFI=1:1:24 S VAFINS(1,VAFI)=""
  .; Merge array to remove first two nodes to simplify handling
  E  M VAFINS=VAFTMP("IBBAPI","INSUR")
  ;
@@ -112,12 +114,14 @@ ADDR1(VAFI) ; Format insurance company address from Insurance API for HL7 conver
  ; Output:
  ;   String in the form of the HL7 address field
  ;
- N VAFAD,VAFGL
- S VAFAD=VAFINS(VAFI,2)
+ N VAFAD,VAFGL,RETVAL
+ S VAFAD=VAFINS(VAFI,2)_"^"_VAFINS(VAFI,23)  ;Ins Addr Line 1 & 2
  S VAFGL=VAFINS(VAFI,3)_"^"_$P(VAFINS(VAFI,4),U)_"^"_VAFINS(VAFI,5)
  ;
  ; convert DHCP address to HL7 format using HL7 utility
- Q $$HLADDR^HLFNC(VAFAD,VAFGL)
+ S RETVAL=$$HLADDR^HLFNC(VAFAD,VAFGL)
+ S $P(RETVAL,$E(VAFHLECH),8)=VAFINS(VAFI,24)   ;Ins Addr Line 3
+ Q RETVAL
  ;
 ADDR(VAFPTR) ; Format insurance company address for HL7 conversion
  ; Retained for backword compatibility

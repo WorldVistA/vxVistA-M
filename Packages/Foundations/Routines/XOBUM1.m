@@ -1,6 +1,6 @@
 XOBUM1 ;; ld,mjk/alb - Foundations Manager ; 07/27/2002  13:00
- ;;1.5;Foundations;;Sep 09, 2005
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.0.026]
+ ;;1.6;Foundations;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
  ;
 START(XOBPORT) ;-- Entry point to start a single VistALink Listener
  ;
@@ -140,7 +140,7 @@ BOX() ; -- start this BOX-VOl default configuration
  ;
  ;
 STOP(LOGDA) ; -- stop a listener
- NEW Y,X,LOG0,XOBBOX,XOBPORT,XONCFG,XOBSTAT,XOBOK
+ NEW Y,X,LOG0,XOBBOX,XOBPORT,XONCFG,XOBSTAT,XOBOK,XOBCFG
  SET XOBOK=0
  ;
  SET LOG0=$GET(^XOB(18.04,LOGDA,0))
@@ -149,7 +149,7 @@ STOP(LOGDA) ; -- stop a listener
  SET XOBSTAT=$PIECE(LOG0,U,3)
  SET XOBCFG=$PIECE(LOG0,U,6)
  ; 
- ; -- must be valid entyr with a running status
+ ; -- must be valid entry with a running status
  IF XOBPORT,XOBSTAT=2 DO
  . DO UPDLOG^XOBVTCP(LOGDA,XOBPORT,3,XOBCFG)
  . SET XOBOK=1

@@ -1,12 +1,23 @@
-YTQAPI11 ;ASF/ALB MHAx API ; 4/3/07 11:03am
- ;;5.01;MENTAL HEALTH;**85**;DEC 30,1994;Build 48
+YTQAPI11 ;ASF/ALB MHAx API ; 8/9/10 10:34am
+ ;;5.01;MENTAL HEALTH;**85,96**;DEC 30,1994;Build 46
+ ;Reference to %ZIS supported by IA #10086
+ ;Reference to %ZTLOAD supported by IA #10063
+ ;Reference to DOB^DPTLK1 supported by IA #3266
+ ;Reference to SSN^DPTLK1 supported by IA #3267
 SCORSAVE(YSDATA,YS) ;save results to 601.92
  ; input: AD as administration ID
  ; output: DATA vs ERROR
- N YSAD,DIK,YSG,YSRNEW,Z
+ N YSAD,DIK,YSG,YSRNEW,Z,ZTRTN,ZTIO,ZTSAVE,ZTDESC,ZTDTH
  S YSAD=$G(YS("AD"))
  I YSAD'?1N.N S YSDATA(1)="[ERROR]",YSDATA(2)="bad ad num" Q  ;-->out
  I '$D(^YTT(601.84,YSAD)) S YSDATA(1)="[ERROR]",YSDATA(2)="ad not found" Q  ;-->out
+ S YSDATA(1)="[DATA]"
+ ;task
+ D  D ^%ZTLOAD D HOME^%ZIS K IO("Q") Q  ;-->out
+ . S ZTIO="",ZTDTH=$H
+ .S ZTRTN="SSEN^YTQAPI11",ZTDESC="MHA3 SCORSAVE",ZTSAVE("YS*")=""
+ ;
+SSEN ;scorsave entry
  D GETSCORE^YTQAPI8(.YSDATA,.YS)
  I $G(^TMP($J,"YSCOR",1))'="[DATA]" S YSDATA="[ERROR]",YSDATA(2)="getscore err" Q  ;-->out
  ;delete any previous scores for this admin

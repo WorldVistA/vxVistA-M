@@ -1,7 +1,6 @@
 XOBVTCPL ;; mjk/alb - VistALink TCP/IP Listener (Cache NT) ; 07/27/2002  13:00
- ;;1.5;VistALink;;Sep 09, 2005
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.0.026]
- ;
+ ;;1.6;VistALink;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
  QUIT
  ;
  ; -- Important: Should always be JOBed using START^XOBVTCP
@@ -39,7 +38,7 @@ OPENM(XOBIO,XOBPORT) ;
  SET XOBIO="|TCP|"_XOBPORT
  OPEN XOBIO:(:XOBPORT:"AT"):30
  ;
- ; -- if listener port could not be openned then gracefully quit
+ ; -- if listener port could not be opened then gracefully quit
  ;    (other namespace using port maybe?)
  IF '$TEST QUIT 0
  ;
@@ -70,13 +69,10 @@ VAR ;Setup IO variables
  QUIT
  ;
 NEWOK() ;Is it OK to start a new process
- NEW XQVOL,XUVOL,X,XOBCODE,Y
- SET U="^"
- DO GETENV^%ZOSV SET XQVOL=$PIECE(Y,U,2)
- SET X=$$FIND1^DIC(8989.304,",1,","BX",XQVOL,"","",""),XUVOL=$SELECT(X>0:^XTV(8989.3,1,4,X,0),1:XQVOL_"^y^1")
- SET XOBCODE=$$INHIBIT^XUSRB()
- IF XOBCODE=1 QUIT 181004
- IF XOBCODE=2 QUIT 181003
+ NEW XQVOL,XUCI,XUENV,XUVOL,X,Y,XOBCODE
+ DO XUVOL^XUS
+ IF $$INHIB1^XUSRB() QUIT 181004
+ IF $$INHIB2^XUSRB() QUIT 181003
  QUIT 0
  ;
  ; -- process error

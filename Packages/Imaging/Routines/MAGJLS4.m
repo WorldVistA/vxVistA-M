@@ -1,5 +1,5 @@
 MAGJLS4 ;WIRMFO/JHC VistARad RPCs--History List ; 29 Jul 2003  10:00 AM
- ;;3.0;IMAGING;**18,76**;Jun 22, 2007;Build 19
+ ;;3.0;IMAGING;**18,76,101**;Nov 06, 2009;Build 50
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -145,7 +145,7 @@ HISTUPD(TXDUZ,TXDIV) ; Update selected fields in History List
  . S STATUS=$S(RAST:$P(^RA(72,RAST,0),U),1:"")
  . S (RIST,RISTISME)=""
  . I RIST1!RIST2 S X=$$RIST^MAGJUTL1(RIST1,RIST2),RIST=$P(X,U),RISTISME=$P(X,U,2)
- . S RISTISME=$S(RISTISME:"Y",1:"N")
+ . S RISTISME=$$RISTISME^MAGJLS2B(RISTISME)
  . S $P(XX1,U,16)=RAST,$P(XX1,U,8)=STATUS,$P(XX1,U,12)=REMOTE
  . S T=$P(XX2,"|"),$P(T,U,3)=RIST,$P(T,U,7)=RISTISME,$P(XX2,"|")=T
  . S ^XTMP("MAGJ2","HISTORY",TXDUZ,TXDIV,HISTIEN,1)=XX1,^(2)=XX2

@@ -1,5 +1,5 @@
 FHASMR2 ;HISC/RVD - Progress Notes To TIU ;04/27/07  06:59
- ;;5.5;DIETETICS;**8,14**;Apr 27, 2007;Build 1
+ ;;5.5;DIETETICS;**8,14,17**;Apr 27, 2007;Build 9
  ;input var: fhdfn,na ien (var ASN),dfn
  ;only process inpatient assessment.
  ;uses DBIA #1911
@@ -75,7 +75,7 @@ EN2 ;skip here if there is no anthropometric measurement.
  S N1=0 F K=0:0 S K=$O(LRTST(K)) Q:K=""  D LAB
  I 'N1 D
  .S FHN=FHN+1,^TMP("TIUP",$J,FHN,0)=""
- .S FHN=FHN+1,^TMP("TIYP",$J,FHN,0)=LN5_"No laboratory data available last "_$S($D(^FH(119.9,1,3)):$P(^(3),"^",2),1:90)_" days"
+ .S FHN=FHN+1,^TMP("TIUP",$J,FHN,0)=LN5_"No laboratory data available last "_$S($D(^FH(119.9,1,3)):$P(^(3),"^",2),1:90)_" days"
  S N=PRO/6.25
 DRU ;pharmacy data.
  S FHN=FHN+1,^TMP("TIUP",$J,FHN,0)=""

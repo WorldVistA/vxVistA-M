@@ -1,5 +1,6 @@
-MAGXCVS ;WOIFO/MLH - Imaging - index conversion - summary report ; 28 Mar 2005  9:20 AM
- ;;3.0;IMAGING;**17,25,31**;Mar 31, 2005
+MAGXCVS ;WOIFO/MLH - Imaging - index conversion - summary report ; 05/18/2007 11:23
+ ;;3.0;IMAGING;**17,25,31,54**;03-July-2009;;Build 1424
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGXCVS ;WOIFO/MLH - Imaging - index conversion - summary report ; 28 Mar 2005  
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -20,7 +20,15 @@ MAGXCVS ;WOIFO/MLH - Imaging - index conversion - summary report ; 28 Mar 2005  
 MAKESUMM ; entry point - construct a summary report from site data
  ; This expects that the site will already have created an export file.
  ;
- N %ZIS,IOP,X,COUNT,LN,DATA,MAGIEN,PKG,CLS,TYP,SPEC,PROC,PROC2,DESC
+ N %ZIS,IOP,X,COUNT,LN,DATA,MAGIEN,PKG,CLS,TYP,SPEC,PROC,PROC2,DESC,PG
+ N FRQTHRS ; --- frequency threshold for abridged report
+ N NUPG ; ------ new-page flag
+ N PROCTXT ; --- procedure text
+ N PARENT ; ---- parent data file
+ N DOCCAT ; ---- document category
+ N OBJTYP ; ---- image object type
+ N SAVBYGRP ; -- save-by group
+ N KT ; -------- count for comparison with frequency threshold
  N SUB ; ------- station or substation mnemonic
  N FQFNAME ; --- fully qualified file name to process
  N FNAME ; ----- file name without directory or extension
@@ -55,7 +63,7 @@ SM15 ; what export file?
  S $ET="G ERR^"_$T(+0)
  D ^%ZIS I POP=1 W !,"Unable to open "_FQFNAME_". Please try again." G SM15
  W ! S FNAME=$P($P(FQFNAME,"\",$L(FQFNAME,"\")),".")
- S (SUB,CODE)=$$UCASE^MAGXCVP($P(FNAME,"_")),RANGE=$P(FNAME,"_",2)
+ S SUB=$$UCASE^MAGXCVP($P(FNAME,"_")),RANGE=$P(FNAME,"_",2)
  I RANGE="" S RANGE="not given"
  K ^TMP($J,"MAGIXCVSTAT") S ^TMP($J,"MAGIXCVSTAT",0)=SUB_"^"_RANGE
  F LN=1:1 U IO R DATA:99999 Q:DATA="***end***"  I LN>1 D  ; Skip header
@@ -91,10 +99,11 @@ SM2 ;
  ;
 ANZRPT ;
  I IOM<132 W !,"This report must be run on at least a 132-column device.  Goodbye!",! Q
+ N KT,NUPG,OBJTYP,PG,PROCTXT,SAVBYGRP
  N FQUIT ; --- quit flag from header logic
  N RDATE ; --- report date
  ;
- S %H=$H D YX^%DTC S RDATE=Y
+ S RDATE=$$HTE^XLFDT($H,1)
  S PG=0
  S FQUIT=0
  S SUB=$O(^MAG(2006.1,0)) I SUB S SUB=$P($G(^MAG(2006.1,SUB,0)),U)

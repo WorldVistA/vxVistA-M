@@ -1,5 +1,5 @@
 PSSDOSER ;BIR/RTR-Dose edit option ;03/10/00
- ;;1.0;PHARMACY DATA MANAGEMENT;**34,38,50,57,47,68,82,125,129,144**;9/30/97;Build 13
+ ;;1.0;PHARMACY DATA MANAGEMENT;**34,38,50,57,47,68,82,125,129,144,155**;9/30/97;Build 40
  ;Reference to ^PS(50.607 supported by DBIA #2221
  ;Reference to ^PS(59 supported by DBIA #1976
  ;
@@ -22,24 +22,29 @@ RES ;
  D STUN
  I PSSST="",$O(^PSDRUG(PSSIEN,"DOS1",0)) K ^PSDRUG(PSSIEN,"DOS") K ^PSDRUG(PSSIEN,"DOS1")
  S PSSXYZ=0 D CHECK
+ I PSSXYZ,PSSUPRA="NN" D MPD K:$D(PSSZ) PSSZ Q
  D:$G(PSSST) XNWS I $G(PSSST),$O(^PSDRUG(PSSIEN,"DOS1",0)) D STR G SKIP
  I PSSXYZ,'$O(^PSDRUG(PSSIEN,"DOS1",0)) D  D ^DIR K DIR I Y=1 S PSSSKIPP=1 D EN2^PSSUTIL(PSSIEN,1) G RES
  .K DIR S DIR(0)="Y",DIR("B")="N",DIR("A")="Create Possible Dosages for this drug",DIR("?")=" "
  .S DIR("?",1)="This drug meets the criteria to have Possible Dosages, but it currently does",DIR("?",2)="not have any. If you answer 'YES', Possible Dosages will be created for this"
  .S DIR("?",3)="drug, based on the match to the National Drug File."
  .W !!!,"This drug can have Possible Dosages, but currently does not have any.",!
+ .I PSSUPRA["N" W !,"This drug has been set within the National Drug File to "_$S(PSSUPRA="NN":"not ",1:"")_"auto create "_$S(PSSUPRA="NO":"only one ",PSSUPRA="NB":"two ",1:""),!,"possible dosage"_$S(PSSUPRA="NO":".",1:"s."),!
+ .W !
 SKIP ;
- K PSSXYZ
+ K PSSXYZ,PSSZ
  I '$O(^PSDRUG(PSSIEN,"DOS1",0)) G LOCX
 DOSA S PSSST=$P($G(^PSDRUG(PSSIEN,"DOS")),"^")
  W !!,"Strength => "_$S($E($G(PSSST),1)=".":"0",1:"")_$G(PSSST)_"   Unit => "_$S($P($G(^PS(50.607,+$G(PSSUN),0)),"^")'["/":$P($G(^(0)),"^"),1:"") W !
+ I PSSUPRA["N",'PSSSKIPP,'$G(PSSZ) S PSSZ=1 D
+ .W !,"This drug has been set within the National Drug File to "_$S(PSSUPRA="NN":"not ",1:"")_"auto create "_$S(PSSUPRA="NO":"only one ",PSSUPRA="NB":"two ",1:""),!,"possible dosage"_$S(PSSUPRA="NO":".",1:"s."),!
  K DIC S DA(1)=PSSIEN,DIC="^PSDRUG("_PSSIEN_",""DOS1"",",DIC(0)="QEAMLZ",DLAYGO=50,DIC("A")="Select DISPENSE UNITS PER DOSE: " D  D ^DIC K DIC,DLAYGO I Y<1!($D(DTOUT))!($D(DUOUT)) G DOSLOC
  .S DIC("W")="W ""  ""_$S($E($P($G(^PSDRUG(PSSIEN,""DOS1"",+Y,0)),""^"",2),1)=""."":""0"",1:"""")_$P($G(^PSDRUG(PSSIEN,""DOS1"",+Y,0)),""^"",2)_""    ""_$P($G(^PSDRUG(PSSIEN,""DOS1"",+Y,0)),""^"",3)"
  S PSSDOSA=+Y,PSSOTH=$S($P($G(^PS(59.7,1,40.2)),"^"):1,1:0)
  W ! K DIE S DA(1)=PSSIEN,DA=PSSDOSA,DR=".01;S:'$G(PSSOTH) Y=""@1"";@1;2",DIE="^PSDRUG("_PSSIEN_",""DOS1""," D ^DIE K DIE D:'$D(Y)&('$D(DTOUT)) BCMA G:$D(Y)!($D(DTOUT)) DOSLOC  ;;<*144 - RJS
  G DOSA
 DOSLOC ;
- S (PSSPCI,PSSPCO)=0
+ S (PSSPCI,PSSPCO)=0 K:$D(PSSZ) PSSZ
  F PSSPCZ=0:0 S PSSPCZ=$O(^PSDRUG(PSSIEN,"DOS1",PSSPCZ)) Q:'PSSPCZ  D
  .I $P($G(^PSDRUG(PSSIEN,"DOS1",PSSPCZ,0)),"^",2)'="" S:$P($G(^(0)),"^",3)["I" PSSPCI=1 S:$P($G(^(0)),"^",3)["O" PSSPCO=1
  I PSSPCI,PSSPCO W !! K DIR S DIR(0)="Y",DIR("B")="N",DIR("A")="Enter/Edit Local Possible Dosages" D  D ^DIR K DIR I Y'=1 K PSSPCI,PSSPCO,PSSPCZ W ! D ULK G DOS
@@ -77,6 +82,7 @@ CHECK ;
  K PSSNAT,PSSNATND,PSSNATDF,PSSNATUN,PSSNATST,PSSIZZ,PSSOZZ
  S PSSNAT=+$P($G(^PSDRUG(PSSIEN,"ND")),"^",3),PSSNAT1=$P($G(^("ND")),"^") I 'PSSNAT!('PSSNAT1) Q
  S PSSNATND=$$DFSU^PSNAPIS(PSSNAT1,PSSNAT) S PSSNATDF=$P(PSSNATND,"^"),PSSNATST=$P(PSSNATND,"^",4),PSSNATUN=$P(PSSNATND,"^",5)
+ S PSSUPRA=$$SUPRA^PSSUTIL3(PSSNAT)
  ;I $G(PSSST) S PSSXYZ=1 Q
  Q:'PSSNATDF!('PSSNATUN)!($G(PSSNATST)="")
  Q:'$D(^PS(50.606,PSSNATDF,0))!('$D(^PS(50.607,PSSNATUN,0)))
@@ -122,4 +128,13 @@ XNWS ;
  W !!,"Strength from National Drug File match => "_$S($E($G(PSSNATST),1)=".":"0",1:"")_$G(PSSNATST)_"    "_$P($G(^PS(50.607,+$G(PSSUN),0)),"^")
  W !,"Strength currently in the Drug File    => "_$S($E($P($G(^PSDRUG(PSSIEN,"DOS")),"^"),1)=".":"0",1:"")_$P($G(^PSDRUG(PSSIEN,"DOS")),"^")_"    "_$S($P($G(^PS(50.607,+$G(PSSUN),0)),"^")'["/":$P($G(^(0)),"^"),1:"") D MS^PSSDSPOP
  K PSSDESTP
+ Q
+MPD ; manually enter poosible dosage
+ I $P($G(^PSDRUG(PSSIEN,"DOS")),"^")="" S:$P(^PSDRUG(PSSIEN,"ND"),"^",2)]"" ^PSDRUG(PSSIEN,"DOS")=PSSNATST_"^"_PSSNATUN
+ I PSSXYZ,'$O(^PSDRUG(PSSIEN,"DOS1",0)) D  D ^DIR K DIR I 'Y W ! K PSSXYZ K:$D(PSSZ) PSSZ I '$O(^PSDRUG(PSSIEN,"DOS1",0)) G LOCX Q
+ .K DIR S DIR(0)="Y",DIR("B")="N",DIR("A")="Do you want to manually enter possible dosages",DIR("?")=" "
+ .S DIR("?",1)="This drug meets the criteria to have Possible Dosages, but it currently does",DIR("?",2)="not have any. If you answer 'YES', Possible Dosages can be manually entered for this drug."
+ .W !!!,"This drug can have Possible Dosages, but currently does not have any.",!
+ .S PSSZ=1 W !,"This drug has been set within the National Drug File to "_$S(PSSUPRA="NN":"not ",1:"")_"auto create "_$S(PSSUPRA="NO":"only one ",PSSUPRA="NB":"two ",1:""),!,"possible dosage"_$S(PSSUPRA="NO":".",1:"s."),!
+ D XNWS,STR,DOSA
  Q

@@ -1,5 +1,5 @@
 ONCSAPIE ;Hines OIFO/SG - COLLABORATIVE STAGING (ERRORS)  ; 10/27/06 8:59am
- ;;2.11;ONCOLOGY;**40,47**;Mar 07, 1995;Build 19
+ ;;2.2;ONCOLOGY;**1**;Jul 31, 2013;Build 8
  ;;
  ;
  Q
@@ -42,7 +42,7 @@ CLEAR(ENABLE) ;
  ;
 DBS(ONC8MSG,ERRCODE,FILE,IENS) ;
  I '$G(DIERR)  Q:$QUIT ""  Q
- N ERRLST,ERRNODE,I,MSGTEXT
+ N ERRLST,ERRNODE,I,ONCMSGTEXT
  S ERRNODE=$S($G(ONC8MSG)'="":$NA(@ONC8MSG@("DIERR")),1:$NA(^TMP("DIERR",$J)))
  I $D(@ERRNODE)<10  Q:$QUIT ""  Q
  ;--- Return a list of errors
@@ -51,10 +51,10 @@ DBS(ONC8MSG,ERRCODE,FILE,IENS) ;
  . F  S I=$O(@ERRNODE@("E",I))  Q:'I  S ERRLST=ERRLST_","_I
  . D CLEAN^DILF
  ;--- Record the error message
- D MSG^DIALOG("AE",.MSGTEXT,,,$G(ONC8MSG)),CLEAN^DILF
+ D MSG^DIALOG("AE",.ONCMSGTEXT,,,$G(ONC8MSG)),CLEAN^DILF
  S I=$S($G(FILE):"; File #"_FILE,1:"")
  S:$G(IENS)'="" I=I_"; IENS: """_IENS_""""
- S I=$$ERROR(ERRCODE,.MSGTEXT,I)
+ S I=$$ERROR(ERRCODE,.ONCMSGTEXT,I)
  Q:$QUIT I  Q
  ;
  ;***** GENERATES THE ERROR MESSAGE
@@ -153,6 +153,17 @@ PRT1ERR(ERR,ONC8INFO) ;
  . I $Y'<ONCMNL  S EXIT=$$PAGE^ONCSAPIU()  Q:EXIT
  . ;---
  . I $G(ONC8INFO)'="",$D(@ONC8INFO)>1  S I=""  D
+ ..;Error text formatting
+ ..I ONC8INFO="ONCSAPI(""MSG"",1,1)" D
+ ...N LINECNT,LINE,LINE1,LINE2,SUB
+ ...S LINECNT=0
+ ...S SUB=0 F  S SUB=$O(ONCSAPI("MSG","1",1,SUB)) Q:SUB'>0  S LINE=ONCSAPI("MSG","1",1,SUB) D
+ ....S LINECNT=LINECNT+1
+ ....S LINE1=$P(LINE,".",1)
+ ....S LINE2=$P(LINE,".",2)
+ ....S ONCSAPI("NEWMSG","1",1,LINECNT)=LINE1_"."
+ ....I LINE2'="" S LINECNT=LINECNT+1 S ONCSAPI("NEWMSG","1",1,LINECNT)=LINE2_"."
+ ...M ONCSAPI("MSG")=ONCSAPI("NEWMSG")
  . . F  S I=$O(@ONC8INFO@(I))  Q:I=""  D  Q:EXIT
  . . . D EN^DDIOL($E(@ONC8INFO@(I),1,IOM-7),,"!?6")
  . . . S:$Y'<ONCMNL EXIT=$$PAGE^ONCSAPIU()
@@ -230,3 +241,6 @@ MSGLIST ; Code Type  Message Text
  ;; -21 ^ 2 ^ Unfortunately, the code description is unavailable now.
  ;; -22 ^ 6 ^ Cannot get the URL of the Oncology web-service
  ;; -23 ^ 6 ^ Cannot get the EDITS metafile version number
+ ;
+CLEANUP ;Cleanup
+ K DIERR,ONCSAPI

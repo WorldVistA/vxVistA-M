@@ -1,5 +1,5 @@
 PRSPSAPU ;WOIFO/JAH - PT Physician, supervisor approval utils ;01/22/05
- ;;4.0;PAID;**93**;Sep 21, 1995;Build 7
+ ;;4.0;PAID;**93,125**;Sep 21, 1995;Build 6
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  Q
 ONEPTP(TLE) ; get one or all ptp's from a TLE
@@ -23,7 +23,7 @@ ONEPTP(TLE) ; get one or all ptp's from a TLE
  Q PTP
  ;
 ALL1PTP(TLE) ; ask for one part time physician from a TLE or ALL
- Q:TLE'>0
+ I TLE'?1A.E,TLE'>0 Q PRSIEN
  N DIC,PRSIEN,D,Y,DUOUT,DTOUT
  S PRSIEN=""
  S DIC("A")="Select an EMPLOYEE or press RETURN for ALL: "

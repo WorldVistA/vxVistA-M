@@ -1,6 +1,6 @@
 XOBSCI ;; ld,mjk/alb - VistaLink Interface Implementation ; 07/27/2002  13:00
- ;;1.5;VistALink Security;;Sep 09, 2005
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.0.026]
+ ;;1.6;VistALink Security;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
  ;
  ;Implements the VistaLink message framework for messages in the (XOBS) security module.
  ;
@@ -10,7 +10,7 @@ CALLBACK(CB) ; -- init callbacks implementation
  SET CB("CHARACTERS")="CHR^XOBSCAV2"
  QUIT
  ;
-READER(XOBUF,XOBDATA) ; -- propriatary format reader implementation
+READER(XOBUF,XOBDATA) ; -- proprietary format reader implementation
  QUIT
  ;
 REQHDLR(XOBDATA) ; -- request handler implementation

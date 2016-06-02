@@ -1,6 +1,6 @@
-HLEVAPI3 ;O-OIFO/LJA - Event Monitor APIs ;02/04/2004 14:42
- ;;1.6;HEALTH LEVEL SEVEN;**109**;Oct 13, 1995
- ;
+HLEVAPI3 ;O-OIFO/LJA/PIJ - Event Monitor APIs ;12/08/2010
+ ;;1.6;HEALTH LEVEL SEVEN;**109,153**;Oct 13, 1995;Build 11
+ ;Per VHA Directive 2004-038, this routine should not be modified.
 EVENTONE(HLEVIENM,HLEVNM,HLEVIENE) ; Master job check of an event...
  ; ZTSKMST -- req
  N CONT,CURR,CURRNOW,IEN,LAPSEMIN,LASTRUN,MAILGRP,MCHECK,MSTART,NO,NODE
@@ -123,11 +123,20 @@ QUEUEV ; Queued event job starts here...
  ; Mark RUNNING before doing anything else...
  D EVRES^HLEVAPI0(+HLEVIENM,+HLEVIENE,"R",+HLEVIENJ)
  ;
+ ;*** P153 START CJM ***
+ L +^HLEV(776.1,+$G(HLEVIENE),0):1 Q:'$T
+ ;*** P153 END CJM
  S NODE=$G(^HLEV(776.1,+$G(HLEVIENE),0)) I NODE']"" D  QUIT  ;->
  .  D EVRES^HLEVAPI0(+HLEVIENM,+HLEVIENE,"XE",+HLEVIENJ)
+ .  ;*** Begin HL7*1.6*153 - pij ***
+ .  L -^HLEV(776.1,+$G(HLEVIENE),0)
+ .  ;*** End HL7*1.6*153 - pij ***
  S EVNAME=$P(NODE,U),EVMGRP=$P(NODE,U,5)
  S EVMCODE=$TR($P(NODE,U,6),"~",U) I EVMCODE'?1.8E1"^"1.8E D  QUIT  ;->
  .  D EVRES^HLEVAPI0(+HLEVIENM,+HLEVIENE,"XE",+HLEVIENJ)
+ .  ;*** Begin HL7*1.6*153 - pij ***
+ .  L -^HLEV(776.1,+$G(HLEVIENE),0)
+ .  ;*** End HL7*1.6*153 - pij ***
  ;
  ; Node 40...
  S NODE40=$G(^HLEV(776.1,+HLEVIENE,40))
@@ -136,8 +145,14 @@ QUEUEV ; Queued event job starts here...
  ; Final M code check...
  I '$$OKMCODE^HLEVAPI0(EVMCODE) D  QUIT  ;->
  .  D EVRES^HLEVAPI0(+HLEVIENM,+HLEVIENE,"XM",+HLEVIENJ)
+ .  ;*** Begin HL7*1.6*153 - pij ***
+ .  L -^HLEV(776.1,+$G(HLEVIENE),0)
+ .  ;*** End HL7*1.6*153 - pij ***
  ;
  D @EVMCODE
+ ;*** Begin HL7*1.6*153 - pij ***
+ L -^HLEV(776.1,+$G(HLEVIENE),0)
+ ;*** End HL7*1.6*153 - pij ***
  ;
  D EVRES^HLEVAPI0(+HLEVIENM,+HLEVIENE,"F",+HLEVIENJ)
  ;

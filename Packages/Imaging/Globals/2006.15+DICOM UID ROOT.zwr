@@ -1,0 +1,6 @@
+DICOM UID ROOT
+ZWR
+^MAGD(2006.15,0)="DICOM UID ROOT^2006.15^1^1"
+^MAGD(2006.15,1,0)="<Your Agency Name goes Here>"
+^MAGD(2006.15,1,"UID ROOT")="<Your Agency UID Root goes Here>"
+^MAGD(2006.15,"B","<Your Agency Name goes Here>",1)=""

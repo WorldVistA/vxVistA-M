@@ -1,6 +1,7 @@
-VFDCFM01 ;DSS/SGM - COMMON FILEMAN UTILITIES ; 01/30/2013 13:27
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 13
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
+VFDCFM01 ;DSS/SGM - COMMON FILEMAN UTILITIES ; 02/12/2013 13:10
+ ;;2013.0;DSS,INC VXVISTA OPEN SOURCE;;07 Feb 2014;Build 2
+ ;Copyright 1995-2014,Document Storage Systems Inc. All Rights Reserved
+ ;
  ;  this contains common Fileman utilities that is often repeated
  ;
  ; DBIA#   SUPPORTED
@@ -84,8 +85,16 @@ M ; called from MSG^VFDCFM
  ;           H - process help array
  ;           M - process message array
  ;           B - blank lines suppressed between error msgs
- ;           T - Return Total number of lines in the top level of OUT
- ;    OUT - opt/req - local array passed by reference
+ ;           T - return Total number of lines in the top level of OUT
+ ;           v - indicates procedure called as extrinsic function
+ ;               This is only necessary if your procedure was called
+ ;               as an extrinsic and you needed to call this procedure
+ ;               as a DO with parameters
+ ;           V - indicates to compile message array into a single
+ ;               string with each array element is separated by a
+ ;               space in the return string.
+ ;               V deprecated 3/12/2012.  V re-instated 2/13/2014
+ ;VFDROUT - opt/req - local array passed by reference
  ;          to return messages.  See FLGS parameter
  ;  WIDTH - opt - default= 72  max length of each line to return
  ;   LEFT - opt - default=0   pad LEFT spaces to return array
@@ -97,23 +106,20 @@ M ; called from MSG^VFDCFM
  ;  If no input array, return error message
  ;
  N I,X,Y,Z,VFDMSG,VFDOUT
- ; 3/12/2012 - SGM - V flag deprecated in favor of $Q intrinsic var
- S X=$TR($G(FLGS),"V") D
- . S:X="" X="AE"
- . I $Q S:X'["B" X=X_"B"
- . E  S:X'["A" X=X_"A"
- . S FLGS(0)=(X["A")
- . S:X'["A" X=X_"A" S FLGS=X ; get output in OUT() to manipulate
- . Q
- S WIDTH=$G(WIDTH) S:'WIDTH WIDTH=72
- S LEFT=+$G(LEFT) S:$Q LEFT=0
+ ; manipulate value of FLGS
+ S FLGS(9)=FLGS S:FLGS="" FLGS="AE"
+ I $Q,FLGS'["v" S FLGS=FLGS_"v"
+ I FLGS["v",FLGS'["V" S FLGS=FLGS_"V"
+ ; FLGS(0) used in M1 module
+ S FLGS(0)="AE" S:FLGS["W" FLGS(0)=FLGS(0)_"W"
+ S:FLGS["B"!(FLGS["V") FLGS(0)=FLGS(0)_"B"
+ S:'WIDTH WIDTH=72 S LEFT=+LEFT S:FLGS["V" LEFT=0
  I FLGS["E" D M1("DIERR")
  I FLGS["H" D M1("DIHLP")
  I FLGS["M" D M1("DIMSG")
- I $Q S Z="" D
+ I FLGS["V" S Z="" D
  . F I=1:1 Q:'$D(VFDMSG(I))  S Z=Z_VFDMSG(I)_" "
- . I Z="" S Z="No Data found"
- . S VFDROUT=Z
+ . S:Z="" Z="No Data found" S VFDROUT=Z
  . Q
  I FLGS["A" M VFDROUT=VFDMSG
  I FLGS'["S" K:$G(INPUT)'="" @INPUT D CLEAN^DILF
@@ -121,12 +127,10 @@ M ; called from MSG^VFDCFM
  ;
 M1(VFDSUB) ;
  N I,J,X,Y,Z,VFDI,VFDTMP
- I $G(INPUT)'="" M VFDI(VFDSUB)=INPUT(VFDSUB)
- I '$D(VFDI) M VFDI(VFDSUB)=^TMP(VFDSUB,$J)
+ S Z=$S($G(INPUT)'="":$NA(@INPUT@(VFDSUB)),1:$NA(^TMP(VFDSUB,$J)))
+ M VFDI(VFDSUB)=@Z
  Q:'$D(VFDI)
- S Z="AE" S:FLGS["B" Z=Z_"B" S:FLGS["W" Z=Z_"W"
- D MSG^DIALOG(Z,.VFDTMP,WIDTH,LEFT,"VFDI")
- S I=0,J=$O(VFDMSG(" "),-1)
+ D MSG^DIALOG(FLGS(0),.VFDTMP,WIDTH,LEFT,"VFDI")
+ S I=0,J=+$O(VFDMSG(" "),-1)
  F  S I=$O(VFDTMP(I)) Q:'I  S J=J+1,VFDMSG(J)=VFDTMP(I)
  Q
- 

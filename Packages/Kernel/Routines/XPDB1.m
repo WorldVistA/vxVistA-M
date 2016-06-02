@@ -1,12 +1,13 @@
-XPDB1 ;SFISC/RSD - Build utilities  ;05/28/99  10:15
- ;;8.0;KERNEL;**108**;Jul 10, 1995
+XPDB1 ;SFISC/RSD - Build utilities  ;10/15/2008
+ ;;8.0;KERNEL;**108,539**;Jul 10, 1995;Build 11
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  Q
 LOOK() ;Lookup BUILD, build XPDT from build file
  ;XPDT(seq #)=ien^name
  ;XPDT("DA",ien)=seq #
  N XPD,XPDA,XPDI,XPDNM,X,Y,Z K XPDT
  S XPDT=0
- S XPDA=$$DIC^XPDE("AEMQZ",,1) Q:'XPDA -1
+ S XPDA=$$DIC^XPDE("AEMQZ",,1) Q:'XPDA 0
  S XPDI=$P(Y(0),U)
  ;if type is Global Package, set DIRUT if there is other packages
  I $P(Y(0),U,3)=2 W "   GLOBAL PACKAGE"

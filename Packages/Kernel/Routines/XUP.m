@@ -1,11 +1,14 @@
 XUP ;SFISC/RWF - Setup enviroment for programmers ;1/30/08  11:12
- ;;8.0;KERNEL;**208,258,284,432,469**;Jul 10, 1995;Build 8
+ ;;8.0;KERNEL;**208,258,284,432,469**;Jul 10, 1995;Build 1
  ;Per VHA Directive 2004-038, this routine should not be modified.
  W !,"Setting up programmer environment"
  S U="^",$ECODE="",$ETRAP="" ;Clear error and error trap
  X ^%ZOSF("TYPE-AHEAD")
  ;Check if Production and report
- W !,"This is a "_$S($$PROD^XUPROD(1):"PRODUCTION",1:"TEST")_" account.",!
+ ;DSS/RAC - BEGIN MOD - Remove setting of "SID" node original code in commented line
+ ;W !,"This is a "_$S($$PROD^XUPROD(1):"PRODUCTION",1:"TEST")_" account.",!
+ W !,"This is a "_$S(+$G(^XTV(8989.3,1,"SID")):"PRODUCTION",1:"TEST")_" account.",!
+ ;DSS/RAC - END MODS
  ;
  K ^UTILITY($J),^XUTL("XQ",$J) D KILL1^XUSCLEAN
  S U="^",DT=$$DT^XLFDT
@@ -17,6 +20,9 @@ XUP ;SFISC/RWF - Setup enviroment for programmers ;1/30/08  11:12
  I $G(DUZ)>.5,$D(^VA(200,DUZ,0))[0 K DUZ W !,"DUZ Must point to a real user." G EXIT ;p432
  I $G(DUZ)>0 D DUZ(DUZ)
  I $G(DUZ)'>0!('$D(DUZ(0))) D ASKDUZ G:Y'>0 EXIT
+ ;DSS/SGM - BEGIN MODS
+ I $G(^%ZOSF("ZVX"))["VX" S Y=$$ACTIVE^XUSER(DUZ) W:'Y !,"***** Not an active user ["_$P(Y,U,2)_"] *****",!
+ ;DSS/SGM - END MODS
  I '$D(XQUSER) S XQUSER=$S($D(^VA(200,DUZ,20)):$P(^(20),"^",2),1:"Unk")
  S DTIME=600 ;Set a temp DTIME
  S DILOCKTM=+$G(^DD("DILOCKTM"),1) ;p432

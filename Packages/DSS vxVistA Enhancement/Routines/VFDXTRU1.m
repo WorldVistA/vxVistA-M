@@ -1,8 +1,8 @@
 VFDXTRU1 ;DSS/SGM - ROUTINE UTILITIES ; 07/28/2011 18:27
- ;;2.0;DSS,INC VXVISTA OPEN SOURCE;;29 Jul 2011;Build 92
- ;Copyright 1995-2011,Document Storage Systems Inc. All Rights Reserved
+ ;;15.0;DSS,INC VXVISTA OPEN SOURCE;;15 Sep 2015;Build 29
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ;
- ;THIS ROUTINE SHOULD ONLY BE INVOKED VIA THE VFDXTRU ROUTINE
+ ;THIS ROUTINE SHOULD ONLY BE INVOKED VIA THE VFDXTR OR VFDXTRU ROUTINE
  ;
  ;DBIA# Supported References
  ;----- -----------------------------------------------
@@ -24,6 +24,7 @@ ASK() ; >>>>>  ASK FOR METHOD TO GET LIST OF ROUTINES
  ;               null is default, ask for method
  ;               F = use routine selecter   B = ask for Build file name
  ;               +SOURCE = Build file ien
+ ;  LOAD - opt - Boolean, default to 0, get routines from loaded build
  ;Extrinsic Function returns
  ;  if problems, return -1, -2, or -3
  ;  -1 if source="" and no method selected
@@ -34,12 +35,13 @@ ASK() ; >>>>>  ASK FOR METHOD TO GET LIST OF ROUTINES
  ;NOTES: this will K ^UTILITY($J) if VFDR'=$NA(^UTILITY($J)) or 'NOINIT
  ;
  N I,X,Y,Z,TOT,UTL
- S NOINIT=+$G(NOINIT),SOURCE=$G(SOURCE),VFDR=$G(VFDR)
- I SOURCE="" S SOURCE=$$DIR^VFDXTR09(3) I +SOURCE=-1 Q SOURCE
+ S NOINIT=+$G(NOINIT),SOURCE=$G(SOURCE),VFDR=$G(VFDR),LOAD=+$G(LOAD)
+ I SOURCE="" S SOURCE=$$DIR^VFDXTR09($S(LOAD:14,1:3)) I +SOURCE<0 Q SOURCE
  I VFDR="" S VFDR=$NA(^UTILITY($J))
  S UTL=$NA(^UTILITY($J)) K:'NOINIT @VFDR,@UTL K:UTL'=VFDR @UTL
  I SOURCE="F" S TOT=$$RSEL(VFDR)
- I SOURCE'="F" S TOT=$$BLD(VFDR,+SOURCE)
+ I SOURCE="B"!(SOURCE) S TOT=$$BLD(VFDR,+SOURCE)
+ I SOURCE="L" S TOT=$$LOAD(VFDR)
  I VFDR'=UTL K @UTL
  Q TOT
  ;
@@ -108,6 +110,22 @@ BLDNM ; >>>>>  GET BUILD FILE NAME AND DATA
  S Z="",Y=(+X)_"," I $P(X,U,3) S Z=$$GET1^DIQ(9.6,Y,"1:1","E",,"VFDER")
  S VFDVAL("PKG")=Z,$P(VFDVAL(1),U,3)=Z
  Q
+ ;
+LOAD(VFDR) ; >>>>>  GET LIST OF ROUTINES FROM LOADED BUILD
+ ; VFDR - opt - named reference to place routine names, @vfdr@(name)=""
+ ;              default to ^UTILITY($J)
+ ;
+ N X,Y,DA,RTN,TOT,XPDT
+ S VFDR=$G(VFDR),UTL=$S(VFDR="":$NA(^UTILITY($J)),1:VFDR),TOT=0
+ S DA=$$LOOK^XPDI1("I $D(^XPD(9.7,""ASP"",Y,1,Y)),$D(^XTMP(""XPDI"",Y))")
+ W !! I 'DA Q 0
+ S DA=0 F  S DA=$O(XPDT("DA",DA)) Q:'DA  D
+ .S RTN="" F  S RTN=$O(^XTMP("XPDI",DA,"RTN",RTN)) Q:RTN=""  D
+ ..Q:'$D(^XTMP("XPDI",DA,"RTN",RTN,1))
+ ..I '$D(@UTL@(RTN)) S TOT=TOT+1
+ ..S @UTL@(RTN)=DA
+ I $D(@UTL) S @UTL@(0)=TOT
+ Q TOT_"^L"
  ;
 MSG(STR,CJ) ; >>>>>  WRITE MESSAGE HEADER
  ;
@@ -210,3 +228,10 @@ ERR(A) ;
  Q "-1^"_T
  ;
 UP(A) Q $$UP^XLFSTR(A)
+ ;
+DIR(DIR) ;
+ ;INPUT PARAM - dir() required
+ ;Extrinsic function returns value of Y
+ N I,J,X,Y,Z,DIROUT,DIRUT,DTOUT,DUOUT
+ W ! D ^DIR I $D(DTOUT)!$D(DUOUT)!$D(DIROUT) S Y=-1
+ Q Y

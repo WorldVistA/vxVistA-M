@@ -1,5 +1,5 @@
 FHORD81 ; HISC/REL/NCA - Diet Order Lists (cont) ;11/30/00  13:55
- ;;5.5;DIETETICS;**1,5**;Jan 28, 2005;Build 53
+ ;;5.5;DIETETICS;**1,5,17**;Jan 28, 2005;Build 9
  ;patch 5 - added outpatiet SOs & SFs and outpt room-bed.
  K C,^TMP("FH",$J) F L=0:0 S L=$O(^FH(118,L)) Q:L<1  I '$D(^FH(118,L,"I")) S C(L)=$P(^(0),"^",1)
  D NOW^%DTC S NOW=%,DT=NOW\1,X1=DT,X2=-14 D C^%DTC S OLN=+X S X1=NOW,X2=-3 D C^%DTC S OLD=+X
@@ -165,12 +165,12 @@ F0 ;
  S WRDN=$P(^FH(119.6,W1,0),"^",1),^TMP("FH",$J,K1_P0_$E(WRDN,1,26),W1)="" Q
 F2 S WRDN=$P(^FH(119.6,W1,0),"^",1)
  K ^TMP($J) F FHDFN=0:0 S FHDFN=$O(^FHPT("AW",W1,FHDFN)) Q:FHDFN<1  S ADM=^(FHDFN) D RM
- Q:'$D(^TMP($J))  S NX="" D HDR
-L2 S NX=$O(^TMP($J,NX)) I NX="" W ! Q
+ Q:'$D(^TMP($J,"FHSRT"))  S NX="" D HDR
+L2 S NX=$O(^TMP($J,"FHSRT",NX)) I NX="" W ! Q
  S FHDFN=""
 L3 ; Get Next Patient data
- S FHDFN=$O(^TMP($J,NX,FHDFN)) G:FHDFN="" L2 S ADM=^(FHDFN)
- D PATNAME^FHOMUTL I DFN="" Q
+ S FHDFN=$O(^TMP($J,"FHSRT",NX,FHDFN)) G:FHDFN="" L2 S ADM=^(FHDFN)
+ D PATNAME^FHOMUTL I DFN="" G L3
  G:ADM<1 L3 S Y(0)=^DPT(DFN,0) G:'$D(^DGPM(ADM,0)) L3
  G:'$D(^FHPT(FHDFN,"A",ADM,0)) L3 S LEN=0 D CUR^FHORD7 S MEAL=Y,X0=^FHPT(FHDFN,"A",ADM,0) S:$L(MEAL)>48 LEN=$L($E(MEAL,1,48),",")
  I SER'="A",$P(X0,"^",5)'=SER G L3
@@ -198,7 +198,7 @@ RM ;
  D PATNAME^FHOMUTL I DFN="" Q
  I SRT="R" S RM=$G(^DPT(DFN,.101))
  E  S RM=$P($G(^DPT(DFN,0)),"^",1)
- S:RM="" RM=" " S ^TMP($J,RM,FHDFN)=ADM Q
+ S:RM="" RM=" " S ^TMP($J,"FHSRT",RM,FHDFN)=ADM Q
 HDR ;W:'($E(IOST,1,2)'="C-"&'PG) @IOF S PG=PG+1,DTP=NOW D DTP^FH
  W @IOF S PG=PG+1,DTP=NOW D DTP^FH
  W !,DTP,?(67-$L(WRDN)\2),WRDN," DIET ORDERS",?72,"Page ",PG

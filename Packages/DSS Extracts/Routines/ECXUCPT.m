@@ -1,5 +1,5 @@
-ECXUCPT ;ALB/TJL-CPT INQUIRY FOR MYSTERY FEEDER KEYS ; 10/15/03 2:12pm
- ;;3.0;DSS EXTRACTS;**49**;July 1, 2003
+ECXUCPT ;ALB/TJL-CPT INQUIRY FOR MYSTERY FEEDER KEYS ;10/22/13  17:32
+ ;;3.0;DSS EXTRACTS;**49,123,148**;Dec 22, 1997;Build 3
  ;
 EN ; entry point
  N X,Y,DATE,ECRUN,QFLG
@@ -18,27 +18,27 @@ BEGIN ; display report description
  Q
  ;
 SELECT ; user inputs for CPT Code
- N OUT,DIC,X,Y,DIR,ECXARR,ECXERR,ECXIEN
+ N OUT,DIC,X,Y,DIR,CIEN,ECXARR,ECXIEN
  S DIC="^ICPT(",DIC(0)="AZEMQ" D ^DIC
  I Y<0 S QFLG=1 Q
  S ECXIEN=+Y
- D GETS^DIQ(81,ECXIEN,".01;2;3;50*","E","ECXARR","ECXERR")
- I $D(ECXERR) W !,"CPT Code Error." S QFLG=1 Q
+ S ECXARR=$$CPT^ICPTCOD(ECXIEN) I +ECXARR=-1 W !,"CPT Code Error." S QFLG=1 Q
+ S CIEN=$P(ECXARR,U,4) I CIEN S ECXARR(81.1)=$$GET1^DIQ(81.1,CIEN_",",.01)
+ S X=$$CPTD^ICPTCOD(ECXIEN,"ECXARR(81.01,")
  D PRINT
  S DIR(0)="E" W ! D ^DIR K DIR I 'Y S QFLG=1
  Q
  ;
 PRINT ; display results of inquiry
- N LN,DA,DESCDA
+ N LN,DESCDA
  S $P(LN,"-",80)=""
  W !!,"CPT Inquiry",?54,"Date: ",ECRUN,!,LN,!
- S DA=ECXIEN S DA=DA_","
- W !,"CPT Code: ",ECXARR(81,DA,.01,"E")
- W ?30,"Short Name: ",ECXARR(81,DA,2,"E")
- W !!,"Category: ",ECXARR(81,DA,3,"E")
+ W !,"CPT Code: ",$P(ECXARR,U,2)
+ W ?30,"Short Name: ",$P(ECXARR,U,3)
+ W !!,"Category: ",$G(ECXARR(81.1))
  W !!,"Description: "
- F LN=1:1 S DESCDA=LN_","_DA  Q:'$D(ECXARR(81.01,DESCDA,.01,"E"))  D
- .W ECXARR(81.01,DESCDA,.01,"E"),!
+ F DESCDA=1:1 Q:'$D(ECXARR(81.01,DESCDA))  D
+ .W ECXARR(81.01,DESCDA),!
  W !!!
  Q
  ;

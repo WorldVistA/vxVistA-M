@@ -1,5 +1,5 @@
 PSOPMP0 ;BIRM/MFR - Patient Medication Profile - Listmanager ;10/28/06
- ;;7.0;OUTPATIENT PHARMACY;**260,281,303,289**;DEC 1997;Build 107
+ ;;7.0;OUTPATIENT PHARMACY;**260,281,303,289,382,313**;DEC 1997;Build 29
  ;Reference to EN1^GMRADPT supported by IA #10099
  ;Reference to EN6^GMRVUTL supported by IA #1120
  ;Reference to ^PS(55 supported by DBIA 2228
@@ -31,8 +31,15 @@ HDR      ;Header
  S PNAME=VADM(1)
  S DOB=$S(+VADM(3):$P(VADM(3),"^",2)_" ("_$G(VADM(4))_")",1:"UNKNOWN")
  S SEX=$P(VADM(5),"^",2)
- S (WT,X)="",GMRVSTR="WT" D EN6^GMRVUTL I X'="" S WT=$J($P(X,"^",8)/2.2,6,2),WTDT=$$DAT^PSOPMP1($P(X,"^")\1,"/",1)
- S (HT,X)="",GMRVSTR="HT" D EN6^GMRVUTL I X'="" S HT=$J($P(X,"^",8)*2.54,6,2),HTDT=$$DAT^PSOPMP1($P(X,"^")\1,"/",1)
+ ;DSS/SMP - BEGIN MODS
+ N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
+ S (WT,X)="",GMRVSTR="WT" D EN6^GMRVUTL I X'="" D
+ .I VFD S WT=$J($$LB2KG^VFDXLF($P(X,"^",8),2),6),WTDT=$$DAT^PSOPMP1($P(X,"^")\1,"/",1) Q
+ .S WT=$J($P(X,"^",8)/2.2,6,2),WTDT=$$DAT^PSOPMP1($P(X,"^")\1,"/",1)
+ S (HT,X)="",GMRVSTR="HT" D EN6^GMRVUTL I X'="" D
+ .I VFD S HT=$J($$IN2CM^VFDXLF($P(X,"^",8),2),6),HTDT=$$DAT^PSOPMP1($P(X,"^")\1,"/",1)
+ .S HT=$J($P(X,"^",8)*2.54,6,2),HTDT=$$DAT^PSOPMP1($P(X,"^")\1,"/",1)
+ ;DSS/SMP - END MODS
  S LINE1=PNAME
  S LINE1=$$ALLERGY^PSOPMP1(LINE1,DFN)
  S LINE2="  PID: "_$P(VADM(2),"^",2),$E(LINE2,50)="HEIGHT(cm): "_$S(HT'="":HT_" ("_HTDT_")",1:"NOT AVAILABLE")
@@ -112,7 +119,7 @@ SETSORT(FIELD) ;Sets the data sorted by the FIELD specified
  . S PSOBADR=$O(^PSRX(RX,"L",9999),-1)
  . I PSOBADR'="" S PSOBADR=$G(^PSRX(RX,"L",PSOBADR,0)) I PSOBADR["(BAD ADDRESS)" S PSOBADR="B"
  . I PSOBADR'="B" S PSOBADR=""
- . S Z="",$P(Z,"^")=RX,$P(Z,"^",2)=RXNUM_$$COPAY^PSOPMP1(RX)_$$ECME^PSOBPSUT(RX),$P(Z,"^",3)=$E(DRNAME,1,30)
+ . S Z="",$P(Z,"^")=RX,$P(Z,"^",2)=RXNUM_$$COPAY^PSOPMP1(RX)_$$ECME^PSOBPSUT(RX)_$$TITRX^PSOUTL(RX),$P(Z,"^",3)=$E(DRNAME,1,30)
  . S $P(Z,"^",4)=QTY,$P(Z,"^",5)=$P(STATUS,"^",3)_$$CMOP^PSOPMP1(DRUG,RX)_PSOBADR,$P(Z,"^",6)=$P(ISSDT,"^",2)
  . S $P(Z,"^",7)=$P(LSTFD,"^",2),$P(Z,"^",8)=REFREM,$P(Z,"^",9)=DAYSUP
  . S SORT=$S(FIELD="RX":RXNUM_" ",FIELD="DR":DRNAME_RXNUM,FIELD="ID":+ISSDT_RXNUM_" ",FIELD="LF":+LSTFD_RXNUM_" ")
@@ -207,29 +214,31 @@ CV ;Change View
  Q
  ;
 SEL ;Process selection of one entry
- N PSOSEL,TYPE,XQORM,ORD,TITLE
- S PSOSEL=+$P($P(Y(1),"^",4),"=",2) I 'PSOSEL S VALMSG="Invalid selection!",VALMBCK="R" Q
- S TYPE=$O(^TMP("PSOPMP0",$J,PSOSEL,0)) I TYPE="" S VALMSG="Invalid selection!",VALMBCK="R" Q
- S ORD=$G(^TMP("PSOPMP0",$J,PSOSEL,TYPE))
- I 'ORD S VALMSG="Invalid selection!",VALMBCK="R" Q
- S TITLE=VALM("TITLE")
- ;
- ;Regular prescription
- I TYPE="RX" D  S VALMBCK="R" D REF
- . N PSOVDA,PSOSAVE,DA,PS
- . S (PSOVDA,DA)=ORD,PS="REJECTMP"
- . N LINE,TITLE,PSODFN D DP^PSORXVW
- ;
- ;Pending Order
- I TYPE="PEN" D  S VALMBCK="R" D REF
- . N PSOACTOV,OR0
- . S OR0=^PS(52.41,ORD,0),PSOACTOV=""
- . N LINE,TITLE D PENHDR^PSOPMP1(PSODFN),DSPL^PSOORFI1
- ;
- ;Pending Order
- I TYPE="NVA" D
- . N LINE,TITLE D EN^PSONVAVW(PSODFN,ORD)
- ;
+ N PSOSEL,TYPE,XQORM,ORD,TITLE,PSOLIS,XX
+ S PSOLIS=$P(XQORNOD(0),"=",2) I 'PSOLIS S VALMSG="Invalid selection!",VALMBCK="R" Q
+ F XX=1:1:$L(PSOLIS,",") Q:$P(PSOLIS,",",XX)']""  D
+ .S PSOSEL=+$P(PSOLIS,",",XX) I 'PSOSEL S VALMSG="Invalid selection!",VALMBCK="R" Q
+ .S TYPE=$O(^TMP("PSOPMP0",$J,PSOSEL,0)) I TYPE="" S VALMSG="Invalid selection!",VALMBCK="R" Q
+ .S ORD=$G(^TMP("PSOPMP0",$J,PSOSEL,TYPE))
+ .I 'ORD S VALMSG="Invalid selection!",VALMBCK="R" Q
+ .S TITLE=VALM("TITLE")
+ .;
+ .;Regular prescription
+ .I TYPE="RX" D  S VALMBCK="R" D REF
+ .. N PSOVDA,PSOSAVE,DA,PS
+ .. S (PSOVDA,DA)=ORD,PS="REJECTMP"
+ .. N LINE,TITLE,PSODFN D DP^PSORXVW
+ .;
+ .;Pending Order
+ .I TYPE="PEN" D  S VALMBCK="R" D REF
+ .. N PSOACTOV,OR0
+ .. S OR0=^PS(52.41,ORD,0),PSOACTOV=""
+ .. N LINE,TITLE D PENHDR^PSOPMP1(PSODFN),DSPL^PSOORFI1
+ .;
+ .;Pending Order
+ .I TYPE="NVA" D
+ .. N LINE,TITLE D EN^PSONVAVW(PSODFN,ORD)
+ .;
  S VALMBCK="R",VALM("TITLE")=TITLE
  Q
  ;

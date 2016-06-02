@@ -1,5 +1,6 @@
-MAGXIDXU ;WOIFO/JSL - MAG INDEX TERMS BUILD/UPDATE Utilities for Imaging Version 3.0
- ;;3.0;IMAGING;**61**;Feb 07, 2006
+MAGXIDXU ;WOIFO/JSL - MAG INDEX TERMS BUILD/UPDATE Utilities for Imaging Version 3.0; 06/29/2007 10:15
+ ;;3.0;IMAGING;**61,54**;03-July-2009;;Build 1424
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,14 +8,15 @@ MAGXIDXU ;WOIFO/JSL - MAG INDEX TERMS BUILD/UPDATE Utilities for Imaging Version
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
- ;; | a medical device.  As such, it may not be changed             |
- ;; | in any way.  Modifications to this software may result in an  |
- ;; | adulterated medical device under 21CFR820, the use of which   |
- ;; | is considered to be a violation of US Federal Statutes.       |
+ ;; | a medical device.  As such, it may not be changed in any way. |
+ ;; | Modifications to this software may result in an adulterated   |
+ ;; | medical device under 21CFR820, the use of which is considered |
+ ;; | to be a violation of US Federal Statutes.                     |
  ;; +---------------------------------------------------------------+
+ ;;
  Q
+ ;
 IDXUPDT ;API call - OPTION (MAG IMAGE INDEX TERMS UPDATE)
  N DATE,IDA,SUB,XP,EOF,IN,MAGMSG,INXMB,LINE,LN,NEWSN,START,TKID,X,Y,XMZ,XMER,DIR
  D GETENV^%ZOSV,KILL^XM
@@ -51,7 +53,7 @@ ERR ;error handler
  D @^%ZOSF("ERRTN")
  Q
 UPDATE ;called by IDXUPDT
- NEW LN,MSG,Y,Y1,SCODE,SAVMAG,X,X1,X2
+ NEW LN,MSG,Y,Y1,SCODE,SAVMAG,X
  S LN=0 F  S LN=$O(^TMP(SUB,$J,LN)) Q:'LN!$G(EOF)  S Y=$G(^(LN)) DO
  . I Y["Total Count:= " S EOF=1 U IO(0) W ! Q  ;EOF mark
  . I Y["INDEX TABLE GLOBAL"&(Y["MAG") D
@@ -67,7 +69,8 @@ UPDATE ;called by IDXUPDT
  . K ^MAG(IN) M ^MAG(IN)=^TMP(SUB,$J,0,IN) ;set value
  . S ^MAG(IN,"SERIAL#")=NEWSN
  . Q
- D NOW^%DTC S (Y,X1)=X,X2=7 D C^%DTC S ^XTMP("MAG INDEX TERMS BACKUP",0)=X_U_Y_U_SUB
+ S Y=$$NOW^XLFDT()\1,X=$$FMADD^XLFDT(Y,7)
+ S ^XTMP("MAG INDEX TERMS BACKUP",0)=X_U_Y_U_SUB
  Q
 CHKSTA ;verify current status w/ National ^TMP
  N IEN,STA,STO S IEN=0
@@ -121,7 +124,7 @@ INS(XP,DUZ,DATE,IDA) ;return msg
  S:$G(MAGDUZ) XMY(MAGDUZ)=""
  S XMSUB=$E(XMSUB,1,63)
  D SENDMSG^XMXAPI(XMID,XMSUB,"MAGMSG",.XMY,,.XMZ,)
- I $G(XMERR) M XMERR=^TMP("XMERR",$J) S $EC=",U13-Cannot send MailMan message,"
+ I $G(XMERR) M XMERR=^TMP("XMERR",$J) S $EC="" ;,U13-Cannot send MailMan message,"
  Q
 RESTORE ;API call - MAG INDXE TERM RESTORE
  N ANS,IN,TKID,DIR,Y
@@ -150,7 +153,7 @@ RECOVER ;Call by RESTORE
 MKBASE ;make last known base
  N IN,SUBJ,X,X0,X1,X2 S SUBJ="MAG INDEX TERMS UPDATE"
  F IN=2005.82,2005.83,2005.84,2005.85 M ^XTMP(SUBJ,0,"BASE",IN)=^MAG(IN)
- D NOW^%DTC S (X0,X1)=X,X2=180 D C^%DTC S ^XTMP(SUBJ,0)=X_U_X0_U_SUBJ
+ S X0=$$NOW^XLFDT()\1,X=$$FMADD^XLFDT(X0,180),^XTMP(SUBJ,0)=X_U_X0_U_SUBJ
  S ^XTMP(SUBJ,0,"BASE")=X0+17000000  ;yyyymmdd.hhmmss
  Q
 PRECHK() ;check to see if should overwrite old
@@ -196,3 +199,4 @@ PRECHK() ;check to see if should overwrite old
  . D SENDMSG^XMXAPI(XMID,XMSUB,"MAGMSG",.XMY,,.XMZ,)
  . Q
  Q $S(DIFF:0,1:1)
+ ;

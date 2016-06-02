@@ -1,5 +1,5 @@
-LRWLST1 ;DALOI/STAFF - ACCESSION SETUP ;06/12/12  14:16
- ;;5.2;LAB SERVICE;**48,65,121,153,261,286,331,379,415,350**;Sep 27, 1994;Build 230
+LRWLST1 ;DALOI/STAFF - ACCESSION SETUP ;11/20/12  16:10
+ ;;5.2;LAB SERVICE;**48,65,121,153,261,286,331,379,415,350,427**;Sep 27, 1994;Build 18
  ;
  S LRWLC=0
  F  S LRWLC=$O(LRTSTS(LRWLC)) Q:LRWLC<1  S LRAD=DT D SPLIT
@@ -82,8 +82,18 @@ STWLN ; Set accession number
  ;
  S LRFDA(1,68.02,LR6802,6.7)=DUZ
  S LRFDA(1,68.02,LR6802,15)=LRACC
- S LRFDA(1,68.02,LR6802,26)=DUZ(2)
+ ;DSS/FHS - BEGIN MOD - Use LRDUZ(2) as institution pointer - DUZ(2) as default
+ ;S LRFDA(1,68.02,LR6802,26)=DUZ(2)
+ S LRFDA(1,68.02,LR6802,26)=$S($G(LRDUZ(2)):LRDUZ(2),1:DUZ(2))
+ ;DSS/FHS - END MOD 1/29/2014)
  S LRFDA(1,68.02,LR6802,92)=LRCAPLOC
+ ;DSS/FHS - BEGIN MOD to store Collecting Person
+ ;VFDCDUZ is set in LROE
+ I $G(^%ZOSF("ZVX"))["VX",$G(VFDCDUZ) D
+ . S LRFDA(1,68.02,LR6802,21602)=+$G(VFDCDUZ) D
+ . . Q:'$G(^LRO(69,+$G(LRODT),1,+$G(LRSN),0))
+ . . S $P(^LRO(69,+$G(LRODT),1,+$G(LRSN),"VFD"),U,2)=VFDCDUZ
+ ;DSS/FHS - END MOD
  D FILE^DIE("","LRFDA(1)","LRDIE(1)")
  I $D(LRDIE(1)) D MAILALRT^LRWLST12("STWLN~LRWLST1")
  ;
@@ -217,7 +227,12 @@ ORIGAAOK() ; function to determine if the accession number under consideration
  . I $D(^LRO(68,LRAAX,1,LRAD,1,LRAN)) S LRAAOK=0 Q
  . S LRAA0=^LRO(68,LRAAX,0),LRSSX=$P(LRAA0,"^",2)
  . I "CYEMSP"[LRSSX D
- . . S LRABVX=$P(LRAAX,"^",11)
+ . . S LRABVX=$P(LRAA0,"^",11)
+ . . ;DSS/RAF - BEGIN MOD - 2013/5/3 stop subscript error by resetting LRABVX variable and get understanding for "ASPA" xref construct
+ . . I $G(^%ZOSF("ZVX"))["VX",LRABVX="" S LRABVX=LRSSX
+ . . ; with LRABVX=0 xref looks like this: ^LR("ASPA",313,"SP",1,4,6869489.909)="""
+ . . ; with LRABVX=LRSSX xref looks like this: ^LR("ASPA",313,"SP",2,4,6869489.8987)=""
+ . . ;DSS/RAF - END MOD
  . . I $D(^LR("A"_LRSSX_"A",$E(LRAD,1,3),LRABVX,LRAN)) S LRAAOK=0
  ;
  Q LRAAOK

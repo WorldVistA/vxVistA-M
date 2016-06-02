@@ -1,5 +1,5 @@
 VSITDEF ;ISL/dee - Defaulting Logic for the Visit ;4/17/97
- ;;1.0;PCE PATIENT CARE ENCOUNTER;**76,111,130,164,168**;Aug 12, 1996;Build 2
+ ;;1.0;PCE PATIENT CARE ENCOUNTER;**76,111,130,164,168**;Aug 12, 1996;Build 1
  ; Patch PX*1*76 changes the 2nd line of all VSIT* routines to reflect
  ; the incorporation of the module into PCE.  For historical reference,
  ; the old (VISIT TRACKING) 2nd line is included below to reference VSIT
@@ -33,10 +33,6 @@ REQUIRED() ;Check the required variables
  . S VSIT("LOC")=$$ERRCHK^VSITCK("LOC",VSIT("LOC"))
  I $L(VSIT("LOC"),"^")>1 D ERR^VSITPUT($P(VSIT("LOC"),"^",2,99)) S QUIT=1
  ; - TYP
- ;DSS/CFS - BEGIN MODS - Deveteranize
- I $G(^%ZOSF("ZVX"))["VX",VSIT("TYP")']"",VSIT("INS")]"" D
- .S VSIT("TYP")=$P(^DIC(4,VSIT("INS"),99),U,5)
- ;DSS/CFS - END MODS
  I VSIT("TYP")']"",VSIT("INS")]"" S VSIT("TYP")="V"
  I VSIT("TYP")']"",VSIT("SVC")="E" S VSIT("TYP")="O"
  S:VSIT("TYP")']"" VSIT("TYP")=$G(DUZ("AG"))

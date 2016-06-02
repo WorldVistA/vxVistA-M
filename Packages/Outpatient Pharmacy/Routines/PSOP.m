@@ -1,5 +1,5 @@
 PSOP ;BIR/SAB - Medication profile long or short ;02/25/94
- ;;7.0;OUTPATIENT PHARMACY;**2,15,98,132,148,326**;DEC 1997;Build 11
+ ;;7.0;OUTPATIENT PHARMACY;**2,15,98,132,148,326,313**;DEC 1997;Build 2
  ;External reference to PS(55 supported by DBIA 2228
  ;External reference to PS(59.7 supported by DBIA 694
  ;External reference to PSDRUG supported by DBIA 221
@@ -33,10 +33,13 @@ O S RX0=^PSRX(J,0),RX2=$G(^(2)),RX3=$G(^(3)),$P(RX0,"^",15)=$G(^("STA")),DRX="NO
  I $D(^PSDRUG(+$P(RX0,"^",6),0)) S DRX=$P(^(0),"^")
  I $Y+10>IOSL,IOSL["C-" D DIR^PSOP1 W @IOF Q:$D(PQT)
  I $Y+10>IOSL,$E(IOST)'="C" S PAGE=PAGE+1 D
- .W @IOF,!,$P(^DPT(DFN,0),"^"),?70,"Page: "_PAGE
+ .;DSS/SMP - BEGIN MOD
+ .I $$VX D VFD(DFN,PAGE,,1) I 1
+ .E  W @IOF,!,$P(^DPT(DFN,0),"^"),?70,"Page: "_PAGE
+ .;DSS/SMP - END MOD
  .W !?(80-$L("Medication Profile Sorted by "_HDR))/2,"Medication Profile Sorted by "_HDR W:$G(FR)]"" !?(80-$L(FR_" to "_TO))/2,FR_" to "_TO
  .W !,PSOPLINE
- W !!,"Rx #: "_CP_$P(RX0,"^"),$$ECME^PSOBPSUT(J),?32,"Drug: ",$G(DRX)
+ W !!,"Rx #: "_CP_$P(RX0,"^"),$$ECME^PSOBPSUT(J),$$TITRX^PSOUTL(J),?32,"Drug: ",$G(DRX)
  S PSOBRSIG=$P($G(^PSRX(J,"SIG")),"^",2) K FSIG,BSIG D
  .I PSOBRSIG D FSIG^PSOUTLA("R",J,70) Q
  .D EN2^PSOUTLA1(J,70) F IIII=0:0 S IIII=$O(BSIG(IIII)) Q:'IIII  S FSIG(IIII)=BSIG(IIII)
@@ -44,7 +47,10 @@ O S RX0=^PSRX(J,0),RX2=$G(^(2)),RX3=$G(^(3)),$P(RX0,"^",15)=$G(^("STA")),DRX="NO
  W !?2,"SIG: "_$G(FSIG(1)) D:$O(FSIG(1))
  .F IIII=1:0 S IIII=$O(FSIG(IIII)) Q:'IIII!($G(PQT))  W !?7,$G(FSIG(IIII))  D:($Y+5>IOSL)&($E(IOST)["C") DIR^PSOP1 Q:$G(PQT)  D:$Y+5>IOSL
  ..S PAGE=PAGE+1
- ..W @IOF,!,$P(^DPT(DFN,0),"^"),?70,"Page: "_PAGE
+ ..;DSS/SMP - BEGIN MOD
+ ..I $$VX D VFD(DFN,PAGE,,1) I 1
+ ..E  W @IOF,!,$P(^DPT(DFN,0),"^"),?70,"Page: "_PAGE
+ ..;DSS/SMP - END MOD
  ..W !?(80-$L("Medication Profile Sorted by "_HDR))/2,"Medication Profile Sorted by "_HDR W:$G(FR)]"" !?(80-$L(FR_" to "_TO))/2,FR_" to "_TO
  ..W !,PSOPLINE
  Q:$G(PQT)
@@ -59,14 +65,21 @@ O S RX0=^PSRX(J,0),RX2=$G(^(2)),RX3=$G(^(3)),$P(RX0,"^",15)=$G(^("STA")),DRX="NO
  S CT=0,REF=$P(RX0,"^",9) F K=0:0 S K=$O(^PSRX(J,1,K)) Q:'K  S RX1=^PSRX(J,1,K,0) D
  .I $Y+5>IOSL,IOSL["C-" D DIR^PSOP1 W @IOF Q:$D(PQT)
  .I $Y+5>IOSL,$E(IOST)'="C" S PAGE=PAGE+1 D
- ..W @IOF,!,$P(^DPT(DFN,0),"^"),?70,"Page: "_PAGE
+ ..;DSS/SMP - BEGIN MOD
+ ..I $$VX D VFD(DFN,PAGE,,1) I 1
+ ..E  W @IOF,!,$P(^DPT(DFN,0),"^"),?70,"Page: "_PAGE
+ ..;DSS/SMP - END MOD
  ..W !?(80-$L("Medication Profile Sorted by "_HDR))/2,"Medication Profile Sorted by "_HDR W:$G(FR)]"" !?(80-$L(FR_" to "_TO))/2,FR_" to "_TO
  ..W !,PSOPLINE
  .W !?2,"Refilled: "_$E($P(RX1,"^"),4,5)_"-"_$E($P(RX1,"^"),6,7)_"-"_$E($P(RX1,"^"),2,3)_" ("_$P(RX1,"^",2)_")"_$S($P(RX1,"^",16):"(R)",1:"")
  .W ?30,"Released: "_$S($P(RX1,"^",18):$E($P(RX1,"^",18),4,5)_"-"_$E($P(RX1,"^",18),6,7)_"-"_$E($P(RX1,"^",18),2,3),1:"")
  .S REF=REF-1
  I $Y+2>IOSL,IOSL["C-" D DIR^PSOP1 W @IOF Q:$D(PQT)
- I $Y+2>IOSL,$E(IOST)'="C" S PAGE=PAGE+1 W @IOF,!,$P(^DPT(DFN,0),"^"),?70,"Page: "_PAGE
+ ;DSS/SMP - BEGIN MOD
+ I $Y+2>IOSL,$E(IOST)'="C" S PAGE=PAGE+1 D
+ .I $$VX D VFD(DFN,PAGE,,1) I 1
+ .E  W @IOF,!,$P(^DPT(DFN,0),"^"),?70,"Page: "_PAGE
+ ;DSS/SMP - END MOD
  I $O(^PSRX(J,"P",0)) W !?2,"Partials: " F K=0:0 S K=$O(^PSRX(J,"P",K)) Q:'K  W $E(^(K,0),4,5),"-",$E(^(0),6,7),"-",$E(^(0),2,3)," (",$P(^(0),"^",2),") QTY:",$P(^(0),"^",4)_$S($P(^(0),"^",16):" (R)",1:"")_", "
  W:$P(RX3,"^",7)]"" !?2,"Remarks: ",$P(RX3,"^",7) D STAT^PSOFUNC
  S PSDIV=$S($D(^PS(59,+$P(RX2,"^",9),0)):$P(^(0),"^")_" ("_$P(^(0),"^",6)_")",1:"Unknown")
@@ -74,4 +87,14 @@ O S RX0=^PSRX(J,0),RX2=$G(^(2)),RX3=$G(^(3)),$P(RX0,"^",15)=$G(^("STA")),DRX="NO
  Q
 LOOP F I=0:0 S I=$O(^PS(55,DFN,"P",I)) Q:'I  S J=+^(I,0) D  I $G(PSOPATOK),$D(^PSRX(J,0)),$P($G(^PSRX(J,"STA")),"^")'=13 S PRLBL=PSRT_"^PSOP2" D @PRLBL
  .S PSOPATOK=1 I $P($G(^PSRX(+$G(J),0)),"^",2),DFN'=$P($G(^(0)),"^",2) K ^PS(55,DFN,"P",I,0) S:$P($G(^PS(55,DFN,"P",0)),"^",4) $P(^PS(55,DFN,"P",0),"^",4)=$P($G(^(0)),"^",4)-1 S PSOPATOK=0
+ Q
+ ;
+ ;DSS/SMP - BEGIN MOD
+VX() ; vxVistA Check
+ Q $G(^%ZOSF("ZVX"))["VX"
+ ;
+VFD(DFN,PAGE,PFLAG,IOFLAG) ; vxVistA Header
+ N MRN S MRN=$$ID^VFDDFN(DFN,,"MRN",,1)
+ W:$G(IOFLAG) @IOF W ! W:$G(PFLAG) "Patient: "
+ W $P(^DPT(DFN,0),"^")_" ("_MRN_")",?70,"Page: "_PAGE
  Q

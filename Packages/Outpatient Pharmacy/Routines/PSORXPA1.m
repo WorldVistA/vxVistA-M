@@ -1,5 +1,5 @@
 PSORXPA1 ;BIR/SAB - listman partial prescriptions ;07/14/93
- ;;7.0;OUTPATIENT PHARMACY;**11,27,56,77,130,152,181,174,287**;DEC 1997;Build 77
+ ;;7.0;OUTPATIENT PHARMACY;**11,27,56,77,130,152,181,174,287,385**;DEC 1997;Build 18
  ;External references L,UL, PSOL, and PSOUL^PSSLOCK supported by DBIA 2789
  ;External reference to ^PSDRUG supported by DBIA 221
  ;External reference to ^DD(52 supported by DBIA 999
@@ -13,8 +13,27 @@ PSORXPA1 ;BIR/SAB - listman partial prescriptions ;07/14/93
  I '$G(RXPR($P(PSOLST(ORN),"^",2))) S RX=$P(PSOLST(ORN),"^",2) D VALID^PSORXRP1 I $G(QFLG) S VALMBCK="",VALMSG="A New Label has been requested already!" K QFLG,RX D ULK Q
  D FULL^VALM1 I '$D(PSOPAR) D ^PSOLSET D:'$D(PSOPAR) ULK G:'$D(PSOPAR) KL
  S DA=$P(PSOLST(ORN),"^",2),RX0=^PSRX(DA,0),J=DA,RX2=$G(^(2)),R3=$G(^(3)) S:'$G(BBFLG) BBRX(1)=""
- N PSORF,PSOTRIC D TRIC^PSORXL1(DA) I PSOTRIC&($$STATUS^PSOBPSUT(DA,PSORF)'["PAYABLE") D  Q
- . S VALMBCK="",VALMSG="Partial cannot be filled on Tricare non-payable Rx."
+ ; BNT PSO*7*385
+ N PSORF,PSOTRIC,PSOTCQ
+ S PSORF=$$LSTRFL^PSOBPSU1(DA),PSOTRIC=$$TRIC^PSOREJP1(DA,PSORF),PSOTCQ=0
+ I PSOTRIC D  Q:PSOTCQ
+ . ; Check for PSO TRICARE/CHAMPVA security key
+ . I '$D(^XUSEC("PSO TRICARE/CHAMPVA",DUZ)) D  Q
+ . . S PSOTCQ=1,VALMBCK="R",VALMSG="Action Requires <PSO TRICARE/CHAMPVA> security key"
+ . ; Is this RX non-billable?
+ . I $$ECME^PSOBPSUT(DA)="" D  Q:PSOTCQ
+ . . N X,Y,DIR,DTOUT,DUOUT,DIRUT,DIROUT
+ . . S DIR(0)="Y"
+ . . S DIR("A",1)="This partial fill is for a "_$$ELIGDISP^PSOREJP1(DA,PSORF)_" non-billable Rx and will not be reimbursed."
+ . . S DIR("A")="Do you wish to continue"
+ . . D ^DIR I Y'=1 S PSOTCQ=1,VALMBCK="R"
+ . ; Is this RX rejected?
+ . I $$STATUS^PSOBPSUT(DA,PSORF)="E REJECTED" D  Q:PSOTCQ
+ . . N X,Y,DIR,DTOUT,DUOUT,DIRUT,DIROUT
+ . . S DIR(0)="Y"
+ . . S DIR("A",1)="This partial fill is for a "_$$ELIGDISP^PSOREJP1(DA,PSORF)_" rejected Rx and will not be reimbursed."
+ . . S DIR("A")="Do you wish to continue"
+ . . D ^DIR I Y'=1 S PSOTCQ=1,VALMBCK="R"
  I +$P($G(^PSRX(DA,2)),"^",6)<DT D
  .S:$P($G(^PSRX(DA,"STA")),"^")<12 $P(^PSRX(DA,"STA"),"^")=11
  .S COMM="Medication Expired on "_$E($P(^PSRX(DA,2),"^",6),4,5)_"/"_$E($P(^(2),"^",6),6,7)_"/"_$E($P(^(2),"^",6),2,3)
@@ -36,7 +55,13 @@ CLC S PSOCLC=DUZ,PHYS=$P(^PSRX(DA,0),"^",4),DRG=$P(^(0),"^",6)
  K Z1,PRMK S PM=1,RXN=DA,RXF=6,DIE("NO^")="BACKOUTOK",DIE=52
  ;DR="[PSO PARTIAL]"
  S DR="K PM,PQ;60;Q;S:$O(Y(1))]""""!($G(PM)) Y=""@1"";35;@1;K PM;"
- S DR(2,52.2)=".01;S Z1=D1;.02;S:X=""M""!('$P($G(PSOPAR),U,12)) PM=1;.04;S:X=U PQ=1;.041R;S:X=U PQ=1;.05;.07////^S X=DUZ;6////^S X=PHYS;Q;.08///^S X=""NOW"";S PDT=X;.09////^S X=PSOSITE;.03;S:X=U PQ=1;S PRMK=X"
+ ;DSS/SMH BEGIN MODS: Capture NDC
+ N NDC
+ I $T(^VFDPSNDC)]"",$$OPON^VFDPSNDC() D
+ . S DR(2,52.2)=".01;S Z1=D1;.02;S:X=""M""!('$P($G(PSOPAR),U,12)) PM=1;1////^S X=$$NDC^PSORXPA1(.NDC);S:X=U PQ=1;21600.01////^S X=$G(NDC(""SCAN""));.04;S:X=U PQ=1;.041R;S:X=U PQ=1;.05;"
+ . S DR(2,52.2,1)=".07////^S X=DUZ;6////^S X=PHYS;Q;.08///^S X=""NOW"";S PDT=X;.09////^S X=PSOSITE;.03;S:X=U PQ=1;S PRMK=X"
+ E  S DR(2,52.2)=".01;S Z1=D1;.02;S:X=""M""!('$P($G(PSOPAR),U,12)) PM=1;.04;S:X=U PQ=1;.041R;S:X=U PQ=1;.05;.07////^S X=DUZ;6////^S X=PHYS;Q;.08///^S X=""NOW"";S PDT=X;.09////^S X=PSOSITE;.03;S:X=U PQ=1;S PRMK=X"
+ ;DSS/SMH END MODS
  D ^DIE
  I $D(RXPR(DA)),'$D(^PSRX(DA,"P",$G(RXPR(DA)))) D RMP^PSOCAN3
  G:'$G(Z1) CLCX
@@ -61,6 +86,11 @@ ACT ;adds activity info for partial rx
  S RXF=0 F I=0:0 S I=$O(^PSRX(RXN,1,I)) Q:'I  S RXF=I S:I>5 RXF=I+1
  S DA=0 F FDA=0:0 S FDA=$O(^PSRX(RXN,"A",FDA)) Q:'FDA  S DA=FDA
  S DA=DA+1,^PSRX(RXN,"A",0)="^52.3DA^"_DA_"^"_DA,^PSRX(RXN,"A",DA,0)=DT_"^"_"P"_"^"_DUZ_"^"_RXF_"^"_PRMK
+ ; BNT PSO*7*385 Add audit log entry for TRICARE or CHAMPVA RX
+ N RXJST
+ I PSOTRIC D
+ . S RXJST=$S(PSOTRIC=1:"TRICARE",PSOTRIC=2:"CHAMPVA",1:"")_" Partial Fill"
+ . D AUDIT^PSOTRI(RXN,RXF,,RXJST,"P",$S(PSOTRIC=1:"T",1:"C"))
 EX K RXF,I,FDA S DA=RXN
  Q
 ULK ;
@@ -68,3 +98,17 @@ ULK ;
  D PSOUL^PSSLOCK($P(PSOLST(ORN),"^",2))
  K PSOMSG,PSOPLCK,PSORPDFN
  Q
+ ;
+ ; DSS/SMH BEGIN MODS: Capture NDC
+NDC(NDC) ; [Internal; Callback from Fileman; Ask for NDC]
+ ; ZEXCEPT: DRG - Set in CLC
+ ; ZEXCEPT: X,Y,D0,D1 - Set in Fileman
+ ; D0 = RxIEN
+ ; D1 = Partial IEN
+ S NDC=$P(^PSRX(D0,"P",D1,0),U,12)  ; NDC Partial if it already exists
+ I NDC="" S NDC=$P(^PSRX(D0,2),U,7) ; NDC Main
+ D LOOPNDC^VFDPSNDC(DRG,.NDC)       ; Ask; supply default
+ I NDC="^" S X="^" QUIT X
+ E  S X=NDC
+ QUIT X
+ ; DSS/SMH END MODS

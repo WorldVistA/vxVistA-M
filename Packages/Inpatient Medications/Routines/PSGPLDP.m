@@ -1,5 +1,5 @@
 PSGPLDP ;BIR/CML3-ENTER AND FILE UNITS DISPENSED ;15 JAN 97 / 11:13 AM
- ;;5.0; INPATIENT MEDICATIONS ;;16 DEC 97
+ ;;5.0; INPATIENT MEDICATIONS ;;16 DEC 97;Build 11
  ;
  D ENCV^PSGSETU Q:$D(XQUIT)  S PSGPLGF="D",PRN=""
 CHK ;
@@ -19,7 +19,13 @@ RUN ; choose pick list and go through it
 RUN1 ;
  I '$$LOCK^PSGPLUTL(PSGPLG,"PSGPL")  W $C(7),!!,"Another terminal is acccessing this pick list." Q
  I $O(^PS(53.5,PSGPLG,0))="" D AF
- I $O(^PS(53.5,PSGPLG,0))]"" D ^PSGPLDP0
+ I $O(^PS(53.5,PSGPLG,0))]"" D
+ . ; DSS/SMH - BEGIN MODS ; New Pick List if par is on (orig in Else)
+ . I $$GET^XPAR("ALL","VFD PSJ PL ENTER UNITS PROGRAM")="N" D  ; NDC Capture Pick List ; Stack $TEST
+ . . D ^VFDPSJPL  ;  duck hunting list
+ . . ; D PLNDC^VFDPSJND ; old
+ . E  D ^PSGPLDP0  ; Original pick list.
+ . ; DSS/SMH - END MODS
  D UNLOCK^PSGPLUTL(PSGPLG,"PSGPL") Q
  ;
 AF ;

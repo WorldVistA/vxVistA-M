@@ -1,5 +1,5 @@
 GMVSAS0 ;HIOFO/RM,YH,FT-CALCULATE ABNORMAL V/S ;11/8/01  14:36
- ;;5.0;GEN. MED. REC. - VITALS;;Oct 31, 2002;Build 153
+ ;;5.0;GEN. MED. REC. - VITALS;;Oct 31, 2002;Build 164
  ;
  ; This routine uses the following IAs:
  ; <None>

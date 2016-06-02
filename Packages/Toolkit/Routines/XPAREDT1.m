@@ -1,5 +1,5 @@
 XPAREDT1 ; SLC/KCM - Supporting Calls - Entities; [3/31/03 7:19am] ;9/12/07  16:19
- ;;7.3;TOOLKIT;**26,109**;Apr 25, 1995;Build 7
+ ;;7.3;TOOLKIT;**26,109**;Apr 25, 1995;Build 1
  ;
 BLDLST ; ...continued from BLDLST^XPAREDIT(LST,PAR)
  ; Build list of entities allowed for this parameter
@@ -11,12 +11,14 @@ BLDLST ; ...continued from BLDLST^XPAREDIT(LST,PAR)
  N IEN,SEQ,FN,X K LST ; make sure LST is empty initially
  S SEQ=0,LST=0
  F  S SEQ=$O(^XTV(8989.51,+PAR,30,"B",SEQ)) Q:'SEQ  S IEN=$O(^(SEQ,0)) D
- . ;DSS/SGM/RAC - BEGIN MODS - comment-out security check for "@"
- . ; IA# 10076 allows for read of XUSEC security key global, Orginal code in else
+ . ;DSS/SGM - BEGIN MODS - vxVistA allows another security
+ . ; IA# 10076 - Read of ^XUSEC(), orig VA code now starts with E  I FN
  . S FN=$P(^XTV(8989.51,+PAR,30,IEN,0),"^",2)
- . I '$D(^%ZOSF("ZVX")) I FN=9.4,(DUZ(0)'["@") Q
- . E  I $$VX^VFDI0000["VX",FN=9.4,'$D(^XUSEC("VFD XPAR PACKAGE EDIT",DUZ)) Q
- . ;DSS/SGM/RAC - END MODS
+ . I $G(^%ZOSF("ZVX"))["VX" D  Q:'$D(FN)
+ . . Q:FN'=9.4  Q:DUZ(0)["@"  Q:$D(^XUSEC("VFD XPAR PACKAGE EDIT",DUZ))
+ . . K FN Q
+ . E  I FN=9.4,(DUZ(0)'["@") Q
+ . ;DSS/SGM - END MODS
  . S X=^XTV(8989.518,FN,0),X=FN_U_$P(X,U,3)_U_U_$P(X,U,2)
  . S LST=LST+1,LST(SEQ)=X
  . S LST("M",$$UPPER($P(X,U,2)))=SEQ

@@ -1,5 +1,5 @@
-IBCECSA6 ;ALB/CXW - VIEW EOB SCREEN ;01-OCT-1999
- ;;2.0;INTEGRATED BILLING;**137,135,155,417**;21-MAR-1994;Build 6
+IBCECSA6 ;ALB/CXW/PJH - VIEW EOB SCREEN ;01-OCT-1999
+ ;;2.0;INTEGRATED BILLING;**137,135,155,417,431,451,488**;21-MAR-1994;Build 184
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
 BLD ;build EOB data display
@@ -93,6 +93,18 @@ GEN ;
  ;
  D INSINF^IBCECSA7(+IBREC,CNT,IBCNT)
  ;
+ ;Additional fields for HIPAA 5010
+ I IBSRC D
+ .N IBOSN,IBOSN1,IBREC50,IBREC51
+ .S IBREC50=$G(^IBM(361.1,IBCNT,50)),IBREC51=$G(^IBM(361.1,IBCNT,51))
+ .S IB=$$SETSTR^VALM1("Claim Rec'd Date     : "_$$DAT1^IBOUTL($P(IBREC50,U),1),"",2,39)
+ .D SET(IBSRC,IB,CNT,IBCNT)
+ .S IBOSN=$E($P(IBREC51,U),1,56),IBOSN1=$E($P(IBREC51,U),57,112)
+ .S IB=$$SETSTR^VALM1("Other Subscriber Name: "_IBOSN,"",2,79)
+ .D SET(IBSRC,IB,CNT,IBCNT) Q:IBOSN1=""
+ .S IB=$$SETSTR^VALM1("                       "_IBOSN1,"",2,79)
+ .D SET(IBSRC,IB,CNT,IBCNT)
+ ;
  I $S($G(IBFULL):1,1:$P($G(^IBM(361.1,IBCNT,6)),U)'=""!($P($G(^IBM(361.1,IBCNT,6)),U,2)'="")) D
  . S IB=$$SETSTR^VALM1("New Pat. Nm.: "_$P($G(^IBM(361.1,IBCNT,6)),U),"",2,39)
  . S IB=$$SETSTR^VALM1("New Pat. Id  : "_$P($G(^IBM(361.1,IBCNT,6)),U,2),IB,41,38)
@@ -108,16 +120,48 @@ PAY ;
  I 'IBSRC D
  . D CNTRL^VALM10(VALMCNT,1,18,IORVON,IORVOFF)
  . S ^TMP("IBCECSD",$J,"X",2)=VALMCNT
- S IB=$$SETSTR^VALM1("Payer Name   : "_$P($G(^DIC(36,+$P(IBREC,U,2),0)),U),"",2,39)
- S IB=$$SETSTR^VALM1("Payer Id    : "_$P(IBREC,U,3),IB,41,38)
+ ; KL - HIPAA 5010 - moved the write of the Payer ID on the next line down from the payer name to accommodate
+ ; the increased length of the PAYER NAME from 35 to 60 characters.  modified length parameter to $$SETSTR function for
+ ; Payer ID and ICN to accommodate increased length of additional 20 characters. 
+ S IB=$$SETSTR^VALM1("Payer Name   : "_$P($G(^DIC(36,+$P(IBREC,U,2),0)),U),"",2,60)
  D SET(IBSRC,IB,CNT,IBCNT)
- S IB=$$SETSTR^VALM1("ICN          : "_$P(IBREC,U,14),"",2,39)
+ S IB=$$SETSTR^VALM1("Payer Id     : "_$P(IBREC,U,3),IB,2,38)
  D SET(IBSRC,IB,CNT,IBCNT)
- I $P(IBREC,U,9)'=""!($P(IBREC,U,8)'="") D
+ S IB=$$SETSTR^VALM1("ICN          : "_$P(IBREC,U,14),"",2,60)
+ D SET(IBSRC,IB,CNT,IBCNT)
+ ;Additional fields for HIPA 5010
+ N I,IBREC25,IBCON,IBCONTXT,IBCTYP,IBPAYNAM,IBWEB3,IBWEB
+ ; Display PAYER CONTACT NAME, file #361.1, or CONTACT NAME, file #344; .4, (whichever is available)
+ S IBREC25=$G(^IBM(361.1,IBCNT,25))
+ S IBPAYNAM=$P(IBREC25,U)
+ I IBPAYNAM="",+$G(RCSCR)>0 S IBPAYNAM=$P($G(^RCY(344.4,RCSCR,3)),U)
+ I IBPAYNAM'="" D
+ .S IB=$$SETSTR^VALM1("Payer Contact: "_IBPAYNAM,IB,2,60)
+ .D SET(IBSRC,IB,CNT,IBCNT)
+ I $TR($P(IBREC25,U,2,7),U,"")'="" D
+ .F I=2,4,6 D
+ ..S IBCON=$P(IBREC25,U,I),IBCTYP=$P(IBREC25,U,I+1) Q:IBCON=""
+ ..S IBCONTXT=$S(IBCTYP="TE":"Contact Phone  : ",IBCTYP="FX":"Contact Fax    : ",IBCTYP="EM":"Contact e-Mail : ",1:"Invalid type :")
+ ..S IB=$$SETSTR^VALM1(IBCONTXT_IBCON,"",2,50)
+ ..D SET(IBSRC,IB,CNT,IBCNT)
+ I $G(RCSCR)'="" D
+ .S IBWEB=$P($G(^RCY(344.4,RCSCR,5)),U) Q:IBWEB=""
+ .S IB=$$SETSTR^VALM1("Payer Web Site : "_$E(IBWEB,1,60),"",2,78)
+ .D SET(IBSRC,IB,CNT,IBCNT) Q:$L(IBWEB)<61
+ .S IB=$$SETSTR^VALM1($E(IBWEB,61,115),"",19,78)
+ .D SET(IBSRC,IB,CNT,IBCNT)
+ ;Payer Policy References
+ D PPR
+ N IBREC51
+ S IBREC51=$G(^IBM(361.1,IBCNT,51))
+ I $P(IBREC,U,9)'=""!($P(IBREC51,U,2)'="") D
  . S IB=$$SETSTR^VALM1("Cross Ovr ID : "_$P(IBREC,U,9),"",2,39)
- . S IB=$$SETSTR^VALM1("Cross Ovr Nm: "_$P(IBREC,U,8),IB,41,38)
+ . D SET(IBSRC,IB,CNT,IBCNT)
+ . S IB=$$SETSTR^VALM1("Cross Ovr Nm: "_$P(IBREC51,U,2),"",2,76)
  . D SET(IBSRC,IB,CNT,IBCNT)
  D:IBSRC SET(IBSRC,"",CNT,IBCNT)
+ ;Audit Details
+ D AUDIT
  Q
  ;
 CLVL ;
@@ -153,7 +197,7 @@ MOUT ;
  N IBREC1,IBRL
  S IBREC1=$G(^IBM(361.1,IBCNT,3)),IBSRC=$G(IBSRC)
  I 'IBSRC,$$INPAT^IBCEF(+IBREC),$TR(IBREC1,"0^")="" Q
- I IBREC1="" D:'$D(^IBM(361.1,IBCNT,4)) SET(IBSRC,"  NONE",CNT,IBCNT) D:'IBSRC SET(IBSRC,"",CNT,IBCNT),REMARK^IBCECSA5 Q
+ I IBREC1="" D:'$D(^IBM(361.1,IBCNT,4)) SET(IBSRC," NONE",CNT,IBCNT) D:'IBSRC SET(IBSRC,"",CNT,IBCNT),REMARK^IBCECSA5 Q
  D SET(IBSRC," OUTPATIENT:",CNT,IBCNT)
  S IBRL=""
  I $S(IBFULL:1,1:$P(IBREC1,U)) S IB=$$SETSTR^VALM1("Reimburse Rate    : "_$$P10($P(IBREC1,U)),"",$S('IBRL:4,1:40),$S('IBRL:41,1:38)),IBRL=$S(IBRL:0,1:1)
@@ -168,7 +212,7 @@ MOUT ;
  Q
  ;
 CLVLA ;
- N IBREC,IBFLG,GR,RSN,Z
+ N IBREC,IBFLG,GR,RSN,Z,I
  S IB=$$SETSTR^VALM1("CLAIM LEVEL ADJUSTMENTS:","",1,50),IBSRC=$G(IBSRC)
  D SET(IBSRC,IB,CNT,IBCNT)
  I 'IBSRC D
@@ -187,8 +231,8 @@ CLVLA ;
  .. S IB=$$SETSTR^VALM1("Amount: "_$$A10($P(IBREC,U,2)),"",3,40)
  .. S IB=$$SETSTR^VALM1("Quantity: "_$P(IBREC,U,3),IB,41,38)
  .. D SET(IBSRC,IB,CNT,IBCNT)
+ ;;;D:IBSRC SET(IBSRC,"",CNT,IBCNT)   ;IB*2.0*488 (vd) REMOVED EXTRA BLANK LINE.
  I 'IBFLG D SET(IBSRC," NONE",CNT,IBCNT)
- D:IBSRC SET(IBSRC,"",CNT,IBCNT)
  Q
  ;
 A10(X) ; returns a dollar amount right justified to 10 characters
@@ -198,3 +242,76 @@ P10(X) ; returns a % right just 10
  ; X is a decimal between 0-1
  Q $$RJ^XLFSTR((X*100)_"%",10," ")
  ;
+PPR ;Display Payer Policy References
+ ;
+ N I,IBARR,IBX,IBX2,IBX3,IBPY,IBPCNT,IBDISP,IBTXT
+ S IBX=0
+ ;Get next Adjustment
+ F  S IBX=$O(^IBM(361.1,IBCNT,15,IBX)) Q:'IBX  D
+ .;Get next Line Level
+ .S IBX2=0
+ .F  S IBX2=$O(^IBM(361.1,IBCNT,15,IBX,1,IBX2)) Q:'IBX2  D
+ ..;Get Adjustment line references (up to 5)
+ ..S IBX3=0
+ ..F  S IBX3=$O(^IBM(361.1,IBCNT,15,IBX,1,IBX2,2,IBX3)) Q:'IBX3  D
+ ...S IBPY=$P($G(^IBM(361.1,IBCNT,15,IBX,1,IBX2,2,IBX3,0)),U) Q:IBPY=""
+ ...S IBARR(IBPY)=""
+ ;Concatenate Adjustment references
+ S IBPY="",IBPCNT=0
+ F  S IBPY=$O(IBARR(IBPY)) Q:IBPY=""  D  Q:IBPCNT=5
+ .S IBPCNT=IBPCNT+1,$P(IBDISP,";",IBPCNT)=IBPY
+ ;Format display
+ Q:'IBPCNT
+ S IB=$$SETSTR^VALM1("Policy Reference: Check Payer policies referenced on Payer website","",2,78)
+ D SET(IBSRC,IB,CNT,IBCNT)
+ S IB=$$SETSTR^VALM1("for the following: "_$E(IBDISP,1,50),"",2,78)
+ D SET(IBSRC,IB,CNT,IBCNT)
+ F I=50:50:250 S IBTXT=$E(IBDISP,I+1,I+50) Q:IBTXT=""  D
+ .S IB=$$SETSTR^VALM1($J("",19)_IBTXT,"",2,78)
+ .D SET(IBSRC,IB,CNT,IBCNT)
+ Q
+ ;
+AUDIT ;Display details of any EEOB MOVE/COPY
+ ;
+ N IEN101,FIRST101
+ S IEN101=0,FIRST101=1
+ F  S IEN101=$O(^IBM(361.1,IBCNT,101,IEN101)) Q:'IEN101  D
+ .N IB101,IBDATE,IBUSER,IBJUST,IBJUST1,IBORIG,IBDIR
+ .S IB101=$G(^IBM(361.1,IBCNT,101,IEN101,0)) Q:IB101=""
+ .S IBDATE=$$EXTERNAL^DILFD(361.1101,.01,,$P(IB101,U,1))
+ .S IBUSER=$$EXTERNAL^DILFD(361.1101,.02,,$P(IB101,U,2))
+ .S IBJUST=$E($P(IB101,U,3),1,78),IBJUST1=$E($P(IB101,U,3),79,100)
+ .S IBORIG=$$EXTERNAL^DILFD(361.1101,.04,,$P(IB101,U,4))
+ .S IBDIR=$$EXTERNAL^DILFD(361.1101,.05,,$P(IB101,U,5)) ; kl - added MOVE/COPY field
+ .S:IBDIR']"" IBDIR="Move"
+ .I FIRST101 D
+ ..S IB=$$SETSTR^VALM1("MOVE/COPY HISTORY","",1,78),FIRST101=0
+ ..D SET(IBSRC,IB,CNT,IBCNT)
+ .D SET(IBSRC,"",CNT,IBCNT)
+ .S IB=$$SETSTR^VALM1("Date/Time of EEOB "_IBDIR_": "_IBDATE,"",1,78)  ;kl  8/23/11
+ .D SET(IBSRC,IB,CNT,IBCNT)
+ .S IB=$$SETSTR^VALM1(IBDIR_" of EEOB performed by: "_IBUSER,"",1,78)  ;kl 8/23/11
+ .D SET(IBSRC,IB,CNT,IBCNT)
+ .S IB=$$SETSTR^VALM1(IBDIR_" Justification Comments: ","",1,78)
+ .D SET(IBSRC,IB,CNT,IBCNT)
+ .S IB=$$SETSTR^VALM1(IBJUST,"",1,78)
+ .D SET(IBSRC,IB,CNT,IBCNT)
+ .I IBJUST1]"" D
+ ..S IB=$$SETSTR^VALM1(IBJUST1,"",1,78)
+ ..D SET(IBSRC,IB,CNT,IBCNT)
+ .I IBORIG]"" D
+ ..S IB=$$SETSTR^VALM1("Original Claim Number: "_IBORIG,"",1,78)
+ ..D SET(IBSRC,IB,CNT,IBCNT)
+ .;Other claim numbers
+ .N SUB,IBOTH,OTEXT
+ .S SUB=0,OTEXT=""
+ .F  S SUB=$O(^IBM(361.1,IBCNT,101,IEN101,1,SUB)) Q:'SUB  D
+ ..S IBOTH=$P($G(^IBM(361.1,IBCNT,101,IEN101,1,SUB,0)),U) Q:'IBOTH
+ ..S IBOTH=$$EXTERNAL^DILFD(361.11016,.01,,IBOTH) Q:IBOTH=""
+ ..S OTEXT=OTEXT_","_IBOTH
+ .S OTEXT=$P(OTEXT,",",2,99)
+ .I OTEXT]"" D
+ ..S IB=$$SETSTR^VALM1("Other Claims: "_OTEXT,"",1,78)
+ ..D SET(IBSRC,IB,CNT,IBCNT)
+ .D SET(IBSRC,"",CNT,IBCNT)
+ Q

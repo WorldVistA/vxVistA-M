@@ -1,5 +1,5 @@
 SDAMBMR ;ALB/MLI - AMBULATORY PROCEDURE MANAGEMENT REPORTS ; 4/24/00 9:20am
- ;;5.3;Scheduling;**140,132,159,180**;Aug 13, 1993
+ ;;5.3;Scheduling;**140,132,159,180,556**;Aug 13, 1993;Build 3
 EN D Q,ASK2^SDDIV G:Y<0 Q S U="^",SDAS=0
 1 S SDFL=0 K DIC W !!,"****Date Range Selection****",!!,"Enter fiscal year or date range within fiscal year",!
  S %DT="AE",%DT("A")="   Beginning DATE : " D ^%DT G Q:Y<0,FY:'$E(Y,4,7) S SDB=Y-.1,%DT(0)=Y W ! S %DT("A")="   Ending DATE : " D ^%DT K %DT G:Y<0 Q W ! D CK G:SDFL 1 S SDE=Y+.9
@@ -15,7 +15,7 @@ EN D Q,ASK2^SDDIV G:Y<0 Q S U="^",SDAS=0
 6 R !,"Sort by 'P'rocedure or patient 'N'ame: P//",X:DTIME G Q:X="^"!'$T S Z="^PROCEDURE^NAME" W:X["?" !,"Enter:",!,"'P'to sort by procedure",!,"'N' to sort by patient name" I X="" S X="P" W X
  D IN^DGHELP S SDPN=X G 6:%=-1,8:X="P"
 7 S VAUTNI=1 D PATIENT^VAUTOMA G Q:Y<0 D MOD G 9
-8 S DIC="^ICPT(",DIC("S")="I '$P(^(0),U,4)",VAUTNI=1,VAUTSTR="CPT code",VAUTVB="SD" D FIRST^VAUTOMA G Q:Y<0 S SDP=SD
+8 S DIC="^ICPT(",DIC("S")="I $P($$CPT^ICPTCOD(Y),U,7)",VAUTNI=1,VAUTSTR="CPT code",VAUTVB="SD" D FIRST^VAUTOMA G Q:Y<0 S SDP=SD
  I $D(SD) F I=0:0 S I=$O(SD(I)) Q:I'?5AN  S SDP(SD(I))=I K SD(I)
  K SD
  D MOD

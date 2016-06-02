@@ -1,5 +1,5 @@
 ECBEPF ;BIR/MAM,JPW-Stuff Batch Entry by Procedure (cont'd) ;2 Mar 96
- ;;2.0; EVENT CAPTURE ;**4,5,13,17,18,23,42,54,72**;8 May 96
+ ;;2.0; EVENT CAPTURE ;**4,5,13,17,18,23,42,54,72,76**;8 May 96;Build 6
 CRAM ; entry
  S ECDT=$P(ECA,"^"),ECL=$P(ECA,"^",2),ECS=$P(ECA,"^",3),ECM=$P(ECA,"^",4),ECD=$P(ECA,"^",5)
  S ECPCE=$P(ECA,"^",6)
@@ -10,11 +10,11 @@ SET ;
  S ECPS=$P(ECPT(CNT1),"^"),ECO=$P(ECPT(CNT1),"^",3),ECV=+$P(ECPT(CNT1),"^",5)
  S ECDX=$P(ECPT(CNT1),"^",6),ECINP=$P(ECPT(CNT1),"^",7),ECVST=$P(ECPT(CNT1),"^",8),ECSC=$P(ECPT(CNT1),"^",9),ECAO=$P(ECPT(CNT1),"^",10),ECIR=$P(ECPT(CNT1),"^",11)
  S ECZEC=$P(ECPT(CNT1),"^",12),EC4=$P(ECPT(CNT1),"^",13),ECID=$P(ECPT(CNT1),"^",14)
- S ECMST=$P(ECPT(CNT1),"^",15),ECHNC=$P(ECPT(CNT1),"^",16),ECCV=$P(ECPT(CNT1),"^",17)
+ S ECMST=$P(ECPT(CNT1),"^",15),ECHNC=$P(ECPT(CNT1),"^",16),ECCV=$P(ECPT(CNT1),"^",17),ECSHAD=$P(ECPT(CNT1),"^",18)
  S ECELIG=$G(ECELPT(CNT1))
  Q
 DIE ;
- L +^ECH(0) S ECRN=$P(^ECH(0),"^",3)+1 I $D(^ECH(ECRN)) S $P(^ECH(0),"^",3)=$P(^ECH(0),"^",3)+1 L -^ECH(0) G DIE
+ L +^ECH(0):60 S ECRN=$P(^ECH(0),"^",3)+1 I $D(^ECH(ECRN)) S $P(^ECH(0),"^",3)=$P(^ECH(0),"^",3)+1 L -^ECH(0) G DIE
  L -^ECH(0) K DD,DO,DIC S X=ECRN,DIC(0)="L",DLAYGO=721,DIC="^ECH(" D FILE^DICN K DIC S ECFN=+Y
  S ECNODE=ECEC(CNT),ECC=+$P(ECNODE,"^"),ECP=$P(ECNODE,"^",2),ECPRPTR=$P(ECNODE,"^",12)
  S ECCPT=$P(ECNODE,"^",9)
@@ -26,7 +26,7 @@ DIE ;
  I +ECPRPTR S $P(^ECH(ECFN,0),"^",23)=+ECPRPTR
  ;set the "P" node
  S ^ECH(ECFN,"P")=ECCPT_"^"_ECDX_"^"_ECAO_"^"_ECIR_"^"_ECZEC_"^"_ECSC
- S $P(^ECH(ECFN,"P"),"^",9,12)=ECMST_"^"_ECHNC_"^"_ECCV
+ S $P(^ECH(ECFN,"P"),"^",9,12)=ECMST_"^"_ECHNC_"^"_ECCV_"^"_ECSHAD
  ;add secondary diagnosis codes
  I $O(ECPT(CNT1,"DXS",""))'="" D  K DXSIEN,DXS
  . S DXS="" F  S DXS=$O(ECPT(CNT1,"DXS",DXS)) Q:DXS=""  D

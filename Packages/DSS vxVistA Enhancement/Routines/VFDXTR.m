@@ -1,10 +1,14 @@
 VFDXTR ;DSS/SGM - ROUTINE UTILITY MAIN DRIVER ; 07/28/2011 16:35
- ;;2.0;DSS,INC VXVISTA OPEN SOURCE;;29 Jul 2011;Build 92
- ;Copyright 1995-2011,Document Storage Systems Inc. All Rights Reserved
+ ;;15.0;DSS,INC VXVISTA OPEN SOURCE;;15 Sep 2015;Build 29
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ;
  ;This routine is the main OPTION driver for all routine utilities.
  ;Each line tag is invoked via a MenuMan OPTION.
  ;
+ Q
+ ;
+CHKSUM ; option VFD IT CHECKSUM REPORT
+ D CHKSUM^VFDXTR01
  Q
  ;
 DEL ; option: VFD IT ROUTINE DELETE
@@ -21,7 +25,7 @@ SIZE ; option: VFD IT ROUTINE SIZE
  ;display routine size per March 2007 VA Programming SAC
  ;20K total size, 15K executable code size, 5K comments
  ;Any line with a label or starts with " ;;" is counted as executable
- G ^VFDXTRSZ
+ G SIZE^VFDXTR01
  ;
 SVRES ; option: VFD IT ROUTINE SAVE/RESTORE
  ;save routines to indiviudual HFS files
@@ -30,7 +34,7 @@ SVRES ; option: VFD IT ROUTINE SAVE/RESTORE
  ;
  ;==============  APPLICATION PROGRAM INTERFACES (APIs)  ==============
  ;>>>>>  ASK FOR METHOD TO GET LIST OF ROUTINES
-ASK(VFDR,NOINIT,SOURCE) ;
+ASK(VFDR,NOINIT,SOURCE,LOAD) ;
  ; select routines from routine selector or get from Build file
  Q $$ASK^VFDXTRU1
  ;

@@ -1,5 +1,5 @@
 FHASM2A ; HISC/REL - Target Weight - Metropolitan 83 ;5/14/93  08:59
- ;;5.5;DIETETICS;**8**;Jan 28, 2005;Build 28
+ ;;5.5;DIETETICS;**8,20,27**;Jan 28, 2005;Build 9
 M ; Metropolitan Height & Weight tables
  ; 1983 Metropolitan Life Insurance Company Height & Weight Tables
  ; as measured with 1" heels and clothes weighing 5# for men and 3# for women.
@@ -26,7 +26,6 @@ ALRT ;process nutrition assessment alert.
  Q:'DFN    ;only inpt will have the alert
  Q:'$G(WRD)
  S WARD=$G(^DPT(DFN,.1)) Q:WARD=""
- S ADM=$P($G(^FHPT(FHDFN,"A",0)),U,3)
  S:'$G(FHDUZ) FHDUZ=""
  I $G(DT) S DTE=DT
  S FHSDT=DTE
@@ -39,7 +38,6 @@ ALRT ;process nutrition assessment alert.
  .S XQAMSG=$E(FHPTNM,1,9)_" ("_$E(FHPTNM,1,1)_$P(FHSSN,"-",3)_"): "
  .S XQAMSG=XQAMSG_" has Assessment Follow-up Date on "_$E(FHPDT,4,5)_"/"_$E(FHPDT,6,7)_"/"_$E(FHPDT,2,3)
  .F A=0:0 S A=$O(^FH(119.6,WRD,2,A)) Q:A'>0  S TK=$P($G(^FH(119.6,WRD,2,A,0)),U,1),XQA(TK)=""
- .S:'$D(XQA(FHDUZ)) XQA(FHDUZ)=""
  .D SETUP^XQALERT
  .S $P(^FHPT(FHDFN,"N",FHNAS,"DI"),U,9)=FHSDT
  K XQA,XQAMSG,XQAOPT,XQAROU,TK,FHSDT,FHPDT,FHNAS,FHNAA
@@ -58,7 +56,6 @@ PHA ;process food/drug classification alert
  .S XQAMSG=XQAMSG_"Food/drug interaction w/ "_FHI9
  .F A=0:0 S A=$O(^FH(119.6,WRD,2,A)) Q:A'>0  D
  ..S TK=$P($G(^FH(119.6,WRD,2,A,0)),U,1),XQA(TK)=""
- ..S:'$D(XQA(FHDUZ)) XQA(FHDUZ)=""
  .D SETUP^XQALERT
  .S DIC="^FHPT("_FHDFN_",""D"",",DIC(0)="L",X=DT,DA(1)=FHDFN
  .K DD,DO D FILE^DICN I +Y<0 Q

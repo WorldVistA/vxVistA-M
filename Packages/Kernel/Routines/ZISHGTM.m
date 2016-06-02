@@ -1,5 +1,5 @@
-%ZISH ;ISF/AC,RWF - GT.M for VMS/Unix Host file Control ;01/04/2005  10:44
- ;;8.0;KERNEL;**275,306,385**;Jul 10, 1995;Build 3
+%ZISH ;ISF/AC,RWF - GT.M for VMS/Unix Host file Control ;12/07/09  15:53
+ ;;8.0;KERNEL;**275,306,385,524**;Jul 10, 1995;Build 12
  ; for GT.M for Unix/VMS, version 4.3
  ;
 OPENERR ;
@@ -21,11 +21,11 @@ OPEN(X1,X2,X3,X4,X5,X6) ;SR. Open file
  I '%T S POP=1 Q
  S IO=%IO,IO(1,IO)="",IOT="HFS",IOM=80,IOSL=60,POP=0 D SUBTYPE^%ZIS3($G(X6))
  I $G(X1)]"" D SAVDEV^%ZISUTL(X1)
- U IO U $P ;Enable use of $ZA to test EOF condition.
+ ;U IO U $P ;Don't do a USE.
  Q
 OPNERR ;error on open
  S POP=1,$ECODE=""
- U:$G(%P)]"" %P
+ ;U:$G(%P)]"" %P
  Q
  ;
 CLOSE(X) ;SR. Close HFS device not opened by %ZIS.
@@ -93,7 +93,7 @@ PWD() ;ef,SR. Print working directory
  ;
 DEFDIR(DF) ;ef. Default Dir and frmt
  S DF=$G(DF) Q:DF="." "" ;Special way to get current dir.
- S:DF="" DF=$G(^XTV(8989.3,1,"DEV"))
+ S:DF="" DF=$P($G(^XTV(8989.3,1,"DEV")),"^",1)
  ;Old code
  ;Check syntax, VMS needs : or [ ]
  I ^%ZOSF("OS")["VMS" D  Q DF ;***EXIT FOR VMS/GTM

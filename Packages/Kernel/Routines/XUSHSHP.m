@@ -1,5 +1,5 @@
 XUSHSHP ;SF/STAFF - HASHING ROUTINE FOR SIG BLOCK IN FILE 200 ;4/24/89  15:26 ; 12/29/09 7:41am
- ;;8.0;KERNEL;;Jul 10, 1995;Build 86
+ ;;8.0;KERNEL;;Jul 10, 1995;Build 97
  ;;DSS Version: 1.0
  ;
  ;DSS/LM - Routine modified to support encryption

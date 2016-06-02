@@ -1,10 +1,11 @@
-ORWDXM1 ; SLC/KCM - Order Dialogs, Menus;5/12/08 6:14am ;9/10/2010
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**10,85,131,132,141,178,185,187,215,243,280**;Dec 17, 1997;Build 7
+ORWDXM1 ;SLC/KCM - Order Dialogs, Menus;5/12/08 6:14am ;9/10/2010
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**10,85,131,132,141,178,185,187,215,243,280,331,388**;Dec 17, 1997;Build 29
+ ;
 BLDQRSP(LST,ORIT,FLDS,ISIMO,ENCLOC) ; Build responses for an order
  ; LST=QuickLevel^ResponseID(ORIT;$H)^Dialog^Type^FormID^DGrp
  ; LST(n)=verify or reject text
  ; ORIT= ptr to 101.41 for quick order, 100 for copy
- ;       1   2    3    4   5   6    7    8        11-20
+ ; 1 2 3 4 5 6 7 8 11-20
  ; FLDS=DFN^LOC^ORNP^INPT^SEX^AGE^EVENT^SC%^^^Key Variables...
  ; ORIT=+ORIT: ptr to 101.41, $E(ORIT)=C: copy $E(ORIT)=X: change
  ; !! SHOULD CHECK for PRE-CPRS ORDERS (treat as text?)
@@ -24,10 +25,14 @@ BLDQRSP(LST,ORIT,FLDS,ISIMO,ENCLOC) ; Build responses for an order
  S TEMPORIT=ORIT
  I ORWMODE S ORIT=$E(ORIT,2,999)
  S LST(0)=""
- D CHKDSBL^ORWDXM3(.LST,ORIT,ORWMODE) Q:+LST(0)=8  ;disable
- D CHKVACT^ORWDXM3(.LST,ORIT,ORWMODE,$P(FLDS,U,3)) Q:+LST(0)=8  ;action
- I ORWMODE=1 D CHKCOPY^ORWDXM3(.LST,ORIT,FLDS) Q:+LST(0)=8  ;no copy
- I ORWMODE=2 D BLD4CHG^ORWDXM3(.LST,ORIT,FLDS) Q  ;change
+ ;disable
+ D CHKDSBL^ORWDXM3(.LST,ORIT,ORWMODE) Q:+LST(0)=8
+ ;action
+ D CHKVACT^ORWDXM3(.LST,ORIT,ORWMODE,$P(FLDS,U,3)) Q:+LST(0)=8
+ ;no copy
+ I ORWMODE=1 D CHKCOPY^ORWDXM3(.LST,ORIT,FLDS) Q:+LST(0)=8
+ ;change
+ I ORWMODE=2 D BLD4CHG^ORWDXM3(.LST,ORIT,FLDS) Q
  I 'ORWMODE,($P(^ORD(101.41,+ORIT,0),U,4)="D"),'($O(^DIC(9.4,"C","OR",0))[$P(^ORD(101.41,+ORIT,0),U,7)) S LST(0)="0^0^"_$$DLGINFO^ORWDXM3(ORIT,ORWMODE_ISXFER) Q
  N ORIMTYPE,ORCOMP,ORTAS,LRFZX,LRFSAMP,LRFSPEC,LRFDATE,LRFURG,LRFSCH
  N ORTIME,ORCOLLCT,ORMAX,ORTEST,ORIMTIME,ORSMAX,ORSTMS,ORSCH
@@ -42,7 +47,7 @@ BLDQRSP(LST,ORIT,FLDS,ISIMO,ENCLOC) ; Build responses for an order
  S ORL=$P(FLDS,U,2)_";SC(",ORL(2)=ORL
  S ORSEX=$P(FLDS,U,5),ORAGE=$P(FLDS,U,6),ORTYPE="Q",FIRST=1
  I $P(FLDS,U,4),$G(^SC(+ORL,42)) S ORWARD=+^SC(+ORL,42)
- I $L($P(FLDS,U,7))  D
+ I $L($P(FLDS,U,7)) D
  . S OREVENT=$P(FLDS,U,7)
  . S OREVNTYP=$P(OREVENT,";",2)
  . S OREVENT("TS")=$P(OREVENT,";",3)
@@ -76,6 +81,32 @@ BLDQRSP(LST,ORIT,FLDS,ISIMO,ENCLOC) ; Build responses for an order
  N SEQ,DA,XCODE,MUSTASK,PROMPT,INST,KEY,IVFID
  S IVFID=$O(^ORD(101.41,"B","PSJI OR PAT FLUID OE",0))
  S AUTOACK=$S($D(ORWPSWRG):0,1:1)
+ ; If copying, clear bad dates. Later, SETITEM will fill dates with default values. ;DJE-VM *331
+ I ORWMODE=1 D  ;
+ . I $L($$VAL^ORCD("START DATE")) D  ;
+ . . S X=$$VAL^ORCD("START DATE"),%DT="TX" D ^%DT
+ . . I Y'<$$DT^XLFDT,(($L($$VAL^ORCD("STOP DATE"))=0)!('$$FTDCOMP^ORCD("START DATE","STOP DATE",">"))) Q  ;quit if valid dates: start not in the past or stop after start
+ . . K ORDIALOG($$PTR("START DATE"),1),ORDIALOG($$PTR("START DATE/TIME"),1) ;erase bad start and stop dates.
+ . . K ORDIALOG($$PTR("STOP DATE"),1),ORDIALOG($$PTR("STOP DATE/TIME"),1)
+ . ; check start and stop dates found in diet orders
+ . I $L($$VAL^ORCD("EFFECTIVE DATE/TIME")) D  ;
+ . . S X=$$VAL^ORCD("EFFECTIVE DATE/TIME"),%DT="TX" D ^%DT
+ . . I Y'<$$DT^XLFDT,(($L($$VAL^ORCD("EXPIRATION DATE/TIME"))=0)!('$$FTDCOMP^ORCD("EFFECTIVE DATE/TIME","EXPIRATION DATE/TIME",">"))) Q  ;quit if valid dates: start not in the past or stop after start
+ . . K ORDIALOG($P(ORDIALOG("B","EFFECTIVE DATE/TIME"),U,2),1) ;erase bad start and stop dates.
+ . . K ORDIALOG($P(ORDIALOG("B","EXPIRATION DATE/TIME"),U,2),1)
+ . ; check date desired field found in imaging orders
+ . I $L($$VAL^ORCD("DATE DESIRED")) D  ;
+ . . S X=$$VAL^ORCD("DATE DESIRED"),%DT="TX" D ^%DT
+ . . I Y'<$$DT^XLFDT Q  ;quit if not a past date
+ . . K ORDIALOG($P(ORDIALOG("B","DATE DESIRED"),U,2),1) ;erase bad date
+ . ; check collection date field found in lab orders
+ . I $L($$VAL^ORCD("COLLECTION DATE/TIME")) D  ;
+ . . S X=$$VAL^ORCD("COLLECTION DATE/TIME")
+ . . I X="NEXT" Q  ;No need to check this.
+ . . S %DT="TX" D ^%DT
+ . . I $P(Y,".",2),Y'<$E($$NOW^XLFDT,1,12) Q  ;quit if not a past date and time (lab is more precise than other dates)
+ . . I $P(Y,".",2)="",Y'<$$DT^XLFDT Q  ;
+ . . K ORDIALOG($P(ORDIALOG("B","COLLECTION DATE/TIME"),U,2),1) ;erase bad date
  S SEQ=0 F  S SEQ=$O(^ORD(101.41,+ORDIALOG,10,"B",SEQ)) Q:'SEQ  D
  . S DA=0 F  S DA=$O(^ORD(101.41,+ORDIALOG,10,"B",SEQ,DA)) Q:'DA  D
  . . ; skip if child prmpt
@@ -101,7 +132,8 @@ BLDQRSP(LST,ORIT,FLDS,ISIMO,ENCLOC) ; Build responses for an order
  N IVDLG
  S IVDLG=$O(^ORD(101.41,"AB","PSJI OR PAT FLUID OE",0))
  I $$ISMED(ORIT),(ORDIALOG'=IVDLG),(ORCAT="I") D
- . F P="PATIENT INSTRUCTIONS","START DATE/TIME","DAYS SUPPLY","QUANTITY","REFILLS","ROUTING","SERVICE CONNECTED" K ORDIALOG($$PTR(P),1)
+ . F P="PATIENT INSTRUCTIONS","DAYS SUPPLY","QUANTITY","REFILLS","ROUTING","SERVICE CONNECTED" K ORDIALOG($$PTR(P),1)
+ . I '$$ISQO(ORIT) K ORDIALOG($$PTR("START DATE/TIME"),1) ; kill if not a non-VA med quick order. p388
  S KEY=$S(ORWMODE:"C",1:"")_ORIT_"-"_$P($H,",",2),SEQ=0
  I $$ISINPMED(ORIT) D
  .S LEVEL=$P(LST(0),U),DELAY=$S($P($G(OREVENT),";")>0:1,1:0)
@@ -113,7 +145,7 @@ BLDQRSP(LST,ORIT,FLDS,ISIMO,ENCLOC) ; Build responses for an order
  . . S SEQ=SEQ+1,^TMP("ORWDXMQ",$J,KEY,SEQ,0)=U_PROMPT_U_INST
  . . ; save word proc val
  . . I $E(ORDIALOG(PROMPT,0))="W",$L(ORDIALOG(PROMPT,INST)) D
- . . .  M ^TMP("ORWDXMQ",$J,KEY,SEQ,2)=@ORDIALOG(PROMPT,INST)
+ . . . M ^TMP("ORWDXMQ",$J,KEY,SEQ,2)=@ORDIALOG(PROMPT,INST)
  . . ; save other val types
  . . E  S ^TMP("ORWDXMQ",$J,KEY,SEQ,1)=ORDIALOG(PROMPT,INST)
  I AUTOACK D
@@ -122,10 +154,11 @@ BLDQRSP(LST,ORIT,FLDS,ISIMO,ENCLOC) ; Build responses for an order
  ;I ($$ISMED(ORIT)),'($$VALQO^ORWDXM3(ORIT)) S AUTOACK=0
  I ORIMO,ORWMODE S AUTOACK=2
  ; accept Herbal/OTC/NonVA Med quick orders
- ;DSS/SMP - BEGIN MODS - Resolve Subscript Error
- I $G(^%ZOSF("ZVX"))["VX",$L($G(^ORD(101.41,+ORIT,0))),($P($G(^ORD(100.98,+$P(^ORD(101.41,+ORIT,0),U,5),0)),U,3)="NV RX"),($P($G(^ORD(101.41,+ORIT,5)),U,8)) S AUTOACK=1
- E  I $L($G(^ORD(101.41,+ORIT,0))),($P(^ORD(100.98,$P(^ORD(101.41,+ORIT,0),U,5),0),U,3)="NV RX"),($P($G(^ORD(101.41,+ORIT,5)),U,8)) S AUTOACK=1
- ;DSS/SMP END MODS
+ ;DSS/SMP - BEGIN MODS
+ N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
+ I VFD,$L($G(^ORD(101.41,+ORIT,0))),($P($G(^ORD(100.98,+$P(^ORD(101.41,+ORIT,0),U,5),0)),U,3)="NV RX"),($P($G(^ORD(101.41,+ORIT,5)),U,8)) S AUTOACK=1
+ I 'VFD,$L($G(^ORD(101.41,+ORIT,0))),($P(^ORD(100.98,$P(^ORD(101.41,+ORIT,0),U,5),0),U,3)="NV RX"),($P($G(^ORD(101.41,+ORIT,5)),U,8)) S AUTOACK=1
+ ;DSS/SMP - END MODS
  ;I AUTOACK=2,$$ISMED(ORIT),(ORDIALOG=IVDLG),$$VERORD^ORWDXM3=0 S AUTOACK=0
  I AUTOACK=2,$$ISMED(ORIT),$$VERORD^ORWDXM3(ORIT)=0 S AUTOACK=0
  I AUTOACK=2 D VERTXT^ORWDXM2
@@ -201,3 +234,7 @@ SITEVAL() ;return 1 if site does want the reason for study to carry through from
 SVRPC(RET,X) ;RPC FOR SITEVAL
  S RET=$$SITEVAL
  Q
+ISQO(IFN) ;return 1 if a non-VA medication quick order type of order dialog. p388
+ I $P($G(^ORD(101.41,IFN,0)),U,5)'=$O(^ORD(100.98,"B","NV RX",0)) Q 0
+ I $P($G(^ORD(101.41,IFN,0)),U,4)="Q" Q 1
+ Q 0

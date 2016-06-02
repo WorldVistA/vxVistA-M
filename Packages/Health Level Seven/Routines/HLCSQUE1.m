@@ -1,5 +1,6 @@
-HLCSQUE1 ;ALB/MFK HL7 UTILITY FUNCTIONS - 10/4/94 11AM ;05/08/2000  11:22
- ;;1.6;HEALTH LEVEL SEVEN;**14,59,100**;Oct 13, 1995
+HLCSQUE1 ;ALB/MFK HL7 UTILITY FUNCTIONS - 10/4/94 11AM ;02/17/2011
+ ;;1.6;HEALTH LEVEL SEVEN;**14,59,100,153**;Oct 13, 1995;Build 11
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  ;Utilities used by HLCSQUE
  ;
@@ -42,13 +43,17 @@ DELETE(IEN,HLDIR,FRONT) ;  Delete messages outside the 'queue size' window
  ;  For each message from the beginning of the queue to the front
  ;  of the queue-queue size, delete that message if it's done
  F  S MSG=$O(^HLCS(870,IEN,HLDIR,MSG)) Q:(MSG>(FRONT-QSIZE))!(STOP'=0)!(MSG'>0)  D
- .I $P($G(^HLCS(870,IEN,HLDIR,MSG,0)),"^",2)'="D" D  QUIT:STOP  ;->
+ .;P153 Start PIJ
+ .;I $P($G(^HLCS(870,IEN,HLDIR,MSG,0)),"^",2)'="D" D  QUIT:STOP  ;->
+ .I $P($G(^HLCS(870,IEN,HLDIR,MSG,0)),"^",2)'="D",$P($G(^HLCS(870,IEN,HLDIR,MSG,0)),"^",2)'="U" D  QUIT:STOP  ;->
+ ..;P153 End PIJ
  ..I $D(^HLCS(870,IEN,HLDIR,MSG)) D  QUIT:STOP  ;->
  ...S HLX=$O(^HLCS(870,IEN,HLDIR,MSG)) QUIT:HLX>0  ;->
  ...S STOP=1
  ..S HLX=+$G(HLX)
  ..I '$D(^HLCS(870,IEN,HLDIR,+HLX,0)) S STOP=1 QUIT  ;->
  ..Q:$P($G(^HLCS(870,IEN,HLDIR,+HLX,0)),U,2)="D"  ;-> All OK...
+ ..Q:$P($G(^HLCS(870,IEN,HLDIR,+HLX,0)),U,2)="U"  ;-> All OK...
  ..S STOP=1
  .S STOP=$$DELMSG(IEN,HLDIR,MSG)
  K IEN,HLDIR,FRONT

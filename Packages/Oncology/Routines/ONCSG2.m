@@ -1,5 +1,5 @@
-ONCSG2 ;Hines OIFO/GWB - AUTOMATIC STAGING TABLES ;07/15/02
- ;;2.11;ONCOLOGY;**35,36**;Mar 07, 1995
+ONCSG2 ;Hines OIFO/GWB - Automatic Staging Tables ;07/26/11
+ ;;2.2;ONCOLOGY;**1**;Jul 31, 2013;Build 8
  ;
  ;THORAX
  ;
@@ -11,12 +11,12 @@ LUN34 ;Lung - 3rd and 4th editions
  .E  I N=3 S SG="3B"
  .E  I N=2 S SG=$S(T=1:"3A",T=2:"3A",T=3:"3A",1:99)
  .E  I N=1 S SG=$S(T=1:2,T=2:2,T=3:"3A",1:99)
- .E  I N=0 S SG=$S(T="X":"0C",T="IS":0,T=1:1,T=2:1,T=3:"3A",1:99)
+ .E  I N=0 S SG=$S(T="X":"OC",T="IS":0,T=1:1,T=2:1,T=3:"3A",1:99)
  Q
  ;
 LUN56 ;Lung - 5th and 6th editions
  S TNM=T_N_M D  K TNM Q
- .I TNM="X00" S SG="0C" Q   ;Occult Tx    N0    M0
+ .I TNM="X00" S SG="OC" Q   ;Occult Tx    N0    M0
  .I TNM="IS00" S SG=0 Q     ;0      Tis   N0    M0
  .I TNM=100 S SG="1A" Q     ;IA     T1    N0    M0
  .I TNM=200 S SG="1B" Q     ;IB     T2    N0    M0
@@ -31,6 +31,38 @@ LUN56 ;Lung - 5th and 6th editions
  .I T=4,M=0 S SG="3B" Q     ;       T4    Any N M0
  .I M=1 S SG=4 Q            ;IV     Any T Any N M1
  ;
+LUN7 ;Lung - 7th editions
+ S TNM=T_N_M D  K TNM Q
+ .I TNM="X00" S SG="OC" Q   ;Occult Tx    N0    M0
+ .I TNM="IS00" S SG=0 Q     ;0      Tis   N0    M0
+ .I TNM="1A00" S SG="1A" Q  ;IA     T1a   N0    M0
+ .I TNM="1B00" S SG="1A" Q  ;       T1b   N0    M0
+ .I TNM="2A00" S SG="1B" Q  ;IB     T2a   N0    M0
+ .I TNM="2B00" S SG="2A" Q  ;IIA    T2a   N0    M0
+ .I TNM="1A10" S SG="2A" Q  ;       T1a   N1    M0
+ .I TNM="1B10" S SG="2A" Q  ;       T1b   N1    M0
+ .I TNM="2A10" S SG="2A" Q  ;       T2a   N1    M0
+ .I TNM="2B10" S SG="2B" Q  ;IIB    T2b   N1    M0
+ .I TNM=300 S SG="2B" Q     ;       T3    N0    M0
+ .I TNM="1A20" S SG="3A" Q  ;IIIA   T1a   N2    M0
+ .I TNM="1B20" S SG="3A" Q  ;       T1b   N2    M0
+ .I TNM="2A20" S SG="3A" Q  ;       T2a   N2    M0
+ .I TNM="2B20" S SG="3A" Q  ;       T2b   N2    M0
+ .I TNM=310 S SG="3A" Q     ;       T3    N1    M0
+ .I TNM=320 S SG="3A" Q     ;       T3    N2    M0
+ .I TNM=400 S SG="3A" Q     ;       T4    N0    M0
+ .I TNM=410 S SG="3A" Q     ;       T4    N1    M0
+ .I TNM="1A30" S SG="3B" Q  ;IIIB   T1a   N3    M0
+ .I TNM="1B30" S SG="3B" Q  ;       T1b   N3    M0
+ .I TNM="2A30" S SG="3B" Q  ;       T2a   N3    M0
+ .I TNM="2B30" S SG="3B" Q  ;       T2b   N3    M0
+ .I TNM=330 S SG="3B" Q     ;       T3    N3    M0
+ .I TNM=420 S SG="3B" Q     ;       T4    N2    M0
+ .I TNM=430 S SG="3B" Q     ;       T4    N3    M0
+ .I M=1 S SG=4 Q            ;IV     Any T Any N M1
+ .I M="1A" S SG=4 Q         ;       Any T Any N M1a
+ .I M="1B" S SG=4 Q         ;       Any T Any N M1b
+ ;
 PM45 ;Pleural Mesothelioma - 4th and 5th editions
  I M S SG=4
  E  I T[4,M[0 S SG=4
@@ -42,7 +74,7 @@ PM45 ;Pleural Mesothelioma - 4th and 5th editions
  E  S SG=99
  Q
  ;
-PM6 ;Pleural Mesothelioma - 6th edition
+PM6 ;Pleural Mesothelioma - 6th and 7th edition
  S TNM=T_N_M D  K TNM Q
  .I TNM=100 S SG=1 Q        ;I      T1    N0    M0
  .I TNM="1A00" S SG="1A" Q  ;IA     T1a   N0    M0
@@ -90,6 +122,18 @@ BONE6 ;Bone - 6th edition
  .I N=1 S SG="4B" Q                      ;IVB Any T N1    Any M Any G
  .I M="1B" S SG="4B" Q                   ;    Any T Any N M1b   Any G
  ;
+BONE7 ;Bone - 7th edition
+ S TNM=T_N_M D  K TNM Q
+ .I ((G=1)!(G=2))&(TNM=100) S SG="1A" Q  ;IA  T1    N0    M0    G1,2
+ .I ((G=1)!(G=2))&(TNM=200) S SG="1B" Q  ;IB  T2    N0    M0    G1,2
+ .I ((G=1)!(G=2))&(TNM=300) S SG="1B" Q  ;IB  T3    N0    M0    G1,2
+ .I ((G=3)!(G=4))&(TNM=100) S SG="2A" Q  ;IIA T1    N0    M0    G3,4
+ .I ((G=3)!(G=4))&(TNM=200) S SG="2B" Q  ;IIB T2    N0    M0    G3,4
+ .I ((G=3)!(G=4))&(TNM=300) S SG=3 Q     ;III T3    N0    M0    G3,4
+ .I N=0,M="1A" S SG="4A" Q               ;IVA Any T N0    M1a   Any G
+ .I N=1 S SG="4B" Q                      ;IVB Any T N1    Any M Any G
+ .I M="1B" S SG="4B" Q                   ;    Any T Any N M1b   Any G
+ ;
 STS34 ;Soft Tissue Sarcoma - 3rd and 4th editions
  I $E(M)=1 S SG="4B"
  E  I $E(M)=0 D
@@ -133,3 +177,21 @@ STS6 ;Soft Tissue Sarcoma - 6th edition
  .I N=1,M=0 S SG=4 Q                        ;IV   Any T N1 M0 Any G
  .I N=0,M=1 S SG=4 Q                        ;     Any T N0 M1 Any G
  .I N=1,M=1 S SG=4 Q                        ;     Any T N1 M1 Any G
+ ;
+STS7 ;Soft Tissue Sarcoma - 7th edition
+ S TNM=T_N_M D  K TNM Q
+ .I ((G=1)!(G=9))&(TNM="1A00") S SG="1A" Q  ;IA   T1a   N0    M0 G1,GX
+ .I ((G=1)!(G=9))&(TNM="1B00") S SG="1A" Q  ;     T1b   N0    M0 G1,GX
+ .I ((G=1)!(G=9))&(TNM="2A00") S SG="1B" Q  ;IB   T2a   N0    M0 G1,GX
+ .I ((G=1)!(G=9))&(TNM="2B00") S SG="1B" Q  ;     T2b   N0    M0 G1,GX
+ .I ((G=2)!(G=3))&(TNM="1A00") S SG="2A" Q  ;IIA  T1a   N0    M0 G2,3
+ .I ((G=2)!(G=3))&(TNM="1B00") S SG="2A" Q  ;     T1b   N0    M0 G2,3
+ .I G=2,TNM="2A00" S SG="2B" Q              ;IIB  T2a   N0    M0 G2
+ .I G=2,TNM="2B00" S SG="2B" Q              ;     T2b   N0    M0 G2
+ .I G=3,TNM="2A00" S SG=3 Q                 ;III  T2a   N0    M0 G3
+ .I G=3,TNM="2B00" S SG=3 Q                 ;     T2b   N0    M0 G3
+ .I N=1,M=0 S SG=3 Q                        ;     Any T N1    M0 Any G
+ .I M=1 S SG=4 Q                            ;IV   Any T Any N M1 Any G
+ ;
+CLEANUP ;Cleanup
+ K G,M,N,T

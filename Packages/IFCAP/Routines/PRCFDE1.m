@@ -1,6 +1,6 @@
-PRCFDE1 ;WISC@ALTOONA/CTB-CONTINUATION OF PRCFDE ;9/15/95  10:45
-V ;;5.1;IFCAP;;Oct 20, 2000
- ;Per VHA Directive 10-93-142, this routine should not be modified.
+PRCFDE1 ;WISC@ALTOONA/CTB-CONTINUATION OF PRCFDE ;12/2/10  16:13
+V ;;5.1;IFCAP;**154**;Oct 20, 2000;Build 5
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  K DIC S DIE="^PRCF(421.5,",DA=PRCF("CIDA")
  K %DT S X="T" D ^%DT S PRCFD("TODAY")=Y
  S DR="[PRCF CI VOUCHER AUDIT]" D ^DIE ;Q:$D(PRCFD("PAY"))
@@ -32,7 +32,10 @@ V ;;5.1;IFCAP;;Oct 20, 2000
 VEX Q
  ;
 PAYMENT S %A="Do you wish to process this item for payment now",%B="",%=1
- D ^PRCFYN I %'=1 S X=10 S:%<0 PRCFD("^")="" D STATUS,NA G PAYX
+ N PRCYESNO
+ D ^PRCFYN S PRCYESNO=%
+ I PRCYESNO=1,$$VIOLATE^PRCFDSOD(PRCF("CIDA"),DUZ) S X=10 D STATUS,NA G PAYX
+ I PRCYESNO'=1 S X=10 S:%<0 PRCFD("^")="" D STATUS,NA G PAYX
  D DIE^PRCFDCI
 PAYX Q
 STATUS N X1,X2,DA,DIE,DR S X2=X

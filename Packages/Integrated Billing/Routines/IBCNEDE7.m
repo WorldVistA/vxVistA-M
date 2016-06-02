@@ -1,5 +1,5 @@
 IBCNEDE7 ;DAOU/DAC - eIV DATA EXTRACTS ;04-JUN-2002
- ;;2.0;INTEGRATED BILLING;**271,416**;21-MAR-94;Build 58
+ ;;2.0;INTEGRATED BILLING;**271,416,438,497**;21-MAR-94;Build 120
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  Q    ; no direct calls allowed
@@ -59,9 +59,11 @@ SETTQ(DATA1,DATA2,ORIG,OVERRIDE) ;Set extract data in TQ file 365.1
  ; OVERRIDE - flag indicates that this entry is a result of the 
  ;         'Request Re-Verification' menu option.
  ;
- N FDA,IENARRAY,ERROR,TRANSNO,DFN
+ N BUFFIEN,FDA,IENARRAY,ERROR,TRANSNO,DFN,SRVCODE
  ; do not allow "NO PAYER" entries
  I $P(DATA1,U,2)=$$FIND1^DIC(365.12,"","X","~NO PAYER") Q
+ ; get service code (default to 30)
+ S BUFFIEN=$P(DATA1,U,4),SRVCODE=$S(BUFFIEN:$P($G(^IBA(355.33,BUFFIEN,80)),U),1:29)  ; ib*2*497  replace '30' to '29' in Select statement default value.  29 is the IEN for code 30 in file 365.013
  ;
  S TRANSNO=$P($G(^IBCN(365.1,0)),U,3)+1
  S FDA(365.1,"+1,",.01)=TRANSNO             ; Transaction #
@@ -71,7 +73,7 @@ SETTQ(DATA1,DATA2,ORIG,OVERRIDE) ;Set extract data in TQ file 365.1
  S FDA(365.1,"+1,",.03)=$P(DATA1,U,2)       ; ien of payer
  S FDA(365.1,"+1,",.04)=$P(DATA1,U,3)       ; ien of transmission status
  S FDA(365.1,"+1,",.15)=DT                  ; trans status date
- S FDA(365.1,"+1,",.05)=$P(DATA1,U,4)       ; ien of buffer
+ S FDA(365.1,"+1,",.05)=BUFFIEN             ; ien of buffer
  ;
  S FDA(365.1,"+1,",.06)=$$NOW^XLFDT         ; creation date/time
  S FDA(365.1,"+1,",.07)=0                   ; transmission retries
@@ -81,6 +83,7 @@ SETTQ(DATA1,DATA2,ORIG,OVERRIDE) ;Set extract data in TQ file 365.1
  S FDA(365.1,"+1,",.17)=$P(DATA1,U,6)        ; Freshness Date
  S FDA(365.1,"+1,",.18)=$P(DATA1,U,7)        ; Pass Buffer ien?
  S FDA(365.1,"+1,",.19)=$P(DATA1,U,8)        ; Patient ID
+ S FDA(365.1,"+1,",.2)=SRVCODE               ; Service code
  ;
  I $D(DATA2) D
  . S FDA(365.1,"+1,",.1)=$P(DATA2,U)          ; which extract (ien)
@@ -96,9 +99,8 @@ SETTQ(DATA1,DATA2,ORIG,OVERRIDE) ;Set extract data in TQ file 365.1
  ;
  D UPDATE^DIE("","FDA","IENARRAY","ERROR")
  ;
- I $D(ERROR) D  ; MailMan msg
- . NEW MGRP,XMSUB,MSG
- . KILL MSG
+ I $G(ERROR("DIERR",1,"TEXT",1))'="" D  ; MailMan msg
+ . N MGRP,XMSUB,MSG
  . ;
  . ; Set to IB site parameter MAILGROUP
  . S MGRP=$$MGRP^IBCNEUT5()
@@ -113,8 +115,9 @@ SETTQ(DATA1,DATA2,ORIG,OVERRIDE) ;Set extract data in TQ file 365.1
  . S MSG(7)=""
  . S MSG(8)="Transaction #: "_TRANSNO
  . S MSG(9)="Patient: "_$P($G(^DPT(DFN,0)),U)_$$SSN^IBCNEDEQ(DFN)
- . S MSG(10)="Extract: "_$G(FDA(365.1,"+1,",.1))
- . S MSG(11)="Payer: "_$P($G(^IBE(365.12,FDA(365.1,"+1,",.03),0)),U,1)
+ . S MSG(10)="Extract: "_$P($G(DATA2),U,1)
+ . S MSG(11)="Payer: "
+ . S:$P(DATA1,U,2)'="" MSG(11)=MSG(11)_$P($G(^IBE(365.12,$P(DATA1,U,2),0)),U,1)
  . S MSG(12)="Please call the Help Desk about this problem."
  . D MSG^IBCNEUT5(MGRP,XMSUB,"MSG(")
  ;

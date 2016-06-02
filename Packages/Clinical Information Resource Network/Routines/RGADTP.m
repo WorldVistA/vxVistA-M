@@ -1,5 +1,5 @@
-RGADTP ;BIR/DLR-ADT PROCESSOR TO RETRIGGER A08 or A04 MESSAGES WITH AL/AL (COMMIT/APPLICATION) ACKNOWLEDGEMENTS ;5/28/02
- ;;1.0;CLINICAL INFO RESOURCE NETWORK;**26,27,20,34,35,40,45,44,47**;30 Apr 99;Build 10
+RGADTP ;BIR/DLR-ADT PROCESSOR TO RETRIGGER A08 or A04 MESSAGES WITH AL/AL (COMMIT/APPLICATION) ACKNOWLEDGEMENTS ;13 May 2014  4:43 PM
+ ;;1.0;CLINICAL INFO RESOURCE NETWORK;**26,27,20,34,35,40,45,44,47,59,60,61**;30 Apr 99;Build 2
  ;
  ;Reference to BLDEVN^VAFCQRY and BLDPID^VAFCQRY supported by IA #3630
  ;Reference to EN1^VAFHLZEL is supported by IA #752
@@ -26,7 +26,7 @@ PROC ;processing entry point
  K ZTSAVE,ZTRTN,ZTDESC,ZTIO,ZTDTH
  Q
 IN ;Process in the ADT A04/A08 (routing logic)
- N RGI,MSG,RG,SG,DFN,EVN,SITE,RGC,RGJ,DIC,PV1,PID,COMP,ENT,EN,THLA,LAB,RAD,PHARM,TMP
+ N RGI,MSG,RG,SG,DFN,EVN,SITE,RGC,RGJ,DIC,PV1,PID,COMP,ENT,EN,THLA,LAB,RAD,PHARM,TMP,SIG,OBXDONE,OLD,NAMECOMP
  S ENT=1,REP=$E(HL("ECH"),2),COMP=$E(HL("ECH"),1)
  ;set local flag to indicate the processing of an outbound for reformatting
  I $P($G(HL("SAF")),COMP)=$P($$SITE^VASITE,"^",3) S RGLOCAL=1
@@ -36,17 +36,29 @@ IN ;Process in the ADT A04/A08 (routing logic)
  .S RGJ=0 F  S RGJ=$O(HLNODE(RGJ)) Q:'RGJ  S MSG(RGJ)=HLNODE(RGJ)
  .D:SG?2A1(1A,1N) PICK
  ;if message MSH sending facility matches the PID assigning authority update
- S ENT=0,EN=1 F  S ENT=$O(THLA("HLS",ENT)) Q:ENT=""  D
+ S ENT=0,EN=1,OBXDONE=0 F  S ENT=$O(THLA("HLS",ENT)) Q:ENT=""  D
+ .;**61, MVI_3714 (ckn) - No need to send OBX segment previously built in 2.3v to MPI - Only add new OBX for 2.4v
+ .I $E($G(THLA("HLS",ENT)),1,3)="OBX" D  Q
+ ..I OBXDONE Q  ;**61 - MVI_3714 (ckn) - OBX was added in previous loop
+ ..S RAD=$$RADE I RAD'="" S HLA("HLS",EN)=RAD,EN=EN+1
+ ..S LAB=$$LABE I LAB'="" S HLA("HLS",EN)=LAB,EN=EN+1
+ ..S PHARM=$$PHARA I PHARM'="" S HLA("HLS",EN)=PHARM,EN=EN+1
+ ..S OLD=$$OLD I OLD'="" S HLA("HLS",EN)=OLD,EN=EN+1 ;**59,MVI_914: Pass OLDER RECORD in OBX if flagged as such
+ ..S SIG=$$SIG^VAFCSB(DFN) I SIG'="" S HLA("HLS",EN)=SIG,EN=EN+1 ;**61,MVI_3714: Add Self Identified Gender in OBX
+ ..S NAMECOMP=$$NAMEOBX^VAFCSB(DFN) I NAMECOMP'="" S HLA("HLS",EN)=NAMECOMP,EN=EN+1 ;**61,MVI_3976 (mko): Add Name Components in OBX
+ ..S OBXDONE=1  ;**61 - MVI_3714 (ckn) - flag for all OBX added
  .S HLA("HLS",EN)=THLA("HLS",ENT),EN=EN+1
  .I $E($G(THLA("HLS",ENT)),1,3)="PID"!($E($G(THLA("HLS",ENT)),1,3)="ZEL") D
  ..;**47 handle if ZEL is over 245 as well
  ..I $O(THLA("HLS",ENT,""))'="" D
  ...S CNT="" F  S CNT=$O(THLA("HLS",ENT,CNT)) Q:CNT=""  S HLA("HLS",EN-1,CNT)=THLA("HLS",ENT,CNT)
  .I $E($G(THLA("HLS",ENT)),1,3)="PV1" I RGLOCAL S TMP=$$PV2B I TMP'="" S HLA("HLS",EN)=$$PV2B,EN=EN+1  ;**47
- .I $E($G(THLA("HLS",ENT)),1,3)="ZPD" I RGLOCAL D
- ..S RAD=$$RADE I RAD'="" S HLA("HLS",EN)=RAD,EN=EN+1
- ..S LAB=$$LABE I LAB'="" S HLA("HLS",EN)=LAB,EN=EN+1
- ..S PHARM=$$PHARA I PHARM'="" S HLA("HLS",EN)=PHARM,EN=EN+1
+ .;**61 MVI_3714 (ckn) Add Self Identified Gender in OBX
+ .;I $E($G(THLA("HLS",ENT)),1,3)="ZPD" I RGLOCAL D
+ .;.S RAD=$$RADE I RAD'="" S HLA("HLS",EN)=RAD,EN=EN+1
+ .;.S LAB=$$LABE I LAB'="" S HLA("HLS",EN)=LAB,EN=EN+1
+ .;.S PHARM=$$PHARA I PHARM'="" S HLA("HLS",EN)=PHARM,EN=EN+1
+ .;.S OLD=$$OLD I OLD'="" S HLA("HLS",EN)=OLD,EN=EN+1 ;**59,MVI_914: Pass OLDER RECORD in OBX if flagged as such
 QUIT Q
 ROUTE ;
  N RGERR
@@ -56,7 +68,11 @@ ROUTE ;
  .I $P($G(MPI),U)=-1 D
  ..N RGLOG,RGMTXT D START^RGHLLOG(HLMTIEN,"","") S RGMTXT="for DFN#"_$G(DFN)
  ..D EXC^RGHLLOG(224,"No MPI link identified"_RGMTXT,$G(DFN)) S RGERR=1
- I $G(RGERR)'=1 S ^XTMP("RG"_HL("ETN")_"%"_DFN,0)=$$FMADD^XLFDT(DT,5)_"^"_DT_"^"_"RG"_HL("ETN")_" msg to MPI for DFN "_DFN S ^XTMP("RG"_HL("ETN")_"%"_DFN,"MPI",0)="A"
+ ;**60 MVI_1837(rjh): to catch undefined dfn
+ ;I $G(RGERR)'=1 S ^XTMP("RG"_HL("ETN")_"%"_DFN,0)=$$FMADD^XLFDT(DT,5)_"^"_DT_"^"_"RG"_HL("ETN")_" msg to MPI for DFN "_DFN S ^XTMP("RG"_HL("ETN")_"%"_DFN,"MPI",0)="A"
+ I $G(RGERR)'=1,$D(^DPT(+$G(DFN),0)) D
+ .S ^XTMP("RG"_HL("ETN")_"%"_DFN,0)=$$FMADD^XLFDT(DT,5)_"^"_DT_"^"_"RG"_HL("ETN")_" msg to MPI for DFN "_DFN
+ .S ^XTMP("RG"_HL("ETN")_"%"_DFN,"MPI",0)="A"
  Q
 RESP ;
  N RGER,RGSITE,ARRAY,MSH,RGLOCAL,RGEVNT,RGI,MSG,RG,SG,DFN,EVN,SITE,RGC,RGJ,DIC,PV1,PID
@@ -83,6 +99,7 @@ MSA ;process the MSA segment
  .D START^RGHLLOG(HLMTIEN,"","")
  .D EXC^RGHLLOG(234,RGERR,DFN) ;**44
  .D STOP^RGHLLOG(0)
+ K:$G(DFN)>0 ^XTMP("MPIF OLD RECORDS",DFN) ;**59,MVI_914: Delete the old record designation
  I $D(^XTMP("RG"_HL("ETN")_"%"_DFN,0)) K ^XTMP("RG"_HL("ETN")_"%"_DFN)
  Q
 MSH ;
@@ -207,9 +224,11 @@ PROCIN ;
  D PROCIN^RGADTP2(.ARRAY,.RGLOCAL,.RGER,.DFN,.HL)
  Q
 GENACK ;
- N RGCNT,IEN,RG
+ N RGCNT,IEN,RG,ERRSEG
  I $G(ARRAY("DFN"))'>0 S RGER="-1^Unknown ICN#"_$G(ARRAY("ICN"))_" and SSN#"_$G(ARRAY(.09))
+ E  I HL("ETN")="A31",RGSITE="200M" S ERRSEG=$$NAMEERR^VAFCSB(ARRAY("DFN")) ;**61,MVI_3976 (mko): Get Name Components
  S RGCNT=1,HLA("HLA",RGCNT)="MSA"_HL("FS")_"AA"_HL("FS")_HL("MID")_HL("FS")_$S(+$G(RGER)<0:$P(RGER,"^",2,3),1:""),RGCNT=RGCNT+1
+ S:$G(ERRSEG)]"" HLA("HLA",RGCNT)=ERRSEG,RGCNT=RGCNT+1 ;**61,MVI_3976 (mko): Put name component in ERR segment
  S RGSITE=$$LKUP^XUAF4(RGSITE)
  D LINK^HLUTIL3(RGSITE,.RG) S IEN=$O(RG(0)) S HLL("LINKS",1)="^"_RG(IEN)
  D GENACK^HLMA1(HL("EID"),HLMTIENS,HL("EIDS"),"LM",1,.HLRESLTA,"",.HL)
@@ -217,3 +236,6 @@ GENACK ;
  Q
 RSP ;
  Q
+OLD() ; Return OBX segment to flag a record as "old"
+ ;**59,MVI_914: New subroutine
+ Q $S($D(^XTMP("MPIF OLD RECORDS",DFN))#2:"OBX"_HL("FS")_HL("FS")_"CE"_HL("FS")_"OLDER RECORD"_HL("FS")_HL("FS")_"Y",1:"")

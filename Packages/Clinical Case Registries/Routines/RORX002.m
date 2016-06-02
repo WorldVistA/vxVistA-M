@@ -1,10 +1,22 @@
-RORX002 ;HCIOFO/SG - CURRENT INPATIENT LIST ; 10/20/06 4:09pm
- ;;1.5;CLINICAL CASE REGISTRIES;**1**;Feb 17, 2006;Build 24
+RORX002 ;HOIFO/SG,VAC - CURRENT INPATIENT LIST ;4/7/09 2:06pm
+ ;;1.5;CLINICAL CASE REGISTRIES;**1,8,19,21**;Feb 17, 2006;Build 45
  ;
  ; This routine uses the following IAs:
  ;
- ; #325          ADM^VADPT2 (controlled)
  ; #10061        51^VADPT (supported)
+ ;
+ ; Routine modified March 2009 for ICD9 filter for INCLUDE or EXCLUDE
+ ;
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                       --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*19   FEB  2012   K GUPTA      Support for ICD-10 Coding System
+ ;ROR*1.5*21   SEP 2013    T KOPP       Add ICN column if Additional Identifier
+ ;                                       requested.
+ ;******************************************************************************
  ;
  Q
  ;
@@ -17,7 +29,7 @@ RORX002 ;HCIOFO/SG - CURRENT INPATIENT LIST ; 10/20/06 4:09pm
  ;        0  Ok
  ;
 HEADER(PARTAG) ;
- ;;PATIENTS(#,NAME,LAST4,WARD,ROOM-BED)
+ ;;PATIENTS(#,NAME,LAST4,WARD,ROOM-BED,ICN)
  ;
  N HEADER,RC
  S HEADER=$$HEADER^RORXU002(.RORTSK,PARTAG)
@@ -91,6 +103,8 @@ PATIENT(NODE,PARTAG) ;
  ;D ADDVAL^RORTSK11(RORTSK,"DOD",TMP,PTAG,1)
  D ADDVAL^RORTSK11(RORTSK,"WARD",$QS(NODE,3),PTAG,1)
  D ADDVAL^RORTSK11(RORTSK,"ROOM-BED",$P(PTBUF,U,3),PTAG,1)
+ ; --- ICN if selected must be last column on report
+ I $$PARAM^RORTSK01("PATIENTS","ICN") D ADDVAL^RORTSK11(RORTSK,"ICN",$P(PTBUF,U,$L(PTBUF,U)),PTAG,1)
  Q 0
  ;
  ;***** GENERATES THE LIST OF PATIENTS
@@ -131,10 +145,12 @@ PTLIST(REPORT,INPCNT) ;
  ;
 QUERY(INPCNT,SFLAGS) ;
  N CNT,DFN,ECNT,IEN,IENS,RC,TCNT,TMP,VA,VADM,VAHOW,VAIP,VAROOT,XREFNODE,WARD
+ N RCC,FLAG
  S XREFNODE=$NA(^RORDATA(798,"AC",+RORREG))
  S (CNT,ECNT,INPCNT,RC)=0
  ;--- Browse through the registry records
  S IEN=0
+ S FLAG=$G(RORTSK("PARAMS","ICDFILT","A","FILTER"))
  F  S IEN=$O(@XREFNODE@(IEN))  Q:IEN'>0  D  Q:RC<0
  . S TMP=$S(RORPTN>0:CNT/RORPTN,1:"")
  . S RC=$$LOOP^RORTSK01(TMP)  Q:RC<0
@@ -143,10 +159,21 @@ QUERY(INPCNT,SFLAGS) ;
  . Q:$$SKIP^RORXU005(IEN,SFLAGS)
  . ;--- Process the registry record
  . S DFN=$$PTIEN^RORUTL01(IEN)  Q:DFN'>0
+ .; --- Check the ICD filter
+ . S RCC=0
+ . I FLAG'="ALL" D
+ . . S RCC=$$ICD^RORXU010(DFN)
+ . I (FLAG="INCLUDE")&(RCC=0) Q
+ . I (FLAG="EXCLUDE")&(RCC=1) Q
+ .;--- End of ICD Filter check
  . K VA,VADM,VAIP  S VAIP("D")=DT\1  D 51^VADPT
  . S WARD=$P(VAIP(5),U,2)  Q:WARD=""
  . S TMP=$S($G(VA("BID"))'="":VA("BID"),1:"UNKN") ; Last 4 of SSN
  . S @RORTMP@(WARD,VADM(1),TMP)=IEN_U_DFN_U_$P(VAIP(6),U,2)_U_$P(VADM(6),U)
+ . I $$PARAM^RORTSK01("PATIENTS","ICN") D
+ . . N TMP1
+ . . S TMP1=$$ICN^RORUTL02(DFN)
+ . . I TMP1'<0 S @RORTMP@(WARD,VADM(1),TMP)=@RORTMP@(WARD,VADM(1),TMP)_U_TMP1
  . S INPCNT=INPCNT+1
  ;---
  Q $S(RC<0:RC,1:ECNT)

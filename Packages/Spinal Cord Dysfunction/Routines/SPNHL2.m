@@ -1,6 +1,12 @@
-SPNHL2 ;WDE/SAN-DIEGO;Build the hl7 segment for file data 154.1
- ;;2.0;Spinal Cord Dysfunction;**10,11,12,14,19,20**;01/02/97
+SPNHL2 ;WDE/SAN-DIEGO;Build the hl7 segment for file data 154.1;DEC 03,2009
+ ;;2.0;Spinal Cord Dysfunction;**10,11,12,14,19,20,26**;01/02/97;Build 7
 EN(SPNFD0) ;
+ ;
+ ;Reference to API $$KSP^XUPARAM supported by IA# 2541
+ ;
+ ;11/04/09 - JAS - This was originally a SPN 2.0 routine that needed updated
+ ;           to fix a long-existing issue. Remedy #354716      
+ ;
  ;this routine is called from spnhl71 spnhl71 is called from the
  ;edit screen
  ; spndd is the field name located in the dd
@@ -22,6 +28,13 @@ EN(SPNFD0) ;
  S SPMSG(SPLINE)=SPNOBR S SPLINE=SPLINE+1
  K SPNOBR
  S OBXCNT=1
+ ;11/04/09 - JAS - Remedy 354716 (Add unique identifier to Outcomes Message)
+ S LOCDA=$$GET1^DIQ(154.1,SPNFD0_",",.023)
+ I LOCDA="" S LOCDA=$$KSP^XUPARAM("INST")
+ S SPDATA=LOCDA_"_"_SPNFD0 K LOCDA
+ S SPNDD="UNIQUE OUTCOMES IDENTIFIER"
+ S SPMSG(SPLINE)="OBX|"_OBXCNT_"|ST|"_""_"^"_SPNDD_"||"_SPDATA
+ S SPLINE=SPLINE+1,OBXCNT=OBXCNT+1,SPNDD="",SPDATA=""
  ;check for date of death if so get it
  S SPDATA=$$GET1^DIQ(2,SPNFDFN_",",.351,"I") I $G(SPDATA)'="" D
  . S SPDATA=$$HLDATE^HLFNC(SPDATA,"TS")

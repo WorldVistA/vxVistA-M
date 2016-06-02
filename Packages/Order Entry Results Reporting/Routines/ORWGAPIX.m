@@ -1,5 +1,5 @@
 ORWGAPIX ; SLC/STAFF - Graph External Calls ;9/29/06  11:49
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**215,260,243**;Dec 17, 1997;Build 242
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**215,260,243**;Dec 17, 1997;Build 8
  ;
 DATE(X) ; $$(date/time) -> date/time
  N Y D ^%DT
@@ -124,8 +124,14 @@ BMI(DFN,WT,DATE) ; $$(dfn,wt,date) -> bmi, else ""
  Q $$CALCBMI(HT,WT)
  ;
 CALCBMI(HT,WT) ; $$(ht,wt) -> bmi  uses (inches,lbs)
- S WT=WT/2.2 ;+$$WEIGHT^XLFMSMT(WT,"LB","KG")
- S HT=HT*2.54/100 ;+$$LENGTH^XLFMSMT(HT,"IN","M")
+ ;DSS/SMP - BEGIN MODS
+ I $G(^%ZOSF("ZVX"))["VX" D  I 1
+ .S WT=$$LB2KG^VFDXLF(WT)
+ .S HT=$$IN2M^VFDXLF(HT)
+ E  D
+ .S WT=WT/2.2 ;+$$WEIGHT^XLFMSMT(WT,"LB","KG")
+ .S HT=HT*2.54/100 ;+$$LENGTH^XLFMSMT(HT,"IN","M")
+ ;DSS/SMP - END MODS
  Q $J(WT/(HT*HT),0,2)
  ;
 CLOSEST(DATE,NEXT,PREV) ;

@@ -1,5 +1,5 @@
 LA7VIN1 ;DALOI/JMC - Process Incoming UI Msgs, continued ;12/07/11  12:54
- ;;5.2;AUTOMATED LAB INSTRUMENTS;**46,64,74**;Sep 27, 1994;Build 229
+ ;;5.2;AUTOMATED LAB INSTRUMENTS;**46,64,74**;Sep 27, 1994;Build 2
  ;
  ; This routine is a continuation of LA7VIN and is only called from there.
  ; It is called with each message found in the incoming queue.
@@ -8,6 +8,47 @@ LA7VIN1 ;DALOI/JMC - Process Incoming UI Msgs, continued ;12/07/11  12:54
 NXTMSG ;
  N FDA,LA7ABORT,LA7AERR,LA7CNT,LA7END,LA7ERR
  N LA7INDX,LA7KILAH,LA7QUIT,LA7SEG,LA7STYP
+ ;DSS/JDB - BEGIN MOD (2009/12/15) 
+ ; Expects LA76248
+ N DIERR,VFDLAAP,VFDLAAPTXT,VFDLAMICRO,VFDLAMITXT,VFDLAMRN,VFDLAUID,VFDMSG,VFDX,VFDX1  ;DSS/RAF 2/11/2014
+ S VFDLAUID=$$VFDUID(LA76249)  ;DSS/RAF 2/11/2014
+ S VFDLAMRN=$$VFDMRN(LA76249)  ;DSS/RAF 4/17/2014
+ I $$VFDGET1^VFDLRPC1(62.49,LA76249,108)="ORU" D  ;DSS/RAF 9/13/2014 added check to stop processing of MSA messages
+ . I $$VFDGET1^VFDLRPC1(62.49,LA76249,102)["POC" Q  ;DSS/RAF 10/24/2014 added for POC compatibility
+ . I VFDLAMRN'=$P($$UIDLRDFN^VFDLRX($G(VFDLAUID)),U,3) D
+ . . N LA7ERR,LA7MSATM
+ . . S LA7ERR=48,LA7QUIT=2,LA7MSATM="DFN mismatch between OBR-2 and PID-2 or missing UID from OBR-2"
+ . . ;DSS/RAF - 8/1/2014 replaced 102 with 48 and changed text variable to LA7MSATM
+ . . D CREATE^LA7LOG(LA7ERR)
+ I +$G(LA7QUIT)>0 Q  ;DSS/RAF 4/18/2014
+ I $G(VFDLAUID)]"" D  ;DSS/RAF 2/11/2014
+ . S VFDX=$$FIND1^DIC(68,"","MOX",$G(VFDLAUID),"C","","VFDMSG")  ;DSS/RAF 2/11/2014
+ . S VFDX1=$$GET1^DIQ(68,VFDX_",",.02,"I","VFDMSG")  ;DSS/RAF 2/11/2014
+ I $G(VFDX1)="MI" S VFDLAMICRO=1  ;DSS/RAF 2/11/2014
+ I "SPCYEM"[$G(VFDX1) S VFDLAAP=1  ;DSS/RAF 3/17/2014
+ S VFDLAMITXT=$$GET^XPAR("SYS","VFD LAB NON-DISCRETE MICRO ORU")  ;DSS/RAF 3/6/2014
+ S VFDLAAPTXT=$$GET^XPAR("SYS","VFD LAB NON-DISCRETE AP ORU")  ;DSS/RAF 3/17/2014
+ ; parameter above will allow existing "blob" text micro messages to process as expected  ;DSS/RAF 3/6/2014
+ N RULE,SEGID
+ N VFDACTION,VFDLALAH,VFDLAHL7SEGS,VFDLAISAPOBR
+ N VFDLANTE4PID,VFDLAPROCESS,VFDQUIT
+ ; Pre load HL7 message
+ K VFDLAHL7SEGS
+ D SEGS2TMP^VFDLA7R0(LA76249,.VFDLAHL7SEGS)
+ S VFDLAHL7SEGS(0)=0
+ S VFDLAPROCESS=0
+ ; Get Message Type from MSH
+ S SEGID=$O(VFDLAHL7SEGS(2,"MSH",0))
+ S LA7MTYP=$$GETTMP^VFDLA7R0("MSH",SEGID,9,1)
+ I LA7MTYP="ORU" D  ;
+ . S VFDLAPROCESS=$$HLPROC^VFDLA7U3(LA76248,"LAB PROCESS ORU")
+ ;
+ I +$G(VFDLAMICRO)=1,+$G(VFDLAMITXT)=1 D RULS2TMP^VFDLA7U3(VFDLAPROCESS)  ;DSS/RAF 3/26/2014
+ I +$G(VFDLAAP)=1,+$G(VFDLAAPTXT)=1 D RULS2TMP^VFDLA7U3(VFDLAPROCESS)  ;DSS/RAF 3/26/2014
+ I $G(VFDX1)="CH" D RULS2TMP^VFDLA7U3(VFDLAPROCESS)  ;DSS/RAF 3/26/2014
+ K ^TMP("VFDLA7IFQSTRI5-REPORT",$J)
+ ;
+ ;DSS/JDB - END MOD (2009/12/15) 
  ;
  S (LA7AERR,LA7ERR)=""
  S (LA7ABORT,LA7CNT,LA7END,LA7INDX,LA7QUIT,LA7SEQ)=0
@@ -25,6 +66,50 @@ NXTMSG ;
  ; "Z" segments will be ignored by this software.
  F  S LA7END=$$GETSEG^LA7VHLU2(LA76249,.LA7INDX,.LA7SEG) Q:LA7END!(LA7ABORT)  D
  . S LA7STYP=$E(LA7SEG(0),1,3) ; Segment type
+ . ;DSS/JDB - BEGIN MOD (2010/01/15)
+ . I LA7ABORT!LA7ERR Q
+ . S VFDLAHL7SEGS(0)=$G(VFDLAHL7SEGS(0))+1
+ . I LA7STYP="PID" D GET624^VFDLA7R6
+ . I LA7STYP="ORC" D GET624^VFDLA7R6
+ . S RULE="LAB "_LA7MTYP_" "_LA7STYP_" VALIDATE"
+ . S VFDACTION=$$ACTION^VFDLA7U3(RULE)
+ . S VFDQUIT=0
+ . I VFDACTION'="" D  ;
+ . . X VFDACTION
+ . ;
+ . I VFDQUIT!LA7ERR!LA7ABORT Q
+ . S RULE="LAB "_LA7MTYP_" "_LA7STYP
+ . S VFDACTION=$$ACTION^VFDLA7U3(RULE)
+ . ; build NTEseg rule  (eg  NTEOBR)
+ . I LA7STYP="NTE" D  ;
+ . . N I,SEG
+ . . ; find previous non-NTE segment 
+ . . S SEG=""
+ . . F I=VFDLAHL7SEGS(0)-1:-1:1 D  Q:SEG'=""  ;
+ . . . S X=VFDLAHL7SEGS(1,I)
+ . . . I X'="NTE" S SEG=X
+ . . ;
+ . . I SEG="" Q
+ . . S RULE="LAB "_LA7MTYP_" NTE"_SEG
+ . . S X=$$ACTION^VFDLA7U3(RULE)
+ . . I X'="" S VFDACTION=X
+ . ;
+ . S VFDQUIT=0
+ . I VFDACTION'="" D  Q  ;
+ . . S X=LA7STYP_"BEG^VFDLA7R6"
+ . . S VFDQUIT=0
+ . . I $T(@X)'="" D @X
+ . . I VFDQUIT S VFDQUIT=0 Q
+ . . I LA7QUIT=2 Q
+ . . I LA7ABORT!LA7ERR Q
+ . . ; protect DO level
+ . . D  ;
+ . . . X VFDACTION
+ . . ;
+ . . S X=LA7STYP_"END^VFDLA7R6"
+ . . I $T(@X)'="" D @X
+ . ;
+ . ;DSS/JDB - END MOD (2010/01/15)
  . I $E(LA7STYP,1)="Z" Q
  . ; Not a valid segment type
  . I LA7STYP'?2U1UN D  Q
@@ -40,6 +125,12 @@ NXTMSG ;
  ; Send HL7 Application Acknowledgment message for selected interfaces/message types
  I LA7MTYP="ORM",LA7INTYP=10 D SENDACK
  ;
+ ;DSS/JDB - BEGIN MOD (2009/12/15)
+ S VFDACTION=$$ACTION^VFDLA7U3("LAB "_LA7MTYP_" DONE")
+ I VFDACTION'="" D  ;
+ . X VFDACTION
+ ;
+ ;DSS/JDB - END MOD (2009/12/15)
  ; Set id if only MSH segment received.
  I LA7SEQ<5 D
  . D SETID^LA7VHLU1(LA76249,LA7ID,"UNKNOWN",1)
@@ -86,6 +177,16 @@ NXTMSG ;
  ;
  ; If abnormal/critical results then send bulletins
  I $D(^TMP("LA7 ABNORMAL RESULTS",$J)) D SENDACB^LA7VIN1A
+ ;DSS/RAF - BEGIN MOD - make call to autoaccept routine to file results
+ ; this might be the place to call ONE^VFDLRAV(LA7LWL,LA7ISQN,1)  ;DSS/RAF 3/12/2014
+ ; the 1 flag tells Frank not to kill off ^LAH(LA7LWL when done moving to file 63
+ I $G(VFDLAMICRO)=1,+$G(VFDLAMITXT)=0 D  ;DSS/RAF - check added to stop ack errors
+ . D ONE^VFDLRAV(+$G(LA7LWL),+$G(LA7ISQN),0)  ;DSS/RAF 3/14/2014
+ I $G(VFDLAAP)=1,$G(VFDLAAPTXT)=0 D  ;DSS/RAF - autoaccept for AP discrete
+ . ;third parameter in following call: 1=delete ^LAH when done 0=save ^LAH
+ . D ONE^VFDLRAV(+$G(LA7LWL),+$G(LA7ISQN))  ;DSS/RAF 3/18/2014
+ . ; add code here to handle LREND error message somehow.
+ ;DSS/RAF - END MOD
  ;
  D KILLMSH
  ;
@@ -288,3 +389,22 @@ KILLOBX ; Clean up variables used by OBX and following segments
 KILLBLG ; Clean up variables used by BLG and following segments
  ;
  Q
+ ;DSS/RAF - BEGIN MOD - 2/11/2014 extract UID out of 62.49
+VFDUID(IEN) ;pull UID out of HL7 message
+ N I,VAL
+ I '$O(^LAHM(62.49,IEN,0)) Q ""
+ S I=$NA(^LAHM(62.49,IEN))
+ F  S I=$Q(@I) Q:I=""  Q:$QS(I,1)'="62.49"  Q:$QS(I,2)'=IEN  D
+ .I $P(@I,"|")="OBR" S VAL=$P($P(@I,"|",3),U)  ;DSS/RAF 7/2/2014 added for ARRA II and HL7 v2.5.1
+ .I '$D(VAL) S VAL=""
+ Q VAL
+VFDMRN(IEN) ;pull MRN ouf of HL7 message
+ N I,VAL
+ I '$O(^LAHM(62.49,IEN,0)) Q ""
+ S I=$NA(^LAHM(62.49,IEN))
+ F  S I=$Q(@I) Q:I=""  Q:$QS(I,1)'="62.49"  Q:$QS(I,2)'=IEN  D  Q:+VAL  ;DSS/RAF 7/2/14
+ .I $P(@I,"|")="PID" S VAL=$P(@I,"|",3)
+ .I $G(VAL)="" S VAL=+$P(@I,"|",4)  ;DSS/RAF 6/30/2014 added for ARRA II using PID-3
+ .I '$D(VAL) S VAL=""
+ Q VAL
+ ;;2013.1;VENDOR - DOCUMENT STORAGE SYS;**16**;11 DEC 2014

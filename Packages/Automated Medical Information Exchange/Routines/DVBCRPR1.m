@@ -1,10 +1,10 @@
 DVBCRPR1 ;ALBANY-ISC/GTS-REPRINT C&P REPORT CONTINUED ;4/28/93
- ;;2.7;AMIE;**2,119**;Apr 10, 1995;Build 10
+ ;;2.7;AMIE;**2,119,156**;Apr 10, 1995;Build 8
  ;
  ;  ** Entry points called only from DVBCRPRT **
  ;  ** All TAGS are entry points **
 HDR S PG=PG+1
- I +$G(DVBGUI)&&(PG>1) Q
+ I +$G(DVBGUI)&(PG>1) Q
  I PG>1 D HDR3^DVBCUTL2 Q
  S:ZPR'="E" TOTTIME=$$PROCDAY^DVBCUTL2(DA(1))
  S:ZPR="E" TOTTIME=$$INSFTME^DVBCUTA1(DA(1))
@@ -24,7 +24,7 @@ HDR S PG=PG+1
  W !
  Q
  ;
-UP F XIX=$Y:1:(IOSL-6) W !
+UP F XIX=$Y:1:(IOSL-8) W !  ;DVBA*156 add more lines for footer padding
  Q
  ;
 BOT I '$D(AUTO),$D(PRINT) D UP W ?7,"This exam has been reviewed and approved by the examining physician" W:$D(DVBCAO) !?27,"and signed by the veteran" W ".",!!,"VA Form 2507",! ;for RO

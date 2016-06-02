@@ -1,5 +1,5 @@
-DGENL1 ;ALB/RMO,ISA/KWP,Zoltan,ALB/BRM,LBD,ERC,EG,CKN,BAJ - Patient Enrollment - Build List Area ; 8/1/08 1:12pm
- ;;5.3;Registration;**121,147,232,266,343,564,672,659,653,688**;Aug 13,1993;Build 29
+DGENL1 ;ALB/RMO,ISA/KWP,Zoltan,ALB/BRM,LBD,ERC,EG,CKN,BAJ - Patient Enrollment - Build List Area ; 5/12/11 3:53pm
+ ;;5.3;Registration;**121,147,232,266,343,564,672,659,653,688,838,841**;Aug 13,1993;Build 7
  ;
 EN(DGARY,DFN,DGENRIEN,DGCNT) ;Entry point to build list area
  ; for patient enrollment and patient enrollment history
@@ -63,8 +63,8 @@ ENR(DGARY,DFN,DGENR,DGLINE,DGCNT) ;Enrollment
  D SET(DGARY,DGLINE,"Effective Date: "_$S($G(DGENR("EFFDATE")):$$EXT^DGENU("EFFDATE",DGENR("EFFDATE")),1:""),12,,,,,,.DGCNT)
  ;
  ;Reason canceled/declined
- S DGLINE=DGLINE+1
- D SET(DGARY,DGLINE,"",1,,,,,,.DGCNT)
+ ; Removed blank line to fix format after screen header was increased
+ ; to 3 lines (DG*5.3*838).
  S DGLINE=DGLINE+1
  D SET(DGARY,DGLINE,"Reason Canceled/Declined: "_$S($G(DGENR("REASON")):$$EXT^DGENU("REASON",DGENR("REASON")),1:""),2,,,,,,.DGCNT)
  ;
@@ -100,6 +100,10 @@ PF(DGARY,DFN,DGENR,DGLINE,DGCNT) ;Priority factors
  ;POW
  S DGLINE=DGLINE+1
  D SET(DGARY,DGLINE,"POW: "_$S($G(DGENR("ELIG","POW"))'="":$$EXT^DGENU("POW",DGENR("ELIG","POW")),1:""),19,,,,,,.DGCNT)
+ ;
+ ;Medal of Honor (DG*5.3*841)
+ I $G(DGENR("ELIG","MOH"))="Y" D
+ .D SET(DGARY,DGLINE,"Medal of Honor: YES",48,,,,,,.DGCNT)
  ;
  ;Purple Heart - added for patch 343;brm;10/23/00
  N PHDAT

@@ -1,5 +1,5 @@
 ORDV02 ; slc/dcm - OE/RR Report Extracts ;10/8/03  11:18
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**109,118,146,141,208**;Dec 17, 1997
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**109,118,146,141,208,318**;Dec 17, 1997;Build 23
  ;LAB Components
 LO(ROOT,ORALPHA,OROMEGA,ORMAX,ORDBEG,ORDEND,OREXT)      ; Lab Order Component
  ;External calls to ^GMTSLROE
@@ -26,19 +26,19 @@ LO(ROOT,ORALPHA,OROMEGA,ORMAX,ORDBEG,ORDEND,OREXT)      ; Lab Order Component
  . S SN=0
  . F  S SN=$O(^TMP("LRO",$J,D,SN)) Q:'SN  S ORX0=^(SN) I $L(ORX0) D
  .. S SITE=$S($L($G(^TMP("LRO",$J,D,SN,"facility"))):^("facility"),1:ORSITE)
- .. S ^TMP("ORDATA",$J,D,"WP",1)="1^"_SITE ;Station ID
- .. S ^TMP("ORDATA",$J,D,"WP",2)="2^"_$P(ORX0,U) ;collection date
- .. S ^TMP("ORDATA",$J,D,"WP",3)="3^"_$P($P(ORX0,U,2),";",2) ;test name
- .. S ^TMP("ORDATA",$J,D,"WP",4)="4^"_$P($P(ORX0,U,2),";") ;test ien
- .. S ^TMP("ORDATA",$J,D,"WP",5)="5^"_$P($P(ORX0,U,3),";",2) ;specimen name
- .. S ^TMP("ORDATA",$J,D,"WP",6)="6^"_$P($P(ORX0,U,3),";") ;specimen ien
- .. S ^TMP("ORDATA",$J,D,"WP",7)="7^"_$P(ORX0,U,4) ;urgency
- .. S ^TMP("ORDATA",$J,D,"WP",8)="8^"_$P($P(ORX0,U,6),";",2) ;provider name
- .. S ^TMP("ORDATA",$J,D,"WP",9)="9^"_$P($P(ORX0,U,6),";") ;provider ien
- .. S ^TMP("ORDATA",$J,D,"WP",10)="10^"_$P(ORX0,U,7) ;order date/time
- .. S ^TMP("ORDATA",$J,D,"WP",11)="11^"_$P(ORX0,U,8) ;accession number
- .. S ^TMP("ORDATA",$J,D,"WP",12)="12^"_$P(ORX0,U,9) ;available date/time
- .. S ^TMP("ORDATA",$J,D,"WP",13)="13^"_$P(ORX0,U,5) ;status
+ .. S ^TMP("ORDATA",$J,D,SN,"WP",1)="1^"_SITE ;Station ID ;DJE *318 add SN node for multiple labs per date
+ .. S ^TMP("ORDATA",$J,D,SN,"WP",2)="2^"_$P(ORX0,U) ;collection date
+ .. S ^TMP("ORDATA",$J,D,SN,"WP",3)="3^"_$P($P(ORX0,U,2),";",2) ;test name
+ .. S ^TMP("ORDATA",$J,D,SN,"WP",4)="4^"_$P($P(ORX0,U,2),";") ;test ien
+ .. S ^TMP("ORDATA",$J,D,SN,"WP",5)="5^"_$P($P(ORX0,U,3),";",2) ;specimen name
+ .. S ^TMP("ORDATA",$J,D,SN,"WP",6)="6^"_$P($P(ORX0,U,3),";") ;specimen ien
+ .. S ^TMP("ORDATA",$J,D,SN,"WP",7)="7^"_$P(ORX0,U,4) ;urgency
+ .. S ^TMP("ORDATA",$J,D,SN,"WP",8)="8^"_$P($P(ORX0,U,6),";",2) ;provider name
+ .. S ^TMP("ORDATA",$J,D,SN,"WP",9)="9^"_$P($P(ORX0,U,6),";") ;provider ien
+ .. S ^TMP("ORDATA",$J,D,SN,"WP",10)="10^"_$P(ORX0,U,7) ;order date/time
+ .. S ^TMP("ORDATA",$J,D,SN,"WP",11)="11^"_$P(ORX0,U,8) ;accession number
+ .. S ^TMP("ORDATA",$J,D,SN,"WP",12)="12^"_$P(ORX0,U,9) ;available date/time
+ .. S ^TMP("ORDATA",$J,D,SN,"WP",13)="13^"_$P(ORX0,U,5) ;status
  K ^TMP("LRO",$J)
  S ROOT=$NA(^TMP("ORDATA",$J))
  Q

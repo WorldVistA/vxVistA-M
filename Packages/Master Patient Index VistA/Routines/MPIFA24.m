@@ -1,5 +1,5 @@
 MPIFA24 ;BPOFO/CMC-A24 PROCESSING ROUTINE ;18 Mar 02
- ;;1.0; MASTER PATIENT INDEX VISTA ;**22,24,27,31,25,41,39,48**;30 Apr 99;Build 6
+ ;;1.0;MASTER PATIENT INDEX VISTA;**22,24,27,31,25,41,39,48,52,59**;30 Apr 99;Build 1
  ;
  ; Integration Agreements Utilized:
  ;  START, EXC, STOP^RGHLLOG - #2796
@@ -32,7 +32,7 @@ A24 ;
  . I $G(ARRY("ICN",2))=""!(+$G(DFN)'>0) D
  .. I $G(ARRY("DFN",2))'="" S DFN=ARRY("DFN",2)
  .. I $G(ARRY("DFN",2))="" S DFN=ARRY("DFN",1)
- S ARRY(991.03)=$$LKUP^XUAF4(ARRY(991.03))
+ S ARRY(991.03)=$S(ARRY(991.03)="":"@",1:$$LKUP^XUAF4(ARRY(991.03))) ;**59 - MVI_2688 (dri)
  I +$G(DFN)'>0 S ERR="-1^Unknown Identifier(s) ICN#"_$G(ARRY("ICN",2))_" and DFN#"_$G(ARRY("DFN",2))
  I +$G(DFN)>0 S ERR=$$UPDATE^MPIFAPI(DFN,"ARRY",0) D
  .;remove ALL Treating Facilities except your sites and add the CMOR
@@ -55,7 +55,9 @@ A24 ;
  .I ARRY("ICN",1)'=ARRY("ICN",2) D RESEX^MPIFDUP(DFN,2) ;**48
  .K ZTRTN,ZTDESC,ZTIO,ZTSAVE,ZTDTH,ZTREQ
  ;
- S HLA("HLA",1)="MSA"_HL("FS")_"AA"_HL("FS")_HL("MID")_HL("FS")_$S(+$G(ERR)'>0:$P(ERR,"^",2),1:"")
+ N AA S AA="AA"
+ I $G(ERR)'>0,$P($G(ERR),"^",2)["is already in use for pt DFN" S AA="AE" ;**52 MPIC_1681/1753
+ S HLA("HLA",1)="MSA"_HL("FS")_AA_HL("FS")_HL("MID")_HL("FS")_$S(+$G(ERR)'>0:$P(ERR,"^",2),1:"")
  S $P(HLA("HLA",1),HL("FS"),7)="ICN="_ARRY("ICN",1)
  D LINK^HLUTIL3(ARRY("SITE"),.LINK) S IEN=$O(LINK(0)),HLL("LINKS",1)="^"_LINK(IEN)
  D GENACK^HLMA1(HL("EID"),HLMTIENS,HL("EIDS"),"LM",1,.MPIFRSLT,"",.HL)

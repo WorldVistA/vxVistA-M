@@ -1,6 +1,6 @@
 VFDVFOIZ ;DSS/SGM - INITIALIZE A CACHE.DAT CLONE ; 12/05/2011 12:30
- ;;2010.1;DSS,INC VXVISTA OPEN SOURCE;**1**;05 Jan 2010;Build 92
- ;Copyright 1995-2010,Document Storage Systems Inc. All Rights Reserved
+ ;;2.0;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 103
+ ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  ;This routine is designed to quickly set up a copy of an existing
  ;Cache.dat file on another Cache configuration.

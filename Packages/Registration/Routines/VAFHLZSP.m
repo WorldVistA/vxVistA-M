@@ -1,5 +1,5 @@
-VAFHLZSP ;ALB/RJS,TDM - ZSP SEGMENT - 3/18/96 ; 9/19/05 11:50am
- ;;5.3;Registration;**94,106,122,220,653**;Aug 13, 1993;Build 2
+VAFHLZSP ;ALB/RJS,TDM,PJH - ZSP SEGMENT - 3/18/96 ; 5/30/07 4:21pm
+ ;;5.3;Registration;**94,106,122,220,653,754**;Aug 13, 1993;Build 46
 EN(DFN,VAFNUM,VAFAMB) ;
  N VAROOT,VAFHROOT,VAFY,VAFNODE,VIETSRV,SERVCONN,PERCENT,POS,RETURN
  S VAROOT="VAFHROOT"
@@ -40,6 +40,8 @@ EN(DFN,VAFNUM,VAFAMB) ;
  S $P(VAFY,HLFS,2)=$S($P(VAFNODE,"^",5)]"":$$YN^VAFHLFNC($P(VAFNODE,"^",5)),1:HLQ) ; Unemployable
  S $P(VAFY,HLFS,3)=$S($P(VAFNODE,"^",12)]"":$$HLDATE^HLFNC($P(VAFNODE,"^",12)),1:HLQ) ; SC Award Date
  S $P(VAFY,HLFS,5)=$S($P(VAFNODE,"^",13)]"":$$HLDATE^HLFNC($P(VAFNODE,"^",13)),1:HLQ) ; P&T Effective Date
+ ; **** PJH - Patch DG*5.3*754; Add additional data field ****
+ S $P(VAFY,HLFS,6)=$S($P(VAFNODE,"^",14)]"":$$HLDATE^HLFNC($P(VAFNODE,"^",14)),1:HLQ) ; Combined SC percent Effective Date
  ;
  S RETURN=RETURN_HLFS_$G(VAFY)
  ;

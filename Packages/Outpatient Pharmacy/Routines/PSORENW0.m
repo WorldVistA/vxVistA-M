@@ -1,5 +1,5 @@
-PSORENW0 ;IHS/DSD/JCM-renew main driver continuation ;4/24/07 9:05am
- ;;7.0;OUTPATIENT PHARMACY;**11,27,32,59,64,46,71,96,100,130,237,206**;DEC 1997;Build 39
+PSORENW0 ;IHS/DSD/JCM-renew main driver continuation ;2/8/06 8:40am
+ ;;7.0;OUTPATIENT PHARMACY;**11,27,32,59,64,46,71,96,100,130,237,206,251,375,379,372**;DEC 1997;Build 8
  ;External reference to ^PS(50.7 supported by DBIA 2223
  ;External reference to ^PSDRUG supported by DBIA 221
  ;External references PSOL and PSOUL^PSSLOCK supported by DBIA 2789
@@ -36,7 +36,9 @@ ANQ I $G(ANQDATA)]"" D NOW^%DTC G:$D(^PS(52.52,"B",%)) ANQ D
  . S $P(^PS(52.52,PS52,0),"^",3,6)=ANQDATA
  . K ANQDATA,X,Y,%,ANQREM
  ;
-PROCESSX I PSORENW("DFLG")!$G(PSRX("DFLG")) S PSOBBCLK=1 W:'$G(POERR) !,$C(7),"RENEWED RX DELETED",! D:$P($G(PSOLST(+$G(ORN))),"^",2) PSOUL^PSSLOCK($P(PSOLST(ORN),"^",2)) S POERR("DFLG")=1 D CLEAN^PSOVER1
+PROCESSX N PSORWRIT I PSORENW("DFLG")!$G(PSORX("DFLG")) S PSOBBCLK=1 W:'$G(POERR) !,$C(7),"RENEWED RX DELETED",! S PSOWRIT=1,PSORERR=1 D
+ .D:$P($G(PSOLST(+$G(ORN))),"^",2) PSOUL^PSSLOCK($P(PSOLST(ORN),"^",2)) S POERR("DFLG")=1 D CLEAN^PSOVER1 D
+ ..W !! K DIR S DIR(0)="E",DIR("?")="Press Return to continue",DIR("A")="Press Return to Continue" D ^DIR K DIR,DTOUT,DUOUT S VALMBCK="Q"
  D:$G(PSORENW("OLD FILL DATE"))]"" SUSDATEK^PSOUTIL(.PSORENW)
  K PRC,PHI,PSOQUIT,BBRN,BBRN1,PSORENW,PSODRUG,PSORX("PROVIDER NAME"),PSORX("CLINIC"),PSORX("FN")
  K PSOEDT,PSOLM S:$G(PSORENW("FROM"))="" (PSORENW("DFLG"),PSORENW("QFLG"))=0
@@ -53,7 +55,7 @@ CHECK ;
  .S PSORENW("DFLG")=1
  .W !!,$C(7),"Cannot renew Rx # "_$P(PSORENW("RX0"),"^")_$S(PSOOLPF:", invalid dosage of "_$G(PSOOLPD),1:", Missing Sig")
  .S:$G(POERR) VALMSG="Cannot renew Rx # "_$P(PSORENW("RX0"),"^")_$S(PSOOLPF:", invalid Dosage of "_$G(PSOOLPD),1:", Missing Sig") S VALMBCK="R"
- .I '$G(PSORNSPD) W ! K DIR S DIR(0)="E",DIR("A")="Press Return to Continue" D ^DIR K DIR
+ .I '$G(PSORNSPD) W ! K DIR S DIR(0)="E",DIR("?")="Press Return to continue",DIR("A")="Press Return to Continue" D ^DIR K DIR
  .I $G(PSORNSPD) W !
  ;
  S (PSOS,PSOX,PSOY)="" K ACOM,DIR,DIRUT,DIRUT,DUOUT
@@ -97,32 +99,34 @@ CHKDIVX Q
  ;
 DRUG ;
  K PSOY
- S PSOY=PSORENW("DRUG IEN"),PSOY(0)=^PSDRUG(PSOY,0)
+ S PSOY=PSORENW("DRUG IEN"),PSOY(0)=^PSDRUG(PSOY,0),PSORENWD=1
  I '$P($G(^PSDRUG(PSOY,2)),"^") D  Q:$G(PSORX("DFLG"))
  .I $P($G(^PSRX(PSORENW("OIRXN"),"OR1")),"^") S PSODRUG("OI")=$P(^PSRX(PSORENW("OIRXN"),"OR1"),"^"),PSODRUG("OIN")=$P(^PS(50.7,+^("OR1"),0),"^") Q
  .W !!,"Cannot Renew!!  No Pharmacy Orderable Item!" S VALMSG="Cannot Renew!!  No Pharmacy Orderable Item!",PSORX("DFLG")=1
  D SET^PSODRG
- D POST^PSODRG S:PSORX("DFLG") PSORENW("DFLG")=1 ;remove order checks for v7. do allergy checks only
- ;D ^PSODRDUP Q:$G(PSORX("DFLG"))  ; Set PSORX("DFLG")=1 if process to stop
+ D POST^PSODRG D:'PSORX("DFLG") DOSCK^PSODOSUT("R") S:$G(PSORX("DFLG")) PSORENW("DFLG")=1 ;remove order checks for v7. do allergy checks only
  S PSONOOR=PSORENW("NOO")
- ;I $G(PSODRUG("NDF")) S NDF=$P(PSODRUG("NDF"),"A"),VAP=$P(PSODRUG("NDF"),"A",2),PTR=NDF_"."_VAP D CHK^PSODGAL(PSODFN,"DR",PTR) K NDF,VAP,PTR
- ;I '$G(PSODRUG("NDF")) D CHK1^PSODGAL(PSODFN)
  K PSORX("INTERVENE")
  S:$D(PSONEW("STATUS")) PSORENW("STATUS")=PSONEW("STATUS")
- K PSOY,PSONEW("STATUS")
+ K PSOY,PSONEW("STATUS"),PSORENWD
  Q
  ;
 RXN ;
  K PSOX
  S PSOX=$E(PSORENW("ORX #"),$L(PSORENW("ORX #")))
  S PSORENW("NRX #")=$S(PSOX?1N:PSORENW("ORX #")_"A",1:$E(PSORENW("ORX #"),1,$L(PSORENW("ORX #"))-1)_$C($A(PSOX)+1))
+ ; DSS/JCH - BEGIN MODS - NRX # (Next RX #) must take BASE 16 values into account if VFD PSO RX NUMBERING parameter set to BASE 16 - VFD*15.0*12
+ I $G(^%ZOSF("ZVX"))["VX" D
+ .N RXPAR S RXPAR=$$GET^XPAR("SYS","VFD PSO RX NUMBERING") Q:RXPAR=""
+ .S PSORENW("NRX #")=$S(PSOX?1N:PSORENW("ORX #")_"A",RXPAR]"":$$PSOBASRX(PSORENW("ORX #"),RXPAR,PSORENW("OIRXN")),1:$E(PSORENW("ORX #"),1,$L(PSORENW("ORX #"))-1)_$C($A(PSOX)+1))
+ ; DSS/JCH - END MODS
 RETRY I $O(^PSRX("B",PSORENW("NRX #"),0)) D  G:'$G(PSORENW("DFLG")) RETRY
  .W:$A($E(PSORENW("NRX #"),$L(PSORENW("ORX #"))))'=90 !,"Rx # "_PSORENW("NRX #")_" is already on file."
  .S:$G(PSOFDR) VALMSG="Rx # "_PSORENW("NRX #")_" is already on file."
  .I $A($E(PSORENW("NRX #"),$L(PSORENW("ORX #"))))=90 D
  ..W !,"Rx # "_PSORENW("NRX #")_" is already on file. Cannot renew Rx #"_PSORENW("ORX #")_".",!,"A new Rx must be entered.",!
  ..S:$G(PSOFDR) VALMSG="Rx # "_PSORENW("NRX #")_" is already on file. Cannot renew Rx #"_PSORENW("ORX #")_". A new Rx must be entered."
- ..K DIR S DIR(0)="E",DIR("A")="Press Return to Continue" D ^DIR K DIR
+ ..K DIR S DIR(0)="E",DIR("?")="Press Return to continue",DIR("A")="Press Return to Continue" D ^DIR K DIR
  ..S:$G(POERR)!($G(PSOFDR)) VALMSG="Cannot renew Rx # "_PSORENW("ORX #")_", Max number reached.",VALMBCK="R" S PSORENW("DFLG")=1
  .S PSOX=$E(PSORENW("NRX #"),$L(PSORENW("NRX #")))
  .S PSORENW("NRX #")=$S(PSOX?1N:PSORENW("NRX #")_"A",1:$E(PSORENW("NRX #"),1,$L(PSORENW("NRX #"))-1)_$C($A(PSOX)+1))
@@ -180,7 +184,7 @@ NEWPTX Q
  ;
 EN(PSORENW)        ; Entry Point for Batch Barcode Option
  S PSORENRX=$G(PSOBBC("OIRXN"))
- I $G(PSORENRX) D PSOL^PSSLOCK(PSORENRX) I '$G(PSOMSG) D  K DIR,PSOMSG W ! S DIR("A")="Press Return to continue",DIR(0)="E" D ^DIR K DIR W ! Q
+ I $G(PSORENRX) D PSOL^PSSLOCK(PSORENRX) I '$G(PSOMSG) D  K DIR,PSOMSG W ! S DIR("A")="Press Return to continue",DIR(0)="E",DIR("?")="Press Return to continue" D ^DIR K DIR W ! Q
  .I $P($G(PSOMSG),"^",2)'="" W $C(7),!!,$P(PSOMSG,"^",2) Q
  .W $C(7),!!,"Another person is editing Rx "_$P($G(^PSRX(PSORENRX,0)),"^")
  K PSOMSG,PSOBBCLK S PSOBARCD=1 D PROCESS K PSOBARCD
@@ -188,7 +192,7 @@ EN(PSORENW)        ; Entry Point for Batch Barcode Option
  I $G(PSORENRX),$G(PSOBBCLK) D PSOUL^PSSLOCK(PSORENRX)
  K PSORENRX,PSOBBCLK
  Q
-CDOSE ;Validate Dosage field on Renewel, Copy, Edit
+CDOSE ;Validate Dosage field on Renewal, Copy, Edit
  ;PSOOCPRX must be set to internal Rx number
  Q:'$G(PSOOCPRX)
  N PSOOLP,PSOOKZ
@@ -199,3 +203,15 @@ CDOSE ;Validate Dosage field on Renewel, Copy, Edit
  I '$P($G(^PSRX(PSOOCPRX,"SIG")),"^",2),$P($G(^("SIG")),"^")'="" S PSOOKZ=1
  I 'PSOOKZ S PSONOSIG=1
  Q
+ ; DSS/JCH - BEGIN MODS - Determine if RX # being renewed is a new renewal (RX_"A") or subsequent renewal $E(RX,1,$L(RX)-1)_$C($A($E(RX,$L(RX)))+1)
+PSOBASRX(OLDRX,BASE,OIRXN) ; VFD PSO RX NUMBERING parameter is set to something other than DEC (BASE10)
+ K PSOBASRX
+ N OLDBASE,VFD21652,PSOX,LOGDT,INSTDT,NEWRN
+ S PSOX=$E(OLDRX,$L(OLDRX))              ; Get the last character of the RX #
+ I +$G(OLDRX)=$G(OLDRX) Q OLDRX_"A"      ; If it's numeric only, can't have been renewed
+ ; Find the login date of the order and the VFD*15.0*12 installation date
+ I $G(OIRXN) S LOGDT=+$G(^PSRX(+$G(OIRXN),2)) D INSTALDT^XPDUTL("VFD*15.0*12",.INSTDT) S INSTDT=$O(INSTDT(0))
+ ; If the order was logged after patch installation, 
+ I $G(LOGDT)&$G(INSTDT),LOGDT>INSTDT Q $S($D(^VFD(21652,"B",$G(OLDRX))):OLDRX_"A",1:$E(OLDRX,1,$L(OLDRX)-1)_$C($A(PSOX)+1))
+ Q $E(OLDRX,1,$L(OLDRX)-1)_$C($A(PSOX)+1)
+ ; DSS/JCH - END MODS

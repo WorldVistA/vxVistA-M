@@ -1,5 +1,5 @@
-ONCSAPI3 ;Hines OIFO/SG - COLLABORATIVE STAGING (CALCULATE)  ; 5/18/04 9:47am
- ;;2.11;ONCOLOGY;**40**;Mar 07, 1995
+ONCSAPI3 ;Hines OIFO/SG - COLLABORATIVE STAGING (CALCULATE) ;06/23/10
+ ;;2.2;ONCOLOGY;**1**;Jul 31, 2013;Build 8
  ;
  ;--- SOAP REQUST TO THE COLLABORATIVE STAGING WEB SERVICE
  ;
@@ -8,12 +8,15 @@ ONCSAPI3 ;Hines OIFO/SG - COLLABORATIVE STAGING (CALCULATE)  ; 5/18/04 9:47am
  ;   xmlns:soap="http://www.w3.org/2001/12/soap-envelope"
  ;   soap:encodingStyle="http://www.w3.org/2001/12/soap-encoding">
  ;   <soap:Body>
- ;     <CS-CALCULATE xmlns="http://vista.med.va.gov/oncology">
+ ;     <CS-CALCULATE xmlns="http://vista.domain.ext/oncology">
  ;       <HIST> ... </HIST>
  ;       <SITE> ... </SITE>
+ ;       <DIAGNOSIS_YEAR> ... </DIAGNOSIS_YEAR>
+ ;       <CSVER_ORIGINAL> ... </CSVER_ORIGINAL>
  ;       <BEHAV> ... </BEHAV>
  ;       <GRADE> ... </GRADE>
  ;       <AGE> ... </AGE>
+ ;       <LVI> ... </LVI>
  ;       <SIZE> ... </SIZE>
  ;       <EXT> ... </EXT>
  ;       <EXTEVAL> ... </EXTEVAL>
@@ -29,6 +32,25 @@ ONCSAPI3 ;Hines OIFO/SG - COLLABORATIVE STAGING (CALCULATE)  ; 5/18/04 9:47am
  ;       <SSF4> ... </SSF4>
  ;       <SSF5> ... </SSF5>
  ;       <SSF6> ... </SSF6>
+ ;       <SSF7> ... </SSF7>
+ ;       <SSF8> ... </SSF8>
+ ;       <SSF9> ... </SSF9>
+ ;       <SSF10> ... </SSF10>
+ ;       <SSF11> ... </SSF11>
+ ;       <SSF12> ... </SSF12>
+ ;       <SSF13> ... </SSF13>
+ ;       <SSF14> ... </SSF14>
+ ;       <SSF15> ... </SSF15>
+ ;       <SSF16> ... </SSF16>
+ ;       <SSF17> ... </SSF17>
+ ;       <SSF18> ... </SSF18>
+ ;       <SSF19> ... </SSF19>
+ ;       <SSF20> ... </SSF20>
+ ;       <SSF21> ... </SSF21>
+ ;       <SSF22> ... </SSF22>
+ ;       <SSF23> ... </SSF23>
+ ;       <SSF24> ... </SSF24>
+ ;       <SSF25> ... </SSF25>
  ;     </CS-CALCULATE>
  ;   </soap:Body >
  ; </soap:Envelope>
@@ -40,28 +62,42 @@ ONCSAPI3 ;Hines OIFO/SG - COLLABORATIVE STAGING (CALCULATE)  ; 5/18/04 9:47am
  ;   xmlns:soap="http://www.w3.org/2001/12/soap-envelope"
  ;   soap:encodingStyle="http://www.w3.org/2001/12/soap-encoding">
  ;   <soap:Body>
- ;     <CS-RESPONSE xmlns="http://vista.med.va.gov/oncology">
+ ;     <CS-RESPONSE xmlns="http://vista.domain.ext/oncology">
  ;       <CS-STOR>
- ;         <AJCC> ... </AJCC>
- ;         <N> ... </N>
- ;         <NDESCR> ... </NDESCR>
- ;         <M> ... </M>
- ;         <MDESCR> ... </MDESCR>
- ;         <SS1977> ... </SS1977>
- ;         <SS2000> ... </SS2000>
- ;         <T> ... </T>
- ;         <TDESCR> ... </TDESCR
- ;       </CS-STOR>
- ;       <CS-DISP>
- ;         <AJCC> ... </AJCC>
- ;         <N> ... </N>
- ;         <NDESCR> ... </NDESCR>
- ;         <M> ... </M>
- ;         <MDESCR> ... </MDESCR>
- ;         <SS1977> ... </SS1977>
- ;         <SS2000> ... </SS2000>
  ;         <T> ... </T>
  ;         <TDESCR> ... </TDESCR>
+ ;         <N> ... </N>
+ ;         <NDESCR> ... </NDESCR>
+ ;         <M> ... </M>
+ ;         <MDESCR> ... </MDESCR>
+ ;         <AJCC> ... </AJCC>
+ ;         <AJCC7-T> ... </AJCC7-T>
+ ;         <AJCC7-TDESCR> ... </AJCC7-TDESCR>
+ ;         <AJCC7-N> ... </AJCC7-N>
+ ;         <AJCC7-NDESCR> ... </AJCC7-NDESCR>
+ ;         <AJCC7-M> ... </AJCC7-M>
+ ;         <AJCC7-MDESCR> ... </AJCC7-MDESCR>
+ ;         <AJCC7-STAGE> ... </AJCC7-STAGE>
+ ;         <SS1977> ... </SS1977>
+ ;         <SS2000> ... </SS2000>
+ ;       </CS-STOR>
+ ;       <CS-DISP>
+ ;         <T> ... </T>
+ ;         <TDESCR> ... </TDESCR>
+ ;         <N> ... </N>
+ ;         <NDESCR> ... </NDESCR>
+ ;         <M> ... </M>
+ ;         <MDESCR> ... </MDESCR>
+ ;         <AJCC> ... </AJCC>
+ ;         <AJCC7-T> ... </AJCC7-T>
+ ;         <AJCC7-TDESCR> ... </AJCC7-TDESCR>
+ ;         <AJCC7-N> ... </AJCC7-N>
+ ;         <AJCC7-NDESCR> ... </AJCC7-NDESCR>
+ ;         <AJCC7-M> ... </AJCC7-M>
+ ;         <AJCC7-MDESCR> ... </AJCC7-MDESCR>
+ ;         <AJCC7-STAGE> ... </AJCC7-STAGE>
+ ;         <SS1977> ... </SS1977>
+ ;         <SS2000> ... </SS2000>
  ;       </CS-DISP>
  ;       <APIVER> ... </APIVER>
  ;       <VERSION> ... </VERSION>
@@ -86,55 +122,91 @@ ONCSAPI3 ;Hines OIFO/SG - COLLABORATIVE STAGING (CALCULATE)  ; 5/18/04 9:47am
  ;
  ; [.ONCSAPI]    Reference to the API descriptor (see ^ONCSAPI)
  ;
- ; .INPUT(       Reference to a local variable containg
+ ; .INPUT(       Reference to a local variable containing
  ;               input parameters.
  ;
- ;   "AGE")        Age at Diagnosis
- ;   "BEHAV")      Behavior Code ICD-O-3
- ;   "EXT")        CS Extension
- ;   "EXTEVAL")    CS Size/Ext Eval
- ;   "GRADE")      Grade
- ;   "HIST")       Histologic Type ICD-O-3
- ;   "LNPOS")      Regional Nodes Positive
- ;   "LNEXAM")     Regional Nodes Examined
- ;   "METS")       CS Mets at DX
- ;   "METSEVAL")   CS Mets Eval
- ;   "NODES")      CS Lymph Nodes
- ;   "NODESEVAL")  CS Reg Nodes Eval
- ;   "SITE")       Primary site
- ;   "SIZE")       CS Tumor Size
- ;   "SSF1")       CS Site-Specific Factor 1
- ;   "SSF2")       CS Site-Specific Factor 2
- ;   "SSF3")       CS Site-Specific Factor 3
- ;   "SSF4")       CS Site-Specific Factor 4
- ;   "SSF5")       CS Site-Specific Factor 5
- ;   "SSF6")       CS Site-Specific Factor 6
+ ;   "AGE")             Age at Diagnosis
+ ;   "BEHAV")           Behavior Code ICD-O-3
+ ;   "CSVER_ORIGINAL")  CS Version Original
+ ;   "DIAGNOSIS_YEAR")  Year of Diagnosis
+ ;   "EXT")             CS Extension
+ ;   "EXTEVAL")         CS Size/Ext Eval
+ ;   "GRADE")           Grade
+ ;   "HIST")            Histologic Type ICD-O-3
+ ;   "LNPOS")           Regional Nodes Positive
+ ;   "LNEXAM")          Regional Nodes Examined
+ ;   "LVI")             Lymph-vascular invasion
+ ;   "METS")            CS Mets at DX
+ ;   "METSEVAL")        CS Mets Eval
+ ;   "NODES")           CS Lymph Nodes
+ ;   "NODESEVAL")       CS Reg Nodes Eval
+ ;   "SITE")            Primary site
+ ;   "SIZE")            CS Tumor Size
+ ;   "SSF1")            CS Site-Specific Factor 1
+ ;   "SSF2")            CS Site-Specific Factor 2
+ ;   "SSF3")            CS Site-Specific Factor 3
+ ;   "SSF4")            CS Site-Specific Factor 4
+ ;   "SSF5")            CS Site-Specific Factor 5
+ ;   "SSF6")            CS Site-Specific Factor 6
+ ;   "SSF7")            CS Site-Specific Factor 7
+ ;   "SSF8")            CS Site-Specific Factor 8
+ ;   "SSF9")            CS Site-Specific Factor 9
+ ;   "SSF10")           CS Site-Specific Factor 10
+ ;   "SSF11")           CS Site-Specific Factor 11
+ ;   "SSF12")           CS Site-Specific Factor 12
+ ;   "SSF13")           CS Site-Specific Factor 13
+ ;   "SSF14")           CS Site-Specific Factor 14
+ ;   "SSF15")           CS Site-Specific Factor 15
+ ;   "SSF16")           CS Site-Specific Factor 16
+ ;   "SSF17")           CS Site-Specific Factor 17
+ ;   "SSF18")           CS Site-Specific Factor 18
+ ;   "SSF19")           CS Site-Specific Factor 19
+ ;   "SSF20")           CS Site-Specific Factor 20
+ ;   "SSF21")           CS Site-Specific Factor 21
+ ;   "SSF22")           CS Site-Specific Factor 22
+ ;   "SSF23")           CS Site-Specific Factor 23
+ ;   "SSF24")           CS Site-Specific Factor 24
+ ;   "SSF25")           CS Site-Specific Factor 25
  ;
  ; .ONCSTOR(     Reference to a local variable where output
  ;               storage values are returned.
  ;
- ;   "AJCC")       Derived AJCC Stage Group
- ;   "N")          Derived AJCC N
- ;   "NDESCR")     Derived AJCC N Descriptor
- ;   "M")          Derived AJCC M
- ;   "MDESCR")     Derived AJCC M Descriptor
- ;   "SS1977")     Derived SS1977
- ;   "SS2000")     Derived SS2000
- ;   "T")          Derived AJCC T
- ;   "TDESCR")     Derived AJCC T Descriptor
+ ;   "AJCC-6")       6th Edition Derived AJCC Stage Group
+ ;   "N-6")          6th Edition Derived AJCC N
+ ;   "NDESCR-6")     6th Edition Derived AJCC N Descriptor
+ ;   "M-6")          6th Edition Derived AJCC M
+ ;   "MDESCR-6")     6th Edition Derived AJCC M Descriptor
+ ;   "AJCC-7")       7th Edition Derived AJCC Stage Group
+ ;   "N-7")          7th Edition Derived AJCC N
+ ;   "NDESCR-7")     7th Edition Derived AJCC N Descriptor
+ ;   "M-7")          7th Edition Derived AJCC M
+ ;   "MDESCR-7")     7th Edition Derived AJCC M Descriptor
+ ;   "SS1977")       Derived SS1977
+ ;   "SS2000")       Derived SS2000
+ ;   "T-6")          6th Edition Derived AJCC T
+ ;   "TDESCR-6")     6th Edition Derived AJCC T Descriptor
+ ;   "T-7")          7th Edition Derived AJCC T
+ ;   "TDESCR-7")     7th Edition Derived AJCC T Descriptor
  ;
  ; .ONCDISP(     Reference to a local variable where output
  ;               display values are returned.
  ;
- ;   "AJCC")       Derived AJCC Stage Group
- ;   "N")          Derived AJCC N
- ;   "NDESCR")     Derived AJCC N Descriptor
- ;   "M")          Derived AJCC M
- ;   "MDESCR")     Derived AJCC M Descriptor
- ;   "SS1977")     Derived SS1977
- ;   "SS2000")     Derived SS2000
- ;   "T")          Derived AJCC T
- ;   "TDESCR")     Derived AJCC T Descriptor
+ ;   "AJCC-6")       6th Edition Derived AJCC Stage Group
+ ;   "N-6")          6th Edition Derived AJCC N
+ ;   "NDESCR-6")     6th Edition Derived AJCC N Descriptor
+ ;   "M-6")          6th Edition Derived AJCC M
+ ;   "MDESCR-6")     6th Edition Derived AJCC M Descriptor
+ ;   "AJCC-7")       7th Edition Derived AJCC Stage Group
+ ;   "N-7")          7th Edition Derived AJCC N
+ ;   "NDESCR-7")     7th Edition Derived AJCC N Descriptor
+ ;   "M-7")          7th Edition Derived AJCC M
+ ;   "MDESCR-7")     7th Edition Derived AJCC M Descriptor
+ ;   "SS1977")       Derived SS1977
+ ;   "SS2000")       Derived SS2000
+ ;   "T-6")          6th Edition Derived AJCC T
+ ;   "TDESCR-6")     6th Edition Derived AJCC T Descriptor
+ ;   "T-7")          7th Edition Derived AJCC T
+ ;   "TDESCR-7")     7th Edition Derived AJCC T Descriptor
  ;
  ; .ONCSTAT(     Reference to a local variable where status
  ;               values are returned.
@@ -168,11 +240,11 @@ ONCSAPI3 ;Hines OIFO/SG - COLLABORATIVE STAGING (CALCULATE)  ; 5/18/04 9:47am
  ;        1  Probably Ok (warnings)
  ;
 CALC(ONCSAPI,INPUT,ONCSTOR,ONCDISP,ONCSTAT) ;
- N CBK,ONCRDAT,ONCSDAT,ONCXML,RC,TMP,URL,X
+ N ONCCBK,ONCRDAT,ONCSDAT,ONCXML,RC,TMP,URL,X
  D CLEAR^ONCSAPIE()
  S ONCRDAT=$NA(^TMP("ONCSAPI3",$J))
  K ONCDISP,ONCSTAT,ONCSTOR,@ONCRDAT
- F X="AJCC","N","NDESCR","M","MDESCR","SS1977","SS2000","T","TDESCR" D
+ F X="T","TDESCR","N","NDESCR","M","MDESCR","AJCC","AJCC7-T","AJCC7-TDESCR","AJCC7-N","AJCC7-NDESCR","AJCC7-M","AJCC7-MDESCR","AJCC7-STAGE","SS1977","SS2000" D
  . S (ONCSTOR(X),ONCDISP(X))=""
  Q:$D(INPUT)<10 $$ERROR^ONCSAPIE(-1)
  ;
@@ -191,7 +263,7 @@ CALC(ONCSAPI,INPUT,ONCSTOR,ONCDISP,ONCSTAT) ;
  . D:$G(ONCSAPI("DEBUG"))
  . . D ZW^ONCSAPIU(ONCRDAT,"*** 'CALCULATE' RESPONSE ***")
  . ;--- Parse the results
- . D SETCBK(.CBK),EN^MXMLPRSE(ONCRDAT,.CBK,"W")
+ . D SETCBK(.ONCCBK),EN^MXMLPRSE(ONCRDAT,.ONCCBK,"W")
  . ;--- Check the CS error codes
  . S:$G(ONCXML("RC"))<0 ONCSTAT("RC")=ONCXML("RC")
  . D INVLDINP(.STATUS)
@@ -238,10 +310,10 @@ INVLDINP(STATUS) ;
  Q
  ;
  ;***** SETS THE EVENT INTERFACE ENTRY POINTS
-SETCBK(CBK) ;
+SETCBK(ONCCBK) ;
  ;;CHARACTERS^TEXT^ONCSAPI3
  ;
- D SETCBK^ONCSAPIX(.CBK,"SETCBK^ONCSAPI3")
+ D SETCBK^ONCSAPIX(.ONCCBK,"SETCBK^ONCSAPI3")
  Q
  ;
  ;***** TEXT CALLBACK FOR THE SAX PARSER

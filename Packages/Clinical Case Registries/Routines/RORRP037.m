@@ -1,6 +1,10 @@
-RORRP037 ;HCIOFO/SG - RPC: HEPC PATIENT SAVE/CANCEL ; 1/29/07 9:51am
- ;;1.5;CLINICAL CASE REGISTRIES;**2**;Feb 17, 2006;Build 6
+RORRP037 ;HIOFO/SG,VC - RPC: HEPC PATIENT SAVE/CANCEL ;1/29/09 9:53am
+ ;;1.5;CLINICAL CASE REGISTRIES;**2,8**;Feb 17, 2006;Build 8
+ ;Per VHA Directive 10-92-142, this routine should not be modified.
  ;
+ ; This routine uses the following IAs:
+ ;
+ ; #2053         FILE^DIC (supported)
  Q
  ;
  ;***** UPDATES THE PATIENT'S REGISTRY DATA
@@ -19,6 +23,10 @@ RORRP037 ;HCIOFO/SG - RPC: HEPC PATIENT SAVE/CANCEL ; 1/29/07 9:51am
  ;               in the same format as the output of the RORHEPC
  ;               PATIENT LOAD remote procedure. Only HEPC and LFV
  ;               segments are processed; the others are ignored.
+ ; Revision for Patch 1.5*8 to add comments
+ ;   In DATA array there will be a 3 piece record, formated as follows
+ ; PC^STAT^COMMENT  If STAT is P then the COMMENT will be added. If
+ ;                  STAT is C then the COMMENT will be a blank.
  ;
  ; Return Values:
  ;
@@ -29,7 +37,7 @@ RORRP037 ;HCIOFO/SG - RPC: HEPC PATIENT SAVE/CANCEL ; 1/29/07 9:51am
  ; Otherwise, zero is returned in the RESULTS(0).
  ;
 SAVE(RESULTS,REGIEN,PTIEN,CANCEL,DATA) ;
- N IENS,LOCK,RC,RORERRDL
+ N IENS,LOCK,RC,RORERRDL,STAT,COMMENT
  D CLEAR^RORERR("SAVE^RORRP037",1)
  K RESULTS  S (RESULTS(0),RC)=0
  D
@@ -44,7 +52,7 @@ SAVE(RESULTS,REGIEN,PTIEN,CANCEL,DATA) ;
  . ;--- Get the IENS of the registry record
  . S IENS=$$PRRIEN^RORUTL01(PTIEN,REGIEN)_","
  . S:IENS>0 LOCK(798,IENS)=""
- . Q:$G(CANCEL)
+ . Q:$G(CANCEL)=1
  . ;--- Save the data
  . S RC=$$SAVE1(.IENS)
  . I '$D(LOCK)  S:IENS>0 LOCK(798,IENS)=""
@@ -78,6 +86,7 @@ SAVE1(IENS798) ;
  . S:IENS798'>0 RC=$$ERROR^RORERR(-97,,,PTIEN,REGNAME)
  ;
  ;=== Prepare the data
+ N LFCNT ;added 'new' statement
  S (LFCNT,RDI,RC)=0
  F  S RDI=$O(DATA(RDI))  Q:RDI'>0  D  Q:RC
  . S SEG=$P(DATA(RDI),U)
@@ -88,24 +97,34 @@ SAVE1(IENS798) ;
  . I SEG="LFV"  D  Q
  . . S LFIEN=+$P(DATA(RDI),U,3)
  . . S:LFIEN>0 LFV(LFIEN)=DATA(RDI)
+ . ;--- If there is a comment for a Pending Patient
+ . I SEG="PC" D  Q
+ . . S STAT=$P(DATA(RDI),U,2)
+ . . S COMMENT=$P(DATA(RDI),U,3)
  Q:RC RC
  ;
  ;=== Confirm the pending patient
- D:$$GET1^DIQ(798,IENS798,3,"I",,"RORMSG")=4
+ ;D:$$GET1^DIQ(798,IENS798,3,"I",,"RORMSG")=4
+ I CANCEL=0 D
  . ;--- Do not clear the DON'T SEND flag for 'test' patients
  . S:'$$TESTPAT^RORUTL01(PTIEN) RORFDA(798,IENS798,11)="@"
  . ;--- Change the STATUS from 'Pending' to 'Active'
  . S RORFDA(798,IENS798,3)=0
+ . ;--- Delete any comment fields
+ . S RORFDA(798,IENS798,12)=" "
  ;
  ;=== Update local fields
- S RC=$$UPDLFV^RORUTL19(IENS798,.LFV)  Q:RC<0 RC
+ ;S RC=$$UPDLFV^RORUTL19(IENS798,.LFV)  Q:RC<0 RC
+ S RC=$$UPDLFV^RORUTL19(IENS798,.LFV)
  S:RC RORFDA(798,IENS798,5)=1  ; UPDATE LOCAL REGISTRY DATA
+ ;=== Add the COMMENT field to file 798 for pending patients
+ I STAT="P" S RORFDA(798,IENS798,12)=$G(COMMENT)
  ;
  ;=== Update the record(s)
  I $D(RORFDA)>1  D  Q:RC<0 RC
- . S RORFDA(798,IENS798,5)=1   ; UPDATE LOCAL REGISTRY DATA
- . D FILE^DIE(,"RORFDA","RORMSG")
- . S:$G(DIERR) RC=$$DBS^RORERR("RORMSG",-9,,PTIEN,798,IENS798)
+ . K RORMSG D FILE^DIE(,"RORFDA","RORMSG")
+ . ;S:$G(DIERR) RC=$$DBS^RORERR("RORMSG",-9,,PTIEN,798,IENS798)
+ . S:$G(RORMSG("DIERR")) RC=$$DBS^RORERR("RORMSG",-9,,PTIEN,798,IENS798)
  ;
  ;=== Success
  Q 0

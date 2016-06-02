@@ -1,7 +1,6 @@
 XOBVTCP ;; mjk/alb - VistALink TCP Utilities ; 07/27/2002  13:00
- ;;1.5;VistALink;;Sep 09, 2005
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.0.026]
- ;
+ ;;1.6;VistALink;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
  QUIT
  ;
  ; -- called from protocol action at START^XOBUM1 
@@ -24,7 +23,7 @@ START(XOBPORT,XOBCFG) ;
  . SET XOBOK=0
  QUIT XOBOK
  ;
-UCX ; -- VMS TCPIP (UCX) multi-thread entry point
+UCX ; -- old VMS TCPIP (UCX) multi-thread entry point [for DSM]
  ; -- Called from VistALink .com files
  ;
  NEW XOBEC
@@ -45,7 +44,6 @@ CACHEVMS ; -- VMS TCPIP (UCX) multi-thread entry point for Cache for VMS
  DO ESET
  SET (IO,IO(0))="SYS$NET"
  ;
- ; **Cache'/VMS specific code**
  OPEN IO::5
  USE IO:(::"-M") ;Packet mode like DSM
  ;
@@ -54,7 +52,87 @@ CACHEVMS ; -- VMS TCPIP (UCX) multi-thread entry point for Cache for VMS
  IF 'XOBEC DO SPAWN^XOBVLL
  QUIT
  ;
-ESET ;Set inital error trap
+CACHELNX ; -- multi-thread entry point for Cache for Linux
+ ; -- Called from XINETD service files
+ ;
+ NEW XOBEC
+ DO ESET
+ SET (IO,IO(0))=$PRINCIPAL
+ ;
+ OPEN IO::5
+ USE IO:(::"-M") ;Packet mode like DSM
+ ;
+ SET XOBEC=$$NEWOK^XOBVTCPL()
+ IF XOBEC DO LOGINERR^XOBVTCPL(XOBEC,IO)
+ IF 'XOBEC DO SPAWN^XOBVLL
+ QUIT
+ ;
+GTMLNX ; -- Linux xinetd multi-thread entry point for GT.M
+ ;
+ NEW XOBEC,TMP,X,%
+ DO ESET
+ ;
+ ; **GTM/linux specific code**
+ SET (IO,IO(0))=$P,@("$ZT=""""")
+ X "U IO:(nowrap:nodelimiter:IOERROR=""TRAP"")" ;Setup device
+ S @("$ZINTERRUPT=""I $$JOBEXAM^ZU($ZPOSITION)"""),X=""
+ X "ZSHOW ""D"":TMP"
+ F %=1:1 Q:'$D(TMP("D",%))  S X=TMP("D",%) Q:X["LOCAL"
+ S IO("IP")=$P($P(X,"REMOTE=",2),"@"),IO("PORT")=+$P($P(X,"LOCAL=",2),"@",2)
+ ;End GT.M code
+ ;
+ SET XOBEC=$$NEWOK^XOBVTCPL()
+ IF XOBEC DO LOGINERR^XOBVTCPL(XOBEC,IO)
+ IF 'XOBEC DO COUNT^XUSCNT(1),SPAWN^XOBVLL,COUNT^XUSCNT(-1)
+ QUIT
+ ;
+ ;Sample linux scripts
+ ;xinetd script
+ ;vvvvvvvvvvvvvvvvvvvvvvvvv
+ ;service vistalink
+ ;{
+ ;   socket_type     = stream
+ ;   port            = 18001
+ ;   type            = UNLISTED
+ ;   user            = vista
+ ;   wait            = no
+ ;   disable         = no
+ ;   server          = /bin/bash
+ ;   server_args     = /home/vista/dev/vistalink.sh
+ ;   passenv         = REMOTE_HOST
+ ;}
+ ;^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ ;
+ ;cat /home/vista/dev/vistalink.sh
+ ;vvvvvvvvvvvvvvvvvvvvvvvvvvvv
+ ;#!/bin/bash
+ ;#RPC Broker
+ ;cd /home/vista/dev
+ ;. ./gtmprofile
+ ;$gtm_dist/mumps -r GTMLNX^XOBVTCP
+ ;exit 0
+ ;^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ ;
+SERVICE ; -- service entry point (for VMS TCP/IP & LINUX XINETD utilities)
+ ; TODO: possible single entry point for os service calls; needs work and has not been tested
+ NEW XOBEC,XOBMOS,XOBSOS
+ DO ESET
+ SET XOBMOS=$$OS^XOBVSKT()
+ IF XOBMOS'["OpenM" SET $ECODE=",U98,"
+ SET XOBSOS=$$SYSOS^XOBVLIB(XOBMOS)
+ IF XOBMOS'["VMS"!(XOBMOS'["UNIX") SET $ECODE=",U97,"
+ ;
+ SET (IO,IO(0))=$SELECT(XOBSOS="VMS":"SYS$NET","UNIX":$PRINCIPAL)
+ ;
+ OPEN IO::5
+ USE IO:(::"-M") ;Packet mode like DSM
+ ;
+ SET XOBEC=$$NEWOK^XOBVTCPL()
+ IF XOBEC DO LOGINERR^XOBVTCPL(XOBEC,IO)
+ IF 'XOBEC DO SPAWN^XOBVLL
+ QUIT
+ ;
+ESET ;Set initial error trap
  SET U="^",$ETRAP="D ^%ZTER H" ;Set up the error trap
  QUIT
  ;

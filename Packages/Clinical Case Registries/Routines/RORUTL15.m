@@ -1,12 +1,29 @@
-RORUTL15 ;HCIOFO/BH,SG - PHARMACY DATA SEARCH (TOOLS) ; 12/21/05 11:11am
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORUTL15 ;HCIOFO/BH,SG - PHARMACY DATA SEARCH (TOOLS) ;12/21/05 11:11am
+ ;;1.5;CLINICAL CASE REGISTRIES;**13**;Feb 17, 2006;Build 27
  ;
  ; This routine uses the following IAs:
  ;
  ; #2400         OCL^PSOORRL and OEL^PSOORRL (controlled)
  ; #4533         ARWS^PSS50 (supported)
  ; #4543         IEN^PSN50P65 (supported)
+ ; #4549         ZERO^PSS52P6 (supported)
+ ; #4826         PSS436^PSS55 (supported)
  ;
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                 --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*13   DEC  2010   A SAUNDERS   Patient Med History Report: retrieve 
+ ;                                      #refills remaining and add to the 
+ ;                                      'callback' function call
+ ;                                      NOTE: Patch 11 became patch 13.
+ ;                                      Any references to patch 11 in the code
+ ;                                      below is referring to path 13.
+ ;
+ ;******************************************************************************
+ ;******************************************************************************
  Q
  ;
  ;***** DOUBLE-CHECKS THE OUTPATIENT RX (ORDER, REFILLS AND PARTIALS)
@@ -58,15 +75,20 @@ DTCHECK(STDT,ENDT,NREF,NPAR) ;
  ;       >0  Number of orders
  ;
 PROCESS(PTIEN,RORFLAGS,ROR8LST) ;
- N DRUGIEN,IRX,IVM,LOADEXT,ORDDATE,ORDER,ORDIEN,ORDFLG,RC,ROR8SET,RORLST,RORTMP,RORTS,RORXCNT,TMP
+ N DRUGIEN,IRX,IVM,LOADEXT,ORDDATE,ORDER,ORDIEN,ORDFLG,RC,ROR8SET,RORLST,RORTMP,RORTS,RORXCNT,TMP,NUMREF
  S LOADEXT=(RORFLAGS["E")
  S (RC,RORXCNT)=0
  S RORTMP=$$ALLOC^RORTMP(.RORTS)
  ;
  ;=== Determine the storage method (default or callback)
  I $G(ROR8DST("RORCB"))?2"$"1.8UN1"^"1.8UN  D
+ . ;standard callback setup
  . S ROR8SET="S RC="_ROR8DST("RORCB")_"(.ROR8DST,ORDER"
  . S ROR8SET=ROR8SET_",ORDFLG,DRUGIEN_U_DRUGNAME,ORDDATE)"
+ . ;Patch 11: Variable 'RORX011' is set in routine RORX011 for the
+ . ;Patient Medications History report.  If set, add # refills
+ . ;remaining (NUMREF) to the callback parameter list.
+ . I $G(RORX011) S ROR8SET=$E(ROR8SET,1,$L(ROR8SET)-1)_",$G(NUMREF))"
  . ;---
  . S ROR8DST("RORDFN")=PTIEN
  . S ROR8DST("ROREDT")=ROREDT
@@ -80,6 +102,8 @@ PROCESS(PTIEN,RORFLAGS,ROR8LST) ;
  . S ORDFLG=$P(@ROR8LST@(IRX),U)
  . S TMP=@ROR8LST@(IRX,0)
  . S ORDER=$P(TMP,U),ORDDATE=$P(TMP,U,15)
+ . ;Patch 11: get #refills remaining for Patient Medication History report:
+ . I $G(RORX011) S NUMREF=$P(TMP,U,5)
  . ;--- Get the order details
  . K ^TMP("PS",$J)
  . D OEL^PSOORRL(PTIEN,ORDER)

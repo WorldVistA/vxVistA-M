@@ -1,5 +1,5 @@
 ZTMB ;SEA/RDS-Taskman: Manager, Boot/ Option, ZTMRESTART ;10/07/08  16:13
- ;;8.0;KERNEL;**275,355,446**;Jul 10, 1995;Build 7
+ ;;8.0;KERNEL;**275,355,446**;Jul 10, 1995;Build 6
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
 START ;Start Taskmanager
@@ -71,8 +71,8 @@ RESTART ;Restart Taskmanager
  Q
 INIT S U="^",ZTOS=^%ZOSF("OS"),ZTUCI=$P(^%ZOSF("MGR"),",")
  D GETENV^%ZOSV S ZTVOL=$P(Y,U,2),ZTNODE=$P(Y,U,3),ZTPAIR=$P(Y,U,4)
- ;DSS/SGM - Begin Mods - Conditionally clear inhibit logons in VOLUME SET file
- I $T(VX^VFDI0000)'="",$$VX^VFDI0000["VX" D VFD
+ ;DSS/SGM - BEGIN MODS - Clear inhibit logons in VOLUME SET file                
+ I $G(^%ZOSF("ZVX"))["VX" D ZTMB^VFDXUVX
  ;DSS/SGM - END MODS
  Q
  ;
@@ -108,15 +108,3 @@ HELP2 ;RESTART--??-help for confirmation prompt
  ;
 DONE ;RESTART--feedback after restarting TaskMan
  W "TaskMan restarted!",! Q
- ;
-VFD ;DSS/LM - Honor VFD ACTION ON TASKMAN STARTUP parameter
- ;
- N DIERR,VFD,VFDERR,VFDFDA,VFDI,VFDR
- S VFD=$$GET^XPAR("SYS","VFD ACTION ON TASKMAN STARTUP") Q:'VFD
- S VFDI=0,VFDR=$NA(VFDFDA(14.5))
- F  S VFDI=$O(^%ZIS(14.5,VFDI)) Q:'VFDI  D
- .Q:VFD=2&'($$GET1^DIQ(14.5,VFDI,1,"I")="S")
- .K VFDVFA S @VFDR@(VFDI_",",1)="@"
- .D FILE^DIE(,"VFDFDA","VFDERR")
- .Q
- Q

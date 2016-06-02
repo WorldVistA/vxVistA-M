@@ -1,31 +1,29 @@
 BPSECFM ;BHAM ISC/FCS/DRS/VA/DLF - NCPDP Field Format Functions ;3/12/08  13:01
- ;;1.0;E CLAIMS MGMT ENGINE;**1,7**;JUN 2004;Build 46
+ ;;1.0;E CLAIMS MGMT ENGINE;**1,7,10,11**;JUN 2004;Build 27
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  ;----------------------------------------------------------------------
  ;NCPDP Field Format Functions
- ; These are all $$ functions called from lots of places.
- ;--------------------------------------------------------
- ; IHS/SD/lwj 8/28/02 NCPDP 5.1 changes
- ;  Added a new subroutine to translate the rejection code
- ;  Added a new subroutine to translate the reason for service code
- ;  Used for AdvancePCS certification process
- ;--------------------------------------------------------
+ ;  These are all $$ functions called from the FORMAT CODE/D0 FORMAT
+ ;  CODE fields of BPS NCPDP FIELD DEFS, output transforms, and from 
+ ;  routines
+ ;----------------------------------------------------------------------
  ;Numeric Format Function
 NFF(X,L) ;EP -
  Q $E($TR($J("",L-$L(X))," ","0")_X,1,L)
  ;----------------------------------------------------------------------
- ;Signed Numeric Field Format
-DFF(X,L) ;
- N FNUMBER,DOLLAR,CENTS,SVALUE
- Q:X="" $TR($J("",L)," ","0")
- S DOLLAR=+$TR($P(X,".",1),"-","")
- S CENTS=$E($P(X,".",2),1,2)
- S:$L(CENTS)=0 CENTS="00"
- S:$L(CENTS)=1 CENTS=CENTS_"0"
+ ;Signed Numeric Field Format with variable length decimal places
+DFF(X,L,P) ;
+ N INTEGER,DECIMAL,SVALUE
+ I $G(X)="" S X=0
+ I $G(P)="" S P=2 ;default value
+ S INTEGER=+$TR($P(X,".",1),"-","")
+ S DECIMAL=$E($P(X,".",2),1,P)
+ I $L(DECIMAL)<P D
+ . F  S DECIMAL=DECIMAL_"0" Q:$L(DECIMAL)=P
  S SVALUE=$S(X<0:"}JKLMNOPQR",1:"{ABCDEFGHI")
- S $E(CENTS,2)=$E(SVALUE,$E(CENTS,2)+1)
- Q $E($TR($J("",L-$L(DOLLAR_CENTS))," ","0")_DOLLAR_CENTS,1,L)
+ S $E(DECIMAL,P)=$E(SVALUE,$E(DECIMAL,P)+1)
+ Q $E($TR($J("",L-$L(INTEGER_DECIMAL))," ","0")_INTEGER_DECIMAL,1,L)
  ;----------------------------------------------------------------------
  ;Converts Signed Numeric Field to Decimal Value
 DFF2EXT(X) ;EP -
@@ -39,13 +37,8 @@ DFF2EXT(X) ;EP -
  ;----------------------------------------------------------------------
  ;Alpha-Numeric Field Format
 ANFF(X,L) ;EP
+ S X=$$UP^XLFSTR(X) ;SLT, Phase 6-T12, D4
  Q $E(X_$J("",L-$L(X)),1,L)
- ;----------------------------------------------------------------------
- ;Numerics Field Format
- ; DUPLICATE TAGS!   commented out this one
- ; The other one appears to zero fill.
- ; NFF(X,L)
- ; Q $E(X_$J("",L-$L(X)),1,L)
  ;----------------------------------------------------------------------
  ;Convert FileManager date into CCYYMMDD format
 DTF1(X) ;EP -
@@ -89,17 +82,11 @@ STRIPN(TEXT) ;
  .S:CH?1N NUM=NUM_CH
  Q NUM
  ;----------------------------------------------------------------------
- ;IHS/SD/lwj 8/28/02  NCPDP 5.1 changes
- ; For the certification process with AdvancePCS, they require that the
- ; reject explanation appear with the rejection code.  The following
- ; Additionally, they require that within the DUR segment, the
- ; description for the reason for service code also appear (fld 439).
- ; To accomodate this requirement, the following subroutines were
- ; created to act as an output transform for the reject codes and the
- ; reason for service code.  These routine will not currently be used
- ; any where else, but will be kept in the software in case they are
- ; needed.
+ ; Format reject codes
+ ; This is called by Output Transform in the BPS RESPONSE file and by
+ ;   BPSPRRX3
  ;
+ ; REJCD is the incoming rejection code
 TRANREJ(REJCD) ;EP - REJCD will be the incoming rejection code
  ;
  I $G(REJCD)="" Q ""
@@ -114,7 +101,10 @@ TRANREJ(REJCD) ;EP - REJCD will be the incoming rejection code
  ;
  Q REJECT
  ;----------------------------------------------------------------------
-TRANSCD(SRVCD) ;EP - SRCCD will be the incoming reason for service code
+ ; Format Reason for Service Code field
+ ; Called by Output Transform in BPS Response
+ ; SRVCD is the incoming Service Code
+TRANSCD(SRVCD) ;EP - SRVCD will be the incoming reason for service code
  ;
  N SCDIEN,SCDESC
  ;
@@ -127,4 +117,4 @@ TRANSCD(SRVCD) ;EP - SRCCD will be the incoming reason for service code
  S SCDESC=$$ANFF(SCDESC,50)
  ;
  Q SCDESC
- ;----------------------------------------------------------------------
+ ;

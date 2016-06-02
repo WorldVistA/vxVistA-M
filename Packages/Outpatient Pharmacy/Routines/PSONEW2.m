@@ -1,5 +1,5 @@
 PSONEW2 ;BIR/DSD - displays new rx information for edit ;7/17/06 6:59pm
- ;;7.0;OUTPATIENT PHARMACY;**32,37,46,71,94,124,139,157,143,226,237,239,225**;DEC 1997;Build 29
+ ;;7.0;OUTPATIENT PHARMACY;**32,37,46,71,94,124,139,157,143,226,237,239,225,251,375,372**;DEC 1997;Build 29
  ;External reference to ^PSDRUG supported by DBIA 221
  ;External reference to ^DPT supported by DBIA 10035
  ;External reference to PSOUL^PSSLOCK supported by DBIA 2789
@@ -12,6 +12,9 @@ PSONEW2 ;BIR/DSD - displays new rx information for edit ;7/17/06 6:59pm
 START ;
  S (PSONEW("DFLG"),PSONEW2("QFLG"))=0
  D STOP
+ ;DSS/DLF/SMP - BEGIN MOD
+ I $G(^%ZOSF("ZVX"))["VX" S PSOSCP=0 D GETNDC Q:$G(PSONEW("DFLG"))=1
+ ;DSS/DLF/SMP - END MOD
  D DISPLAY ; Displays information
  ;Copay exemption checks
  D SCP^PSORN52D
@@ -48,14 +51,21 @@ STOP K PSEXDT,X,%DT S PSON52("QFLG")=0
  K X1,X2,X,%DT
  Q
 DISPLAY ;
+ D:+$$DS^PSSDSAPI&($G(PSOFOERR)) HD3^PSODOSUN()
  W !!,"Rx # ",PSONEW("RX #")
  W ?23,$E(PSONEW("FILL DATE"),4,5),"/",$E(PSONEW("FILL DATE"),6,7),"/",$E(PSONEW("FILL DATE"),2,3),!,$G(PSORX("NAME")),?30,"#",PSONEW("QTY")
  I $G(SIGOK),$O(SIG(0)) D  K D G TRN
- .F D=0:0 S D=$O(SIG(D)) W !,SIG(D) Q:'$O(SIG(D))
- E  S X=PSONEW("SIG") D SIGONE^PSOHELP W !,$G(INS1)
+ .F D=0:0 S D=$O(SIG(D)) W !,SIG(D) Q:'$O(SIG(D))  D:+$$DS^PSSDSAPI&($G(PSOFOERR)) HD3^PSODOSUN(7)
+ E  S X=PSONEW("SIG") D SIGONE^PSOHELP W !,$G(INS1) D:+$$DS^PSSDSAPI&($G(PSOFOERR)) HD3^PSODOSUN(7)
 TRN ;I $G(PSOPRC) F I=0:0 S I=$O(PRC(I)) Q:'I  W !,PRC(I)
+ ;DSS/DLF/SMP - BEGIN MODS
+ N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
  W !!,$S($G(PSODRUG("TRADE NAME"))]"":PSODRUG("TRADE NAME"),1:PSODRUG("NAME"))
- W !,PSONEW("PROVIDER NAME"),?25,PSORX("CLERK CODE"),!,"# of Refills: ",PSONEW("# OF REFILLS"),!
+ I VFD,$T(^VFDPSNDC)]"",$$OPON^VFDPSNDC() W " NDC: ",$G(PSODRUG("NDC"))
+ W !,PSONEW("PROVIDER NAME"),?25,PSORX("CLERK CODE"),!,"# of Refills: ",PSONEW("# OF REFILLS"),! D  D:+$$DS^PSSDSAPI&($G(PSOFOERR)) HD3^PSODOSUN()
+ .I VFD,$G(PSONEW("PRESCRIPTION PAD #"))]"" D
+ ..W "Prescription Pad #: ",PSONEW("PRESCRIPTION PAD #"),!
+ ;DSS/DLF/SMP - END MODS
  Q
  ;
 ASK ;
@@ -72,20 +82,32 @@ ASKX I $D(DIRUT) D
  D:+$G(PSEXDT) PAUSE^VALM1
  Q
 DCORD ;dc rxs and pending orders after new order is entered
+ I $G(PSORX("DFLG")) K ^TMP("PSORXDC",$J) Q
  F RORD=0:0 S RORD=$O(^TMP("PSORXDC",$J,RORD)) Q:'RORD  D @$S($P(^TMP("PSORXDC",$J,RORD,0),"^")="P":"PEN",1:"RX52")
- K RORD
+ I $G(PSORX("FN")) S VALMBCK="Q",PSOFROM="NEW"
+ K RORD,PSOTECCK H 2
  Q
 PEN ;pending ^tmp("psorxdc",$j,rord,0)="p^"_rord_"^"_msg
- S $P(^PS(52.41,RORD,0),"^",3)="DC",^PS(52.41,RORD,4)=$P(^TMP("PSORXDC",$J,RORD,0),"^",3)
+ N PSOR,DNM S PSOR=^PS(52.41,RORD,0) S $P(^PS(52.41,RORD,0),"^",3)="DC",^PS(52.41,RORD,4)=$P(^TMP("PSORXDC",$J,RORD,0),"^",3)
  K ^PS(52.41,"AOR",PSODFN,+$P($G(^PS(52.41,RORD,"INI")),"^"),RORD)
- D EN^PSOHLSN($P(^PS(52.41,RORD,0),"^"),"OC",$P(^TMP("PSORXDC",$J,RORD,0),"^",3),"D") W $C(7),!," -Pending Order was discontinued..."
+ S DNM=$S($P(PSOR,"^",9):$P($G(^PSDRUG($P(PSOR,"^",9),0)),"^"),1:$P(^PS(50.7,$P(PSOR,"^",8),0),"^")_" "_$P(^PS(50.606,$P(^PS(50.7,$P(PSOR,"^",8),0),"^",2),0),"^"))
+ D EN^PSOHLSN($P(^PS(52.41,RORD,0),"^"),"OC",$P(^TMP("PSORXDC",$J,RORD,0),"^",3),"D")
+ I $G(PSOTECCK),'$D(^XUSEC("PSORPH",DUZ)) G PENX
+ W $C(7),! K ^UTILITY($J,"W") S DIWL=1,DIWR=75,DIWF=""
+ S X=" Duplicate "_$S($P(^TMP("PSORXDC",$J,RORD,0),"^",10):"Therapy",1:"Drug")_" Pending Order "_DNM_" has been discontinued..." D ^DIWP
+ F ZX=0:0 S ZX=$O(^UTILITY($J,"W",1,ZX)) Q:'ZX  W !,^UTILITY($J,"W",1,ZX,0)
+PENX K ^UTILITY($J,"W"),X,DIWL,DIWR,DIWF W !
  D PSOUL^PSSLOCK(RORD_"S") K ^TMP("PSORXDC",$J,RORD,0)
  Q
 RX52 ;rxs in file 52 ^tmp("psorxdc",$j,rord,0)=52^rord^msg^rea^act^sta^dnm
  S PSCAN($P(^PSRX(RORD,0),"^"))=RORD_"^"_$P(^TMP("PSORXDC",$J,RORD,0),"^",4)
  S MSG=$P(^TMP("PSORXDC",$J,RORD,0),"^",3),REA=$P(^(0),"^",4),ACT=$P(^(0),"^",5)
  N PSONOOR S PSONOOR="D",DUP=1,DA=RORD D CAN^PSOCAN K PSONOOR
- W !," -Rx "_$P(^PSRX(RORD,0),"^")_" has been discontinued...",!
+ I $G(PSOTECCK),'$D(^XUSEC("PSORPH",DUZ)) G RX52X
+ W $C(7),! K ^UTILITY($J,"W") S DIWL=1,DIWR=75,DIWF=""
+ S X=" Duplicate "_$S($P(^TMP("PSORXDC",$J,RORD,0),"^",10):"Therapy",1:"Drug")_" Rx #"_$P(^PSRX(RORD,0),"^")_" "_$P(^TMP("PSORXDC",$J,RORD,0),"^",7)_" has been discontinued..." D ^DIWP
+ F ZX=0:0 S ZX=$O(^UTILITY($J,"W",1,ZX)) Q:'ZX  W !,^UTILITY($J,"W",1,ZX,0)
+RX52X K ^UTILITY($J,"W"),X,DIWL,DIWR,DIWF W !
  K PSOSD($P(^TMP("PSORXDC",$J,RORD,0),"^",6),$P(^TMP("PSORXDC",$J,RORD,0),"^",7))
  D PSOUL^PSSLOCK(RORD) K ^TMP("PSORXDC",$J,RORD,0)
  Q
@@ -120,4 +142,18 @@ EXPR ;Display Expired error message                               ;PSO*237
  W $C(7)
  S VALMSG="Order is older than 365 days and can't be finished"
  S XQORM("B")="DC"
+ Q
+ ;
+ ;DSS/DLF/SMP - BEGIN MOD
+GETNDC ;
+ I $T(^VFDPSNDC)]"",$$OPON^VFDPSNDC() D
+ . S DRG=PSODRUG("IEN")
+ . S NDC=$TR(PSODRUG("NDC"),"-","")
+ . ; ONLY FOR OMH - REMOVE DEFAULT NDC
+ . I $$111^VFDPSNDC() K NDC
+ . ; END ONLY OMH
+ . D LOOPNDC^VFDPSNDC(DRG,.NDC)
+ . I NDC="^" S PSONEW("DFLG")=1 Q
+ . S PSODRUG("NDC")=NDC
+ . S PSONEW("SCANNED CODE")=NDC("SCAN")
  Q

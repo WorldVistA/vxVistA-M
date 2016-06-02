@@ -1,5 +1,5 @@
 PXRHS03 ; SLC/SBW - PCE Visit data immunization extract ;11/25/96
- ;;1.0;PCE PATIENT CARE ENCOUNTER;**13**;Aug 12, 1996
+ ;;1.0;PCE PATIENT CARE ENCOUNTER;**13**;Aug 12, 1996;Build 2
 IMMUN(DFN) ; Control branching
  ;INPUT  : DFN      - Pointer to PATIENT file (#2)
  ;OUTPUT : 
@@ -36,7 +36,11 @@ IMMUN(DFN) ; Control branching
  . . . N OPROV,EPROV,HLOC,HLOCABB,SOURCE,VDATA,IDT,COMMENT
  . . . S DIC=9000010.11,DA=PXIFN,DIQ="REC(",DIQ(0)="IE"
  . . . S DR=".01;.03;.04;.06;.07;1201;1202;1204;80102;81101"
+ . . . ;DSS/SMP - BEGIN MOD
+ . . . N VFD S VFD=$G(^%ZOSF("ZVX"))["VX" I VFD S DR=DR_";21601.01"
  . . . D EN^DIQ1
+ . . . I VFD Q:$G(REC(9000010.11,DA,21601.01,"I"))
+ . . . ;DSS/SMP - END MOD
  . . . Q:'$D(REC)
  . . . S VDATA=$$GETVDATA(+REC(9000010.11,DA,.03,"I"))
  . . . S SNIMM=$P($G(^AUTTIMM(REC(9000010.11,DA,.01,"I"),0)),U,2)

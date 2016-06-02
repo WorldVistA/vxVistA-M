@@ -1,6 +1,10 @@
-DIKCP1 ;SFISC/MKO-PRINT INDEX(ES) ;11:21 AM  12 Jan 2000
- ;;22.0;VA FileMan;**20**;Mar 30, 1999
- ;Per VHA Directive 10-93-142, this routine should not be modified.
+DIKCP1 ;SFISC/MKO-PRINT INDEX(ES) ;2015-01-02  2:55 PM
+ ;;22.2;MSC Fileman;;Jan 05, 2015;
+ ;;Submitted to OSEHRA 5 January 2015 by the VISTA Expertise Network.
+ ;;Based on Medsphere Systems Corporation's MSC Fileman 1051.
+ ;;Licensed under the terms of the Apache License, Version 2.0.
+ ;;GFT;**20,167,1051**
+ ;
 PRINDEX ;Come here from PRINDEX^DIKCP
  Q:'$G(XR)
  N XR0
@@ -30,6 +34,7 @@ PRINDEX ;Come here from PRINDEX^DIKCP
  ;
  ;Print Cross Reference Values
  D CRV(XR,WID,LM,TS,FLAG,.PAGE)
+NOREIN I $G(^DD("IX",XR,"NOREINDEX")) W !?9,"NO RE-INDEXING ALLOWED!"
  Q
  ;
 FL(XR0,WID,LM,TS,TYP,PAGE) ;Print first line
@@ -167,7 +172,7 @@ WRLN(TXT,TAB,PAGE,KWN) ;Write a line of text
  S PAGE(U)=""
  ;
  ;Do paging, if necessary
- I $D(PAGE("H"))#2,$G(IOSL,24)-2-$G(PAGE("B"))-$G(KWN)'>$Y D  Q:PAGE(U)
+ I $D(PAGE("H"))#2,$G(IOSL,24)-2-$G(PAGE("B"))-$G(KWN)'>$Y S $Y=0 D  Q:PAGE(U)
  . I PAGE("H")?1"W ".E X PAGE("H") Q
  . I $E($G(IOST,"C"))="C" D  Q:PAGE(U)
  .. W $C(7) R X:$G(DTIME,300) I X=U!'$T S PAGE(U)=1

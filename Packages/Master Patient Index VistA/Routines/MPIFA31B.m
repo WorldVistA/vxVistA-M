@@ -1,5 +1,5 @@
-MPIFA31B ;BP/CMC-BUILD A31 MSGS ;FEB 5, 2002
- ;;1.0; MASTER PATIENT INDEX VISTA ;**22,24,27,28,31,25,44,46**;30 Apr 99;Build 5
+MPIFA31B ;BP/CMC-BUILD A31 MSGS ;13 May 2014  4:38 PM
+ ;;1.0;MASTER PATIENT INDEX VISTA;**22,24,27,28,31,25,44,46,54,59**;30 Apr 99;Build 1
  ;
  ; Integration Agreements Utilized:
  ;  START, EXC, STOP^RGHLLOG - #2796
@@ -13,7 +13,8 @@ TA31 ; Tasked entry point
 A31(DFN) ;BUILD AND SEND A31
  I $P($$SITE^VASITE,"^",3)=200 Q 1
  ; ^ PATCH 25 IF this is the FHIE Host system, don't build A31 messages
- N RESLT,CNT,MPI,EVN,TCNT,ERR,PD1,PID,EN,LAB,PV1,PV2,RAD,PRE,ZPD
+ N RESLT,CNT,MPI,EVN,TCNT,ERR,PD1,PID,EN,LAB,PV1,PV2,RAD,PRE,OLD,ZPD
+ N ZEL,ZSP,SIDG,NAMECOMP
  K HLA("HLA"),HLA("HLS")
  Q:$E($$GETICN^MPIF001(DFN),1,3)=$P($$SITE^VASITE(),"^",3) 0
  ; ^ LOCAL ICN DON'T SEND
@@ -36,8 +37,13 @@ A31(DFN) ;BUILD AND SEND A31
  .S RAD=$$RADE^VAFCSB ;**44 OBX FOR LAST RADIOLOGY EXAM
  .S LAB=$$LABE^VAFCSB ;**44 OBX FOR LAST LAB EXAM
  .S PRE=$$PHARA^VAFCSB ;**44 OBX FOR ACTIVE PRESCRIPTIONS
+ .S SIDG=$$SIG^VAFCSB(DFN)  ;**59 OBX FOR SELF ID GENDER
+ .S NAMECOMP=$$NAMEOBX^VAFCSB(DFN) ;**59,MVI_3975 (mko): OBX for Patient .01 and Name Components
  .S PV2=$$PV2^VAFCSB ;**44 PV2 segment
+ S OLD=$$OLD ;**54,MVI_913: OBX to mark an older record
  S ZPD=$$EN1^VAFHLZPD(DFN,"1,17,21,34") ;25 ;**44 ADDED PSEUDO SSN REASON (34), 1 and 21 TO ZPD SEGMENT
+ S ZSP=$$EN^VAFHLZSP(DFN)  ;**59
+ S ZEL=$$EN^VAFHLZEL(DFN,"1,8,9",1)  ;**59
  S EN=1
  S HLA("HLS",EN)=EVN(1),EN=EN+1
  S CNT=0 F  S CNT=$O(PID(CNT)) Q:CNT=""  D
@@ -50,7 +56,12 @@ A31(DFN) ;BUILD AND SEND A31
  I $G(RAD)'="" S HLA("HLS",EN)=RAD,EN=EN+1 ;**44 only pass RADIOLOGY IN OBX segment if has values
  I $G(LAB)'="" S HLA("HLS",EN)=LAB,EN=EN+1 ;**44 only pass LAB IN OBX segment if has values
  I $G(PRE)'="" S HLA("HLS",EN)=PRE,EN=EN+1 ;**44 only pass PRESCRIPTION IN OBX segment if has values
+ I $G(OLD)'="" S HLA("HLS",EN)=OLD,EN=EN+1 ;**54,MVI_913: pass OLDER RECORD in OBX if flagged as such
+ I $G(SIDG)'="" S HLA("HLS",EN)=SIDG,EN=EN+1  ;**59
+ I $G(NAMECOMP)'="" S HLA("HLS",EN)=NAMECOMP,EN=EN+1 ;**59,MVI_3975 (mko): pass NAME COMPONENTS in OBX
  S HLA("HLS",EN)=ZPD,EN=EN+1 ;**44 ZPD SEGMENT
+ I $G(ZSP)'="" S HLA("HLS",EN)=ZSP,EN=EN+1 ;**59 ZSP segment
+ I $G(ZEL)'="" S HLA("HLS",EN)=ZEL,EN=EN+1 ;**59 ZEL segment
  S MPI=$$MPILINK^MPIFAPI()
  Q:$P($G(MPI),"^")=-1 "-1^No logical link defined for the MPI"
  S HLL("LINKS",1)="MPIF ADT-A31 CLIENT^"_MPI
@@ -72,5 +83,9 @@ RES ;
  ..;**44 check which type of exception to be logged
  ..D EXC^RGHLLOG(234,ERROR,DFN) ;**46
  ..D STOP^RGHLLOG(0)
+ K:$G(DFN)>0 ^XTMP("MPIF OLD RECORDS",DFN) ;**54,MVI_913: Delete the old record designation
  K ^XTMP("MPIFA31%"_DFN)
  Q
+OLD() ; Return OBX segment to flag a record as "old"
+ ;**54,MVI_913: New subroutine
+ Q $S($D(^XTMP("MPIF OLD RECORDS",DFN))#2:"OBX"_HL("FS")_HL("FS")_"CE"_HL("FS")_"OLDER RECORD"_HL("FS")_HL("FS")_"Y",1:"")

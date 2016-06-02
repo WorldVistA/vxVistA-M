@@ -1,5 +1,6 @@
-MAGQBAB ;WOIFO/PMK/RMP - Create an ABSTRACT from an image file [ 06/20/2001 08:57 ]
- ;;3.0;IMAGING;**1,8,20**;Apr 12, 2006
+MAGQBAB ;WOIFO/PMK/RMP - Create an ABSTRACT from an image file ; 18 Jan 2011 4:09 PM
+ ;;3.0;IMAGING;**1,8,20,39**;Mar 19, 2002;Build 2010;Mar 08, 2011
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGQBAB ;WOIFO/PMK/RMP - Create an ABSTRACT from an image file [ 06/20/2001 08:5
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -15,6 +15,7 @@ MAGQBAB ;WOIFO/PMK/RMP - Create an ABSTRACT from an image file [ 06/20/2001 08:5
  ;; | to be a violation of US Federal Statutes.                     |
  ;; +---------------------------------------------------------------+
  ;;
+ Q
 ENTRY(RESULT,QPTR) ;
  ; RESULT=STATUS^IMAGE PTR^FROM FILEPATH^ABSTRACT FILEPATH^QPTR^VWP^QSN
  ; VWP=VISTA WRITE LOCATION,QSN=QUEUE SEQUENCE NUMBER
@@ -28,7 +29,7 @@ ENTRY(RESULT,QPTR) ;
  . S RESULT="-1^"_QPTR_U_"The Image file entry has no file name for IEN: "_IMGPTR_"^^^^"_QSN
  . Q
  I $P(MAGNODE,U,4)?1N.N D  Q
- . S RESULT="-1^"_QPTR_U_$P($P(MAGNODE,U,2),".")_" has an .ABS file already referenced on the Vista cache ^^^^"_QSN
+ . S RESULT="-1^"_QPTR_U_$P($P(MAGNODE,U,2),".")_" has an .ABS file already referenced on the VistA cache ^^^^"_QSN
  . Q
  I $P(MAGNODE,U,3)="" D  Q
  . I $P(MAGNODE,U,5)?1N.N D  Q
@@ -37,10 +38,10 @@ ENTRY(RESULT,QPTR) ;
  . . S TMP=IMGPTR_" Full File is not on the VC, a JBTOHD queue will retrieve and the ABSTRACT will be requeued"
  . . S RESULT="-15^"_QPTR_U_TMP_"^^"_QPTR_"^^"_QSN
  . . Q
- . S RESULT="-2^"_QPTR_U_IMGPTR_" File not available on the Vista network^^"_QPTR_"^^"_QSN
+ . S RESULT="-2^"_QPTR_U_IMGPTR_" File not available on the VistA network^^"_QPTR_"^^"_QSN
  ; get the path and file name for this image
- S MAGXX=IMGPTR D VSTNOCP^MAGFILEB I $P(MAGFILE1,U)="-1" D  Q
- . S RESULT="-3^"_QPTR_U_IMGPTR_" File not on-line^^"_QPTR_"^^"_QSN
+ S MAGXX=IMGPTR D VSTNOCP^MAGFILEB I $E(MAGFILE1,1,2)="-1" D  Q
+ . S RESULT="-3^"_QPTR_U_IMGPTR_" File not online^^"_QPTR_"^^"_QSN
  S FILENAME=MAGFILE
  S L=$L(FILENAME) I '$A(FILENAME,L) S FILENAME=$E(FILENAME,1,L-1)
  S L=$L(FILENAME,"\") ; parse the file

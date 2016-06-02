@@ -1,11 +1,21 @@
-ORCACT0 ;SLC/MKB-Validate order action ;5/19/08
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**7,27,48,72,86,92,94,141,165,177,173,190,215,243,289**;Dec 17, 1997;Build 3
+ORCACT0 ;SLC/MKB-Validate order action ;12/14/12  15:20
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**7,27,48,72,86,92,94,141,165,177,173,190,215,243,289,204,306**;Dec 17, 1997;Build 10
  ;
  ;Reference to REFILL^PSOREF supported by IA #2399
  ;
 VALID(IFN,ACTION,ERROR,NATR) ; -- Determines if action is valid for order IFN
- N OR0,OR3,ORA0,AIFN,PKG,DG,ORDSTS,ACTSTS,VER,X,Y,MEDPARM K ERROR
+ N OR0,OR3,ORA0,AIFN,PKG,DG,ORDSTS,ACTSTS,VER,X,Y,MEDPARM,CSORD,ORDLG,ORENVIR K ERROR
  S OR0=$G(^OR(100,+IFN,0)),OR3=$G(^(3)),PKG=$$NMSP^ORCD($P(OR0,U,14))
+ ;DSS/SMP - Begin Mods
+ S ORENVIR=$S($D(XQY0)&($P(XQY0,U)=$S($G(^%ZOSF("ZVX"))["VX":"VFDVX CPRS GUI CHART",1:"OR CPRS GUI CHART")):"GUI",1:"")
+ ;DSS/SMP - End Mods
+ I $G(ORENVIR)'="GUI"&(ACTION="ES") D  G VQ
+ . S CSORD="" D CSVALUE^ORDEA(.CSORD,+IFN)
+ . S ORDLG=$S($P(OR0,U,5)["101.41":$P($G(^ORD(101.41,+$P(OR0,U,5),0)),U),1:"")
+ . I CSORD&(ORDLG="PSO OERR") D
+ . . S ERROR="Outpatient controlled substance order(s) cannot be signed in VistA due to"_$C(13,10)
+ . . S ERROR=ERROR_"     DEA rules! Please sign your order(s) from the CPRS GUI."
+ . . Q
  S DG=$P($G(^ORD(100.98,+$P(OR0,U,11),0)),U,3)
  S MEDPARM=$S($G(NATR)="A":2,PKG'="PS":2,'$D(^XUSEC("OREMAS",DUZ)):2,DG="NV RX":$$GET^XPAR("ALL","OR OREMAS NON-VA MED ORDERS"),1:$$GET^XPAR("ALL","OR OREMAS MED ORDERS"))
  S AIFN=$P(IFN,";",2) S:'AIFN AIFN=+$P(OR3,U,7)
@@ -40,6 +50,7 @@ XFR I ACTION="XFR" D  G VQ
  . N A
  . S A=""
  . F  S A=$O(^OR(100,+IFN,4.5,"ID","CONJ",A)) Q:'A  I ^OR(100,+IFN,4.5,A,1)="X" S ERROR="Orders with a conjunction of 'EXCEPT' may not be transferred." Q
+ . F  S A=$O(^OR(100,+IFN,4.5,"ID","CONJ",A)) Q:'A  I ^OR(100,+IFN,4.5,A,1)="T" S ERROR="Orders with a conjunction of 'THEN' may not be transferred." Q
  . I $G(ERROR)]"" Q
  . D XFR^ORCACT01 ; transfer to in/outpt
 RN I ACTION="RN" D RN^ORCACT01 G VQ ; renew
@@ -82,6 +93,9 @@ RF I ACTION="RF" D  G VQ
  . I ORDSTS=7 S ERROR="Expired orders may not be refilled!" Q
  . N X,PSIFN S PSIFN=$G(^OR(100,+IFN,4))
  . S X=$$REFILL^PSOREF(PSIFN) I X'>0 S ERROR=$P(X,U,2) Q
+ . ;DSS/SMP - BEGIN MOD
+ . I $G(^%ZOSF("ZVX"))["VX",$$PICKUP^VFDPSORF(+IFN)="W" S ERROR="Cannot Refill Printed Prescription" Q
+ . ;DSS/SMP - END MOD
 CP I ACTION="CP" D  G VQ ; complete
  . I PKG'="OR" S ERROR="Only generic text orders may be completed through this option!" Q
  . I ORDSTS=11!(ORDSTS=10) S ERROR="This order has not been released!" Q

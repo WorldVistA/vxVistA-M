@@ -1,5 +1,6 @@
 MAGQE1 ;WOIFO/RMP - Support for MAG Enterprise ; 02/18/2005  09:19
- ;;3.0;IMAGING;**27,29,30,20**;Apr 12, 2006
+ ;;3.0;IMAGING;**27,29,30,20,39**;Mar 19, 2002;Build 2010;Mar 08, 2011
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGQE1 ;WOIFO/RMP - Support for MAG Enterprise ; 02/18/2005  09:19
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -25,12 +25,14 @@ SDATE(FDAY,ORDER) ; Find first image before/after specified date
  Q $S(I1>I2:I1,1:I2)
  ;
 BPV(PLACE) ;
- N BPWS,D0,NODE,INDEX,WS
+ N BPWS,D0,NODE,INDEX,WS,RD
  K BPWS
+ S RD=$$FMADD^XLFDT($$NOW^XLFDT,-180,"","","")
  S WS="" F  S WS=$O(^MAG(2006.8,"C",PLACE,WS)) Q:WS=""  D
  . S D0=$O(^MAG(2006.8,"C",PLACE,WS,""))
  . Q:$P($G(^MAG(2006.8,D0,0)),"^",12)'="1"
  . S NODE=$G(^MAG(2006.8,D0,1))
+ . Q:(+$P(NODE,U,5))<RD  ;  last execution date is greater than 6 months or null
  . D:$P(NODE,"^",2)>0
  . . S INDEX=$P(NODE,"^",2)_"^"_$P(NODE,"^",4)
  . . S BPWS(INDEX)=$G(BPWS(INDEX))+1

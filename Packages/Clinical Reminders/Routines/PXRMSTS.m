@@ -1,5 +1,5 @@
-PXRMSTS ; SLC/PKR,AGP - Master File Server event handling routines. ;11/02/2009
- ;;2.0;CLINICAL REMINDERS;**12,17**;Feb 04, 2005;Build 102
+PXRMSTS ;SLC/PKR,AGP - Master File Server event handling routines. ;06/11/2013
+ ;;2.0;CLINICAL REMINDERS;**12,17,18,26**;Feb 04, 2005;Build 404
  ;==============================
 AERRMSG(EMSG,NL) ;Add the UPDATE^DIE error message.
  N ERRMSG,IND
@@ -31,8 +31,18 @@ ATFND(IEN,FI,REP,NL) ;Add the replacement as a new finding to the term.
  Q
  ;
  ;==============================
+BLDDLGEH(MSG,IEN,TEXT) ;
+ N CNT
+ I '$D(MSG(IEN)) S MSG(IEN,1)=TEXT Q
+ S CNT=""
+ S CNT=$O(MSG(IEN,CNT),-1)
+ S CNT=CNT+1,MSG(IEN,CNT)=TEXT
+ Q
+ ;
+ ;==============================
 BLDDLGTM(SUB) ;Build an index of dialog finding usage.
  N AFIND,AIEN,FIELD,FIEN,FIND,GBL,IEN,MH,NODE,ORD,TYPE
+ K ^TMP($J,SUB)
  S IEN=0 F  S IEN=$O(^PXRMD(801.41,IEN)) Q:IEN'>0  D
  .S TYPE=$P($G(^PXRMD(801.41,IEN,0)),U,4)
  .I TYPE'="E",TYPE'="G",TYPE'="S" Q
@@ -50,15 +60,6 @@ BLDDLGTM(SUB) ;Build an index of dialog finding usage.
  ..S AIEN=$O(^PXRMD(801.41,IEN,3,"B",AFIND,"")) Q:AIEN'>0
  ..S FIEN=$P(AFIND,";"),GBL=$P(AFIND,";",2)
  ..S ^TMP($J,SUB,GBL,FIEN,IEN,18,AIEN)=""
- Q
- ;
- ;==============================
-BLDDLGEH(MSG,IEN,TEXT) ;
- N CNT
- I '$D(MSG(IEN)) S MSG(IEN,1)=TEXT Q
- S CNT=""
- S CNT=$O(MSG(IEN,CNT),-1)
- S CNT=CNT+1,MSG(IEN,CNT)=TEXT
  Q
  ;
  ;==============================
@@ -245,7 +246,7 @@ EVDRVR ;Event driver for STS events.
  ... D DIALOG(FILENUM,GBL,FIEN,REPA,REPB,MAPACT,"DLG FIND",DLGUNMP,STATUS,.NL)
  ;
  ;Deliver the MailMan message.
-SEND D SEND^PXRMMSG("PXRMXMZ",SUBJECT)
+SEND D SEND^PXRMMSG("PXRMXMZ",SUBJECT,"",DUZ)
  K ^TMP($J,"DLG FIND"),^TMP($J,"FDATA"),^TMP($J,"PXRM DIALOGS"),^TMP("PXRMXMZ",$J),^XTMP(EVENT)
  Q
  ;

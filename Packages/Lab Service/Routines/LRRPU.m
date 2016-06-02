@@ -1,5 +1,5 @@
-LRRPU ;DALOI/JMC - Interim Report Results Utility ; May 10, 2004 0900
- ;;5.2;LAB SERVICE;**286**;Sep 27, 1994
+LRRPU ;DALOI/JMC - Interim Report Results Utility ; 11/18/14 12:42pm
+ ;;5.2;LAB SERVICE;**286**;Sep 27, 1994;Build 3
  ;
  ;
 TSTRES(LRDFN,LRSS,LRIDT,LRDN,LR60,LRCODE) ; Test results and parameters
@@ -12,7 +12,6 @@ TSTRES(LRDFN,LRSS,LRIDT,LRDN,LR60,LRCODE) ; Test results and parameters
  ;
  ; Returns
  ;  LRY = result^normalcy flag^reference low^reference high^units^performing lab (file #4 ien)^therapeutic normal used (0=no/1=yes)^NLT order code;NLT name!NLT result code;NLT name!LOINC result code;LOINC name^performing user (DUZ)^EII
- ;
  N LRFLAG,LRNR,LRX,LRY,X,Y
  S LRX=$G(^LR(LRDFN,LRSS,LRIDT,LRDN))
  S LRY=$P(LRX,"^",1,2),$P(LRY,"^",7)=0
@@ -26,17 +25,25 @@ TSTRES(LRDFN,LRSS,LRIDT,LRDN,LR60,LRCODE) ; Test results and parameters
  ; still does not store this info in file #63 when NPC>1.
  S LRFLAG=0,LRNR=$TR($P(LRX,"^",5),"!","^")
  I $G(^LR(LRDFN,LRSS,LRIDT,"NPC"))>1,$P(LRX,"^",5,12)'="" S LRFLAG=1
- ;
+ ;DSS/FHS - BEGIN MOD - CAPTURE MOST RECENT NORMAL RANGE DATA
+ ; Use the most resent normal range value if OUTPUT is vertical format (LROFMT="V")
+ I '$G(LR60) S LR60=+$O(^LAB(60,"C","CH;"_LRDN_";1",0))
+ I LRFLAG,LRSS="CH",$G(LROFMT)="V" I '$D(^XTMP("LRNR","U",$J,LRDN,+$P(LRX,U,5))) D
+ . S ^XTMP("LRNR","U",$J,LRDN,+$P(LRX,U,5))=LR60_U_LRDFN_"~"_LRIDT_"~"_^LR(LRDFN,LRSS,LRIDT,0)
+ I LRFLAG,$D(^XTMP("LRNR","U",$J,LRDN,+$P(LRX,U,5))) D
+ . N VFDIDT
+ . S VFDIDT=+$P($G(^XTMP("LRNR","U",$J,LRDN,+$P(LRX,U,5))),"~",2)
+ . I VFDIDT S LRNR=$TR($P($G(^LR(LRDFN,LRSS,VFDIDT,LRDN)),U,5),"!","^")
+ ;DSS/FHS - END MOD - Dec 10, 2014
  I LRFLAG D
  . I $P(LRNR,"^",11)="",$P(LRNR,"^",12)="" S $P(LRY,"^",3,4)=$P(LRNR,"^",2,3)
  . E  S $P(LRY,"^",3,4)=$P(LRNR,"^",11,12),$P(LRY,"^",7)=1
  . S $P(LRY,"^",5)=$P(LRNR,"^",7)
- ;
- ; If no units/ranges (LRFLAG=0) then use file 60
- ; values to determine reference ranges
- ; If no therapeutic normals then return reference normals
- ; Need to handle age and sex in normals from file #60
+ ;DSS/FHS - BEGIN MOD - Do not attempt to recompute the normal range if values is blank
+ ; LRFLAG=0   The multiple normal range funtions ensures the normal range is present if required.
  I 'LRFLAG D
+ . Q
+  . ;DSS/FHS - END MOD - Dec 10, 2014
  . N AGE,DOB,LR61,LRCDT,LRDPF,LRLO,LRHI,LRTLO,LRTHI,SEX,X
  . S LRDPF=$P(^LR(LRDFN,0),U,2),DFN=$P(^(0),U,3)
  . S X=$G(^LR(LRDFN,LRSS,LRIDT,0)),LRCDT=$P(X,"^"),LR61=+$P(X,"^",5)

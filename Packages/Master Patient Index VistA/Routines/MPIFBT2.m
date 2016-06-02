@@ -1,5 +1,5 @@
 MPIFBT2 ;SLC/ARS-BATCH RESPONSE FROM MPI ;FEB 4, 1997
- ;;1.0; MASTER PATIENT INDEX VISTA ;**1,3,10,17,21,31,43**;30 Apr 99
+ ;;1.0; MASTER PATIENT INDEX VISTA ;**1,3,10,17,21,31,43,53**;30 Apr 99;Build 1
  ;
  ; Integration Agreements Utilized:
  ;   ^DGCN(391.91 - #2751
@@ -49,8 +49,8 @@ LOOPS(CNTR,SEP,MPIMSG) ;Loop in the batch
  .S ^XTMP($J,"MPIF","MSHERR")="NO DATA in MPI "
  .;**43 NO DATA FOUND TRIGGER ADD
  .S MPIFRPC=1 D A28^MPIFQ3($P(ACK2,SEP,2)) K MPIFRPC
- .I ACK2["POTENTIAL MATCHES" D EXC^RGHLLOG(218,"Potential matches found, please review via MPI/PD Exception Handler",$P(ACK2,SEP,2))
- .;.;D EXC^RGHLLOG(218,"For Patient DFN="_$P(ACK2,SEP,2)_".  Use Single Patient Initialization to MPI option to manually process.",$P(ACK2,SEP,2))
+ .;I ACK2["POTENTIAL MATCHES" D EXC^RGHLLOG(218,"Potential matches found, please review via MPI/PD Exception Handler",$P(ACK2,SEP,2)) ;**53 MPIC_1853 Remove 218 references
+ .;D EXC^RGHLLOG(218,"For Patient DFN="_$P(ACK2,SEP,2)_".  Use Single Patient Initialization to MPI option to manually process.",$P(ACK2,SEP,2))
  .;I $D(^DPT($P(ACK2,SEP,2),0)) S LICN=$$ICNLC^MPIF001($P(ACK2,SEP,2))
  .; ^ create a local ICN
  .;I ACK2'["POTENTIAL MATCHES" D

@@ -1,12 +1,16 @@
 GMRVHG4 ;HIRMFO/YH-HP LASER SF 511 GRAPH - ^TMP DATA ;3/12/99
- ;;4.0;Vitals/Measurements;**1,7,11**;Apr 25, 1997
+ ;;4.0;Vitals/Measurements;**1,7,11**;Apr 25, 1997;Build 8
 SETA ;
  I GK="Unavailable" S GK="Unavail"
  S (GMRSITE,GMRSITE(1),GMRSITE(2),GMRINF,GMRVJ)=""
  I GK'="" D
  . S GMRSITE(1)=$P($G(^TMP($J,"GMRVG",GI,GDT1,GK)),"^"),GMRVJ=$P($G(^(GK)),"^",2),GMRINF=$P($G(^(GK)),"^",4)
  . I GMRSITE(1)'="" D SYNOARY^GMRVLGQU
- I GI="H" S ^TMP($J,"GMRK","G"_(470+GCNTD))=GK_" "_GMRSITE,^TMP($J,"GMRK","G"_(1100+GCNTD))=$S(GK>0:$J(GK*2.54,0,2),1:"") S:GK>0 GMRHT=GK*2.54/100 Q
+ ;DSS/SMP - BEGIN MODS
+ N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
+ I GI="H" D  Q
+ .I VFD S ^TMP($J,"GMRK","G"_(470+GCNTD))=GK_" "_GMRSITE,^TMP($J,"GMRK","G"_(1100+GCNTD))=$S(GK>0:$$IN2CM^VFDXLF(GK,2),1:"") S:GK>0 GMRHT=$$IN2M^VFDXLF(GK) Q
+ .S ^TMP($J,"GMRK","G"_(470+GCNTD))=GK_" "_GMRSITE,^TMP($J,"GMRK","G"_(1100+GCNTD))=$S(GK>0:$J(GK*2.54,0,2),1:"") S:GK>0 GMRHT=GK*2.54/100 Q
  I GI="PN" S ^TMP($J,"GMRK","G"_(1660+GCNTD))=GK
  I GI="C" S ^TMP($J,"GMRK","G"_(1640+GCNTD))=GK_"  "_^TMP($J,"GMRK","G"_(1640+GCNTD)) Q
  I GI="PO2"!(GI="CVP")!(GI="CG") D  Q
@@ -22,11 +26,14 @@ SETA ;
  . . S ^TMP($J,"GMRK","G"_(1530+GCNTD))=$S(GK>0!(GK<0)!($E(GK)="0"):$J(GK/1.36,0,1),1:"")_$S(GMRVJ=1:"*",1:"")
  . . Q
  . I GI="CG" D
+ . . I VFD S ^TMP($J,"GMRK","G"_(1550+GCNTD))=GK_GMRSITE,^TMP($J,"GMRK","G"_(1620+GCNTD))=$S(GK>0:$$IN2CM^VFDXLF(GK,2),1:"") Q
  . . S ^TMP($J,"GMRK","G"_(1550+GCNTD))=GK_GMRSITE,^TMP($J,"GMRK","G"_(1620+GCNTD))=$S(GK>0:$J(GK/.3937,0,2),1:"")
  . . Q
  I GI="B",GK'="" S ^TMP($J,"GMRK","G"_(450+GCNTD))=$S($L(GMRSITE," ")>3:$P(GMRSITE," ",2,4),1:GMRSITE) S:$L(GMRSITE," ")>3 ^TMP($J,"GMRK","G"_(1640+GCNTD))=$P(GMRSITE," ")
  I '(GI="T"!(GI="P")) D  Q
- . S ^TMP($J,"GMRK","G"_(GJ*16+GCNTD+1))=GK_$S(GMRVJ=1:"*",1:"")_$S(GI="B":"",1:GMRSITE) S:GI="W" ^TMP($J,"GMRK","G"_(1200+GCNTD))=$S(GK>0:$J(GK/2.2,0,2),1:"")
+ . I VFD S ^TMP($J,"GMRK","G"_(GJ*16+GCNTD+1))=GK_$S(GMRVJ=1:"*",1:"")_$S(GI="B":"",1:GMRSITE) S:GI="W" ^TMP($J,"GMRK","G"_(1200+GCNTD))=$S(GK>0:$$LB2KG^VFDXLF(GK,2),1:"") I 1
+ . E  S ^TMP($J,"GMRK","G"_(GJ*16+GCNTD+1))=GK_$S(GMRVJ=1:"*",1:"")_$S(GI="B":"",1:GMRSITE) S:GI="W" ^TMP($J,"GMRK","G"_(1200+GCNTD))=$S(GK>0:$J(GK/2.2,0,2),1:"")
+ . ;DSS/SMP - END MODS
  . I GI="W",GK>0 D
  . . S GMRBMI="",GMRBMI(1)=GDT1,GMRBMI(2)=GK D CALBMI^GMRVBMI(.GMRBMI)
  . . S ^TMP($J,"GMRK","G"_(1300+GCNTD))=GMRBMI K GMRBMI

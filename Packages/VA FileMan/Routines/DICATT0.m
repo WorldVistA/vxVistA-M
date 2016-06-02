@@ -1,6 +1,10 @@
-DICATT0 ;SFISC/GFT,XAK-DATES, NUMERIC ;5/4/93  2:05 PM
- ;;22.0;VA FileMan;;Mar 30, 1999
- ;Per VHA Directive 10-93-142, this routine should not be modified.
+DICATT0 ;SFISC/GFT,XAK-DATES, NUMERIC ;1/7/2009
+ ;;22.2;MSC Fileman;;Jan 05, 2015;
+ ;;Submitted to OSEHRA 5 January 2015 by the VISTA Expertise Network.
+ ;;Based on Medsphere Systems Corporation's MSC Fileman 1051.
+ ;;Licensed under the terms of the Apache License, Version 2.0.
+ ;;GFT;**160**
+ ;
  G @N
  ;
 DIE K Y S DP=0 F  S DL=1,DP=$O(DQ(DP)) Q:DP=""  S:$D(DE(DP)) DG(DP)=DE(DP)
@@ -17,7 +21,7 @@ DIE K Y S DP=0 F  S DL=1,DP=$O(DQ(DP)) Q:DP=""  S:$D(DE(DP)) DG(DP)=DE(DP)
  ;
 10 S C="S %DT=""E"_$E("S",DG(6)="Y")_$E("T",DG(5)="Y")_$E("X",DG(4)="N")_$E("R",DG(7)="Y")_""" D ^%DT S X=Y K:"
  F X=1,3 G ND:'$D(DG(X)) S Y(X)=$S(DG(X):DG(X)\10000+1700,1:DG(X)) I DG(X)#100 S Y(X)=DG(X)#100_"/"_Y(X) I $E(DG(X),4,5) S Y(X)=+$E(DG(X),4,5)_"/"_Y(X)
- I DG(1)]"" S M="TYPE A DATE BETWEEN "_Y(1)_" AND "_Y(3),C=C_DG(3)_P_DG(1)_">X) X" G ED
+ I DG(1)]"" S M="Type a date between "_Y(1)_" and "_Y(3)_".",C=C_DG(3)_P_DG(1)_">X) X" G ED
 ND S C=C_"Y<1 X"
 ED S Z="D^",L=DG(5)="Y"*5+7,DG(6)="" G H
  ;
@@ -28,7 +32,7 @@ ED S Z="D^",L=DG(5)="Y"*5+7,DG(6)="" G H
  I O S DE(1)=+$P(C,"X<",2),DE(2)=+$P(C,"X>",2)
  G DIE
 20 I DG(1)>DG(2) W $C(7),"??" G 2
- S M="Type a "_$P("Number^Dollar Amount",U,DG(3)="Y"+1)_" between "_DG(1)_" and "_DG(2)_", "_DG(5)_" Decimal Digit"_$E("s",DG(5)'=1)
+ S M="Type a "_$P("number^dollar amount",U,DG(3)="Y"+1)_" between "_DG(1)_" and "_DG(2)_", "_DG(5)_" decimal digit"_$E("s",DG(5)'=1)_"."
  S C="K:+X'=X",T=DG(5)+1,Z="!(X?.E"_P_T_"N.N)"
  I DG(3)="Y",DA-.001 S C="S:X[""$"" X=$P(X,""$"",2) K:X'?"_$P(".""-""",U,DG(1)<0)_".N."_P_".2N",Z=""
  S C=C_"!(X>"_DG(2)_")!(X<"_DG(1)_")"_Z_" X",L=$L(DG(2)\1)+T-(T=1),Z="NJ"_L_","_DG(5)_U

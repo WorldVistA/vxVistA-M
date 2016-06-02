@@ -1,14 +1,20 @@
-ECXUEC ;ALB/TJL,JAP - Event Capture Extract Unusual Volume Report ; 6/11/09 2:32pm
- ;;3.0;DSS EXTRACTS;**120**;July 1, 2003;Build 43
+ECXUEC ;ALB/TJL,JAP - Event Capture Extract Unusual Volume Report ;2/20/14  12:53
+ ;;3.0;DSS EXTRACTS;**120,127,148,149**;Dec 22, 1997;Build 27
  ;
 EN ; entry point
  N X,Y,DATE,ECRUN,ECXDESC,ECXSAVE,ECXTL,ECTHLD
- N ECSD,ECSD1,ECSTART,ECED,ECEND,ECXERR,QFLG,DIR,DTOUT,DUOUT,DIRUT,POP,ZTSK,ZTQUEUED
+ N ECSD,ECSD1,ECSTART,ECXDSS,ECED,ECEND,ECXERR,QFLG,DIR,DTOUT,DUOUT,DIRUT,POP,ZTSK,ZTQUEUED,DIC,%,ECXPORT,CNT ;149
  S QFLG=0,ECTHLD=""
  ; get today's date
  D NOW^%DTC S DATE=X,Y=$E(%,1,12) D DD^%DT S ECRUN=$P(Y,"@") K %DT
  D BEGIN Q:QFLG
  D SELECT Q:QFLG
+ S ECXPORT=$$EXPORT^ECXUTL1 Q:ECXPORT=-1  I $G(ECXPORT) D  Q  ;149 Section added
+ .K ^TMP($J,"ECXPORT")
+ .S ^TMP($J,"ECXPORT",0)="SSN^FACILITY^DSS UNIT^DATE/TIME^PROCEDURE^VOLUME^PROVIDER",CNT=1
+ .D START,PRINT
+ .D EXPDISP^ECXUTL1
+ .K ^TMP($J,"ECXPORT"),^TMP("ECUV",$J)
  S ECXDESC="ECS Extract Unusual Volume Report"
  S ECXSAVE("EC*")=""
  W !!,"This report is formatted for 132-column line width."
@@ -36,8 +42,9 @@ BEGIN ; display report description
  W !,"   least several minutes. Queuing to a printer is recommended."
  W !!,"   The running of this report has no effect on the actual extracts"
  W !,"   and can be run as needed."
- W !!,"   The report is sorted by DSS Unit, then by descending Volume"
- W !,"   within DSS Unit."
+ W !!,"   You may select one or all DSS Units.  If you select one unit,"
+ W !,"   the report is sorted by descending volume. If you select all DSS Units, "
+ W !,"   the report is sorted by DSS Unit, then by descending volume."
  S DIR(0)="E" W ! D ^DIR K DIR I 'Y S QFLG=1 Q
  W:$Y!($E(IOST)="C") @IOF,!!
  Q
@@ -47,14 +54,23 @@ SELECT ; user inputs for threshold volume and date range
  ; allow user to set threshold volume
  S ECTHLD=20
  W !!,"The default threshold volume for unusual volumes in Event Capture is "_ECTHLD_"."
- S DIR(0)="Y",DIR("A")="Would you like to change the threshold?",DIR("B")="NO"
+ S DIR(0)="Y",DIR("A")="Would you like to change the threshold",DIR("B")="NO"
  D ^DIR K DIR I X["^" S QFLG=1 Q
  I Y D
  .W !!,"Volume > threshold"
  .S DIR(0)="N^0:99",DIR("A")="Enter the new threshold volume"
  .D ^DIR K DIR S ECTHLD=Y I X["^" S QFLG=1
- ; get date range from user
+ ; get DSS Unit selection from user
  Q:QFLG
+ W !
+ S DIR(0)="Y",DIR("A")="Do you want All DSS Units",DIR("B")="YES"
+ D ^DIR K DIR I X["^" S QFLG=1 Q
+ I Y S ECXDSS="ALL"
+ E  D  I QFLG=1 Q
+ .S DIC(0)="AEQM",DIC="^ECD(" D ^DIC K DIC I X["^" S QFLG=1 Q
+ .I Y=-1 S QFLG=1 Q
+ .S ECXDSS=+$G(Y) I ECXDSS=0 S QFLG=1 Q
+ ; get date range from user
  W !!,"Enter the date range for which you would like to scan the"
  W !,"Event Capture records.",!
  S DONE=0 F  S (ECED,ECSD)="" D  Q:QFLG!DONE
@@ -84,12 +100,22 @@ PROCESS ; entry point for queued report
  Q
  ;
 START ;find EC records in date range
- N X,Y,ECLL,ECDA,ECD,COUNT
- S ECED=ECED+.3,ECLL=0,COUNT=0
- K ^TMP("ECUV",$J)
- F  S ECLL=$O(^ECH("AC1",ECLL)),ECD=ECSD-.1 Q:'ECLL  D
- .F  S ECD=$O(^ECH("AC1",ECLL,ECD)),ECDA=0 Q:(ECD>ECED)!('ECD)  D
- ..F  S ECDA=$O(^ECH("AC1",ECLL,ECD,ECDA)) Q:'ECDA  D GETREC
+ I ECXDSS="ALL" D
+ .N X,Y,ECLL,ECDA,ECD,COUNT
+ .S ECED=ECED+.3,ECLL=0,COUNT=0
+ .K ^TMP("ECUV",$J)
+ .F  S ECLL=$O(^ECH("AC1",ECLL)),ECD=ECSD-.1 Q:'ECLL  D
+ ..F  S ECD=$O(^ECH("AC1",ECLL,ECD)),ECDA=0 Q:(ECD>ECED)!('ECD)  D
+ ...F  S ECDA=$O(^ECH("AC1",ECLL,ECD,ECDA)) Q:'ECDA  D GETREC
+ E  D
+ .N X,Y,ECLL,ECPAT,ECDA,ECD,COUNT
+ .S ECED=ECED+.3,ECLL=0,ECPAT=0,COUNT=0
+ .K ^TMP("ECUV",$J)
+ .F  S ECLL=$O(^ECH("ADT",ECLL)) Q:'ECLL  D
+ .. S ECPAT=0
+ .. F  S ECPAT=$O(^ECH("ADT",ECLL,ECPAT)),ECD=ECSD-.1 Q:'ECPAT  D
+ ...F  S ECD=$O(^ECH("ADT",ECLL,ECPAT,ECXDSS,ECD)),ECDA=0 Q:(ECD>ECED)!('ECD)  D
+ ....F  S ECDA=$O(^ECH("ADT",ECLL,ECPAT,ECXDSS,ECD,ECDA)) Q:'ECDA  D GETREC
  Q
  ;
 GETREC ;get data for report
@@ -120,15 +146,17 @@ PRINT ; process temp file and print report
  U IO
  I $D(ZTQUEUED),$$S^%ZTLOAD S ZTSTOP=1 K ZTREQ Q
  S (PG,QFLG,COUNT)=0,$P(LN,"-",130)=""
- D HEADER Q:QFLG
+ I '$G(ECXPORT) D HEADER Q:QFLG  ;149
  S ECXUNIT="" F  S ECXUNIT=$O(^TMP("ECUV",$J,ECXUNIT)) Q:ECXUNIT=""  D  Q:QFLG
- .I COUNT>0 W !,?1,LN
+ .I '$G(ECXPORT) I COUNT>0 W !,?1,LN ;149
  .S ECVV=0 F  S ECVV=$O(^TMP("ECUV",$J,ECXUNIT,ECVV)) Q:'ECVV  D  Q:QFLG
  ..S CC=0 F  S CC=$O(^TMP("ECUV",$J,ECXUNIT,ECVV,CC)) Q:'CC  D  Q:QFLG
  ...S REC=^TMP("ECUV",$J,ECXUNIT,ECVV,CC),COUNT=COUNT+1
  ...S ECXSSN=$P(REC,U),ECXPDIV=$P(REC,U,2),ECXDATE=$P(REC,U,3),ECP=$P(REC,U,4),ECXPROV=$P(REC,U,5),ECV=$P(REC,U,6)
+ ...I $G(ECXPORT) S ^TMP($J,"ECXPORT",CNT)=ECXSSN_U_ECXPDIV_U_ECXUNIT_U_ECXDATE_U_ECP_U_ECV_U_ECXPROV,CNT=CNT+1 Q  ;149
  ...W !,?1,ECXSSN,?13,ECXPDIV,?24,ECXUNIT,?55,ECXDATE,?75,ECP,?86,ECV,?94,ECXPROV
  ...I $Y+4>IOSL D HEADER Q:QFLG
+ I $G(ECXPORT) Q  ;149 Nothing more to print if exporting
  Q:QFLG
  I COUNT=0 W !!,?8,"No unusual Event Capture volumes to report for the date range.",!!
  D SS

@@ -1,5 +1,6 @@
-MAGBRTK ;WOIFO/EdM - Routing - Keywords ; 08/26/2005  08:04
- ;;3.0;IMAGING;**51**;26-August-2005
+MAGBRTK ;WOIFO/EdM - Routing - Keywords ; 17 Mar 2008 12:25 PM
+ ;;3.0;IMAGING;**51,53**;Mar 19, 2002;Build 1719;Apr 28, 2010
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGBRTK ;WOIFO/EdM - Routing - Keywords ; 08/26/2005  08:04
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -38,7 +38,7 @@ KEYWORD ; build the KEYWORD array
  S KEYWORD(CD,"BIG_MAGNETIC_PATH")=M_"2005.2,""FBIG"",1,.VAL)"
  S KEYWORD(CD,"CLASS")=M_"2005.82,40,2,.VAL)"
  S KEYWORD(CD,"CLINIC")=M_"44,100,2,.VAL)"
- S KEYWORD(CD,"CREATE METHOD")=M_"0,""METHOD"",1,.VAL)"
+ S KEYWORD(CD,"CREATE_METHOD")=M_"0,""METHOD"",1,.VAL)"
  S KEYWORD(CD,"DESCRIPTIVE_CATEGORY")=M_"2005.81,100,1,.VAL)"
  S KEYWORD(CD,"EXPORT_REQUEST_STATUS")=M_"0,2,9,.VAL)"
  S KEYWORD(CD,"FILE_REF")=M_"0,0,2,.VAL)"
@@ -46,8 +46,9 @@ KEYWORD ; build the KEYWORD array
  S KEYWORD(CD,"MAGNETIC_REF")=M_"0,0,3,.VAL)"
  S KEYWORD(CD,"MICROSCOPIC_OBJECTIVE")=M_"0,""PATH"",5,.VAL)"
  S KEYWORD(CD,"MODALITY")=M_"0,0,8,.VAL)"
- S KEYWORD(CD,"OBJECT NAME")=M_"0,0,1,.VAL)"
+ S KEYWORD(CD,"OBJECT_NAME")=M_"0,0,1,.VAL)"
  S KEYWORD(CD,"OBJECT_TYPE")=M_"2005.02,0,6,.VAL)"
+ S KEYWORD(CD,"ORIGIN_INDEX")=M_"0,40,6,.VAL)"
  S KEYWORD(CD,"PACKAGE")=M_"0,40,1,.VAL)"
  S KEYWORD(CD,"PACS_PROCEDURE")=M_"71,""PACS"",3,.VAL)"
  S KEYWORD(CD,"PACS_UID")=M_"0,""PACS"",1,.VAL)"

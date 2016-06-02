@@ -1,12 +1,16 @@
-PSORXL1 ;BIR/SAB-action to be taken on prescriptions ; 10/5/07 2:40pm
- ;;7.0;OUTPATIENT PHARMACY;**36,46,148,260,274,287,289,358**;DEC 1997;Build 35
+PSORXL1 ;BIR/SAB - action to be taken on prescriptions ; 7/5/12 12:04pm
+ ;;7.0;OUTPATIENT PHARMACY;**36,46,148,260,274,287,289,358,251,385,403,409**;DEC 1997;Build 2
+ ;External reference to $$DS^PSSDSAPI supported by DBIA 5424
 S S SPPL="",PPL1=1 S:'$G(PPL) PPL=$G(PSORX("PSOL",PPL1)) G:$G(PPL)']"" D1
 S1 F PI=1:1 Q:$P(PPL,",",PI)=""  S DA=$P(PPL,",",PI) D
+ .S PSORFD1=0 F PSOX7=0:0 S PSOX7=$O(^PSRX(DA,1,PSOX7)) Q:'$G(PSOX7)  S (PSORFD1)=PSOX7
+ .I 'PSORFD1,$$DS^PSSDSAPI,($G(^PS(52.4,DA,1))>0)&('$D(^XUSEC("PSORPH",DUZ))) S SPPL=SPPL_DA_"," Q
+ .I 'PSORFD1,$P(^PSRX(DA,"STA"),"^")=4!($D(^PSRX(DA,"DRI"))&('$D(^XUSEC("PSORPH",DUZ)))) S SPPL=SPPL_DA_"," Q
  .I $P(^PSRX(DA,"STA"),"^")<10,$P(^("STA"),"^")'=4 D SUS Q
- .I $P(^PSRX(DA,"STA"),"^")=4 S SPPL=SPPL_DA_"," Q
+ .K PSORFD1,PSOX7
  I $G(SPPL)]"" D  K DIR S DIR(0)="E",DIR("A")="Press Return to Continue" D ^DIR K DIR,DUOUT,DTOUT,DIRUT
- .W !!,$C(7),"Drug Interaction Rx(s) " F I=1:1 Q:$P(SPPL,",",I)=""  W $P(^PSRX($P(SPPL,",",I),0),"^")_", "
- .I $G(PSOLAP)=""!($G(PSOLAP)=$G(ION)) W !,"Label device must be selected for Drug Interaction label!"
+ .W !!,$C(7),"Drug Interaction Rx(s) and/or Dose Warning: " F I=1:1 Q:$P(SPPL,",",I)=""  W $P(^PSRX($P(SPPL,",",I),0),"^")_", "
+ .I $G(PSOLAP)=""!($G(PSOLAP)=$G(ION)) W !,"Label device must be selected for Drug Interaction or dose warning label!"
  .S PPL=SPPL,DG=1 N PPL1 D Q^PSORXL K DG,SPPL
  S SUSPT="SUSPENSE" G D1
  Q
@@ -18,6 +22,8 @@ SUS S ACT=1,RXN=DA,RX0=^PSRX(DA,0),SD=$S($G(ZD(DA)):$E(ZD(DA),1,7),1:$P(^(3),"^"
  G:$G(RXRP(DA))!($G(RXPR(DA))) LOCK
  I $G(PSXSYS) D SUS1^PSOCMOP I $G(XFLAG)=1 K XFLAG Q
 LOCK I $P($G(^PSRX(RXN,"STA")),"^")=3 G SUSQ
+ ; The PSOSITE variable will not be set by the code that processes the CMOP release message - PSO*7*403
+ I '$G(PSOSITE) N PSOSITE S PSOSITE=$$RXSITE^PSOBPSUT(RXN,$G(RXFL(RXN)))
  S RXP=+$G(RXPR(DA)),DIC="^PS(52.5,",DIC(0)="L",X=RXN,DIC("DR")=".02///"_SD_";.03////"_$P(^PSRX(DA,0),"^",2)_";.04///M;.05///"_RXP_";.06////"_PSOSITE_";2///0" K DD,DO D FILE^DICN D  I +Y,'$G(RXP),$G(RXRP(RXN)) S $P(^PS(52.5,+Y,0),"^",12)=1
  .K DD,DO I +Y,$G(PSOEXREP) S $P(^PS(52.5,+Y,0),"^",12)=1
  .I +Y S $P(^PS(52.5,+Y,0),"^",13)=$G(RXFL(RXN))
@@ -30,8 +36,12 @@ LOCK I $P($G(^PSRX(RXN,"STA")),"^")=3 G SUSQ
  ;
  ; - If not a PARTIAL, reverse ECME Claim, if necessary
  I '$G(RXFL(RXN)) S RXFL(RXN)=$$LSTRFL^PSOBPSU1(RXN)
- I '$G(RXP),'$G(PSONPROG) D REVERSE^PSOBPSU1(RXN,,"DC",3)  ;PSONPROG - Tricare in progress, don't reverse
+ I '$G(RXP),'$G(PSONPROG) D REVERSE^PSOBPSU1(RXN,,"DC",3)  ;PSONPROG - TRICARE or CHAMPVA in progress, don't reverse
  K COMM
+ ;
+ ;Telephone refill does not use list manager
+ K:$G(VEXPSORX)!($G(VEXANS2)]"") VALMSG ;PSO*7*409
+ ;
 SUSQ Q
  ;PSO*7*274 always recalculate RXF
 ACT S RXF=0 F I=0:0 S I=$O(^PSRX(DA,1,I)) Q:'I  S RXF=I S:I>5 RXF=I+1
@@ -91,7 +101,7 @@ ECME ; - Looks for DUR/79 REJECTS and send Mail Rx's to ECME that have not been 
  S PPLTMP=$G(PPL)
  F PSOI=1:1 S PSORX=+$P($G(PPLTMP),",",PSOI) Q:'PSORX  D
  . D TRIC(PSORX) S ESTAT=$P($$STATUS^PSOBPSUT(PSORX,PSORF),"^")
- . I PSOTRIC S EACTION=$S(ESTAT["PAYABLE":1,ESTAT["Inactive ECME Tricare":1,ESTAT="":1,1:0)
+ . I PSOTRIC S EACTION=$S(ESTAT["PAYABLE":1,ESTAT="":1,1:0)
  . I $G(PSOCKDC) D  Q  ;PSOCKDC variable is set in PSORXL and is used to eliminate label print for DC'ed Rx's
  . . S PSOSTA=$$GET1^DIQ(52,PSORX,100,"I") I PSOSTA=12!(PSOSTA=11),'$G(RXPR(PSORX)),$G(PPL) D RMV(PSORX,.PPL)
  . I $G(RXPR(PSORX)) Q

@@ -1,5 +1,5 @@
-IVMLERR2 ;ALB/RMO - IVM Transmission Error Processing - Protocols; 15-SEP-1997
- ;;2.0;INCOME VERIFICATION MATCH;**9**; 21-OCT-94
+IVMLERR2 ;ALB/RMO,ERC - IVM Transmission Error Processing - Protocols; 15-SEP-1997 ; 5/29/07 9:29am
+ ;;2.0;INCOME VERIFICATION MATCH;**9,121**; 21-OCT-94;Build 45
  ;
  ;This routine contains the IVM transmission log error processing
  ;protocols.
@@ -61,17 +61,35 @@ SL ;Entry point for IVMLE SORT LIST protocol
  ; Output -- IVMSRTBY Sort by criteria
  ;           VALMSG   Custom message
  ;           VALMBCK  R   =Refresh screen
- N DIR,DTOUT,DUOUT,Y
+ N DIR,Y
  D FULL^VALM1
  ;
  ;Ask user to select sort criteria
- S DIR(0)="SMO^P:Patient Name;D:Date/Time ACK Received"
+ S DIR(0)="SMO^P:Patient Name;D:Date/Time ACK Received;E:Error Message"
  S DIR("A")="Select Sort By"
+ S DIR("B")="P"
  D ^DIR
+ S IVMY=$G(Y)
+ ;S IVMSRTBY=$S($G(Y)="E":"E",$G(Y)="D":"D",1:"P")
+ ;if sorting by error message ask if just Person Not Found
+ I $G(Y)="E" D
+ . N DIR,Y
+ . S DIR(0)="SMO^O:'Person Not Found' only;A:All Error Messages"
+ . S DIR("A")="Select ALL Error Messages or 'Person Not Found' only"
+ . D ^DIR
+ . I $D(DIRUT)!($D(DIROUT)) G ASK^IVMLERR
+ . ;if by 'Person Not Found' only, use Error Processing
+ . ;Status of NEW and CHECKED
+ . I $G(Y)="O" S IVMEPSTA="1^2",IVMY="O"
+ ;if the report has not run once already, Q and return to 
+ ;INIT^IVMLERR
+ I $G(IVMFLG)=1 D  Q
+ . S IVMFLG=0
+ . S IVMSRTBY=IVMY
  ;
  ;Process user response
- I "^P^D^"[(U_Y_U),IVMSRTBY'=Y D
- . S IVMSRTBY=Y
+ I "^P^D^E^O^"[(U_IVMY_U),IVMSRTBY'=IVMY D
+ . S IVMSRTBY=IVMY
  . ;Re-build error list for selected sort criteria
  . D BLD^IVMLERR
  S VALMSG=$$MSG^IVMLERR

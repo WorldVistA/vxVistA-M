@@ -1,5 +1,5 @@
 LRMISEZ ;DALOI/REG/SLC/BA - MICROBIOLOGY INFECTION CONTROL DATA ;11/18/11  16:08
- ;;5.2;LAB SERVICE;**350**;Sep 27, 1994;Build 230
+ ;;5.2;LAB SERVICE;**350**;Sep 27, 1994;Build 2
  ;
  ;from option LRMISEZ
 BEGIN ;
@@ -30,10 +30,23 @@ SURVEY ;
  I LRM("L")="N",LRM("O")="N",LRM("D")="N",LRM("P")="N" W !,"No reports were selected!" Q
  S %DT="AEQ",%DT("A")="Start  Date: " D ^%DT K %DT Q:Y<0  S LRSTAR=Y D D^LRU S LRST=Y I $E(LRSTAR,6,7)="00" S LRSTAR=$S($E(LRSTAR,4,7)="0000":LRSTAR+10000,$E(LRSTAR,4,5)="12":LRSTAR+10100,1:LRSTAR+100)
  S %DT="AEQ",%DT("A")="End    Date: " D ^%DT K %DT Q:Y<0  S LAST=Y D D^LRU S LRLST=Y Q:Y<0  I LRSTAR>LAST S X=LRSTAR,LRSTAR=LAST,LAST=X,X=LRST,LRST=LRLST,LRLST=X
- S Y=LRSTAR D D^LRU S LRST=Y,Y=LAST D D^LRU S LRLST=Y,LRAD=$E(LRSTAR,1,3)-1_"0000",LRYRL=$E(LAST,1,3)_"0000",LAST=LAST\1+.99
+ ;DSS/RAF - BEGIN MOD - allow micro to use DAILY transform 4/30/2014
+ ;S Y=LRSTAR D D^LRU S LRST=Y,Y=LAST D D^LRU S LRLST=Y,LRAD=$E(LRSTAR,1,3)-1_"0000",LRYRL=$E(LAST,1,3)_"0000",LAST=LAST\1+.99
+ I $G(^%ZOSF("ZVX"))["VX" D
+ . N DIERR
+ . I $$GET1^DIQ(68,LRAA,.05)="DAILY" D
+ . . S LRAD=LRSTAR,LRYRL=LAST\1+.99
+ . . S Y=LRSTAR D D^LRU S LRST=Y,Y=LAST D D^LRU
+ I '$D(LRAD) S Y=LRSTAR D D^LRU S LRST=Y,Y=LAST D D^LRU S LRLST=Y,LRAD=$E(LRSTAR,1,3)-1_"0000",LRYRL=$E(LAST,1,3)_"0000",LAST=LAST\1+.99
+ ;DSS/RAF - END MOD
  ;
 DEVICE ;
- S %ZIS="NMQ",%ZIS("B")=""
+ ;DSS/RAF - BEGIN MOD - Linux compatibility fix
+ ; S %ZIS="NMQ",%ZIS("B")="" ; VEN/SMH - B4 - original line
+ I $G(^%ZOSF("ZVX"))["VX" D
+ . S %ZIS="MQ",%ZIS("B")="" ; VEN/SMH - AFTER
+ E  S %ZIS="NMQ",%ZIS("B")=""
+ ;DSS/RAF - END MOD
  W ! D ^%ZIS K %ZIS Q:POP
  ;S %DT="AET",%DT("A")="TIME TO RUN: T+1@1AM//" D ^%DT S:Y>0 ZTDTH=Y I Y'>0 S %DT="T",X="T+1@1AM" D ^%DT S ZTDTH=Y
  I '$D(IO("Q")) D DQ^LRMISEZ1 Q
@@ -49,3 +62,4 @@ INFO ;
  W !,"contain a survey of a single organism.  Surveys can be reported by"
  W !,"Site/Specimen or Collection sample."
  Q
+ ;;2013.1;VENDOR - DOCUMENT STORAGE SYS;**16**;11 DEC 2014

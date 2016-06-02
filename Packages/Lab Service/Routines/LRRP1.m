@@ -1,5 +1,5 @@
 LRRP1 ;DALOI/STAFF - PRINT THE DATA FOR INTERIM REPORTS ;11/18/11  16:33
- ;;5.2;LAB SERVICE;**153,221,283,286,356,372,350**;Sep 27, 1994;Build 230
+ ;;5.2;LAB SERVICE;**153,221,283,286,356,372,350**;Sep 27, 1994;Build 2
  ;
  ; from LRRP, LRRP2, LRRP3, LRMIPSU
  ;
@@ -7,6 +7,10 @@ PRINT ;
  S:$G(SEX)="" SEX="M" S:$G(DOB)="" DOB="UNKNOWN"
  S LRAAO=0 F  S LRAAO=$O(^TMP("LR",$J,"TP",LRAAO)) Q:LRAAO<1  D ORDER Q:LRSTOP
  K ^TMP("LR",$J,"TP")
+ ;DSS/FHS - BEGIN MOD - CLEANUP MULTI-NORMAL RANGE XTMP( GLOBAL
+ I $G(^%ZOSF("ZVX"))["VX" D
+ . K ^XTMP("LRNR","U",$J)
+ ;DSS/FHS - END MOD - Dec 10, 2014
  Q
  ;
  ;
@@ -66,7 +70,13 @@ TEST ;
  . . D CONT Q:LRSTOP
  . . W:$O(^TMP("LR",$J,"TP",LRAAO,LRCDT,"C",LRCMNT)) !?9
  Q:LRSTOP  D EQUALS^LRX
- W !?7,"KEY: ""L""=Abnormal low, ""H""=Abnormal high, ""*""=Critical value"
+ ;DSS/RAF - BEGIN MOD - 8/10/2014 ARRA II and HL7 v2.5.1 compatibility
+ ;W !?7,"KEY: ""L""=Abnormal low, ""H""=Abnormal high, ""*""=Critical value"  ;DSS/RAF 8/8/2014 ARRA II MOD BELOW
+ I $G(^%ZOSF("ZVX"))["VX" D
+ . W !?7,"KEY: ""A""=Abnormal, ""L""=Abnormal low, ""H""=Abnormal high, ""N""=Normal"
+ . W !,?14,"""AA,LL,HH,L*,H*""=Critical value"
+ E  W !?7,"KEY: ""L""=Abnormal low, ""H""=Abnormal high, ""*""=Critical value"
+ ;DSS/RAF - END MOD
  S LRFOOT=1
  Q
  ;
@@ -251,3 +261,4 @@ REFDOC(LRDFN,LRSS,LRIDT) ; Lookup LEDI referral free text provider name in file 
  F  S LRI=$O(^LR(LRDFN,LRSS,LRIDT,"ORUT",LRI)) Q:'LRI  S LRX=$P(^(LRI,0),"^",7) Q:LRX'=""
  I LRX'="" S LRY=LRX
  Q LRY
+ ;;2013.1;VENDOR - DOCUMENT STORAGE SYS;**16**;11 DEC 2014

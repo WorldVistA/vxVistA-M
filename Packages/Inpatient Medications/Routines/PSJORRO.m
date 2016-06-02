@@ -1,5 +1,5 @@
-PSJORRO ;BIR/MV-RETURN INPATIENT MEDS (CONDENSED) OLD SORT ;28 Jan 99 / 12:56 PM
- ;;5.0; INPATIENT MEDICATIONS ;**134,213**;16 DEC 97;Build 8
+PSJORRO ;BIR/MV-RETURN INPATIENT MEDS (CONDENSED) OLD SORT ; 2/28/11 3:27pm
+ ;;5.0;INPATIENT MEDICATIONS;**134,213,225,275**;16 DEC 97;Build 157
  ;
  ;Reference to ^PS(52.6 is supported by DBIA 1231.
  ;Reference to ^PS(52.7 is supported by DBIA 2173.
@@ -10,15 +10,17 @@ PSJORRO ;BIR/MV-RETURN INPATIENT MEDS (CONDENSED) OLD SORT ;28 Jan 99 / 12:56 PM
  ;
  ; return condensed list of inpat meds
 OCL(DFN,BDT,EDT,TFN) ; Execute this section if MVIEW=1
- N ADM,CNT,DN,DO,F,FON,INFUS,INST,MR,ND,ND0,ND2,ND6,ON,PON,PST,SCH,SIO,STAT,TYPE,UNITS,WBDT,X,Y,PSJCLIN,A,TFN2,PSJOTYP
+ N ADM,CNT,DN,DO,F,FON,INFUS,INST,MR,ND,ND0,ND2,ND6,ON,PON,PST,SCH,SIO,STAT,TYPE,UNITS,WBDT,X,Y,PSJCLIN,A,TFN2,PSJOTYP,%
  S TFN2=TFN
  ; PON=placer order number (oerr), FON=filler order number
- S:BDT="" BDT=DT S WBDT=BDT_".000001"
+ ;*225 Add time or use now
+ D NOW^%DTC S:BDT="" BDT=% S:BDT'["." BDT=BDT_".000001"
  S:EDT="" EDT=9999999
  S:EDT'["." EDT=EDT_".999999"
- S F="^PS(55,DFN,5," F  S WBDT=$O(^PS(55,DFN,5,"AUS",WBDT)) Q:'WBDT  F ON=0:0 S ON=$O(^PS(55,DFN,5,"AUS",WBDT,ON)) Q:'ON  S PSJOTYP="D" D UDTMP
+ ;*225 Use Correct Start
+ S F="^PS(55,DFN,5,",WBDT=BDT F  S WBDT=$O(^PS(55,DFN,5,"AUS",WBDT)) Q:'WBDT  F ON=0:0 S ON=$O(^PS(55,DFN,5,"AUS",WBDT,ON)) Q:'ON  S PSJOTYP="D" D UDTMP
  S F="^PS(53.1," F PST="P","N" F ON=0:0 S ON=$O(^PS(53.1,"AS",PST,DFN,ON)) Q:'ON  S X=$P($G(^PS(53.1,+ON,0)),U,4) S PSJOTYP=$S(PST="P":"P1",1:"P2") D @$S(X="U":"UDTMP",1:"IVTMP")
- S F="^PS(55,"_DFN_",""IV"",",WBDT=BDT-1 F  S WBDT=$O(^PS(55,DFN,"IV","AIS",WBDT)) Q:'WBDT  F ON=0:0 S ON=$O(^PS(55,DFN,"IV","AIS",WBDT,ON)) Q:'ON  S PSJOTYP="V" D IVTMP
+ S F="^PS(55,"_DFN_",""IV"",",WBDT=BDT F  S WBDT=$O(^PS(55,DFN,"IV","AIS",WBDT)) Q:'WBDT  F ON=0:0 S ON=$O(^PS(55,DFN,"IV","AIS",WBDT,ON)) Q:'ON  S PSJOTYP="V" D IVTMP
  S X1="" F  S X1=$O(^TMP("PSJTMP",$J,X1)) Q:X1=""  S X2="" F  S X2=$O(^TMP("PSJTMP",$J,X1,X2)) Q:X2=""  S X3="" F  S X3=$O(^TMP("PSJTMP",$J,X1,X2,X3)) Q:X3=""  D
  .S X4="" F  S X4=$O(^TMP("PSJTMP",$J,X1,X2,X3,X4)) Q:X4=""  S X5="" F  S X5=$O(^TMP("PSJTMP",$J,X1,X2,X3,X4,X5)) Q:X5=""  D
  ..; The merge below sends the proper ^TMP("PS",$J structure back to the calling routine PSJORRE
@@ -38,10 +40,12 @@ UDTMP ;*** Set ^TMP for Unit dose orders.
  S ND0=$G(@(F_ON_",0)")) I 'EDTCMPLX I F["53.1",($P(ND0,U,16)>EDT) Q
  S STAT=$$CODES^PSIVUTL($P(ND0,U,9),$S(FON["P":53.1,1:55.06),28)
  S ND6=$P($G(@(F_ON_",6)")),"^"),INST=$G(@(F_+ON_",.3)"))
+ S:ND6["Instructions too long. See Order View or BCMA for full text" ND6="Instructions too long. See order details for full text."
  S ND8=$P($G(@(F_ON_",8)")),"^")
  S FON=+ON_$S(F["53.1":"P",1:"U"),DO=$P($G(@(F_ON_",.2)")),"^",2)
  D DRGDISP^PSJLMUT1(DFN,FON,40,0,.DN,1)
- S UNITS="" I '$O(@(F_+ON_",1,1)")) S UNITS=$P($G(@(F_+ON_",1,1,0)")),U,2) S:(FON["U")&(UNITS="") UNITS=1
+ ;*225 Don't allow 0 Units
+ S UNITS="" I '$O(@(F_+ON_",1,1)")) S UNITS=$P($G(@(F_+ON_",1,1,0)")),U,2) S:(FON["U")&(+UNITS=0) UNITS=1
  S:+$P(ND0,U,3) MR=$$MR^PSJORRE1(+$P(ND0,U,3))
  N NOTGIVEN S NOTGIVEN=$S(FON["U":$P($G(^PS(55,DFN,5,+ON,0)),"^",22),1:"")
  ;******** GUI 27 old sort, new format for Meds Tab
@@ -93,6 +97,7 @@ IVTMP ;*** Set ^TMP for IV orders.
  S TYPE=$P(ND0,U,4),(MR,SCH,INST,INFUS)=""
  I FON["P" S ND2=$G(^PS(53.1,+ON,2)),SCH=$P(ND2,U),START=$P(ND2,U,2),STOP=$P(ND2,U,4),MR=$P(ND0,U,3),INFUS=$P($G(^PS(53.1,+ON,8)),U,5),STAT=$$CODES^PSIVUTL($P(ND0,U,9),53.1,28),ADM=$P(ND2,U,5),SIO=$P($G(@(F_+ON_",6)")),"^")
  I FON'["P" S START=$P(ND0,U,2),STOP=$P(ND0,U,3),SCH=$P(ND0,U,9),INFUS=$P(ND0,U,8),MR=$P($G(^PS(55,DFN,"IV",+ON,.2)),U,3),STAT=$$CODES^PSIVUTL($P(ND0,U,17),55.01,100),ADM=$P(ND0,U,11),SIO=$P($G(@(F_+ON_",3)")),"^")
+ S:($G(SIO)["Instructions too long. See Order View or BCMA for full text") SIO="Instructions too long. See order details for full text."
  S DN=$G(@(F_+ON_",.2)")),DO=$P(DN,U,2)
  S DN=$S(+$P(DN,U):$$OIDF^PSJLMUT1($P(DN,U)),1:"")
  S:MR MR=$$MR^PSJORRE1(+MR),INST=$G(@(F_+ON_",.3)"))

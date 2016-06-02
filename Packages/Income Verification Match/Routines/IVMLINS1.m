@@ -1,5 +1,5 @@
-IVMLINS1 ;ALB/KCL - IVM INSURANCE DISPLAY POLICY ; 01-FEB-94
- ;;2.0;INCOME VERIFICATION MATCH;**14,94,111**; 21-OCT-94
+IVMLINS1 ;ALB/KCL,TDM - IVM INSURANCE DISPLAY POLICY ; 12/23/08 3:44pm
+ ;;2.0;INCOME VERIFICATION MATCH;**14,94,111,121**; 21-OCT-94;Build 45
  ;;Per VHA Directive 10-93-142, this routine should not be modified.
  ;
  ;
@@ -88,6 +88,7 @@ DISP1 ; - display insurance fields from IN1 segment
  W:$P(IVMADD,HLECH,1)]"" ?4,$E($P(IVMADD,HLECH,1),1,35) W ?45,"Policy Holder: " W:$P(IVMIN1,HLFS,17)]"" ?59,$S($P(IVMIN1,HLFS,17)="v":"SELF",$P(IVMIN1,HLFS,17)="s":"SPOUSE",1:"OTHER")
  W:$P(IVMADD,HLECH,1)']"" !
  W:$P(IVMADD,HLECH,2)]"" !,?4,$E($P(IVMADD,HLECH,2),1,35)
+ W:$P(IVMADD,HLECH,8)]"" !,?4,$E($P(IVMADD,HLECH,8),1,35) ; address line 3
  W:$P(IVMADD,HLECH,3)]""!($P(IVMADD,HLECH,4)]"")!($P(IVMADD,HLECH,5)]"") !,?4,$P(IVMADD,HLECH,3) W:$P(IVMADD,HLECH,3)]""&($P(IVMADD,HLECH,4)]"") ", ",$E($P(IVMADD,HLECH,4),1,2)
  W:$P(IVMADD,HLECH,5)]""&($P(IVMADD,HLECH,3)]""!($P(IVMADD,HLECH,4)]"")) " "
  W $P(IVMADD,HLECH,5)
@@ -106,6 +107,7 @@ DISP2 ; - display ins co. name and address
  W !,?4,"Insurance Company: ",$E($P(IVMIN1,HLFS,4),1,45),!
  W !,?4,"Company Address:   " W:$P(IVMADD,HLECH,1)]"" ?23,$E($P(IVMADD,HLECH,1),1,35) ; address line1
  W:$P(IVMADD,HLECH,2)]"" !?23,$E($P(IVMADD,HLECH,2),1,35) ; address line2
+ W:$P(IVMADD,HLECH,8)]"" !,23,$E($P(IVMADD,HLECH,2),1,35) ; address line3
  W:$P(IVMADD,HLECH,3)]""!($P(IVMADD,HLECH,4)]"")!($P(IVMADD,HLECH,5)]"") !?23
  W $P(IVMADD,HLECH,3) W:$P(IVMADD,HLECH,3)]""&($P(IVMADD,HLECH,4)]"") ", " ; city
  W $E($P(IVMADD,HLECH,4),1,2) ; state

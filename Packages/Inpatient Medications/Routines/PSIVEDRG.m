@@ -1,12 +1,12 @@
 PSIVEDRG ;BIR/MLM-ENTER/EDIT DRUGS FOR IV ORDER ;16 Mar 99 / 2:14 PM
- ;;5.0; INPATIENT MEDICATIONS ;**21,33,50,65,74,84,128,147**;16 DEC 97
+ ;;5.0;INPATIENT MEDICATIONS ;**21,33,50,65,74,84,128,147,181,263**;16 DEC 97;Build 51
  ;
  ; References to ^PS(52.6 supported by DBIA# 1231.
  ; References to ^PS(52.7 supported by DBIA# 2173.
  ; Reference to EN^PSOORDRG supported by DBIA# 2190.
  ;
 DRG ; Edit Additive/Solution data
- NEW DRGOC,PSGORQF ;If PSGORQF=1 abort order after order check.
+ NEW DRGOC,PSGORQF K PSGORQF ;If PSGORQF=1 abort order after order check.
  K PSIVOLD S DRG(2)="" I $D(DRG(DRGT)) S DRGI=+$O(DRG(DRGT,0)) I DRGI S PSIVOLD=1 D SETDRG
 DRG1 ;
  Q:$G(PSGORQF)
@@ -14,8 +14,8 @@ DRG1 ;
  D FULL^VALM1
  W !,"Select ",DRGTN,": "
  I DRGT=$G(PSIVOI),($G(PSIVOI("DILIST",0))>1) D GTADSOL Q
- W:DRG(2)]"" DRG(2),"//" R X:DTIME S:'$T X="^" S:X=U DONE=1 Q:X["^"!(X=""&(DRG(2)=""))
-DRG1A I X="" W !,DRGTN,": ",DRG(2),"//" R X:DTIME S:'$T X="^" Q:X="^"  I X="" S Y=1 D DRG3 G:DRGT="AD"!($G(P(4))="H") DRG1 Q
+ W:DRG(2)]"" DRG(2),"//" R X:DTIME S:'$T X="^" S:X=U DONE=1 I X["^"!(X=""&(DRG(2)="")) D CHKSCMNT Q
+DRG1A I X="" W !,DRGTN,": ",DRG(2),"//" R X:DTIME S:'$T X="^" D:X="^" CHKSCMNT Q:X="^"  I X="" S Y=1 D DRG3 G:DRGT="AD"!($G(P(4))="H") DRG1 Q
  I X="@",DRG(2)]"" D DEL G:%'=1 DRG1A K DRG(DRGT,DRGI) S DRGI=+$O(DRG(DRGT,0)) S:'DRGI DRG(DRGT,0)=0 D SETDRG G DRG1
  I X["???",($E(P("OT"))="M"),(PSIVAC["C") D ORFLDS^PSIVEDT1 G DRG1
  I X'["?" S %=0 D:$D(DRG(DRGT)) CHK G:%=1 DRG1A D DRG2 Q:$G(Y)>0&($G(P(4))'="H"&(DRGT="SOL"))  G DRG1
@@ -47,12 +47,24 @@ AMT ;
 1 ; Strength/Volume
  W !,$S(DRGT="AD":"Strength: ",1:"Volume: ") W:+DRG(3) DRG(3),"//" R X:DTIME S:'$T X="^" Q:X="^"  G:X=""&DRG(3) 2 I X="" W $C(7),$S(DRGT="AD":"Strength",1:"Volume")," is REQUIRED!" G 1
  D:$D(X) IT G:'$D(X)!($G(X)["?") AMT S DRG(3)=X I X="" D FIELD^DID($S(DRGT="AD":53.157,1:53.158),1,"","XECUTABLE HELP","PSJEX") X PSJEX("XECUTABLE HELP") K PSJEX G AMT
-2 I DRGT="AD",$G(P("DTYP"))>1,P(4)'="S",P(23)'="S" K DIR S DIR(0)="53.157,2" S:DRG(4)]"" DIR("B")=DRG(4) D ^DIR Q:$D(DTOUT)!$D(DUOUT)  S:Y DRG(4)=Y
+2 ;
+ I DRGT="AD",$G(P("DTYP"))>1,P(4)'="S",P(23)'="S" K DIR S DIR(0)="53.157,2" S:DRG(4)]"" DIR("B")=DRG(4) D ^DIR Q:$D(DTOUT)!$D(DUOUT)  S:X="@" DRG(4)="" S:Y DRG(4)=Y
 DRG4 ;
  F X=1:1:6 S $P(DRG(DRGT,DRGI),U,X)=DRG(X)
  S DRG(2)=""
  Q
  ;
+CHKSCMNT ;
+ I $$SEECMENT() W !!,"*** One or more additives has 'See Comments' in the Bottle field.",!,"    Please correct.",!!
+ Q
+SEECMENT() ;
+ ;Return 1 if DRG array still contain "See Comments"
+ NEW PSIVDRGI,PSIVDRG0,PSIVFLG
+ S PSIVFLG=0
+ F PSIVDRGI=0:0 S PSIVDRGI=$O(DRG("AD",PSIVDRGI)) Q:'PSIVDRGI  Q:PSIVFLG  D
+ . S PSIVDRG0=$G(DRG("AD",PSIVDRGI))
+ . I $P(PSIVDRG0,U,4)="See Comments" S PSIVFLG=1
+ Q PSIVFLG
 GTSCRN(PSIVX) ;Set DIC("S") if MD OE or matching drug has already been selected.
  D:"?"[PSIVX HOLDHDR^PSJOE
  S X=PSIVX
@@ -70,6 +82,8 @@ IT ; Input Transform for Strength/Volume.
  ;
 ORDERCHK(DFN,ON,X) ; Do order check
  ;* If X is define, include the DRG(X) to the order check
+ ;This module is no longer used as of PSJ*5*181
+ Q
  I X M:$D(DRG) DRGOC(ON)=DRG
  NEW TMPDRG,X,XX,Y,PSIVNEW,PSGDRG,PSGDRGN,PSJDD,PSGP
  D SAVEDRG(.TMPDRG,.DRG) ;Store DRG array in TMPDRG array
@@ -85,6 +99,7 @@ ORDERCHK(DFN,ON,X) ; Do order check
  D ENSTOP^PSIVCAL
  Q
 SAVEDRG(NEW,OLD)   ;Store/restore DRG array.
+ K NEW
  S:$G(OLD) NEW=OLD
  F X=0:0 S X=$O(OLD(X)) Q:'X  S NEW(X)=OLD(X)
  F XX="AD","SOL" D
@@ -108,7 +123,7 @@ ASKCHK ; Do you want a drug that was previously selected.
 DEL ;
  W !?3,"SURE YOU WANT TO DELETE" S %=0 D YN^DICN S X="" I %'=1 W "  <NOTHING DELETED>"
  Q
-GTADSOL ;If there're multiple ad/sol matched to an OI then display so user to select ad/sol
+GTADSOL ;Prompt for an ad/sol if there were multiple ad/sol matched to an OI
  ;PSIVOI array is defined in GTIVDRG^PSIVORC2
  NEW DIR,ND,X,Y
  S DIR(0)="LA^1:"_+PSIVOI("DILIST",0)

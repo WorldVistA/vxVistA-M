@@ -1,5 +1,5 @@
 PSGSICHK ;BIR/CML3-CHECKS SPECIAL INSTRUCTIONS ;17 Aug 98 / 8:33 AM
- ;;5.0; INPATIENT MEDICATIONS ;**3,9,26,29,44,49,59,110,139,146,160,175,201,185**;16 DEC 97;Build 6
+ ;;5.0; INPATIENT MEDICATIONS ;**3,9,26,29,44,49,59,110,139,146,160,175,201,185,181**;16 DEC 97;Build 190
  ;
  ; Reference to ^PS(50.605 is supported by DBIA 696.
  ; Reference to EN^PSOORDRG is supported by DBIA 2190.
@@ -39,6 +39,10 @@ ENSET(X) ; expands the SPECIAL INSTRUCTIONS field contained in X into Y
  ;
 END ; used by DRUG (55.06,101 & 53.1,101) x-refs to warn user if patient is receiving or about to receive the drug just ordered
  Q:$D(PSJHLSKP)
+ ;
+ ;***This module is no longer used after PSJ*5*181***
+ Q
+ ;
  N Z,ZZ,STATUSNP I $G(PSJPWD)&($P($G(PSJSYSU),";")=3)&($G(PSGDRG)) I ($D(^PSI(58.1,"D",PSGDRG,PSJPWD)))!($D(^PSD(58.8,"D",PSGDRG,PSJPWD))) D EN^DDIOL("                         *** A WARD STOCK ITEM ***")
  D NOW^%DTC
  N PSJDCHK F Z=%:0 S Z=$O(^PS(55,+PSGP,5,"AUS",Z)) Q:'Z!$D(DUOUT)  F ZZ=0:0 S ZZ=$O(^PS(55,+PSGP,5,"AUS",Z,ZZ)) Q:'ZZ!$D(DUOUT)  I +$G(^PS(55,+PSGP,5,ZZ,.2))=PSGX D PDWCHK(+PSGP,ZZ_"U") S PSJDCHK=1
@@ -49,8 +53,29 @@ END ; used by DRUG (55.06,101 & 53.1,101) x-refs to warn user if patient is rece
  K Z,ZZ
  Q
  ;
-ENDDC(PSGP,PSJDD) ; Perform Duplicate Drug, Duplicate Class,
+ENDDC(PSGP,PSJDD) ; Perform Duplicate Drug, Duplicate Class
+ ;Using FDB OC
+ NEW PSPDRG,PSJDSPNM,X
+ K ^TMP($J,"PSJPRE")
+ S PSJDSPNM=""
+ ;If it is an active or pending order then check for multiple dispense drugs.
+ I $G(PSJMULDD)>1!($G(PSGORD)]"") S PSJDSPNM=$$DRGNM()
+ S PSPDRG(1)=PSJDD_U_$S(PSJDSPNM]"":PSJDSPNM,1:$$DN^PSJMISC(+PSJDD))
+ I $$SUP^PSSDSAPI(+PSJDD) D DISPLAY^PSJOC Q
+ D OC^PSJOC(.PSPDRG,"I;"_$G(PSGORD))
+ Q 
+DRGNM() ;
+ ;Return the OI name + Dosage form if more than one DD in the order
+ NEW PSJCNT,PSJDSPNM,X
+ S PSJCNT=0,PSJDSPNM=""
+ F X=0:0 S X=$O(^PS(53.45,+$G(PSJSYSP),2,X)) Q:'X  S PSJCNT=PSJCNT+1
+ I PSJCNT>1,+$G(PSGPDRG) S PSJDSPNM=$$OIDF^PSJLMUT1(+PSGPDRG)
+ Q PSJDSPNM
+ ;
+ENDDCOLD(PSGP,PSJDD) ; Perform Duplicate Drug, Duplicate Class,
+ ;*** The following codes are no longer used after PSJ*5*181 ***
  ; Drug-Drug interaction check, Drug-Allergy interaction check.
+ Q
  N PSJLINE,Z,ZZ,PSJFST
  S (PSJLINE,PSJFST)=0
  I $G(PSJPWD)&($P($G(PSJSYSU),";")=3)&($G(PSJDD)) I ($D(^PSI(58.1,"D",PSJDD,PSJPWD)))!($D(^PSD(58.8,"D",PSJDD,PSJPWD))) W !?25,"*** A WARD STOCK ITEM ***"
@@ -125,7 +150,7 @@ ALGCLASS ; checks any Drug allergies or reactions to see if
  F PSJLIST=0:0 S PSJLIST=$O(GMRAL(PSJLIST)) Q:'PSJLIST  D
  .K PSJAGL D EN1^GMRAOR2(PSJLIST,"PSJAGL")
  .; is the allergy/reaction drug class first four digits the same as the
- .; the class for the drug being entered?
+ .; class for the drug being entered?
  .S (CT,CLS)="",DCCNT=0
  .I $D(PSJAGL("V")) D
  ..F  S DCCNT=$O(PSJAGL("V",DCCNT)) Q:'DCCNT  S:$E($P($G(PSJAGL("V",DCCNT)),"^"),1,LEN)=$E(PSCLASS,1,LEN) (PSJPDRG,CLCHK)=1,CNT=$S('$D(CNT):1,1:CNT+1),LIST(CNT)=$P($G(PSJAGL),"^")_"^"_$P($G(PSJAGL("V",DCCNT)),"^",2)

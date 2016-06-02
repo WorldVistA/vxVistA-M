@@ -1,8 +1,10 @@
 PRCHRP3 ;WISC/KMB/CR SUMMARY OF UNPAID PURCHASE CARDS ;7/15/98  8:43 AM
- ;;5.1;IFCAP;**8,131**;Oct 20, 2000;Build 13
+ ;;5.1;IFCAP;**8,131,149**;Oct 20, 2000;Build 5
  ;Per VHA Directive 2004-038, this routine should not be modified.
 UNPAID ;   create summary report of unpaid purchase card orders
  N P,PRC,ARR,XXZ,EX,I,CP,HDATE,ZP,TOT,AMT,ZTR,ZTR0,ZTR1,NOTASK
+ ;PRC*5.3*149 insures NOTASK is set for tasked job to avoid undefined
+ S NOTASK=0
  S PRCF("X")="S" D ^PRCFSITE Q:'$D(PRC("SITE"))  Q:$G(X)="^"
  W !,"Please select a device for display/print of this report.",!
  S %ZIS("B")="",%ZIS="MQ" D ^%ZIS Q:POP

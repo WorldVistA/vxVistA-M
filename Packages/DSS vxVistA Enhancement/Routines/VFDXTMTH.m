@@ -1,6 +1,6 @@
 VFDXTMTH ;DSS/SGM - MATH FUNCTIONS ; 06/20/2011 13:15
- ;;2.0;DSS,INC VXVISTA OPEN SOURCE;;29 Jul 2011;Build 92
- ;Copyright 1995-2011,Document Storage Systems Inc. All Rights Reserved
+ ;;15.0;DSS,INC VXVISTA OPEN SOURCE;;15 Sep 2015;Build 29
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ;
  ;This routine should only be invoked via the VFDXT routine menu driver
  ;

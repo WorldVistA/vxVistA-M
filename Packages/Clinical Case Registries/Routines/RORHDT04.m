@@ -1,6 +1,11 @@
-RORHDT04 ;HCIOFO/SG - HISTORICAL DATA EXTRACTION PROCESS ; 1/22/06 8:18pm
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORHDT04 ;HCIOFO/SG - HISTORICAL DATA EXTRACTION PROCESS ;1/22/06 8:18pm
+ ;;1.5;CLINICAL CASE REGISTRIES;**10**;Feb 17, 2006;Build 32
  ;
+ ; This routine uses the following IAs:
+ ;
+ ; #2320  CLOSE^ZISH (supported)
+ ; #2053  FILE^DIE (supported)
+ ; #2055  $$ROOT^DILFD (supported)
  Q
  ;
  ;***** DATA EXTRACTION PROCESS
@@ -75,7 +80,7 @@ EXTRACT(REGLST,HDEIEN,TASKIEN,FAM) ;
  . . . S RC=$$PROCREC(PTIEN,.RGIENLST),CNT=CNT+1
  . . . S ^TMP("RORHDT",$J,"PR",PTIEN)=RC
  . . . I RC'<0  S RC=0  Q
- . . . ;--- Proccess the error
+ . . . ;--- Process the error
  . . . S RC=$$ERROR^RORERR(-15,,,PTIEN),ECNT=ECNT+1
  . . . S:$G(RORPARM("DEBUG"))<3 RC=0
  . . I RC<0  Q:'STOP
@@ -96,7 +101,7 @@ EXTRACT(REGLST,HDEIEN,TASKIEN,FAM) ;
  . . . Q:$D(^TMP("RORHDT",$J,"PR",PTIEN))
  . . . S RC=$$PROCREC(PTIEN,.RGIENLST),CNT=CNT+1
  . . . I RC'<0  S COMMIT='((CNT-ECNT)#NRTC),RC=0  Q
- . . . ;--- Proccess the error
+ . . . ;--- Process the error
  . . . S RC=$$ERROR^RORERR(-15,,,PTIEN),ECNT=ECNT+1
  . . . S:$G(RORPARM("DEBUG"))<3 RC=0
  . . . S TMP=$$ADDERR^RORHDT05(HDEIEN,TASKIEN,PTIEN)
@@ -122,7 +127,7 @@ EXTRACT(REGLST,HDEIEN,TASKIEN,FAM) ;
  . ;
  . ;=== Update the NEXT RECORD IEN field in the task record
  . I $D(NEXT)  D:NEXT'>0
- . . ;--- If the task completed successfuly, the NEXT RECORD IEN
+ . . ;--- If the task completed successfully, the NEXT RECORD IEN
  . . ;    field is set to an empty string. If the task is restarted
  . . ;--- afterwards, it will re-extract all data again.
  . . I 'ECNT  S NEXT=""  Q
@@ -171,10 +176,15 @@ NEXTPAT(PTIEN,RGIENLST) ;
  . . S RGIENLST(REGIEN)=0
  . . S IEN=+$O(^RORDATA(798,"KEY",PTIEN,REGIEN,""))
  . . Q:IEN'>0
- . . ;--- Skip inactive records
- . . Q:'$$ACTIVE^RORDD(IEN)
- . . ;--- Skip records tagged as "DON'T SEND"
- . . Q:$P($G(^RORDATA(798,IEN,2)),U,4)
+ . . ;************************************************************
+ . . ; Patch 10: also include pending patients
+ . . ;--- Skip inactive records (pending and marked for deletion)
+ . . ;Q:'$$ACTIVE^RORDD(IEN)
+ . . ;************************************************************
+ . . ;--- skip patients marked for deletion
+ . . I $$DEL^RORDD(IEN) Q
+ . . ;--- Skip records tagged as "DON'T SEND" and skip test patients
+ . . I (($P($G(^RORDATA(798,IEN,2)),U,4))!($$TESTPAT^RORUTL01(PTIEN))) Q
  . . ;--- Consider the record
  . . S RGIENLST(REGIEN)=IEN,CNT=CNT+1
  Q $S(PTIEN>0:PTIEN,1:0)

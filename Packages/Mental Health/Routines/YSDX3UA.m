@@ -1,5 +1,10 @@
-YSDX3UA ;SLC/DJP/LJA-Utilities for Diagnosis Entry in the MH Medical Record (cont.) ;12/14/93 13:02
- ;;5.01;MENTAL HEALTH;;Dec 30, 1994
+YSDX3UA ;SLC/DJP/LJA,HIOFO/FT - Utilities for Dx Entry in MH Med Rec (cont.) ;10 May 2013  2:25 PM
+ ;;5.01;MENTAL HEALTH;**96,60,107**;Dec 30, 1994;Build 23
+ ;
+ ;Reference to ^VA(200, supported by DBIA #10060
+ ;Reference to ^ICD9( supported by DBIA #5388
+ ;Reference to ^ICDCODE APIs supported by DBIA #3990
+ ;
  ;D RECORD^YSDX0001("^YSDX3UA") ;Used for testing.  Inactivated in YSDX0001...
  ;
 DSMLK ; Called by routine YSDX3
@@ -33,14 +38,16 @@ ICDLK ; Called from YSDX3A
  S DIC("S")=$E(D,1,$L(D)-1)
 ICD1 ;
  ;D RECORD^YSDX0001("ICD1^YSDX3UA") ;Used for testing.  Inactivated in YSDX0001...
- S X=X2,DIC(0)="QMZE",DIC="^ICD9("
- D ^DIC
- K DIC("S")
+ S (X,Y)=X2
+ S DIC("S")="I $P($$ICDDATA^ICDXCODE(""DIAG"",Y,YSDXDAT),U,10)=1"
+ S DIC(0)="QMZE",DIC="^ICD9("
+ S ICDVDT=$P(YSDXDAT,".",1) D ^DIC
+ K DIC("S"),ICDVDT
  QUIT
  ;
 ICDP ; Called by routine YSDX3A
  ;D RECORD^YSDX0001("ICDP^YSDX3UA") ;Used for testing.  Inactivated in YSDX0001...
- S S1=$P(^YSD(627.8,P2(X2),1),U),S2=^ICD9($P(S1,";"),0),YSY=1
+ S S1=$P(^YSD(627.8,P2(X2),1),U),S2=$$ICDDATA^ICDXCODE("DIAG",$P(S1,";"),YSDXDAT,"I"),S2=$P(S2,U,2),YSY=1 ;ASF 04/10/09
  QUIT
  ;
 DXLS D DXLS^YSDX3UA0
@@ -53,9 +60,13 @@ DUPL ; Called by routine YSDX3, YSDX3A
  ; Print out information concerning duplicate entry
  ;D RECORD^YSDX0001("DUPL^YSDX3UA") ;Used for testing.  Inactivated in YSDX0001...
  S W3=$P(^VA(200,$P(^YSD(627.8,W2,0),U,4),0),U)
+ N YSDZX
  S Y=$P(^YSD(627.8,W2,0),U,3) D DD^%DT S W4=Y
  I YSAX=1 S YSDXND=$P(^YSD(627.7,S2,0),U),YSDXD=$P(^(0),U)
- I YSAX=3 S YSDXND=$P(^ICD9(S2,0),U,3),YSDXD=$P(^(0),U)
+ I YSAX=3 D
+ . S YSDXDATA=$$ICDDATA^ICDXCODE("DIAG",S2,YSDXDAT,"I")
+ . S YSDXD=$P(YSDXDATA,U,2)
+ . N YSDXZ S YSDZX=$$ICDDESC^ICDXCODE($P(YSACSREC,U,1),YSDXD,YSDXDAT,.YSDZX),YSDXND=YSDZX(1)
  S W5=$P(^YSD(627.8,W2,1),U,2)
  I W5="i" K YSDXND,YSDXD,W3,W4,W5 QUIT  ;->
  S W6=$S(W5="v":"VERIFIED",W5="p":"PROVISIONAL",W5="i":"INACTIVE",W5="r":"REFORMULATED",W5="n":"NOT FOUND",W5="ru":"RULE OUT",1:"")
@@ -72,8 +83,9 @@ FILE ; Called from routines YSDX3, YSDX3A
  ;D RECORD^YSDX0001("FILE^YSDX3UA") ;Used for testing.  Inactivated in YSDX0001...
  S YSDUZ=$P(^VA(200,DUZ,0),U)
  W !
- S DIE=DIC,DA=YSDA,DR=".02////"_YSDFN_";.03//NOW;.04//"_YSDUZ_";.05///^S X=""`""_DUZ;1////^S X=YSDXDA;5"
- L +@(DIE_"DA)")
+ S DIE=DIC,DA=YSDA,DR=".02////"_YSDFN_";.03////"_YSDXDAT_";.04//"_YSDUZ_";.05///^S X=""`""_DUZ;1////^S X=YSDXDA;5"
+ L +@(DIE_"DA)"):DILOCKTM
+ I '$T D ERRMSG^YSSITE,DELETE Q
  D ^DIE
  L -@(DIE_"DA)")
  S YSTOUT=$D(DTOUT) I YSTOUT D DELETE QUIT  ;->
@@ -82,22 +94,26 @@ FILE ; Called from routines YSDX3, YSDX3A
  I C1="" W !!?18,"Incomplete information." D DELETE QUIT  ;->
  S C2=$S(C1="v":"A",C1="p":"A",C1="i":"I",C1="r":"I",C1="n":"I",C1="ru":"A",1:"I")
  S DIE="^YSD(627.8,",DA=YSDA,DR="7///^S X=C2;8///NOW"
- L +^YSD(627.8,DA)
+ L +^YSD(627.8,DA):DILOCKTM
+ I '$T D ERRMSG^YSSITE Q
  D ^DIE
  L -^YSD(627.8,DA)
  K DIE
  S YSTOUT=$D(DTOUT) I YSTOUT QUIT  ;->
  D CHECK QUIT:YSUOUT  ;->
- I $D(W3) D
+ N YSTO S YSTO=0
+ I $D(W3) D  Q:YSTO
  .  S DIE="^YSD(627.8,",DA=YSDUPDA
  .  S DR="7///^S X=""I"";8///NOW;9///^S X=""Y"""
- .  L +^YSD(627.8,DA)
+ .  L +^YSD(627.8,DA):DILOCKTM
+ .  I '$T D ERRMSG^YSSITE S YSTO=1 Q
  .  D ^DIE
  .  L -^YSD(627.8,DA)
  D DXLS,DXLSQ
  S DIE="^YSD(627.8,",DA=YSDA
  S DR="10///^S X=YSDXLX;80"
- L +^YSD(627.8,DA)
+ L +^YSD(627.8,DA):DILOCKTM
+ I '$T D ERRMSG^YSSITE Q
  D ^DIE
  L -^YSD(627.8,DA)
  S YSTOUT=$D(DTOUT) QUIT:YSTOUT  ;->

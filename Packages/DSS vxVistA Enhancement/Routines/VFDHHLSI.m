@@ -1,0 +1,368 @@
+VFDHHLSI ;DSS/PW - VFD HL7 SYS UTILITIES
+ ;;2012.1.1;VENDOR - DOCUMENT STORAGE SYS;;24 Jun 2013;Build 136
+ ;Copyright 1995-2012,Document Storage Systems Inc.,All Rights Reserved
+ ;DSS/BUILD - VFDHHL HL7 EXCHANGE 2012.1.1 * 06/23/15 * vxdev64v2k8_VX13 * 2012.1 T22
+ ;DSS/BUILD - VFDHHL HL7 EXCHANGE 2012.1.1 * 02/02/14 * vxdev64v2k8_DEVXOS * 2012.1.1T21
+ Q
+ ;APIs
+ ;XPARPOP ;E ask namespace ask if definition wanted <<<
+ ;XPARLIST NameSpacedisplay ALL parameter definition and all values 
+ ;    for a given namespace range
+ ;XPARALL ; display all parameters that have instance values 
+ ;   (only 1st 20 values shown)
+ ;XPARSHOW(IEN) display one parameter and values
+ ;SISI document entities in selected SISI files
+ ;ZTERSHOW date range show M Error Trap
+ ;HL7LIST ; list newest to older entries in files 771,780,101,4
+ ;RPCTEST ; load RPC from RPC log screen and execute
+ ;HL7DOC ; show active links
+ ;hlappdoc ; show active links
+ ;BUILDINQ document HL7 portions of a build
+SISI ;
+ N FN,DA
+ D ^%ZIS
+ Q:$G(POP)
+ U IO
+ F X=0,.6,.7,.75,.751 S FN=29320+X D
+ .S DIC="^SISIADT("_FN_","
+ .W !,"=========",!,$$GET1^DIQ(1,FN_",",.01),!,"=========",!
+ .S DA=0 F  S DA=$O(^SISIADT(FN,DA)) Q:DA'>0  W "***" D EN^DIQ
+ D ^%ZISC
+ Q
+XPARLIST ; list instances for named space parameters
+ N PAR,PARB,PARE,IOSL S IOSL=9999
+ K DIR S DIR(0)="FO^2:30",DIR("A")="NAME SPACE" D ^DIR
+ I (Y="")!(Y["^") Q
+ N PAR,PART,LN S (PAR,PARB)=Y,LN=$L(PARB)
+ D ^%ZIS
+ Q:POP=1
+ U IO F  S PAR=$O(^XTV(8989.51,"B",PAR)),PART=$E(PAR,1,LN) Q:(PART'=PARB)  D
+ . W ! S DA=$O(^XTV(8989.51,"B",PAR,0)) D XPARSHOW(DA,1)
+ .;N DA,DIC S DIC="^XTV(8989.51,",) D EN^DIQ
+ . ;D ALLPAR(DA)
+ D ^%ZISC
+ G XPARLIST
+XPARALL ; display all parameters that values of  entity, instance values
+ N PAR,PARB,PARE,IOSL S IOSL=9999
+ D ^%ZIS
+ Q:POP=1
+ S PAR=""
+ D XPARVPOP(PAR,1)
+ D ^%ZISC
+ Q
+XPARPOP ;E ask namespace
+ N PAR,PARB,PARE,IOSL,CAP S IOSL=9999
+ K DIR S DIR(0)="FO^2:30",DIR("A")="NAME SPACE" D ^DIR
+ I (Y="")!(Y["^") Q
+ S PAR=Y
+ K DIR S DIR(0)="YO^",DIR("A")="Display Definitions",DIR("B")="N" D ^DIR
+ S CAP=+$G(Y)
+ D ^%ZIS
+ Q:POP=1
+ D XPARVPOP(PAR,CAP)
+ D ^%ZISC
+ G XPARPOP
+ ;
+XPARVPOP(PAR,CAP) ; show parameters that have values in namespace PAR
+ U IO N LN,PARNM
+ S PARNM=PAR,LN=$L(PAR)
+ F  S PARNM=$O(^XTV(8989.51,"B",PARNM)) Q:PARNM=""  Q:$E(PARNM,1,LN)'=PAR  D
+ .S DA=+$O(^XTV(8989.51,"B",PARNM,0))
+ . Q:'$D(^XTV(8989.5,"AC",DA))
+ . S ENT=0 S ENT=$O(^XTV(8989.5,"AC",DA,ENT)) Q:'ENT
+ . D XPARSHOW(DA,CAP)
+ Q
+XPARSHOW(IEN,CAP) ; caption print and values for Parameter `IEN
+ N DIC,DA S DIC="^XTV(8989.51,",DA=IEN
+ S CAP=+$G(CAP)
+ W:CAP !!,"P>==",$$GET1^DIQ(8989.51,IEN_",",.01)
+ D:CAP EN^DIQ ;display parameter
+ D ALLPARV(DA) ;display values
+ Q
+ALLPARV(PAR,CAP) ; List 1ST 20 values given parameter {borrowed from XPARLIST}
+ N ENT,INST,VAL,LN,DIRUT,DUOUT,DTOUT,STOP S LIMIT=+$G(LIMIT),STOP=0
+ S ENT=0 S ENT=$O(^XTV(8989.5,"AC",PAR,ENT)) Q:'ENT
+ S CAP=+$G(CAP)
+ W:'CAP !
+ W "V>=== Values for "_$P(^XTV(8989.51,PAR,0),U) S LN=1
+ ;D HEADER
+ S CNT=0
+ S ENT=0 F  S ENT=$O(^XTV(8989.5,"AC",PAR,ENT)) Q:'ENT  D  Q:$D(DIRUT)  Q:STOP
+ . S INST="",INSTCNT=0 F  S INST=$O(^XTV(8989.5,"AC",PAR,ENT,INST)) Q:INST=""  D  Q:$D(DIRUT)  W:CNT>20 !,"<more than 20 ...>",! S:CNT>20 STOP=1 W:INSTCNT>3 ">3<",! I (CNT>20)!(INSTCNT>3) Q
+ . . S CNT=CNT+1,INSTCNT=INSTCNT+1
+ . . S VAL=^XTV(8989.5,"AC",PAR,ENT,INST)
+ . . W !,$E($$ENTNAME(ENT),1,30),?31
+ . . W $E($$EXT^XPARDD(INST,PAR,"I"),1,20),?52
+ . . W $E($$EXT^XPARDD(VAL,PAR,"V"),1,28)
+ ;I '$D(DIRUT) S DIR(0)="E" D ^DIR
+ Q
+ENTNAME(ENT) ; Return TYP: Entity
+ N X,FN
+ S FN=+$P(@(U_$P(ENT,";",2)_"0)"),U,2),X=$P(^XTV(8989.518,FN,0),U,2)
+ S X=X_": "_$$EXTPTR^XPARDD(+ENT,FN)
+ Q X
+ ;
+SYSSHOW ;
+ N I,J,X,Y,Z,VFDTAB
+ S CLONE=1
+ K QUIT D SETVAR,DISPLAY
+ D INIT^VFDVFOIA Q:$$BEG^VFDVFOI2<1
+ ; SET UP VFDTAB() and VFDV()
+ D ^VFDVFOI2,D1^VFDVFOI1 ; getenv^%zosv - vfdv("env")
+ D TERM^VFDVFOI3
+ ;D 1,2,6,7,8,9,10,11,12
+ S VFDV("INST",0)=$$GET1^DIQ(4,VFDV("INST"),.01)
+ S VSUG(4,.01)=VFDV("INST",0)
+ S VSUG(4,60)=VFDV("DOM",0)
+ S VSUG(4.3,.01)=VFDV("DOM",0)
+ F FLD=.01,5,6 S VSUG(14.5,FLD)=VFDV("VOL")
+ S SYSOLD("NameSpace:Cache")=$P(VFDV("ENV"),U,4)
+ S VSUG(869.3,.02)=VFDV("DOM",0),VSUG(869.3,.04)=VFDV("INST",0)
+ S VSUG(8989.3,.01)=VFDV("DOM",0),VSUG(8989.3,51)=VFDV("DNS")
+ S VSUG(8989.3,217)=VFDV("INST",0),VSUG(8989.3,320)=VFDV("DEFDIR")
+ S VSUG(8994.1,.01)=VFDV("DOM",0)
+ S VSUG(8994.171,.01)=VFDV("PORT")
+ K QUIT D DISPLAY
+ D CONT^VFDVFOIA
+ K QUIT D DISPLAY
+ Q
+SETVAR ; Get/Stash FileFlds & set variables for IENS
+ N V,OFF,XX K VAR,VALB,VALE,VSUG
+ F OFF=1:1 S XXX=$T(FILEFLDS+OFF) Q:XXX[";;END"  D LINE(XXX)
+ N Y D GETENV^%ZOSV S VFDV("ENV")=Y
+ F FLD=.01,5,6 S VSUG(14.5,FLD)=$P($P(VFDV("ENV"),U,4),":")
+ S VSUG(4.3,8.25)="NULL",VSUG(4.3,40)="YES"
+ S VSUG(8994.17,.01)=$P(VFDV("ENV"),U,4)
+ Q
+LINE(XX) ; give TAG ;;FILE;;FLDS;;SIENS;;VARS
+ K FILE,FLDS,SIEN,VAR
+ F YY="FILE=2","FLDS=3","SIEN=4","VAR=5" D GET(XXX,";;",YY)
+ X SIEN
+ D GETS^DIQ(FILE,IENS,FLDS,"EI","VALS","MSG")
+ ;D SETVOLD ; pull out beginning values to display
+ D SYSVAR ; pull out system variables per 'VAR'
+ Q
+SYSVAR ; setup subsequent variabls for pointers, internal value only
+ I $L(VAR)=0 Q
+ N VARX,I,XX,XFLD F I=1:1 S XX=$P(VAR,";",I)  Q:XX=""  D
+ . S VARX=$P(XX,"~"),XFLD=$P(XX,"~",2)
+ . ;ZW VARX,XFLD,FILE,XFLD
+ . S @VARX=VOLD(FILE,XFLD,"I")_U_VOLD(FILE,XFLD,"E")
+ Q
+DISPLAY ; DISPLAYall files
+ W @IOF
+ W !,"This will display system values in various files",!
+ W !,"The BROWSER device is recommended",!
+ K PWPG,DOUT,DFOUT,QUIT
+ D ^%ZIS
+ ;D SYSDSP
+ ;S FN=0 F  S FN=$O(VOLD(FN)) Q:$G(QUIT)  Q:FN'>0  D EFN(FN)
+ D ^%ZISC
+ K PWPG,DOUT,DFOUT,QUIT
+ Q
+HL7DOC ; document HL7 setup
+ ;HL Logical Links
+ ;LIST^DIC(FILE,IENS,FIELDS,FLAGS,NUMBER,[.]FROM,[.]PART,INDEX,[.]SCREEN,IDENTIFIER,TARGET,MSGROOT)
+ ;LIST^DIC(FILE,IENS,FIELDS,FLAGS,NUMBER,.FROM,.PART,INDEX,.SCREEN,IDENTIFIER,TARGET,MSGROOT)
+ D LINKDOC
+ Q
+LINKDOC ; document autostart links
+ W !!,"<< HL Logical Links with AUTOSTART >>"
+ N FILE,IENS,FIELDS,FLAGS,NUMBER,FROM,PART,INDEX,SCREEN,IDENTIFIER,TARGET,MSGROOT
+ N LIST,DIC,DA
+ S (FILE,IENS,FIELDS,FLAGS,NUMBER,FROM,PART,INDEX,SCREEN,IDENTIFIER,TARGET,MSGROOT)=""
+ S SCREEN="I $P(^(0),U,6)=1",FILE=870,FLAGS="P",FILEDS="@;.01",TARGET="LIST"
+ D LIST^DIC(FILE,IENS,FIELDS,FLAGS,NUMBER,.FROM,.PART,INDEX,.SCREEN,IDENTIFIER,TARGET,MSGROOT)
+ S DIC="^HLCS(870,",IEN=0 F  S IEN=$O(LIST("DILIST",IEN)) Q:IEN'>0  S DA=+LIST("DILIST",IEN,0) W !,DA D EN^DIQ
+ Q
+HLAPPDOC(VFDAT) ;(.VFDAT) Document Active HL7 Applications
+ W !!,"<< HL7 Applications Active >>"
+ N FILE,IENS,FIELDS,FLAGS,NUMBER,FROM,PART,INDEX,SCREEN,IDENTIFIER,TARGET,MSGROOT,IOSL
+ N LIST,DIC,DA
+ K LIST
+ S IOSL=99999
+ S (FILE,IENS,FIELDS,FLAGS,NUMBER,FROM,PART,INDEX,SCREEN,IDENTIFIER,TARGET,MSGROOT)=""
+ S SCREEN="I $P(^(0),U,2)=""a"""
+ ;S SCREEN="I $P(^(0),U,2)=""a"",$E($P(^(0),U),1,3)=""VFD"""
+ ;S SCREEN(2)="I ""VFD""[$E($P(^(0),U),1,3)"
+ S FILE=771,FLAGS="P",FIELDS="@",TARGET="LIST"
+ D LIST^DIC(FILE,IENS,FIELDS,FLAGS,NUMBER,.FROM,.PART,INDEX,.SCREEN,IDENTIFIER,TARGET,MSGROOT)
+ S DIC="^HL(771,",IEN=0 F  S IEN=$O(LIST("DILIST",IEN)) Q:IEN'>0  S DA=+LIST("DILIST",IEN,0),VFDAT(DA)="" D EN^DIQ
+ Q
+PROTODOC(VFDAT) ;(.VFDAT) document receiving protocols with Active Sending/Recieving HL7 Applications
+ ;VFDAT contains list from HLAPROCDOC
+ N FILE,IENS,FIELDS,FLAGS,NUMBER,FROM,PART,INDEX,SCREEN,IDENTIFIER,TARGET,MSGROOT,IOSL
+ N LIST,DIC,DA,I,J,APP,SEQ,SAPP,RAPP
+ K LIST
+ S IOSL=99999
+ S (FILE,IENS,FIELDS,FLAGS,NUMBER,FROM,PART,INDEX,SCREEN,IDENTIFIER,TARGET,MSGROOT)=""
+ S FILE=101,FLAGS="P",FIELDS="@",TARGET="LIST"
+ S APP=0
+ S XSCR="N IENS S IENS=+Y_"","",SAPP=$$GET1^DIQ(101,IENS,770.1,""I""),RAPP=$$GET1^DIQ(101,IENS,770.2,""I"") ZW APP,SAPP,RAPP"
+ S SCREEN="X XSCR I (APP=SAPP)!(APP=RAPP)" ;SENDING!RECIEVING APPLICATION=APP
+ S SCREEN="N X S X=$G(^ORD(101,+Y,770) )"
+ S SCREEN="N X S X=$G(^ORD(101,+Y,770)) I $P(X,U,2)=182"
+ Q
+PROTOGET ;
+ ;skip protocols for SISI
+ D LIST^DIC(FILE,",",FIELDS,FLAGS,NUMBER,.FROM,.PART,INDEX,.SCREEN,IDENTIFIER,TARGET,MSGROOT)
+ S SEQ=0 F  S SEQ=$O(LIST("DILIST",SEQ)) Q:SEQ'>0  S DA=+LIST("DILIST",SEQ,0),VFDAT(APP,DA)=""
+ S APP=0 F  S APP=$O(VFDAT(APP)) Q:APP'>0  D
+ .W !!,"APP: ",$$GET1^DIQ(771,APP_",",.01),?40,APP
+ .S J=0 F  S J=$O(VFDAT(APP,J)) Q:J'>0  W !,?5,$$GET1^DIQ(101,J_",",.01)
+ Q
+ZTERSHOW ;CONSILIDATED ERROR REPORTER
+ ;N DTB,DTE,DTBH,DTEH,DTH,EN,ERN,TAG,FMDT,FMDTE,%H,EZ,T,DTC,SITE,DOM,ARR,LNC
+ ;N ZECNT,TAGCNT
+DT1 ;
+ K DIR S DIR(0)="DO",DIR("A")="Enter START date",DIR("B")=$$FMTE^XLFDT(DT) D ^DIR Q:Y'>0  S DTB=+Y
+DT2 ;
+ K DIR S DIR(0)="DO",DIR("A")="Enter END date",DIR("B")=$$FMTE^XLFDT(DT) D ^DIR G:Y'>0 DT1
+ S DTE=+Y,G=$NA(^TMP("ZTER",$J)) K @G
+ I DTE<DTB W !,"START ",$$FMTE^XLFDT(DTB)," CAN NOT BE AFTER END DATE ",$$FMTE^XLFDT(DTE),! G DT2
+ S DTBH=$$FMTH^XLFDT(DTB,1)-.1,DTEH=$$FMTH^XLFDT(DTE)+.1
+ ;build ^TMP from ^%ZTER(1,$H,EN,"ZE")=<ZE>tag note
+ ;TMP("ZTER",$J,FMDT)=CNT, ^(..FMDT,ZE)=CNT, ^(...ZE,TAG)=CNT
+ZTERPQ ;pgmr API post questions
+ S DTH=DTBH F  S DTH=$O(^%ZTER(1,DTH)) Q:DTH>DTEH  Q:DTH'>0  D
+ . S FMDT=$$HTFM^XLFDT(DTH),FMDTE=$$FMTE^XLFDT(X,2)
+ . S EN=0 F  S EN=$O(^%ZTER(1,DTH,EN)) Q:EN'>0  D
+ .. S ERN=^%ZTER(1,DTH,EN,1,"ZE"),ZE=$P(ERN,">"),ZE=$P(ZE,"<",2),TAG=$P(ERN,">",2)
+ .. S CNT=+$G(@G@(FMDT)),@G@(FMDT)=CNT+1
+ .. S CNT=+$G(@G@(FMDT,ZE)),@G@(FMDT,ZE)=CNT+1
+ .. S CNT=+$G(@G@(FMDT,ZE,TAG)),@G@(FMDT,ZE,TAG)=CNT+1
+ ;build result array
+ S DOM=$$GET1^DIQ(4.3,"1,",.01),SITE=^DD("SITE")
+ S NOW=$$FMTE^XLFDT($$NOW^XLFDT,2)
+ S X="",X=$$STR(SITE,X,0),X=$$STR(DOM,X,32),X=$$STR($P(NOW,":",1,2),X,60)
+ S ARR(1)=$E(X,1,80)
+ S X="Totals   Error Type   Subtotals   Specific Errors"
+ S L="------   ----------   ---------   ---------------"
+ S ARR(2)=X,ARR(3)=L,LN=3
+ S DTFM=0 F  S DTFM=$O(@G@(DTFM)) Q:DTFM'>0  D ZTERDT
+ Q
+ZTERDT ;
+ S X="",X=$$STR(DTCNT,X,3),X=$$STR($$FMTE^XLFDT(DTFM,2),X,10) D TXT(X)
+ ;S X="",X="Errors for "_SITE_" on "_$$FMTE^XLFDT(DTFM)_" "_DTCNT D TXT(X)
+ S ZE="" F  S ZE=$O(@G@(DTFM,ZE)) Q:ZE=""  D ZTERZE
+ Q
+ZTERZE ;
+ D TXT(L)
+ S ZECNT=@G@(DTFM,ZE),X="",X=$$STR(ZECNT,X,3),X=$$STR(ZE,X,10) ; set 1st line of ZE
+ S TAG="" F  S TAG=$O(@G@(DTFM,ZE,TAG)) Q:TAG=""  D ZTERTAG
+ Q
+ZTERTAG ;
+ S TAGCNT=@G@(DTFM,ZE,TAG),X=$$STR(TAGCNT,X,26),X=$$STR(TAG,X,35)
+ D TXT(X)  S X="" ;only 1st line of list has ZE w ZECNT
+ Q
+REF ;
+ S STR="" S STR=$$SETSTR^VALM1(X,STR,COL,$L(X))
+ W $$HTFM^XLFDT($H) ;3090729.092234
+ ;
+STR(X,STR,COL) ;
+ S X=$$SETSTR^VALM1(X,STR,COL,$L(X))
+ Q X
+TXT(X) N LN S LN=+$O(ARR("A"),-1)+1,ARR(LN)=X
+ Q
+HL7LIST ; list newest to older entries in files
+ N HL7APP,FN,FNM,ENTIEN,ENTNM,FGBL,DISP
+ F FN=771,870,101,4 D HL7FLIST(FN) Q:$G(STOPALL)
+ Q
+HL7FLIST(FN) ;list in reverse order the entities in file FN
+ S FNM=$$GET1^DIQ(1,FN_",",.01),FGL=^DIC(FN,0,"GL")
+ S L=$L(FGL),FGBL=FGL,$E(FGBL,L)=")"
+ W !!!,FN,?10,FNM,?40,FGBL,!
+ K DIR S DIR(0)="YO",DIR("A")="Display",DIR("B")="Y" D ^DIR
+ I Y'=1 Q
+ K ENTIEN S ENTIEN="%"
+HL7DISP ;
+ K DISP
+ F I=1:1:10 S ENTIEN=$O(@FGBL@(ENTIEN),-1) Q:ENTIEN'>0  D
+ . S DISP(ENTIEN)=""
+ S IEN="A" F I=1:1:10 S IEN=$O(DISP(IEN),-1) Q:IEN'>0  D
+ .W !,IEN,?20,$P(@FGBL@(IEN,0),U)
+ K DIR S DIR(0)="E" D ^DIR
+ I Y=1 G HL7DISP
+ Q
+RPCTEST ; load RPC from RPC LOG and execute
+ N LN,I,P,RPCDA,RPC,FLD,MSG,TMP,DAT,X
+ K LN,I,P,RPCDA,RPC,FLD,MSG,TMP,X
+ W @IOF,!,"Enter RPC CALL : paste in screen image from RPC LOG"
+ K DIR S DIR(0)="E" D ^DIR Q:X["^"
+ W !,"PASTE RPC CALL end with ^<CR>",!
+ F I=1:1 R X:20 Q:X="^"  S LN(I)=X W !
+ S RPC=LN(1)
+ ;load parameter values P(P)
+ K P S P=1,P(1)=".DAT"
+ ;F L=2:1 Q:'$D(LN(L))  S X=LN(L) I X["literal" D
+LOAD ;
+ F L=2:1 Q:'$D(LN(L))  S X=LN(L) I X[")=" D
+ . N N
+ . ;S X=$P(X,"literal",2)
+ . S X=$P(X,"=",2)
+ . ;F  Q:($A($E(X))>32)  S X=$E(X,2,999) ;remove blanks
+ . S P=P+1,P(P)=X
+ S PARAMS=".DAT" F I=2:1:P S $P(PARAMS,",",I)="P("_I_")"
+ W !,RPC,!,PARAMS
+ S RPCDA=$$FIND1^DIC(8994,",","XM",RPC)
+ I 'RPCDA W !,RPC," NOT FOUND" Q
+ S IENS=RPCDA_"," K FLD
+ D GETS^DIQ(8994,IENS,".01;.02;.03;.04","","FLD","MSG")
+ M TMP=FLD(8994,IENS) K FLD M FLD=TMP K TMP
+ S FLD(.04)=$E(FLD(.04)) ;FIND TYPE S,A,G,W
+ S RPCROU=FLD(.02)_"^"_FLD(.03)
+ S RPCALL=RPCROU_"("_PARAMS_")"
+ F X="RPC","RPCALL","PARAMS","P" W !,?2,X D Q(X)
+ D @RPCALL
+ D Q("DAT") I +$D(DAT)=1,FLD(.04)="A" S X=$NA(@DAT) D Q(X)
+ Q
+FILEFLDS ;;inquire  ;;file;;fields;;iens;;variable to set
+MAIL ;;4.3;;.01;1;3;4;8.25;40;;S IENS="1,";;SYSOLD("DOMAINPAR")~3
+VOL ;;14.5;;.01;5;6;;S IENS="1,"
+KSP ;;8989.3;;.01;9;51;217;320;;S IENS="1,";;SYSOLD("DEFDIR")~320;SYSOLD("IP")~51
+HL ;;869.3;;.01;.02;.04;;S IENS="1,";;SYSOLD("INST")~.04;SYSOLD("DOMAIN")~.02
+INST ;;4;;.01;11;13;60;99;;S IENS=+SYSOLD("INST")_",";;SYSOLD("STANUM")~99
+RPC ;;8994.1;;.01;;S IENS="1,"
+RPC1 ;;8994.17;;.01;;S IENS="1,1,";;SYSOLD("BOXVOL")~.01
+RPC2 ;;8994.171;;.01;.5;1;2;;S IENS="1,1,1,";;SYSOLD("PORT")~.01
+ ;;END
+DOMAIN ;
+ ;;4.2;;.01;;S IENS=SYSOLD("DOMAIN")_","
+ ;;4.2;;.01;;S IENS=SYSOLD("DOMAINPAR")_","
+ ;;END
+ Q
+BUILDINQ ; document interface details of a build
+ N DIC,G,Y,VFDBLDA,VFDFLNN,VFDCMPNM,VFDCMPDA,VFDBLDDT
+ K DIC,Y
+ S DIC=9.6,DIC(0)="AEQMZ" D ^DIC
+ Q:Y'>0
+ S VFDBLDA=+Y
+ S VFDBLDNM=$$GET1^DIQ(9.6,VFDBLDA,.01)
+ S VFDBLDDT=$$GET1^DIQ(9.6,VFDBLDA,.02)
+ S G=$NA(^XPD(9.6,VFDBLDA,"KRN"))
+ S VFDFLNN=0
+ D ^%ZIS
+ U IO W !,VFDBLDNM,?40,VFDBLDDT
+ ;F  S VFDFLNN=$O(@G@(VFDFLNN)) Q:VFDFLNN'>0  D BUILDNN
+ F VFDFLNN=101,771,870,8989.51,8994 D BUILDNN
+ D ^%ZISC
+ G BUILDINQ
+ Q
+BUILDNN ;
+ W !,VFDFLNN,?10,$$GET1^DIQ(1,VFDFLNN,.01)
+ S VFDCMPNM=""
+ F  S VFDCMPNM=$O(^XPD(9.6,VFDBLDA,"KRN",VFDFLNN,"NM","B",VFDCMPNM)) Q:VFDCMPNM=""  D
+ .N DIC,X S X=VFDCMPNM,DIC=$$ROOT^DILFD(VFDFLNN),DOC(0)="EQXM" D ^DIC S VFDCMPDA=+Y
+ . U IO W !,VFDFLNN,?15,VFDCMPNM,?50,VFDCMPDA
+ . U IO I VFDCMPDA S DA=VFDCMPDA D EN^DIQ
+ Q
+GET(REC,DLM,XX) ; where XX = VAR_"="_I  ex: XX="PATNM=1"
+ ; Set VAR = piece I of REC using delimiter DLM
+ N Y,I S Y=$P(XX,"="),I=$P(XX,"=",2),@Y=$P(REC,DLM,I)
+ Q
+SET(REC,DLM,XX) ; where XX = VAR_U_I  ex: XX="1=PATNUM"
+ ; Set VAR into piece I of REC using delimiter DLM
+ N Y,I S I=$P(XX,"="),Y=$P(XX,"=",2)
+ I Y'=+Y,Y'="" S $P(REC,DLM,I)=$G(@Y) I 1
+ E  S $P(REC,DLM,I)=YOUT ;
+ Q

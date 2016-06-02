@@ -1,9 +1,12 @@
 RORRP027 ;HCIOFO/SG - RPC: RORICR CDC SAVE ; 10/16/06 1:58pm
- ;;1.5;CLINICAL CASE REGISTRIES;**1**;Feb 17, 2006;Build 24
+ ;;1.5;CLINICAL CASE REGISTRIES;**1,9**;Feb 17, 2006;Build 1
  ;
  ;--------------------------------------------------------------------
  ; Registry: [VA HIV]
  ;--------------------------------------------------------------------
+ ; 05/23/2009 BAY/KAM ROR*1.5*9 Remedy Call 319731 Correct AIDS OI 
+ ;                              Checkbox populating incorrectly
+ ;                              Remove 3 lines
  Q
  ;
  ;***** AIDS INDICATOR DISEASE (VIII)
@@ -45,8 +48,10 @@ AIDSTORE() ;
  . S RORFDAUP(799.41,TMP,.02)=$P(RORAILST(CODE),U,1)
  . S RORFDAUP(799.41,TMP,.03)=DATE
  ;--- Populate the CLINICAL AIDS fields (if they are empty)
- K TMP  S TMP(1)=+IENS
- D AIDSOI^RORDD01(.TMP,DTMIN)
+ ;
+ ; Remedy call 319731 two lines removed to not populate the CLINICAL 
+ ; AIDS fields unless trigged by an AIDS Indicator Disease (CDC form
+ ; Section VIII)
  ;---
  Q RC
  ;

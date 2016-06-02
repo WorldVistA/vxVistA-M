@@ -1,5 +1,5 @@
-TIULP ; SLC/JER - Functions determining privilege ;11/13/07
- ;;1.0;TEXT INTEGRATION UTILITIES;**98,100,116,109,138,152,175,157,182,184,217,236,234**;Jun 20, 1997;Build 6
+TIULP ; SLC/JER - Functions determining privilege ; 3/7/12 4:20pm
+ ;;1.0;TEXT INTEGRATION UTILITIES;**98,100,116,109,138,152,175,157,182,184,217,236,234,232,241,256**;Jun 20, 1997;Build 11
  ; CANDO^USRLA: ICA 2325, ISA^USRLM: ICA 2324
  ; 8930.1,2,8: IACS 3129,3128,3104 
 CANDO(TIUDA,TIUACT,PERSON) ; Can PERSON perform action now
@@ -14,6 +14,9 @@ CANDO(TIUDA,TIUACT,PERSON) ; Can PERSON perform action now
  S TIUD0=$G(^TIU(8925,+TIUDA,0)) I 'TIUD0 G CANDOX
  I $$ISPRFDOC^TIUPRF(TIUDA),((TIUACT="ATTACH ID ENTRY")!(TIUACT="ATTACH TO ID NOTE")) S TIUY="0^Patient Record Flag notes may not be used as Interdisciplinary notes." G CANDOX
  S TIUACTW=$G(TIUACT)
+ ;VMP/AM P256 Only Hims/Mis Chiefs and Privacy Act Officers are allowed to delete NIRs and ARs
+ I (($G(XQY0)["OR CPRS GUI CHART")!($G(XQY0)["TIU ")),$$ISSURG^TIULP3(+TIUDA),$G(TIUACTW)["DELETE ",'$$AUTHUSR^TIULP3(PERSON) D  G CANDOX
+ .  S TIUY="0^ Only Privacy Act Officers or MIS/HIMS Chiefs may DELETE this Document."
  ;**100** was I +TIUACT'>0 S TIUACT etc.
  S TIUACT=$$USREVNT(TIUACT) I +TIUACT'>0 G CANDOX
  ; -- Historical Procedures - Prohibit actions detailed in
@@ -31,7 +34,8 @@ CANDO(TIUDA,TIUACT,PERSON) ; Can PERSON perform action now
  . S TIUY="0^ This note cannot be attached; it has its own children."
  I +TIUACT=25,+$G(^TIU(8925,TIUDA,21)) D  G CANDOX
  . S TIUY="0^ This note cannot receive interdisciplinary children; it is itself a child."
- I +TIUACT=4!(+TIUACT=5),+$$BLANK^TIULC(TIUDA) D  G CANDOX ;Sets TIUPRM1
+ ;VMP/AM P241 If note is administratively closed, then bypass check for blank characters
+ I $P($G(^TIU(8925,+TIUDA,16)),U,13)'="S",+TIUACT=4!(+TIUACT=5),+$$BLANK^TIULC(TIUDA) D  G CANDOX ;Sets TIUPRM1
  . S TIUY="0^ Contains blanks ("_$P(TIUPRM1,U,6)_") which must be filled before "_$P(TIUACT,U,2)_"ATURE."
  S TIUROLE=$$USRROLE(TIUDA,PERSON)
  S TIUTYP=+TIUD0
@@ -40,6 +44,8 @@ CANDO(TIUDA,TIUACT,PERSON) ; Can PERSON perform action now
  F TIUI=1:1:($L(TIUROLE,U)-1) D  Q:+$G(TIUY)>0
  . S TIUY=$$CANDO^USRLA(TIUTYP,STATUS,+TIUACT,PERSON,$P(TIUROLE,U,TIUI))
  I +$G(TIUATYP) S TIUTYP=+$G(TIUATYP)
+ ;VMP/AM P256 Hims/Mis Chiefs and Privacy Act Officers are allowed to delete NIRs and ARs regardless of business rules
+ I ($$ISSURG^TIULP3(+TIUDA)&$$AUTHUSR^TIULP3(PERSON)),$G(TIUACTW)["DELETE" S TIUY=1
  ;**100** update for PERSON param; update for verb modifier:
  I +TIUY'>0 D  G CANDOX
  . S WHO=" You"
@@ -53,7 +59,12 @@ CANDO(TIUDA,TIUACT,PERSON) ; Can PERSON perform action now
  . S TIUY="0^ This document contains linked images. You must ""delete"" the Images using the Imaging package before proceeding."
  ;VMP/ELR P217. Do not allow deletion of a parent with child
  I $G(TIUACTW)["DELETE RECORD",$$HASIDKID^TIUGBR(+TIUDA) D  G CANDOX
- . S TIUY="0^ "_$$EZBLD^DIALOG(89250013)
+ . ;VMP/ELR P232. Create new error msg.
+ . NEW TIUMSG D IDMSG^TIULP3(.TIUMSG) S TIUY="0^"_TIUMSG
+ ;VMP/ELR P232 do not allow edit, delete or addendum on NIR and Anesthesia report  IA3356 FOR XQY0
+ ;VMP/AM P256 Only Hims/Mis Chiefs and Privacy Act Officers are allowed to delete NIRs and ARs
+ I (($G(XQY0)["OR CPRS GUI CHART")!($G(XQY0)["TIU ")),$$ACTION^TIULP3($G(TIUACTW)),$$ISSURG^TIULP3(+TIUDA) D  G CANDOX
+ . S TIUY="0^ "_$$SURMSG^TIULP3($G(TIUACTW))
 CANDOX Q TIUY
  ;
 CANLINK(TIUTYP) ; Can user (DUZ) link (attach) a document of a particular type

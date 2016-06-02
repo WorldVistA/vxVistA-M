@@ -1,5 +1,7 @@
-ECUURPC ;ALB/JAM - Event Capture Data Entry Broker Utilities ; 5 May 2008
- ;;2.0; EVENT CAPTURE ;**25,42,49,94,95**;8 May 96;Build 26
+ECUURPC ;ALB/JAM - Event Capture Data Entry Broker Utilities ;5 May 2008
+ ;;2.0;EVENT CAPTURE;**25,42,49,94,95,76,104,124**;8 May 96;Build 4
+ ;
+ ; Reference to $$CODEN^ICDEX supported by ICR #5747
  ;
 ECHELP(RESULTS,ECARY) ;
  ;
@@ -31,8 +33,11 @@ FNDIEN(RESULTS,ECARY) ;find IEN
  N TXT,FIL,DIC,X,Y
  D SETENV^ECUMRPC
  S FIL=$P(ECARY,U),TXT=$P(ECARY,U,2) I TXT=""!(FIL="") Q
+ ; For lookups on #80, use approved API
+ I FIL=80 S RESULTS=+$$CODEN^ICDEX(TXT,80) Q
+ ;
  S DIC=FIL,DIC(0)="MN",X=TXT
- I FIL=81.3 S DIC("S")="I $P(^DIC(81.3,Y,0),U,5)'=1" ;PATCH 94
+ I FIL=81.3 S DIC("S")="I +$P($$MOD^ICPTMOD(Y,""I""),U,7)=1"
  D ^DIC I Y=-1 Q
  S RESULTS=+Y
  Q
@@ -83,7 +88,7 @@ VERSRV(RESULTS,ECARY,VERSION)   ; Return server version of option name and
  S ECCLVER=$G(VERSION)
  I $G(ECARY)="" Q
  N ECLST,ECMINV
- S ECMINV="2.1.1.0"  ;Minimum version of EC GUI client
+ S ECMINV="2.1.2.1"  ;Minimum version of EC GUI client
  D FIND^DIC(19,"",1,"X",ECARY,1,,,,"ECLST")
  I 'ECLST("DILIST",0) S RESULTS="" Q
  S RESULTS=ECLST("DILIST","ID",1,1)

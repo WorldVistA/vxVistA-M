@@ -1,5 +1,5 @@
 PSOQ0496 ;BHAM ISC/SAB - returns patient's outpatient meds ; 30 Nov 2007  7:53 AM
- ;;7.0;OUTPATIENT PHARMACY;**294**;DEC 1997;Build 153
+ ;;7.0;OUTPATIENT PHARMACY;**294**;DEC 1997;Build 164
  ;
  ;Reference to ^PS(55 supported by DBIA 2228
  ;Reference to ^PSDRUG supported by DBIA 221

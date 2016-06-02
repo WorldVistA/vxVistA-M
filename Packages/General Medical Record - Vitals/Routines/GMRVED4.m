@@ -1,5 +1,5 @@
 GMRVED4 ;HIRMFO/RM,YH-VITAL SIGNS SHORT FORM ;3/15/99  14:24
- ;;4.0;Vitals/Measurements;**1,7,11**;Apr 25, 1997
+ ;;4.0;Vitals/Measurements;**1,7,11**;Apr 25, 1997;Build 8
 DSPOV ; DISPLAY OLD VITALS ALREADY ENTERED FOR PATIENT AND SET GMRSTR(0)
  ; TO THE SUBSET OF GMRSTR THAT HASN'T BEEN ENTERED.
  K GMROV S (GLAST,GLAST(1))=0,GDT=GMRVIDT,GMRSTR(0)=";"_GMRSTR I $E(GMRSTR(0),$L(GMRSTR(0)))'=";" S GMRSTR(0)=GMRSTR(0)_";"
@@ -28,9 +28,18 @@ PROV ; PRINT OUT OLD VITAL
  . I GMRVX(0)=99 S GMRVX(0)="Unable to respond "
  . I GMRVX(0)=10 S GMRVX(0)=GMRVX(0)_" - Worst imaginable pain " Q
  . Q
- I X="WT" S GMRVX(0)=GMRVX(0)_$S(GMRVX(0)>0:" lb"_" ("_$J(X(2)/2.2,0,2)_" kg)",1:"")
- I X="HT" S GMRVX(0)=(GMRVX(0)\12)_$S(GMRVX(0)>0:" ft "_$S(X(2)#12:X(2)#12_" in",1:"")_" ("_$J(X(2)*2.54,0,2)_" cm)",1:"")
- I X="CG" S GMRVX(0)=GMRVX(0)_$S(GMRVX(0)>0:" in ("_$J(X(2)/.3937,0,2)_" cm)",1:"")
+ ;DSS/SMP - BEGIN MODS
+ N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
+ I X="WT" D
+ .I VFD S GMRVX(0)=GMRVX(0)_$S(GMRVX(0)>0:" lb"_" ("_$$LB2KG^VFDXLF(X(2),2)_" kg)",1:"") Q
+ .S GMRVX(0)=GMRVX(0)_$S(GMRVX(0)>0:" lb"_" ("_$J(X(2)/2.2,0,2)_" kg)",1:"")
+ I X="HT" D
+ .I VFD S GMRVX(0)=(GMRVX(0)\12)_$S(GMRVX(0)>0:" ft "_$S(X(2)#12:X(2)#12_" in",1:"")_" ("_$$IN2CM^VFDXLF(X(2),2)_" cm)",1:"") Q
+ .S GMRVX(0)=(GMRVX(0)\12)_$S(GMRVX(0)>0:" ft "_$S(X(2)#12:X(2)#12_" in",1:"")_" ("_$J(X(2)*2.54,0,2)_" cm)",1:"")
+ I X="CG" D
+ .I VFD S GMRVX(0)=GMRVX(0)_$S(GMRVX(0)>0:" in ("_$$IN2CM^VFDXLF(X(2),2)_" cm)",1:"") Q
+ .S GMRVX(0)=GMRVX(0)_$S(GMRVX(0)>0:" in ("_$J(X(2)/.3937,0,2)_" cm)",1:"")
+ ;DSS/SMP - END MODS
  I X="CVP" S GMRVX(0)=GMRVX(0)_$S(GMRVX(0)>0:" cmH2O ("_$J(X(2)/1.36,0,0)_" mmHg)",1:"")
  I X="PO2" D
  .N GMRVPO S GMRVPO=$P(GMROV,"^",10)

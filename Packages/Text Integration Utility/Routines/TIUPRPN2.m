@@ -1,5 +1,5 @@
 TIUPRPN2 ;SLC/MJC - Header/Footer for Progress Notes ;25-JAN-2001 08:50:35
- ;;1.0;TEXT INTEGRATION UTILITIES;**44,45,52,100,222**;Jun 20, 1997;Build 153
+ ;;1.0;TEXT INTEGRATION UTILITIES;**44,45,52,100,222**;Jun 20, 1997;Build 164
 FOOTER(TIUFOOT,TIUMISC,TIUCONT1,TIUHDR,TIUROOT) ; Function returns TIUCONT
  ; Also controls Pagination position, writes footer when appropriate.
  ; Requires array TIUFOOT, vars TIUMISC,TIUCONT1. Optional TIUHDR.

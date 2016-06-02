@@ -1,5 +1,5 @@
-TIUSRVA ; SLC/JER,AJB - API's for Authorization ; 11/13/07
- ;;1.0;TEXT INTEGRATION UTILITIES;**19,28,47,80,100,116,152,160,178,175,157,236,234**;Jun 20, 1997;Build 6
+TIUSRVA ; SLC/JER,AJB - API's for Authorization ; 4/2/09 12:34pm
+ ;;1.0;TEXT INTEGRATION UTILITIES;**19,28,47,80,100,116,152,160,178,175,157,236,234,239**;Jun 20, 1997;Build 4
  ;
  ;External reference to File ^AUPNVSIT supported by DBIA 3580
 REQCOS(TIUY,TIUTYP,TIUDA,TIUSER,TIUDT) ; Evaluate cosignature requirement
@@ -9,7 +9,8 @@ REQCOS(TIUY,TIUTYP,TIUDA,TIUSER,TIUDT) ; Evaluate cosignature requirement
  I +$G(TIUTYP)'>0,'+$G(TIUDA) Q
  I +$G(TIUDA) S TIUTYP=+$G(^TIU(8925,+$G(TIUDA),0))
  S:'+$G(TIUSER) TIUSER=+$G(DUZ)
- S TIUY=+$$REQCOSIG^TIULP(TIUTYP,+$G(TIUDA),+$G(TIUSER),+$G(TIUDT))
+ ; VMP/RJT --- *239  - Make sure only date is being passed into REQCOSIG and not date/time
+ S TIUY=+$$REQCOSIG^TIULP(TIUTYP,+$G(TIUDA),+$G(TIUSER),$P(+$G(TIUDT),"."))
  Q
 URGENCY(TIUY) ; -- retrieve set values from dd for discharge summary urgency
  N TIUDD,TIUI,TIUX
@@ -24,7 +25,8 @@ CANDO(TIUY,TIUDA,TIUACT) ; Boolean function to evaluate privilege
  . L +^TIU(8925,+TIUDA):1
  . E  S TIUY="0^ Another session is editing this entry.",TIUPOP=1
  . L -^TIU(8925,+TIUDA)
- I TIUACT["SIGN",+$$NEEDCS(TIUDA) S TIUY="0^ You must name a cosigner before signing this document." Q
+ ;VMP/ELR *239 -- CHANGED TIUACT["SIGN" TO TIUACT["SIGNAT" - WAS EXECUTING LINE FOR INDENTIFYING SIGNERS
+  I TIUACT["SIGNAT",+$$NEEDCS(TIUDA) S TIUY="0^ You must name a cosigner before signing this document." Q
  S TIUY=$$CANDO^TIULP(TIUDA,TIUACT)
  Q
 NEEDCS(TIUDA) ; Does user need a cosigner?

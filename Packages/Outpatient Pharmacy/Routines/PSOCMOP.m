@@ -1,9 +1,10 @@
-PSOCMOP ;BIR/HTW-Rx Order Entry Screen for CMOP ; 6/28/07 7:35am
- ;;7.0;OUTPATIENT PHARMACY;**2,16,21,27,43,61,126,148,274,347**;DEC 1997;Build 5
+PSOCMOP ;BIR/HTW-Rx Order Entry Screen for CMOP ;6/28/07 7:35am
+ ;;7.0;OUTPATIENT PHARMACY;**2,16,21,27,43,61,126,148,274,347,251,405**;DEC 1997;Build 2
  ;External reference to ^PS(55 supported by DBIA 2228
  ;External reference to ^PSDRUG supported by DBIA 221
  ;External reference to ^PSDRUG supported by DBIA 3165
  ;External reference to ^PSSHUIDG supported by DBIA 3621
+ ;External reference to $$DS^PSSDSAPI supported by DBIA 5424
 TOP ;
  I $G(PSOFROM)="EDIT" S PPL=$G(PSORX("PSOL",1)) Q:$G(PPL)']""  G TEST
  I $G(PPL) G START
@@ -37,6 +38,9 @@ LOOP F CNT=1:1 S RX=$P($G(PPL),",",CNT) Q:RX']""  D  S:'FLAG $P(RX("PSO"),",",P1
  .Q:$P(^PSRX(RX,"STA"),"^")>9!($P(^("STA"),"^")=4)!($P(^("STA"),"^")=3)
  .;        Find last fill
  .S RFD=0 F X7=0:0 S X7=$O(^PSRX(RX,1,X7)) Q:'$G(X7)  S (RFD)=X7
+ .;if original fill and a tech stop
+ .I 'RFD,$P(^PSRX(RX,"STA"),"^")=4!($D(^PSRX(RX,"DRI"))&('$D(^XUSEC("PSORPH",DUZ)))) Q
+ .I 'RFD,$$DS^PSSDSAPI,($G(^PS(52.4,RX,1))>0)&('$D(^XUSEC("PSORPH",DUZ))) Q
  .Q:$G(RXFL(RX))&(RFD)&($G(RXFL(RX))'=RFD)
  .I '$O(^PSRX(RX,1,0)),'$P($G(^PSRX(RX,2)),"^",13),$P($G(^(0)),"^",11)="W",$S($P($G(^PSRX(RX,2)),"^",2):$P($G(^(2)),"^",2),1:+$G(PSOX("FILL DATE")))>DT D
  ..S PSOCPDA=$G(DA) K DIE S DA=RX,DIE="^PSRX(",DR="11////M" D ^DIE K DIE S:$G(PSOCPDA) DA=$G(PSOCPDA) K PSOCPDA
@@ -71,9 +75,9 @@ LOCK S RXP=+$G(RXPR(DA)),DIC="^PS(52.5,",DIC(0)="",X=RXN
  S DIC("DR")=".02////"_SD_";.03////"_$P(^PSRX(DA,0),"^",2)_";.04////M;.05////"_RXP_";.06////"_PSOSITE_";2////0;3////Q;9////"_RFD1
  K DD,DO D FILE^DICN K DD,DO S DA=RXN I +Y S PSONAME=$P(^PSRX(DA,0),"^",2) K ^PS(52.5,"AC",PSONAME,SD,+Y),PSONAME
  S $P(^PSRX(RXN,"STA"),"^")=5,LFD=$E(SD,4,5)_"-"_$E(SD,6,7)_"-"_$E(SD,2,3) D ACT
- W !!,"RX# ",$P(^PSRX(RXN,0),"^")_" HAS BEEN SUSPENDED for CMOP Until "_LFD_"."
- S VALMSG="Rx# "_$P(^PSRX(RXN,0),"^")_" Has Been Suspended for CMOP Until "_LFD_"."
- S COMM="Rx# "_$P(^PSRX(RXN,0),"^")_" Has Been Suspended for CMOP Until "_LFD_"."
+ W !!,"RX# ",$P(^PSRX(RXN,0),"^")_" SUSPENDED for CMOP Until "_LFD_"."
+ S VALMSG="Rx# "_$P(^PSRX(RXN,0),"^")_" Suspended for CMOP Until "_LFD_"."
+ S COMM="Rx# "_$P(^PSRX(RXN,0),"^")_" Suspended for CMOP Until "_LFD_"."
  D EN^PSOHLSN1(RXN,"SC","ZS",COMM) K COMM
  ;- Calling ECME to reverse any PAYABLE claim for the prescription/fill
  D REVERSE^PSOBPSU1(RXN,,"DC",3)

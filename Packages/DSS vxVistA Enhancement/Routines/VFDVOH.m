@@ -1,5 +1,5 @@
 VFDVOH ;DSS/LM - Receive and process ORDER messages ; 09 Apr 2013  10:51 AM
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013
+ ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 13
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  ; Active integration agreements

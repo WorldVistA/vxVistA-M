@@ -1,5 +1,5 @@
 SROAL11 ;BIR/ADM - LOAD PREOP LAB DATA (CONTINUED) ;06/27/06
- ;;3.0; Surgery ;**38,47,65,95,125,153,160**;24 Jun 93;Build 7
+ ;;3.0; Surgery ;**38,47,65,95,125,153,160,174**;24 Jun 93;Build 8
 STUFF ; Transfer test data from array to file 130
  W !!,"..Moving preoperative lab test data to Surgery Risk Assessment file...."
 N4 I $D(SRAT(4)) S X=SRAT(4),SRL=1,SRH=5 D INPUT S $P(^SRF(SRTN,201),"^")=X S $P(^(202),"^")=$S(X'="":SRAD(4),1:"") ; Sodium
@@ -30,6 +30,7 @@ C22 I $D(SRAT(22)) S X=SRAT(22),SRL=1,SRH=6 D INPUT S $P(^SRF(SRTN,201),"^",22)=
 C23 I $D(SRAT(23)) S X=SRAT(23),SRL=1,SRH=6 D INPUT S $P(^SRF(SRTN,201),"^",25)=X,$P(^(202),"^",25)=$S(X'="":SRAD(23),1:"") ; LDL
 C24 I $D(SRAT(24)) S X=SRAT(24),SRL=1,SRH=6 D INPUT S $P(^SRF(SRTN,201),"^",26)=X,$P(^(202),"^",26)=$S(X'="":SRAD(24),1:"") ; Cholesterol
 C27 I $D(SRAT(27)) S X=SRAT(27),SRL=1,SRH=6 D INPUT S $P(^SRF(SRTN,201),"^",28)=X,$P(^(202.1),"^")=$S(X'="":SRAD(27),1:"") ; HEMOGLOBIN A1C
+C28 I $D(SRAT(28)) S X=SRAT(28),SRL=1,SRH=6 D INPUT S $P(^SRF(SRTN,201),"^",29)=X,$P(^(202.1),"^",2)=$S(X'="":SRAD(28),1:"") ; B-type Natriuretic Peptide (BNP)
  Q
 INPUT ; input checking
  N SRX,SRY I $D(SRCRD),X="NS" S X=""

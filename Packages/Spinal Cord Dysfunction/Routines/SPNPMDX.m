@@ -1,5 +1,5 @@
 SPNPMDX ;SD/AB-GET SCI ICD9 CODES FOR 344.0x, 344.1, 806.xx, 907.2, 952.xx ;4/17/98
- ;;2.0;Spinal Cord Dysfunction;**6**;01/02/1997
+ ;;2.0;Spinal Cord Dysfunction;**6,25**;01/02/1997;Build 2
 MAIN ;-- Called by ^SPNPM1, ^SPNPM2B, & ^SPNPM4 (Program Measures routines)
  K:$D(^TMP($J,"SPNPMDX","SPNICD")) ^("SPNICD")
  D GETICD
@@ -16,7 +16,7 @@ GETICD ;-- For hardcoded range (start and end #s) collect all ICD codes and stor
  ..S SPN("ICD_IEN")=0
  ..F  S SPN("ICD_IEN")=$O(^ICD9("BA",SPN("I"),SPN("ICD_IEN"))) Q:'+SPN("ICD_IEN")  D
  ...;-- Now set temp global
- ...S ^TMP($J,"SPNPMDX","SPNICD",SPN("ICD_IEN"))=^ICD9(SPN("ICD_IEN"),0)
+ ...S ^TMP($J,"SPNPMDX","SPNICD",SPN("ICD_IEN"))=$P($$ICDDX^ICDCODE(SPN("ICD_IEN")),"^",2)
  ...Q
  ..Q
  .Q
@@ -27,7 +27,7 @@ GETICD ;-- For hardcoded range (start and end #s) collect all ICD codes and stor
  ..;-- Get IEN in ICD9 global (file 80)
  ..S SPN("ICD_IEN")=$O(^ICD9("BA",SPN("I"),0))
  ..;-- Now set temp global
- ..S ^TMP($J,"SPNPMDX","SPNICD",SPN("ICD_IEN"))=^ICD9(SPN("ICD_IEN"),0)
+ ..S ^TMP($J,"SPNPMDX","SPNICD",SPN("ICD_IEN"))=$P($$ICDDX^ICDCODE(SPN("ICD_IEN")),"^",2)
  ..Q
  .Q
  ;-- Create temporary storage for all ICD codes in the range:
@@ -40,7 +40,7 @@ GETICD ;-- For hardcoded range (start and end #s) collect all ICD codes and stor
  ..S SPN("ICD_IEN")=0
  ..F  S SPN("ICD_IEN")=$O(^ICD9("BA",SPN("I"),SPN("ICD_IEN"))) Q:'+SPN("ICD_IEN")  D
  ...;-- Now set temp global
- ...S ^TMP($J,"SPNPMDX","SPNICD",SPN("ICD_IEN"))=^ICD9(SPN("ICD_IEN"),0)
+ ...S ^TMP($J,"SPNPMDX","SPNICD",SPN("ICD_IEN"))=$P($$ICDDX^ICDCODE(SPN("ICD_IEN")),"^",2)
  ...Q
  ..Q
  .Q
@@ -54,7 +54,7 @@ GETICD ;-- For hardcoded range (start and end #s) collect all ICD codes and stor
  ..S SPN("ICD_IEN")=0
  ..F  S SPN("ICD_IEN")=$O(^ICD9("BA",SPN("I"),SPN("ICD_IEN"))) Q:'+SPN("ICD_IEN")  D
  ...;-- Now set temp global
- ...S ^TMP($J,"SPNPMDX","SPNICD",SPN("ICD_IEN"))=^ICD9(SPN("ICD_IEN"),0)
+ ...S ^TMP($J,"SPNPMDX","SPNICD",SPN("ICD_IEN"))=$P($$ICDDX^ICDCODE(SPN("ICD_IEN")),"^",2)
  ...Q
  ..Q
  .Q

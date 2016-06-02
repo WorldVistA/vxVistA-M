@@ -1,6 +1,6 @@
 SDRRRECP ;10N20/MAH;Recall Reminder Manual Printing; 09/20/2004
- ;;5.3;Scheduling;**536**;Aug 13, 1993;Build 53
- ;;This routine is called from SDRRCLRP 
+ ;;5.3;Scheduling;**536,569,579**;Aug 13, 1993;Build 3
+ ;;This routine is called from SDRRLRP 
  ;;If the site has set TYPE OF NOTIFICATION to CARDS this routine
  ;;will run.
  K TYPE
@@ -65,17 +65,18 @@ DQD K ^TMP($J)
  .S $P(^SD(403.5,D0,0),"^",10)=DT
  .D PR
  D ^%ZISC G QUIT
-QUIT K ADTA,D0,DFN,DIC,DIR,DIRUT,DTA,I,L,PN,POP,Y,DIV,EDT,PR,SDT,TIME,LAB,Y,STATE
+QUIT K ADTA,D0,DFN,DIC,DIR,DIRUT,DTA,I,L,PN,POP,Y,DIV,EDT,PR,SDT,TIME,LAB,Y,STATE,PNAME
  K DATE,DOD,X,Q,%DT,%ZIS,SDRR,VA,CHECK,ZTDESC,ZTDSC,ZTEAM,ZTIO,ZTRTN,ZTSAVE
  Q
 SELDT S %DT="AEX",%DT("A")="Start with RECALL DATE: " D ^%DT Q:Y<0  S SDT=Y,%DT("A")="End with RECALL DATE: " D ^%DT I Y<SDT W $C(7),"  ??" G SELDT
  S EDT=Y Q
 PR W @IOF F L=1:1:7 W !
- W !?20,$P($P(PN,",",2)," ",1)_" "_$P(PN,",")
+ S PNAME=$$NAMEFMT^XLFNAME(PN,"G","")
+ W !?20,PNAME
  I $P(VAPA(1),U)'="" W !?20,$P(VAPA(1),U)
  I $P(VAPA(2),U)'="" W !?20,$P(VAPA(2),U)
  I $P(VAPA(3),U)'="" W !?20,$P(VAPA(3),U)
- W !?20,$P(VAPA(4),U),", "_STATE_"  ",$P(VAPA(6),U)
+ W !?20,$P(VAPA(4),U)," "_STATE_"  ",$P(VAPA(6),U)
  I TIME'="" W !!?45,TIME
  I LAB'="" W !!?45,LAB
  Q
@@ -158,6 +159,8 @@ DQDD K ^TMP($J)
  N CHKDATE
  S PR=0 F  S PR=$O(^SD(403.5,"C",PR)) Q:PR=""  I $P($G(^SD(403.54,PR,0)),U,2)=+ZTEAM S D0=0 F  S D0=$O(^SD(403.5,"C",PR,D0)) Q:D0=""  S DTA=$G(^SD(403.5,D0,0)) D:DTA]""
  .I $P($G(^SD(403.5,D0,0)),"^",10)="" QUIT
+ .; SD*569 - Prevent from printing more than ONE second card
+ .I $P($G(^SD(403.5,D0,0)),"^",13)'="" QUIT
  .S CHKDATE=5 S RDATE=$P($G(^SD(403.5,D0,0)),"^",6) S CHECK=$$FMDIFF^XLFDT(RDATE,DT) I CHECK>CHKDATE K RDATE QUIT
  .S TIME=""
  .I $P(^SD(403.5,D0,0),"^",9)["60" S TIME=$P(^SD(403.5,D0,0),"^",9) S TIME="**"_TIME_"**"

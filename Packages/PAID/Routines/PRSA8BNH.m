@@ -1,5 +1,5 @@
 PRSA8BNH ;WOIFO/JAH - Tour Hours vs 8B Norm Hrs Report ;12/28/07
- ;;4.0;PAID;**116**;Sep 21, 1995;Build 23
+ ;;4.0;PAID;**116,110**;Sep 21, 1995;Build 7
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  Q
  ; Search for 8b normal hours that don't match tours
@@ -9,13 +9,20 @@ PAYROLL ;prompt for T&L's--set's up payroll all T&L's
  N PRSTLV,FORWHO
  S PRSTLV=7
  S FORWHO="for Payroll"
+ D MAIN
+ Q
  ;
 TIMEKEEP ; entry point sets up timekeeper T&L variable for PRSAUTL call
- I $G(PRSTLV)'>0 N PRSTLV,FORWHO S PRSTLV=2,FORWHO="for Timekeeper"
+ N PRSTLV,FORWHO S PRSTLV=2,FORWHO="for Timekeeper"
+ D MAIN
+ Q
  ;
 SUPERV ; sets up supervisor for T&L lookup
- I $G(PRSTLV)'>0 N PRSTLV,FORWHO S PRSTLV=3,FORWHO="for T&A Supervisor"
+ N PRSTLV,FORWHO S PRSTLV=3,FORWHO="for T&A Supervisor"
+ D MAIN
+ Q
  ;
+MAIN ;
  N DIR,DIRUT,TLS,Y,PPI,PPE,NOTOUR,NOTCARD,PPRANGE,DAILYHRS,EP,SP,SDT,EDT
  S TLS=1
  S DIR(0)="Y"

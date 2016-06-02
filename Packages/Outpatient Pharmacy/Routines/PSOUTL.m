@@ -1,7 +1,8 @@
 PSOUTL ;BHAM ISC/SAB - pso utility routine ;4/28/09 4:14pm
- ;;7.0;OUTPATIENT PHARMACY;**1,21,126,174,218,259,324**;DEC 1997;Build 6
+ ;;7.0;OUTPATIENT PHARMACY;**1,21,126,174,218,259,324,390,313**;DEC 1997;Build 76
  ;External reference SERV^IBARX1 supported by DBIA 2245
  ;External reference ^PS(55,     supported by DBIA 2228
+ ;External reference ^PSSDIUTL is supported by DBIA# 5737.
  ;
  ;*218 prevent refill from being deleted if pending processing via
  ; external dispense machines
@@ -237,3 +238,55 @@ MAILCMOP(RX,STR,REA) ;Send mail message to mail group PSX EXTERNAL DISPENSE ALER
  S XMTEXT="PSOTEXT(" D ^XMD
  D KVA^VADPT
  Q
+ ;
+PSOCK ;
+ W !!!,"*The following list of order checks is a comprehensive report of all"
+ W !,"Outpatient, Non-VA, and Clinic medication orders on this patient's profile."
+ W !,"It may include orders that are local, remote, active, pending, recently"
+ W !,"discontinued, or expired. Please note that the sort order and format"
+ W !,"displayed in this report differs from the display of MOCHA 1.0 order"
+ W !,"checks which occurs during order processing.*",!
+ Q
+ ;
+PSSDGCK ;
+ D ^PSSDIUTL
+ Q
+ ;
+PSOSUPCK(CHK) ;
+ I '($P($G(^PSDRUG(CHK,0)),"^",3)["S"!($E($P($G(^PSDRUG(CHK,0)),"^",2),1,2)="XA")) K CHK Q 0
+ W !!,"You have selected a supply item, please select another drug"
+ W !,"or leave blank and hit enter for Profile Order Checks." W !
+ K CHK
+ Q 1
+ ;
+PRFLP ;ZB POST+18^PSODRG THE RUN D LOOP^ZZME3
+ N PSODRUG S (DGCKSTA,DGCKDNM)="" S PSODGCKF=1
+ I $D(PSOSD) F  S DGCKSTA=$O(PSOSD(DGCKSTA)) Q:DGCKSTA=""  F  S DGCKDNM=$O(PSOSD(DGCKSTA,DGCKDNM)) Q:DGCKDNM=""  D
+ .S DIC=50,DIC(0)="MQZV",X=DGCKDNM D ^DIC K DIC
+ .S DIC=50,DIC(0)="MQZV",X=+Y D ^DIC K DIC Q:Y=-1
+ .S PSODRUG("IEN")=DGCKDNM,PSODRUG("VA CLASS")=$P(Y(0),"^",2),PSODRUG("NAME")=$P(Y(0),"^")
+ .S:+$G(^PSDRUG(+Y,2)) PSODRUG("OI")=+$G(^(2)),PSODRUG("OIN")=$P(^PS(50.7,+$G(^(2)),0),"^")
+ .S PSODRUG("NDF")=$S($G(^PSDRUG(DGCKDNM,"ND"))]"":+^("ND")_"A"_$P(^("ND"),"^",3),1:0)
+ .S PSODFN=DFN D ^PSODGAL1
+ .K X,Y,DTOUT,DUOUT
+ K DGCKSTA,DGCKDNM,PSODGCKF,X,Y,DTOUT,DUOUT
+ Q
+ ;
+TITRX(RX) ; Returns the titration/maintenance flags
+ ;
+ I '$G(RX) Q ""
+ I '$D(^PSRX(RX,0)) Q ""
+ I $$GET1^DIQ(52,RX,45.1,"I") Q "m"
+ I $$GET1^DIQ(52,RX,45.2,"I")!$$GET1^DIQ(52,RX,45.3,"I") Q "t"
+ Q ""
+ ;
+LTHEN(RX) ; Looks for a THEN anywhere in the Complex Order.
+ ; Returns: 1 if found and 0 if not found.  Complex Order must contain at least one THEN conjunction
+ ; in order to mark it as a Titration Rx.
+ N PSOCOUNT,PSOTHEN,FNDTHEN
+ S (PSOCOUNT,PSOTHEN,FNDTHEN)=""
+ F  S PSOCOUNT=$O(^PSRX(RX,6,PSOCOUNT)) Q:PSOCOUNT=""!(FNDTHEN'="")  D
+ . S PSOTHEN=$P($G(^PSRX(RX,6,PSOCOUNT,0)),"^",6)
+ . I PSOTHEN="T" S FNDTHEN=1 Q
+ I $G(FNDTHEN)="" Q 0
+ Q 1

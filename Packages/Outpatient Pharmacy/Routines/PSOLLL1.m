@@ -1,12 +1,12 @@
 PSOLLL1 ;BIR/BHW - LASER LABELS ;10/24/2002
- ;;7.0;OUTPATIENT PHARMACY;**120,141,135,162,161,233,200,264,326,338**;DEC 1997;Build 7
+ ;;7.0;OUTPATIENT PHARMACY;**120,141,135,162,161,233,200,264,326,338,367,383**;DEC 1997;Build 2
  ;
  ;Reference to ^PSDRUG supported by DBIA 221
  ;Reference ^VA(200,D0,"PS" supported by DBIA 224
  ;External reference to ^PS(55 supported by DBIA 2228
  ;
 ST I $P($G(^PSRX(RX,3)),"^",3) S PSOPROV=+$P(^(0),"^",4),PSOPROV=$S($G(RXP):+$P($G(RXP),"^",17),$G(RXF):+$P($G(^PSRX(RX,1,RXF,0)),"^",17),1:PSOPROV) S:'$G(PSOPROV) PSOPROV=+$P(^PSRX(RX,0),"^",4) D
- . I +$P($G(^VA(200,PSOPROV,"PS")),"^",7) S:'$P($G(PHYS),"/",2) PHYS=$G(PHYS)_"/"_+$P($G(^PSRX(RX,3)),"^",3)
+ . I +$P($G(^VA(200,PSOPROV,"PS")),"^",7) S:'$P($G(PHYS),"/",2) PHYS=$G(PHYS)_"/"_$P($G(^VA(200,+$P($G(^PSRX(RX,3)),"^",3),0)),"^")
  S $P(ULN,"_",34)="",PSOTRAIL=1
  S (Y,X1)=EXPDT X ^DD("DD") S EXPDT=Y,Y=$P(^PSRX(RX,0),"^",13) X ^DD("DD") S ISD=Y,X2=DT D ^%DTC S DIFF=X
  S Y=DATE X ^DD("DD") S DATE=Y
@@ -14,20 +14,40 @@ ST I $P($G(^PSRX(RX,3)),"^",3) S PSOPROV=+$P(^(0),"^",4),PSOPROV=$S($G(RXP):+$P(
  S PSZIP=$P(PS,"^",5),PSOHZIP=$S(PSZIP["-":PSZIP,1:$E(PSZIP,1,5)_$S($E(PSZIP,6,9)]"":"-"_$E(PSZIP,6,9),1:""))
 L1 I $G(PSOIO("BLH"))]"" X PSOIO("BLH")
  I 'SIGF,'SIGM,'PMIM K PSOSTLK,ZTKDRUG I $L($T(PSOSTALK^PSOTALK1)) D PSOSTALK^PSOTALK1 D  S PSOSTLK=1 ; PRINT ONE SCRIPTALK LABEL IF APPLICABLE
- .D 6^VADPT,PID^VADPT6 S SSNPN=""
- ;DSS/SGM - BEGIN MODS - Conditionally remove VAMC, orig code in E  D
+ .D 6^VADPT,PID^VADPT6 S SSNPN=$G(VA("BID"))
+ ;DSS/SGN/BG - BEGIN MODS-line reformatted and conditionally remove VAMC
+ N PSOYPTADDRORIG S PSOYPTADDRORIG=PSOY ; Remember Y position
  I $G(VFDPSOLB) D VAMC^VFDPSOLB("LLL1") I 1
  E  D
  . S T="VAMC "_$P(PS,"^",7)_", "_STATE_" "_$G(PSOHZIP) S:SIGF!($G(FILLCONT)) T=" " D PRINT(T)
  . S T=$P(PS2,"^",2)_"  "_TECH_"  Ph: "_$P(PS,"^",3)_"-"_$P(PS,"^",4) S:SIGF!($G(FILLCONT)) T=" " D PRINT(T)
- ;DSS/SGM - END MODS
+ ; Print Patient Address
+ I $G(VFDPSOLB),$$GET^XPAR("SYS","VFD PRINT PT ADDR ON OP LABEL") D
+ . D PTADDR^VFDPSOLB(PSOYPTADDRORIG)
+ ;DSS/SMH/BG - END MODS
  S PSDU=$P($G(^PSDRUG($P($G(^PSRX(RX,0)),"^",6),660)),"^",8)
  I $G(PSOIO("BLB"))]"" X PSOIO("BLB")
  S XFONT=$E(PSOFONT,2,99)
- S T="Rx# "_RXN_"  " S:SIGF!($G(FILLCONT)) T=" " D PRINT(T,1)
+ ;
+ ;DSS/SMH - BEGIN MODS - Unbold Rx# for OMH. Orig in Else.
+ I $G(VFDPSOLB),$$OMH^VFDPSOLB() S T="Rx# "_RXN_"  " S:SIGF!($G(FILLCONT)) T=" " D PRINT(T,0) I 1
+ E  S T="Rx# "_RXN_"  " S:SIGF!($G(FILLCONT)) T=" " D PRINT(T,1)
+ ;DSS/SMH - END MODS
+ ;
  D STRT^PSOLLU1("RX#",T,.L) S PSOY=PSOY-PSOYI,OPSOX=PSOX,PSOX=L(XFONT)*300+PSOX
  S DR=$G(SIGF("DR"))
- S T="  "_DATE_"  "_$S('SIGF:"Fill "_(RXF+1)_" of "_(1+$P(RXY,"^",9)),1:"(label continued)") S:SIGF!($G(FILLCONT)) T=" " D PRINT(T)
+ ;
+ ; DSS/SMH - BEGIN MODS - Remove Fill n of nth line
+ ; But only if we are printing the patient's address.
+ ; Orig in Else to Else+2
+ ; Note that SIGF's presence will null out the text
+ ; regardless of the $SELECT statement
+ I $G(VFDPSOLB),$$GET^XPAR("SYS","VFD PRINT PT ADDR ON OP LABEL") S T="  "_DATE_"  "
+ E  S T="  "_DATE_"  "_$S('SIGF:"Fill "_(RXF+1)_" of "_(1+$P(RXY,"^",9)),1:"(label continued)")
+ S:SIGF!($G(FILLCONT)) T=" "
+ D PRINT(T)
+ ; DSS/SMH - END MODS
+ ;
  S PSOX=OPSOX,T=PNM S:SIGF!($G(FILLCONT)) T=" " I T'=" " D PRINT(T,1)
  I DR>1 S PSOX=OPSOX,T="Rx# "_RXN_"  (label continued)" D PRINT(T)
  D STRT^PSOLLU1("SIG",T,.L)
@@ -38,7 +58,15 @@ L1 I $G(PSOIO("BLH"))]"" X PSOIO("BLH")
  S DR=SIGF("DR")
  I DR>1,'$D(NSGY(DR,4)) D
  .F I=4:-1:1 Q:$D(NSGY(DR,I))  S T=" " D PRINT(T) ; BOTTOM-JUSTIFY CONTINUED BOTTLE SIG JUST ABOVE 'DISCARD' LINE
- F I=1:1 Q:'$D(NSGY(DR,I))  S TEXT=NSGY(DR,I) D PRINT(TEXT)
+ ;
+ ; DSS/SMH - Local mod - For OMH, bold the directions
+ ; Orig in Else
+ I $G(VFDPSOLB),$$OMH^VFDPSOLB() D
+ . F I=1:1 Q:'$D(NSGY(DR,I))  S TEXT=NSGY(DR,I) D PRINT(TEXT,1)
+ E  D
+ . F I=1:1 Q:'$D(NSGY(DR,I))  S TEXT=NSGY(DR,I) D PRINT(TEXT)
+ ; DSS/SMH - End mod
+ ;
  I I>4,$D(NSGY(DR,5)) S SIGF=1,SIGF("DR")=DR+1
  I $G(PSOIO("BLF"))]"" X PSOIO("BLF")
  S PSOY=PSODY-PSOYI,PSOFONT=PSODFONT
@@ -47,29 +75,79 @@ L1 I $G(PSOIO("BLH"))]"" X PSOIO("BLH")
  K NSGY,^TMP($J,"PSOSIG",RX)
  D NOW^%DTC S X1=X,X2=365 D C^%DTC S Y=X X ^DD("DD")
  S DEA=$P($G(^PSDRUG($P(RXY,"^",6),0)),"^",3),T=""
- I DEA'["S" S T="Discard after "_$S(DEA[0!(DEA["M"):"_________",1:Y)_"__________   "
- S T=T_"Mfr_________" D PRINT(T)
+ ;DSS/SMH - BEING MODS - Discard after line. Orig in Else. Requested by UBHC.
+ I $G(VFDPSOLB),$$GET^XPAR("ALL","VFD PSO LL DISCARD BY TEXT")]"" D
+ . N VFDDISCARDTXT S VFDDISCARDTEXT=$$GET^XPAR("ALL","VFD PSO LL DISCARD BY TEXT")
+ . I DEA'["S" S T=VFDDISCARDTEXT_" "_$S(DEA[0!(DEA["M"):"_________",1:Y)_"__________   "
+ E  D
+ . I DEA'["S" S T="Discard after "_$S(DEA[0!(DEA["M"):"_________",1:Y)_"__________   "
+ ;DSS/SMH - END MODS
+ ;DSS/SMH/BG/SMP - BEGIN MODS - Remove Manufacturer
+ I $G(VFDPSOLB),$$GET^XPAR("ALL","VFD PSO NDC CAPTURE") D PRINT(T) I 1
+ E  S T=T_"Mfr_________" D PRINT(T)
+ ;DSS/SMH/BG/SMP - END MODS
  S PSOY=PSOY-5
  D  S PSOFONT="F8"  D PRINT(T)
  . S NOR=$P(RXY,"^",9)-RXF
  . I $P(RXY,"^",9)=0 S T="NO REFILL" Q
  . I NOR=0 S T="NO REFILLS LEFT" Q
  . S T="May refill "_NOR_"X by "_EXPDT
+ ;DSS/SMH/BG/SMP - BEGIN MODS - Add Manuf and NDC
+ I $G(VFDPSOLB),$$GET^XPAR("ALL","VFD PSO NDC CAPTURE") D  I 1
+ . S PSOY=PSOY-15
+ . S PSOFONT="F6B"
+ . S:$D(RXP)&'$G(RXPI) RXPI=$$GETRXPI^VFDPSOLB(RX,RXP) ; Get Partial IEN
+ . I $G(RXPI) D  ; if partial, get NDC from partial
+ .. N NDC S NDC=$$GETNDC^VFDPSOLB(RX,RXPI)
+ .. S T=$$MANUF1^VFDPSOLB(NDC)_" | NDC: "_NDC
+ . E  D  ; else just call the unadulterated VISTA API: Only does main and refills
+ .. S T="Mfr: "_$$MANUF^VFDPSOLB(RX)_" | NDC: "_$$GETNDC^PSONDCUT(RX)
+ . D PRINT(T)
+ ;DSS/SMH/bg - END MODS
  S PPHYS=$G(PHYS)
  S XFONT=$E(PSOQFONT,2,99)
  S TEXT="Qty: " D STRT^PSOLLU1("SIG",TEXT,.L) S Q(1)=L(XFONT)
  S TEXT=" "_PSDU D STRT^PSOLLU1("SIG",TEXT,.L) S Q(2)=L(XFONT)
  S TEXT="       "_$G(PHYS) D STRT^PSOLLU1("SIG",TEXT,.L) S Q(3)=L(XFONT)
  S TEXT=$G(QTY) D STRT^PSOLLU1("SIG",TEXT,.L) S LENGTH=Q(1)+Q(2)+Q(3)+L(XFONT+2),Q(4)=L(XFONT+2)
- I LENGTH>3 F I=$L(PHYS)-1:-1:1 S PPHYS=$E(PHYS,1,I),TEXT="       "_PPHYS D STRT^PSOLLU1("SIG",TEXT,.L) I Q(1)+Q(2)+Q(4)+L(XFONT)<3.3 Q 
- S PSOFONT=PSOTFONT,OPSOX=PSOX,PSOX=PSOX+(Q(1)*300),PSOY=PSOQY-PSOYI,T=$G(QTY) D PRINT(T)
+ I LENGTH>3 F I=$L(PHYS)-1:-1:1 S PPHYS=$E(PHYS,1,I),TEXT="       "_PPHYS D STRT^PSOLLU1("SIG",TEXT,.L) I Q(1)+Q(2)+Q(4)+L(XFONT)<3.3 Q
+ ;
+ ; DSS/SMH - Begin mods. Move line down to mk room for Mfr/NDC
+ ; Orig in Else
+ I $G(VFDPSOLB) S PSOFONT=PSOTFONT,OPSOX=PSOX,PSOX=PSOX+(Q(1)*300),PSOY=PSOQY-PSOYI+8,T=$G(QTY) D PRINT(T) I 1
+ E  S PSOFONT=PSOTFONT,OPSOX=PSOX,PSOX=PSOX+(Q(1)*300),PSOY=PSOQY-PSOYI,T=$G(QTY) D PRINT(T)
+ ; DSS/SMH - End mods
+ ;
  S PSOX=OPSOX,PSOFONT=PSOQFONT,PSOY=PSOY-PSOYI,T="Qty: " D PRINT(T)
  S PSOX=PSOX+(Q(1)+Q(4)*300),PSOY=PSOY-PSOYI,T=" "_$G(PSDU)_"       "_$G(PPHYS) D PRINT(T)
  S PSOFONT=PSOTFONT,PSOX=OPSOX,PSOY=PSOTY-PSOYI,T=DRUG D STRT^PSOLLU1("SIG",T,.L)
  I L($E(PSOFONT,2,99))>3 S PSOFONT=$S(PSOFONT="F12":"F10",PSOFONT="F10":"F9",PSOFONT="F9":F8,PSOFONT="F8":"F6")
  S ZTKDRUG="XXXXXX   SCRIPTALK RX   XXXXXX"
  I $G(PSOSTLK) S T=$S($G(PSOSTALK):ZTKDRUG,1:DRUG)
+ ; DSS/SMH - BEGIN MODS - Get brand name if requested.
+ ;         - If found, change the font and position of drug to make room for the
+ ;         - brand name
+ I $G(VFDPSOLB) N VFDBRAND D
+ . N VFDPRINTBRAND S VFDPRINTBRAND=$$GET^XPAR("ALL","VFD PSO LL PRINT BRAND NAME")
+ . I 'VFDPRINTBRAND QUIT
+ . N DRG S DRG=$P($G(^PSRX(RX,0)),"^",6)
+ . I 'DRG QUIT
+ . N I F I=0:0 S I=$O(^PSDRUG(DRG,1,I)) Q:'I  Q:$P($G(^PSDRUG(DRG,1,I,0)),U,3)=0
+ . I I S VFDBRAND=$P(^PSDRUG(DRG,1,I,0),U)
+ . I VFDBRAND="" QUIT
+ . S PSOY=PSOY-(PSOYI*.5)+5,PSOFONT="F6"
+ ; DSS/SMH - END MODS
  D PRINT(T,1)
+ ; DSS/SMH - BEGIN MODS - Print Brand Name if we have one
+ I $G(VFDPSOLB),$G(VFDBRAND)]"" D
+ . S PSOFONT="F6",PSOY=PSOY-17
+ . D PRINT("Generic for: "_VFDBRAND,0)
+ ; DSS/SMH - END MODS
+ ;
+ ; DSS/SMH - Begin mods - Add Federal CS transfer warning
+ I $G(VFDPSOLB) D TRANWARN^VFDPSOLB(RX)
+ ; DSS/SMH - End mods
+ ;
  I SIGM G CONT
  S ^PSRX(RX,"TYPE")=0
 WARN ;PRINT WARNING LABELS
@@ -88,15 +166,15 @@ WARN ;PRINT WARNING LABELS
  I $G(PSOIO("RMI"))]"" X PSOIO("RMI")
  S PSOYI=$G(PSOHYI,40),OFONT=PSOFONT,PSOFONT=$G(PSOHFONT)
  S BLNKLIN="",$P(BLNKLIN," ",40)=" "
- ;DSS/SGM - BEGIN MODS - Conditionally remove VA-specific reference,
+ ;DSS/SGM/BG - BEGIN MODS - Conditionally remove VA-specific reference,
  ;                       original VA code follow ELSE
  I $G(VFDPSOLB) D SVC^VFDPSOLB("LLL1") I 1
  E  S T="Attn: (119)"_BLNKLIN_$$FMTE^XLFDT(DT) D PRINT(T,0)
- ;DSS/SGM - END MODS
+ ;DSS/SGM/BG - END MODS
  S T=$G(VASTREET) D PRINT(T,0)
  S T=$P(PS,"^",7)_", "_$G(STATE)_"  "_$G(PSOHZIP) D PRINT(T,0)
  S PSOY=PSOY+PSOYI,T=$S(PS55=2:"***DO NOT MAIL***",1:"") I T'="" D PRINT(T,0)
- I T'="***DO NOT MAIL***" S T=$S(PS55[0!(PS55[3)!(PS55=""):"REGULAR MAIL",1:"CERTIFIED MAIL") S T=T_"-"_$G(MAILCOM) S:$L(T)>25 PSOFONT="F8" D PRINT(T,0)
+ I T'="***DO NOT MAIL***" S T=$S(PS55[0!(PS55[3)!(PS55=""):"",1:"CERTIFIED MAIL-") S T=T_$G(MAILCOM) S:$L(T)>25 PSOFONT="F8" D PRINT(T,0)
  S PSOFONT=OFONT
  S T=PNM
  S PSOY=PSOY+PSOYI,PSOYI=PSORYI D PRINT(T,0)
@@ -144,9 +222,13 @@ CONT I $G(SIDE) G BARC:'L5,CONT2
  I L5 W @IOF G CONT2
 BARC I $G(BOTTLBL) G BARCE ; ONLY PRINT BARCODE ON 1ST BOTTLE LABEL
  S BOTTLBL=1
- I $G(PSOIO("BLBC"))]"" X PSOIO("BLBC") I $G(NOBARC) G BARCE
- S X2=PSOINST_"-"_RX W X2
- I $G(PSOIO("EBLBC"))]"" X PSOIO("EBLBC")
+ ;DSS/SMH - Begin mods. Orig in Else.
+ I $G(VFDPSOLB) D BC128^VFDPSBAR(PSOINST_"-"_RX,0,40,960,220,3) I 1 ; new line
+ E  D
+ .I $G(PSOIO("BLBC"))]"" X PSOIO("BLBC") I $G(NOBARC) G BARCE ;original
+ .S X2=PSOINST_"-"_RX W X2
+ .I $G(PSOIO("EBLBC"))]"" X PSOIO("EBLBC")
+ ;DSS/SMH - End mods.
 BARCE W @IOF
 COPY I SIGF S SIGM=1 G L1 ; NEED TO FINISH PRINTING CONTINUED BOTTLE LABEL
  S FILLCONT=0 I PFM!PMIM S FILLCONT=1 G L1
@@ -158,6 +240,12 @@ COPY I SIGF S SIGM=1 G L1 ; NEED TO FINISH PRINTING CONTINUED BOTTLE LABEL
  S IR=0 F FDA=0:0 S FDA=$O(^PSRX(RX,"L",FDA)) Q:'FDA  S IR=FDA
  S IR=IR+1,^PSRX(RX,"L",0)="^52.032DA^"_IR_"^"_IR
  S ^PSRX(RX,"L",IR,0)=PSOFNOW_"^"_$S($G(RXP):99-RXPI,1:RXF)_"^"_$S($G(PCOMX)]"":$G(PCOMX),$G(PCOMH(RX))]"":PCOMH(RX),1:"From RX number "_$P(^PSRX(RX,0),"^"))_$S($G(RXP):" (Partial)",1:"")_$S($D(REPRINT):" (Reprint)",1:"")_"^"_PDUZ
+ ;
+ ;Storing FDA Medication Guide filename in the Prescription file
+ I $$MGONFILE^PSOFDAUT(RX) D
+ . I $G(RXRP(RX)),'$G(RXRP(RX,"MG")) Q
+ . S ^PSRX(RX,"L",IR,"FDA")=$P($$MGONFILE^PSOFDAUT(RX),"^",2)
+ ;
  N PSOBADR,PSOTEMP
  S PSOBADR=$$CHKRX^PSOBAI(RX)
  I $G(PSOBADR) S PSOTEMP=$P(PSOBADR,"^",2),PSOBADR=$P(PSOBADR,"^")

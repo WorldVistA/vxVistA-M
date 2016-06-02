@@ -1,5 +1,6 @@
-IBOLK ;ALB/AAS - INTEGRATED BILLING - DISPLAY BY BILL NUMBER ; 6-MAR-91
- ;;2.0; INTEGRATED BILLING ;**199,420**; 21-MAR-94;Build 6
+IBOLK ;ALB/AAS - INTEGRATED BILLING - DISPLAY BY BILL NUMBER ;6-MAR-91
+ ;;2.0; INTEGRATED BILLING ;**199,420,433**;21-MAR-94;Build 36
+ ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
 % ;
  ;***
@@ -7,7 +8,9 @@ IBOLK ;ALB/AAS - INTEGRATED BILLING - DISPLAY BY BILL NUMBER ; 6-MAR-91
  ;S XRTL=$ZU(0),XRTN="IBOLK-1" D T0^%ZOSV ;start rt clock
  N DPTNOFZY S DPTNOFZY=1  ;Suppress PATIENT file fuzzy lookups
  S DIC("A")="Select CHARGE ID or PATIENT NAME: ",DIC="^PRCA(430,",DIC(0)="AEQM" D ^DIC K DIC G END1:+Y<1 S IBIL=$P(Y,"^",2)
- S IBIFN=$O(^DGCR(399,"B",$P(IBIL,"-",2),0))
+ ; user needs to be able to look-up any iteration ie. K600111 or K600111-01
+ ;S IBIFN=$O(^DGCR(399,"B",$P(IBIL,"-",2),0))
+ S IBIFN=$O(^DGCR(399,"B",$P(IBIL,"-",2,3),0))
  I '$D(^IB("ABIL",IBIL)),'IBIFN W !!,"Billing has no Record of this Charge ID.",! G %
  ;
 BRIEF R !,"(B)rief or (F)ull Inquiry: B// ",X:DTIME G:X="^"!('$T) END1 S:X="" X="B" S X=$E(X)
@@ -60,7 +63,8 @@ LINE ;  -find data for one line, write line, accumulate totals
  ;
 HDR S IBND=^IB(IBN,0),DFN=+$P(IBND,"^",2),IBNAME=$$PT^IBEFUNC(DFN)
 HDR1 S IBPAG=IBPAG+1 I $E(IOST,1,2)["C-"!(IBPAG>1) W @IOF,*13
- W $E($P(IBNAME,"^"),1,20),"   ",$P(IBNAME,"^",2),?38,IBIL,?51,IBHDT,?72,"PAGE: ",IBPAG
+ ;W $E($P(IBNAME,"^"),1,20),"   ",$P(IBNAME,"^",2),?38,IBIL,?51,IBHDT,?72,"PAGE: ",IBPAG
+ W $E($P(IBNAME,"^"),1,20),"  ",$P(IBNAME,"^",2),?36,IBIL,?51,IBHDT,?72,"PAGE: ",IBPAG
  D DISP^IBARXEU(DFN,DT,2) W !
  W:'IBFULL !,"DATE",?15,"CHARGE TYPE",?37,"BRIEF DESCRIPTION",?62,"UNITS",?73,"CHARGE"
  S IBLINE="",$P(IBLINE,"=",IOM)="" W !,IBLINE K IBLINE

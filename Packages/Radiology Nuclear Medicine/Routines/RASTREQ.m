@@ -1,9 +1,10 @@
-RASTREQ ;HISC/CAH,GJC AISC/MJK-Status Requirements Check Routine ;6/3/98  09:56
- ;;5.0;Radiology/Nuclear Medicine;**1,10,23,40,56**;Mar 16, 1998;Build 3
+RASTREQ ;HISC/CAH,GJC AISC/MJK-Status Requirements Check Routine ;06/05/09  10:08
+ ;;5.0;Radiology/Nuclear Medicine;**1,10,23,40,56,99,90**;Mar 16, 1998;Build 20
  ;Supported IA #10104 UP^XLFSTR
  ;Supported IA #1367 LKUP^XPDKEY
  ;Supported IA #10060 ^VA(200
  ;Supported IA #10076 ^XUSEC(
+ ;Supported IA #2056 GET1^DIQ and GETS^DIQ
  ; Called by 
  ; (1) Stat Track's [RA STATUS CHANGE]'s fld EXAM STATUS' input transform
  ; (2) ASK+22^RASTED, if user "^" out of stat trk editing
@@ -23,6 +24,7 @@ RASTREQ ;HISC/CAH,GJC AISC/MJK-Status Requirements Check Routine ;6/3/98  09:56
  ; If tracking ^-out, this rtn would be called outside of edt tmpl,
  ; and thus the DA vars would not be defined, so we need to set them here
  ;
+ N RASAVY M RASAVY=Y  ;save the value of Y, patch #90
  S:'$D(DA)#2 DA=RACNI S:'$D(DA(1))#2 DA(1)=RADTI S:'$D(DA(2))#2 DA(2)=RADFN
  ; If Fileman enter/edit, we need to define RADFN, RADTI, RACNI so the
  ; nuc med checks won't bomb
@@ -31,14 +33,14 @@ RASTREQ ;HISC/CAH,GJC AISC/MJK-Status Requirements Check Routine ;6/3/98  09:56
  S RAIMGTYI=+$P($G(^RADPT(DA(2),"DT",DA(1),0)),U,2),RAIMGTYJ=$P($G(^RA(79.2,+RAIMGTYI,0)),U,1),RASAVTYJ=RAIMGTYJ
  S RAMES1="W:$G(K)=$P($G(^RA(72,+$G(RANXT72),0)),U,3)&('$D(ZTQUEUED)#2) !?3,""No '"",RAZ,""'"",?35,"" entered for this exam.""" ; display if at the ranext exm stat level
  S RAXX=+$G(X)
- I '$D(^RA(72,RAXX,0))!(RAIMGTYJ']"") D  Q
+ I '$D(^RA(72,RAXX,0))!(RAIMGTYJ']"") D  M Y=RASAVY Q
  . K X W:'$D(ZTQUEUED)#2 !?3,"Error: cannot determine Imaging Type of exam.  Contact IRM."
  . K RAMES1,RAXX
  . Q
  N RA,RASN,RASTI,RADES,RAOKAY,RA3
  ; RADES = order seq. desired, RAOKAY= actual order seq. okay'd
  S X1=$G(^RA(72,RAXX,0)),RADES=$P(X1,U,3)
- I $$LKUP^XPDKEY(+$P(X1,"^",4))]"",'$D(^XUSEC($$LKUP^XPDKEY(+$P(X1,"^",4)),DUZ)) K X W:'$D(ZTQUEUED)#2 !?3,"You do not have the proper access privileges to ",!?3,"change this exam to this status" Q
+ I $$LKUP^XPDKEY(+$P(X1,"^",4))]"",'$D(^XUSEC($$LKUP^XPDKEY(+$P(X1,"^",4)),DUZ)) K X W:'$D(ZTQUEUED)#2 !?3,"You do not have the proper access privileges to ",!?3,"change this exam to this status" M Y=RASAVY Q
  S RAJ=^RADPT(DA(2),"DT",DA(1),"P",DA,0),RAOR=-1
  S RABEFORE=$P($G(^RA(72,+$P(RAJ,U,3),0)),U,3) ; current order seq
  ; Don't need to set RAORDIFN,RACS,RAPRIT,RAF5
@@ -74,6 +76,7 @@ KOUT1 ; check for higher qualifying status(es)
  W:'$D(ZTQUEUED)#2 !!,"Since Status Tracking can only upgrade one status at a time,",!,"please edit this exam again.",!
 KOUT2 S RAAFTER=RAOKAY ;return as actual seq order used, not nec. highest
  K RAIMGTYI,RAIMGTYJ,RAMES1,RAZ,RAXX,RAJ,RAS,RAK,RAE,X1,RASAVTYJ
+ M Y=RASAVY
  Q
  ;
 1 ;Technologist Check
@@ -152,6 +155,14 @@ HELP1 ; Called from 'HELP' above and 'STUFF^RASTREQ1'
  ; 'RAJ' -> 0 node of the examination
  ; 'E'   -> ien of the examination status
  ; Both 'RAJ' & 'E' set in 'HELP' & 'STUFF^RASTREQ1'
+ ;
+ ;start of p99, exam status UNCHANGED if pregnancy screen is not answered for female pt bet ages 12-55
+ N RAPTAGE,RASAVE
+ S RASAVE=X ;save the value of X, since it's being replaced in DIQ call.
+ S RAPTAGE=$$PTAGE^RAUTL8(DA(2),"")
+ I $$PTSEX^RAUTL8(DA(2))="F",((RAPTAGE>11)&(RAPTAGE<56)),$$GET1^DIQ(70.03,DA_","_DA(1)_","_DA(2),32)="" S E=$P(RAJ,U,3),(N,X)="" S:$G(E) (N,X)=$P($G(^RA(72,E,0)),U) Q
+ S X=RASAVE
+ ;end p99
  N RADIO,RADIOUZD,RAS5 S RADIO=$S($G(^RA(72,E,.5))]"":$G(^(.5)),1:"N")
  S:$P($G(^RA(79.2,+RAIMGTYI,0)),"^",5)="Y" RADIOUZD=""
  ;

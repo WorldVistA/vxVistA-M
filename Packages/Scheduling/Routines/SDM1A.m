@@ -1,15 +1,15 @@
-SDM1A ;SF/GFT,ALB/TMP - MAKE APPOINTMENT ; 8/18/05 12:57pm  ; Compiled April 17, 2007 15:12:14
- ;;5.3;Scheduling;**26,94,155,206,168,223,241,263,327,478,446**;Aug 13, 1993;Build 77
+SDM1A ;SF/GFT,ALB/TMP - MAKE APPOINTMENT ; 8/18/05 12:57pm  ; 6/22/09 6:16pm
+ ;;5.3;Scheduling;**26,94,155,206,168,223,241,263,327,478,446,544**;Aug 13, 1993;Build 11
 OK I $D(SDMLT) D ^SDM4 Q:X="^"!(SDMADE=2)
  S ^SC(SC,"ST",$P(SD,"."),1)=S,^DPT(DFN,"S",SD,0)=SC,^SC(SC,"S",SD,0)=SD S:'$D(^DPT(DFN,"S",0)) ^(0)="^2.98P^^" S:'$D(^SC(SC,"S",0)) ^(0)="^44.001DA^^" L
-S1 L ^SC(SC,"S",SD,1):5 G:'$T S1 F SDY=1:1 I '$D(^SC(SC,"S",SD,1,SDY)) S:'$D(^(0)) ^(0)="^44.003PA^^" S ^(SDY,0)=DFN_U_(+SL) L  Q
+S1 L +^SC(SC,"S",SD,1):$G(DILOCKTM,5) W:'$T "Another user is editing this record.  Trying again.",! G:'$T S1 F SDY=1:1 I '$D(^SC(SC,"S",SD,1,SDY)) S:'$D(^(0)) ^(0)="^44.003PA^^" S ^(SDY,0)=DFN_U_(+SL)_"^^^^"_$G(DUZ)_U_DT L -^SC(SC,"S",SD,1) Q
  I SM S ^("OB")="O" ;NAKED REFERENCE - ^SC(IFN,"S",Date,1,SDY,"OB")
  I $D(^SC(SC,"RAD")),^("RAD")="Y"!(^("RAD")=1) S ^SC("ARAD",SC,SD,DFN)=""
  S SDINP=$$INP^SDAM2(DFN,SD)
  ;-- added sub-category
  S COV=3,SDYC="",COV=$S(COLLAT=1:1,1:3),SDYC=$S(COLLAT=7:1,1:"")
  S:SD<DT SDSRTY="W"
- S ^DPT(DFN,"S",SD,0)=SC_"^"_$$STATUS(SC,SDINP,SD)_"^^^^^"_COV_"^^^^"_SDYC_"^^^^^"_SDAPTYP_U_$G(SD17)_"^^"_DT_"^^^^^"_$G(SDXSCAT)_U_$P($G(SDSRTY),U,2)_U_$$NAVA^SDMANA(SC,SD,$P($G(SDSRTY),U,2))
+ S ^DPT(DFN,"S",SD,0)=SC_"^"_$$STATUS(SC,SDINP,SD)_"^^^^^"_COV_"^^^^"_SDYC_"^^^^^"_SDAPTYP_U_$G(SD17)_"^"_$G(DUZ)_U_DT_"^^^^^"_$G(SDXSCAT)_U_$P($G(SDSRTY),U,2)_U_$$NAVA^SDMANA(SC,SD,$P($G(SDSRTY),U,2)) ;544 added DUZ
  S ^DPT(DFN,"S",SD,1)=$G(SDDATE)_U_$G(SDSRFU)
  I $D(SDMULT) S SDCLNCND=^SC(SC,0),STPCOD=$P(SDCLNCND,U,7),TMPYCLNC=SC_U_$P(SDCLNCND,U) D A^SDCNSLT ;SD/478 MULTI CLINIC OPTION SELECTED
  ;xref DATE APPT. MADE field
@@ -90,7 +90,8 @@ OTHER R !,"  OTHER INFO: ",D:DTIME I D["^" W !,*7,"'^' not allowed - hit return 
  S TMPD=D I $L(D)>150 D MSG^SDMM G OTHER ;SD/478
  I D]"",D?."?"!(D'?.ANP) W "  ENTER LAB, SCAN, ETC." G OTHER
  I $L($G(^SC(SC,"S",SD,1,SDY,0)))+$L(D)+$L(DT)+$S($D(DUZ):$L(DUZ),1:0)>250 D MSG^SDMM G OTHER  ; sd/446
- S $P(^(0),"^",4)=D,$P(^(0),U,6,7)=$S($D(DUZ):DUZ,1:"")_U_DT ;NAKED REFERENCE - ^SC(IFN,"S",Date,1,SDY,0)
+ ;S $P(^(0),"^",4)=D,$P(^(0),U,6,7)=$S($D(DUZ):DUZ,1:"")_U_DT ;NAKED REFERENCE - ^SC(IFN,"S",Date,1,SDY,0)
+ S $P(^(0),"^",4)=D ;NAKED REFERENCE - ^SC(IFN,"S",Date,1,SDY,0) 544 moved DUZ&DT to tag S1.  
  D:$D(TMP) LINK^SDCNSLT(SC,SDY,SD,CNSLTLNK) ;SD/478
  D:$D(TMP) EDITCS^SDCNSLT(SD,TMPD,TMPYCLNC,CNSLTLNK) ;SD/478
  K TMP  ;SD/478

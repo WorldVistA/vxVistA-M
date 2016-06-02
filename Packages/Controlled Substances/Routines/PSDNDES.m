@@ -1,7 +1,10 @@
 PSDNDES ;BIR/JPW-Dispense from Pharmacy w/o Green Sheet ; 8 Aug 94
- ;;3.0; CONTROLLED SUBSTANCES ;;13 Feb 97
+ ;;3.0; CONTROLLED SUBSTANCES ;**69**;13 Feb 97;Build 13
+ ;References to ^PSD(58.8, supported by DBIA2711
+ ;References to ^PSDRUG( supported by DBIA #221
+ ;
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- I '$D(^XUSEC("PSJ RPHARM",DUZ)) W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to",!,?12,"dispense narcotic supplies.  PSJ RPHARM security key required.",! Q
+ I '$D(^XUSEC("PSJ RPHARM",DUZ)),'$D(^XUSEC("PSD TECH ADV",DUZ)) W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to",!,?12,"dispense narcotic supplies.  PSJ RPHARM or PSD TECH ADV",!?12,"security key required.",! Q
  S PSDUZ=DUZ,PSDUZN=$P($G(^VA(200,PSDUZ,0)),"^")
 TEST ;to be reworked for narcotic disp equipment
  W !!,"For now this option is the same as dispense w/o green sheet.",!!

@@ -1,5 +1,5 @@
 PSOHCSUM ;BHAM ISC/SAB - gather data for outpatient rx health care summary ;03/01/96 8:29
- ;;7.0;OUTPATIENT PHARMACY;**4,35,48,54,46,103,132,214,200**;DEC 1997;Build 153
+ ;;7.0;OUTPATIENT PHARMACY;**4,35,48,54,46,103,132,214,200**;DEC 1997;Build 164
  ;External reference to File ^PS(55 supported by DBIA 2228
  ;External reference to File ^PSDRUG supported by DBIA 221
  ;External reference to File ^PS(50.7 supported by DBIA 2223

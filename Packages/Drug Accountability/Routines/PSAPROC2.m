@@ -1,5 +1,5 @@
 PSAPROC2 ;BIR/JMB-Process Uploaded Prime Vendor Invoice Data - CONT'D ;7/23/97
- ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**34,50**; 10/24/97
+ ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**34,50,70**; 10/24/97;Build 12
  ;This routine allows the user to edit invoices with errors or missing
  ;data.
  ;
@@ -16,6 +16,8 @@ INV D HDR W !,"  More data is needed on the following invoices. Choose the invoi
  S DIR(0)="LO^1:"_PSACNT,DIR("A")="Select invoices to edit",DIR("?",1)="Enter the number to the left of the invoice",DIR("?")="data to be processed or a range of numbers." W !
  S DIR("??")="^D SELHELP^PSAPROC2" D ^DIR K DIR I $G(DIRUT) S PSAOUT=1 Q
  S PSASEL=Y
+ D PLOCK^PSAPROC8(2)  ;; < PSA*3*70 RJS
+ I '$G(PSASEL) G EXIT^PSAPROC
  ;
 PROC W ! S DIR("A",1)="Do you want to select the line items to be edited (S) or",DIR("A")="have them automatically (A) displayed for you?",DIR("B")="A",DIR(0)="SB^S:Select;A:Automatically displayed"
  S DIR("?",1)="Enter ""S"" to allow you to select the line items to be edited.",DIR("?",2)="Enter ""A"" to automatically receive prompts for the line items",DIR("?")="that need editing."

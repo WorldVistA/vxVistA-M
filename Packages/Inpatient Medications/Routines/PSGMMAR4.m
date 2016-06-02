@@ -1,5 +1,5 @@
 PSGMMAR4 ;BIR/CML3-MD MARS - PRINT O/P ORDERS ;05 Oct 98 / 10:25 AM
- ;;5.0; INPATIENT MEDICATIONS ;**8,12,20,111**;16 DEC 97
+ ;;5.0; INPATIENT MEDICATIONS ;**8,12,20,111**;16 DEC 97;Build 7
  ;
 PSGMARB ;***Print blank MAR for PRN orders.
  NEW L1 S L1="      |           |"
@@ -50,6 +50,9 @@ ENB ;
  W !,LN1
  W !,"|",?13,"SIGNATURE/TITLE",?40,"| INIT |          INJECTION SITES           |",?97,"SIGNATURE/TITLE",?124,"| INIT |"
  F Q=1:1:10 W !,"|"_$E(LN1,1,39)_"|------|"_BLN(Q),?84,"|"_$E(LN1,1,39)_"|------|"
- W !,LN1,!?3,PPN,?45,PSSN,?58,"Room-Bed: "_$S(PWDN'["C!":PRB,1:""),?100,$S($D(PSGMPG):PSGMPGN,1:""),?116,"VA FORM 10-5568d",*13
+ ;DSS/RAC - BEGIN MOD - Deveteranization - Original line in else statement
+ I ^%ZOSF("ZVX")["VX" W !,LN1,!?3,PPN,?45,PSSN,?58,"Room-Bed: "_$S(PWDN'["C!":PRB,1:""),?100,$S($D(PSGMPG):PSGMPGN,1:""),$C(13)
+ E  W !,LN1,!?3,PPN,?45,PSSN,?58,"Room-Bed: "_$S(PWDN'["C!":PRB,1:""),?100,$S($D(PSGMPG):PSGMPGN,1:""),?116,"VA FORM 10-5568d",*13
+ ;DSS/RAC - END MOD
  S PSGMAROC=0,(PSGMAPA(1),PSGMAPB(1),PSGMAPC(1),PSGMAPD(1))="      |       |" F Q=2:1:6 S (PSGMAPA(Q),PSGMAPB(Q),PSGMAPC(Q),PSGMAPD(Q))=""
  Q

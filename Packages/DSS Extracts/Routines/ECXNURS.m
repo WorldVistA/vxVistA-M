@@ -1,5 +1,5 @@
-ECXNURS ;ALB/JAP,BIR/DMA,PTD-Nursing Extract for DSS ;4/19/2007
- ;;3.0;DSS EXTRACTS;**8,14,22,24,33,39,46,71,107**;Dec 22, 1997;Build 9
+ECXNURS ;ALB/JAP,BIR/DMA,PTD-Nursing Extract for DSS ;9/13/10  13:59
+ ;;3.0;DSS EXTRACTS;**8,14,22,24,33,39,46,71,107,127**;Dec 22, 1997;Build 36
 BEG ;entry point from option
  D SETUP I ECFILE="" Q
  D ^ECXTRAC,^ECXKILL
@@ -142,6 +142,8 @@ FILE ;file extract records
  ..;- Observation patient indicator (YES/NO)
  ..S ECXOBS=$$OBSPAT^ECXUTL4(ECXA,ECTS)
  ..;
+ ..; ******* - PATCH 127, ADD PATCAT CODE ********
+ ..S ECXPATCAT=$$PATCAT^ECXUTL(ECXDFN)
  ..;- Don't file record if outpatient and NOT an observation patient
  ..Q:ECXA="O"&(ECXOBS="NO")
  ..;
@@ -161,6 +163,7 @@ FILE ;file extract records
  ..S ECODE1=ECXMPI_U_ECXDSSD_U_ECXDOM_U_ECXOBS_U_ECXENC_U
  ..S ECODE1=ECODE1_ECINST_U
  ..I ECXLOGIC>2004 S ECODE1=ECODE1_ECXDSSP
+ ..I ECXLOGIC>2010 S ECODE1=ECODE1_U_ECXPATCAT ;127 ADDED PATCAT
  ..S ^ECX(ECFILE,EC7,0)=ECODE,^ECX(ECFILE,EC7,1)=ECODE1,ECRN=ECRN+1
  ..S DA=EC7,DIK="^ECX("_ECFILE_"," D IX1^DIK K DIK,DA
  ..I $D(ZTQUEUED),$$S^%ZTLOAD S QFLG=1

@@ -1,5 +1,5 @@
 MAGQE5 ;WOIFO/RMP - Support for MAG Enterprise ; 08/29/2006 09:48
- ;;3.0;IMAGING;**27,29,8,30,20,46**;16-February-2007;;Build 1023
+ ;;3.0;IMAGING;**27,29,8,30,20,46,39**;Mar 19, 2002;Build 2010;Mar 08, 2011
  ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -15,6 +15,7 @@ MAGQE5 ;WOIFO/RMP - Support for MAG Enterprise ; 08/29/2006 09:48
  ;; | to be a violation of US Federal Statutes.                     |
  ;; +---------------------------------------------------------------+
  ;;
+ Q
 ISU2 ;
  ; Workstation Session and Patient counts
  N CCNT,D0,DATE,ICNT,M1,M2,PCNT,RES,SCNAD,SCNMN,SCNT,TD,TD1,UNSCN,VD,VI,X1,X2,YR,AI,DUP,IQ,TIOP,TGPP,TIEDP
@@ -93,10 +94,11 @@ ISU2 ;
  D GPACHX^MAGQE3()
  D GS1^MAGQE5() ;Get Share data
  D AI1^MAGQE5() ;Get Associated Institutions
+ D GATH^MAGQE6(START,STOP,INST)    ;Gather remote va/dod views
  Q
  ;
 AHOPT ;
- N %DT,START,STOP
+ N %DT,START,STOP,X,Y
  S STOP=$$FMADD^XLFDT($$NOW^XLFDT()\100_"01",-1)
  S START=STOP\100_"01"
  S Y=START D DD^%DT S %DT("B")=Y
@@ -173,12 +175,12 @@ MAGDUZ2() Q $G(DUZ(2),$$KSP^XUPARAM("INST"))
  ;
 GS1() ; Get local Network location share data
  N I,L,M,MSG,RESULT,TAR
- S RESULT(0)="NETWORK LOCATION^PHYSICAL REFERENCE^TOTAL SPACE^SPACE USED^FREE SPACE^OPERATIONAL STATUS^STORAGE TYPE^HASH"
- D LIST^DIC(2005.2,"","@;.01;1;2;3;4;5;6;7","","","","","","I $P(^(0),U,10)=PLACE","","TAR","MSG")
+ S RESULT(0)="NETWORK LOCATION^PHYSICAL REFERENCE^TOTAL SPACE^FREE SPACE^OPERATIONAL STATUS^READ ONLY^STORAGE TYPE^HASH^ROUTER"
+ D LIST^DIC(2005.2,"","@;.01;1;2;4;5;5.5;6;7;26","","","","","","I $P(^(0),U,10)=PLACE","","TAR","MSG")
  Q:$D(MSG("DIERR"))
  S L=0 F  S L=$O(TAR("DILIST","ID",L)) Q:'L  D
  . S RESULT(L)=$P(TAR("DILIST","ID",L,.01),U,1)
- . F M=1,2,3,4,5,6,7 S RESULT(L)=RESULT(L)_U_$P(TAR("DILIST","ID",L,M),U,1)
+ . F M=1,2,4,5,5.5,6,7,26 S RESULT(L)=RESULT(L)_U_$P(TAR("DILIST","ID",L,M),U,1)
  . Q
  S I="" F  S I=$O(RESULT(I)) Q:I=""  D
  . D MSG^MAGQE2("LOCAL NETWORK LOCATIONS: "_I_"^"_RESULT(I))

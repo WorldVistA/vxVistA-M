@@ -1,5 +1,5 @@
 VFDPSOPR ;DSS/SMP;07/11/2013
- ;;2011.1.2;VENDOR - DOCUMENT STORAGE SYS;;02 Oct 2013;Build 4
+ ;;2011.1.3;VENDOR - DOCUMENT STORAGE SYS;**21**;02 Oct 2013;Build 3
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  ;--------------------------------------
@@ -17,7 +17,7 @@ EN ;
  ; p3 := optional - instance
  ; p4 := required - value - see XPAR documentation
  ;
- N X,Y,Z,I,PAR,PARAM,VFDFLAG
+ N X,Y,Z,I,PAR,PARAM,TXT,VFDFLAG
  S PARAM="VFD PSO PROCESSING OPTION"
  S PAR=$$FIND1^DIC(8989.51,,,PARAM,,,"VFDERR")_U_PARAM
  F  D  Q:$G(VFDFLAG)
@@ -29,8 +29,8 @@ EN ;
  ..S Z=$$ASKDEL I Z=-1 S FLAG=1 Q
  ..I Z="D" S DEL=1 D:$$SURE(2) DEL^VFDCXPR(.VFDRET,X_"~1~"_RET) D
  ...I VFDRET=1 W !!,"*** Successfully Deleted ***",!! S VFDFLAG=$$CR
- .F I=1:1:4 D  Q:$G(FLAG)
- ..S $P(INPUT,";",I)=$$ASKOPT($P($T(DATA+I),";;",2,99),$P(RET,";",I))
+ .F I=1:1 S TXT=$P($T(DATA+I),";;",2,99) Q:TXT=""  D  Q:$G(FLAG)
+ ..S $P(INPUT,";",I)=$$ASKOPT(TXT,$P(RET,";",I))
  ..S FLAG=$D(DIRUT)
  .Q:$G(FLAG)
  .I '$$UPDATE(INPUT) D  Q
@@ -56,10 +56,11 @@ ASKOPT(TXT,DEFAULT) ;
  Q Y
  ;
 CURRENT(VALUE) ; Show user the current value of the parameter
- N X,Y,Z,I
+ N X,Y,Z,I,TXT
  I +VALUE=-1 W !!!,"There is no current value for this entity.",!! Q 0
  W !!!,"The current values for this entity are:",!!
- F I=1:1:4 W ?5,$P($T(DATA+I),";;",2)_" Option",?45,$S($P(VALUE,";",I):"YES",1:"NO"),!
+ F I=1:1 S TXT=$P($T(DATA+I),";;",2) Q:TXT=""  D
+ .W ?5,TXT_" Option",?45,$S($P(VALUE,";",I):"YES",1:"NO"),!
  W !!
  Q 1
  ;
@@ -73,10 +74,11 @@ SURE(LINE) ;
  Q Y
  ;
 UPDATE(INPUT) ;
- N I
+ N I,TXT
  W !!,"You are about to update the parameter VFD PSO PROCESSING OPTION with"
  W !,"the following values:",!!
- F I=1:1:4 W ?5,$P($T(DATA+I),";;",2)_" Option",?45,$S($P(INPUT,";",I):"YES",1:"NO"),!
+ F I=1:1 S TXT=$P($T(DATA+I),";;",2) Q:TXT=""  D
+ .W ?5,TXT_" Option",?45,$S($P(INPUT,";",I):"YES",1:"NO"),!
  Q $$SURE(1)
  ;
 CR() ;
@@ -87,6 +89,7 @@ CR() ;
 DATA ;
  ;;In-House
  ;;Print Script
- ;;Clinic
  ;;e-Pharm
+ ;;
  Q
+ ;

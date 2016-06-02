@@ -1,5 +1,5 @@
 PSOLBL2 ;BIR/SAB-LABEL OUTPUT CONT. ;11/18/92 19:15
- ;;7.0;OUTPATIENT PHARMACY;**16,19,30,71,92,117,135,326**;DEC 1997;Build 7
+ ;;7.0;OUTPATIENT PHARMACY;**16,19,30,71,92,117,135,326,367,383**;DEC 1997;Build 18
  ;External reference to ^PS(51 supported by DBIA 2224
  ;External reference to ^PS(54 supported by DBIA 2227
  ;External reference to ^PSDRUG supported by DBIA 221
@@ -37,10 +37,10 @@ REP ;LEFT SIDE ONLY REPRINT FOR NEW LABEL STOCK
  S ZTKDRUG="XXXXXX   SCRIPTALK RX   XXXXXX"
  S Y=DATE X ^DD("DD") S DATE=Y S TECH="("_$S($P($G(^PSRX(+$G(RX),"OR1")),"^",5):$P($G(^PSRX(+$G(RX),"OR1")),"^",5),1:$P(RXY,"^",16))_"/"_$S($G(VRPH)&($P(PSOPAR,"^",32)):VRPH,1:" ")_")"
  S PSZIP=$P(PS,"^",5) S PSOHZIP=$S(PSZIP["-":PSZIP,1:$E(PSZIP,1,5)_$S($E(PSZIP,6,9)]"":"-"_$E(PSZIP,6,9),1:""))
- ;DSS/SGM - BEGIN MODS - remove VAMC, orig line argument of ELSE
- I $G(VFDPSOLB) D VAMC^VFDPSOLB("LBL2") I 1
+ ;DSS/BG-BEGIN MODS-Conditionally remove VAMC, orig line argument of else
+ I $G(VFDPSOLB) D VAMC^VFDPSOLB("LBL2")
  E  W "VAMC ",$P(PS,"^",7),", ",STATE,"  ",$G(PSOHZIP),?102,"(REPRINT)" W:$G(RXP) "(PARTIAL)" W !,$P(PS2,"^",2),"  ",$P(PS,"^",3),"-",$P(PS,"^",4),"   ",TECH
- ;DSS/SGM - END MODS
+ ;DSS/BG-END MODS
  W !,"Rx# ",RXN,"  ",DATE,"  Fill ",RXF+1," of ",1+$P(RXY,"^",9),!,PNM
  F DR=1:1 Q:$G(SGY(DR))=""  D:DR=4!(DR=7)!(DR=10)!(DR=13)  W !,$G(SGY(DR))
  .F GG=1:1:27 W !
@@ -50,10 +50,17 @@ REP ;LEFT SIDE ONLY REPRINT FOR NEW LABEL STOCK
  W ! S PSDU=$P($G(^PSDRUG($P($G(^PSRX(RX,0)),"^",6),660)),"^",8) W $G(PHYS),!,"Qty: "_$G(QTY),"  ",$G(PSDU),$S($G(PSDU)="":"      ",1:" "),$S($G(NURSE):"Mfg______Exp______",1:"")
  I $G(PSOSTLK) W !,$S($G(PSOTALK)&('$G(PSOTREP)):ZTKDRUG,1:DRUG)
  I '$G(PSOSTLK) W !,DRUG
- K PSDU W !!,$P(PS,"^",2),!,$P(PS,"^",7),", ",STATE,"  ",$G(PSOHZIP),!!!!,"FORWARDING SERVICE REQUESTED",!
+ K PSDU W !!,$P(PS,"^",2),!,$P(PS,"^",7),", ",STATE,"  ",$G(PSOHZIP),!!!!,"ADDRESS SERVICE REQUESTED",!
  I "C"[$E(MW) W ?21,"CERTIFIED MAIL",!
  E  W !
  W !,$S($G(PS55)=2:"***DO NOT MAIL***",1:"***CRITICAL MEDICAL SHIPMENT***")
+ ;
+ ; Printing FDA Medication Guide (if there's one)
+ I $$MGONFILE^PSOFDAUT(+$G(RX)) D
+ . W ?83,"Read FDA Med Guide"
+ . I $G(REPRINT),'$D(RXRP(RX,"MG")) Q 
+ . N FDAMG S FDAMG=$$PRINTMG^PSOFDAMG(RX,$P($G(PSOFDAPT),"^",2))
+ ;
  W !!!,PNM,!,$S($D(PSMP(1)):PSMP(1),1:VAPA(1)),!,$S($D(PSMP(2)):PSMP(2),$D(PSMP(1)):"",1:$G(ADDR(2))),!,$S($D(PSMP(3)):PSMP(3),$D(PSMP(1)):"",1:$G(ADDR(3))),!,$S($D(PSMP(4)):PSMP(4),$D(PSMP(1)):"",1:$G(ADDR(4)))
  W @IOF Q
 MUL ;

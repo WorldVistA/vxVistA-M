@@ -1,5 +1,5 @@
 ORQ20 ; SLC/MKB - Detailed Order Report cont ;3/6/08  10:25
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**12,27,92,94,116,141,177,186,190,215,243**;Dec 17, 1997;Build 242
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**12,27,92,94,116,141,177,186,190,215,243**;Dec 17, 1997;Build 10
 ACT ; -- add Activity [from ^ORQ2]
  N ORACT S ORACT=$P(ACTION,U,2)
  I ORACT'="NW",$P(ACTION,U,4)=5,$P(ACTION,U,15)=13 Q  ;skip canc actions
@@ -36,6 +36,9 @@ A2 I $P(ACTION,U,5) S CNT=CNT+1,@ORY@(CNT)=$S($P(ACTION,U,4)=7:"      Dig",1:"  
  ..I USER="" S @ORY@(CNT)="        Released:       "_$$DATE($P(ACTION,U,16))
  .S CNT=CNT+1,@ORY@(CNT)="     Signature:         "_$$SIG($P(ACTION,U,4)) ;186
  ;I '$P(ACTION,U,5),$L($P(ACTION,U,4)) S:$P(ACTION,U,4)=0 CNT=CNT+1,@ORY@(CNT)="     Released by:       "_$$USER(+$P(ACTION,U,7))_" on "_$$DATE($P(ACTION,U,16)) S CNT=CNT+1,@ORY@(CNT)="     Signature:         "_$$SIG($P(ACTION,U,4)) ;186
+ ;DSS/RAC - Begin MODS - show Release by if avaliable.
+ I (^%ZOSF("ZVX")["VX")&$P(ACTION,U,5) S CNT=CNT+1,@ORY@(CNT)="     Released by:       "_$$USER(+$P(ACTION,U,5))_" on "_$$DATE($P(ACTION,U,16)) S CNT=CNT+1,@ORY@(CNT)="     Signature:         "_$$SIG($P(ACTION,U,4)) ;186
+ ;DSS/RAC - END MODS
  I $P(ACTION,U,9) S CNT=CNT+1,@ORY@(CNT)="     Nurse Verified:    "_$S($P(ACTION,U,8):$$USER(+$P(ACTION,U,8))_" on ",1:"")_$$DATE($P(ACTION,U,9))
  I $P(ACTION,U,11) S CNT=CNT+1,@ORY@(CNT)="     Clerk Verified:    "_$S($P(ACTION,U,10):$$USER(+$P(ACTION,U,10))_" on ",1:"")_$$DATE($P(ACTION,U,11))
  I $P(ACTION,U,19) S CNT=CNT+1,@ORY@(CNT)="     Chart Reviewed:    "_$S($P(ACTION,U,18):$$USER(+$P(ACTION,U,18))_" on ",1:"")_$$DATE($P(ACTION,U,19))

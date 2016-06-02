@@ -1,6 +1,6 @@
-MAGGTUP ;WOIFO/GEK - Imaging System User preferences ; [ 06/20/2001 08:57 ]
- ;;3.0;IMAGING;**7,8,48,45,59**;Nov 27, 2007;Build 20
- ;;Per VHA Directive 2004-038, this routine should not be modified.
+MAGGTUP ;WOIFO/GEK/SG/NST/JSL - Imaging System User preferences ; 07 Mar 2011 2:14 PM
+ ;;3.0;IMAGING;**7,8,48,45,59,93,94,117,122**;Mar 19, 2002;Build 92;Aug 02, 2012
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -8,7 +8,6 @@ MAGGTUP ;WOIFO/GEK - Imaging System User preferences ; [ 06/20/2001 08:57 ]
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -118,8 +117,18 @@ DFLTARR(ARR) ; Return an Array of All Default settings
  S ARR($J,"CAPCONFIG")="1^1^1^0^0^0^0^1^0^1^0^0^1^1^0^0^1^1^1^1^1^1^200^400^300^100^500^0^0^1^0^1"
  ;                    1   2   3   4   5  6  7  8 9 0 1  2   3  456 7 8
  S ARR($J,"CAPTIU")="261^414^455^654^66^67^280^1^1^~^1^100^-12^^^1^1^^"
- S ARR($J,"RIVER")="1^0^0^0^"
+ S ARR($J,"RIVER")="1^0^0^0^0"
  S ARR($J,"APPMSG")="0^0^"
- S ARR($J,"APPPREFS")="1^7^7^10"
- S ARR($J,"LISTWIN1")="1^1^^1^1"
+ S ARR($J,"APPPREFS")="1^7^7^10^^0^0^0^1^0"   ; SET $P 9 =1 for Deleted Image Placeholder default
+ S ARR($J,"LISTWIN1")="0^0^^1^0"
+ ;--- MAG*3*93
+ S ARR($J,"IEDIT")="2^445^295^710^433"
+ S ARR($J,"ISTYLE")="0^0^1^1^1^3^1^1^0^1^1^1^,101,460,288,2,2,288,298,259,160,"
+ S ARR($J,"IVERIFY")="2^184^56^1201^871^1^0^1^1^44,139,0,0,0,42,0,0,0,0,0,0,0,0,0,58,0,,"
+ ;
+ ; MAG*3.0*94
+ S ARR($J,"EKG")="2^1^1^600^400^0"
+ ; MAG*3.0*122
+ S ARR($J,"ANNOTCAPTURE")="Arial^0^36^5^32768^159^0^35^35^0^0"
+ S ARR($J,"ANNOTDISPLAY")="Arial^0^36^5^32768^159^0^35^35^0^0^1"
  Q

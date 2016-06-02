@@ -1,5 +1,5 @@
-LA7VIN2 ;DALOI/JMC - Process Incoming UI Msgs, continued ;11/17/11  15:49
- ;;5.2;AUTOMATED LAB INSTRUMENTS;**46,64,74**;Sep 27, 1994;Build 229
+LA7VIN2 ;DALOI/JMC - Process Incoming UI Msgs, continued ; 2/12/14 1:15pm
+ ;;5.2;AUTOMATED LAB INSTRUMENTS;**46,64,74**;Sep 27, 1994;Build 2
  ;
  ;This routine is a continuation of LA7VIN1 and is only called from there.
  Q
@@ -154,6 +154,17 @@ PID ; Process PID segment
  . . I LA7X(1)'?9N.1A Q
  . . I LA7X(3)="M11",LA7X(2)'=$P($$M11^HLFNC(LA7X(1),LA7ECH),$E(LA7ECH),2) Q
  . . S LA7SSN=LA7X(1),DFN=$O(^DPT("SSN",LA7SSN,0))
+ . ;DSS/RAF - BEGIN MOD - added MRN identifier for POC interface processing 11/12/13
+ . ; ARRA II requires the use of MR so check changed from ="MRN to {"MR"  9/26/2014
+ . I LA7ID["MR" D  Q
+ . . F LA7J=1:1:3 S LA7X(LA7J)=$P(LA7PTID3(LA7I),$E(LA7ECH),LA7J)  ;DSS/RAF 10/24/2014 I to LA7I, J to LA7J stop undefined error
+ . . I LA7X(3)="M11",LA7X(2)'=$P($$M11^HLFNC(LA7X(1),LA7ECH),$E(LA7ECH),2) Q
+ . . S LA7SSN=LA7X(1),DFN=$$FIND1^DIC(2,"","X",LA7SSN,"VFD","","")
+ . ;. ; create new parameter to enable this function by site.
+ . ;. I $T(DFNCHK^VFDDFN)]"" D
+ . ;. . I $$DFNCHK^VFDDFN(.VAR)=DFN Q
+ . ;. . E  N LA7MSATM S LA7MSATM="Patient in message does not match Patient File (#2) D CREATE^LA7LOG(48)
+ . ;DSS/RAF - END MOD
  ;
  ; Check PID-2 (alternate patient id) if PID-3 did not yield SSN/ICN
  F LA7I=1:1:$L(LA7PTID2,$E(LA7ECH,2)) D
@@ -225,3 +236,4 @@ PV1 ; Process PV1 segment
  ; Extract ordering location
  S LA7LOC=$P($$P^LA7VHLU(.LA7SEG,4,LA7FS),LA7CS)
  Q
+ ;;2013.1;VENDOR - DOCUMENT STORAGE SYS;**16**;11 DEC 2014

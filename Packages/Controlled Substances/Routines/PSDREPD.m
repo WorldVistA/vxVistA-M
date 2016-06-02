@@ -1,9 +1,15 @@
 PSDREPD ;BIR/BJW-Invoice Review by Date Range ; 12 Feb 98
- ;;3.0; CONTROLLED SUBSTANCES ;**6,8**;13 Feb 97
+ ;;3.0; CONTROLLED SUBSTANCES ;**6,8,69**;13 Feb 97;Build 13
  ;chgs made for drug acct 8 Oct 97
  ;**Y2K compliance**,"P" added to date input string
+ ;References to ^PRC(442 are covered by DBIA#682
+ ;References to ^PSD(58.8, covered by DBIA2711
+ ;References to ^PSD(58.81 are covered by DBIA2808
+ ;References to ^PSDRUG( are covered by DBIA221
+ ;
  I '$D(PSDSITE) W ! D ^PSDSET Q:'$D(PSDSITE)
- I '$D(^XUSEC("PSJ RPHARM",DUZ)) W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to print",!,?12,"the Invoice Review Report.  PSJ RPHARM security key required.",! Q
+ I '$D(^XUSEC("PSJ RPHARM",DUZ)),'$D(^XUSEC("PSD TECH ADV",DUZ)) D  Q
+ .W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to print",!,?12,"the Invoice Review Report. Either the PSJ RPHARM or PSD TECH ADV",!?12,"security key required.",!
  S PSDS=0 F  S PSDS=$O(^PSD(58.8,"ADISP","M",PSDS)) Q:'PSDS  I $P($G(^PSD(58.8,+PSDS,0)),"^",3)=+PSDSITE&('$G(^PSD(58.8,+PSDS,"I"))!($G(^PSD(58.8,+PSDS,"I"))>DT)) S PSDC=$G(PSDC)+1,PSDONE=PSDS
  I '$G(PSDC) W !!,"Sorry, no Master Vaults set up for this site.",!! G END
  S:PSDC=1 PSDS=PSDONE

@@ -1,6 +1,6 @@
-PRCFDCI1 ;WISC@ALTOONA/CTB-APPROVE CHECKED IN INVOICE ;9/15/95  10:38
-V ;;5.1;IFCAP;;Oct 20, 2000
- ;Per VHA Directive 10-93-142, this routine should not be modified.
+PRCFDCI1 ;WISC@ALTOONA/CTB-APPROVE CHECKED IN INVOICE ;12/2/10  16:10
+V ;;5.1;IFCAP;**154**;Oct 20, 2000;Build 5
+ ;Per VHA Directive 2004-038, this routine should not be modified.
 OUT K PRCFD("LOGIN"),PRCFDX("ED") D OUT^PRCFDE Q
 CERT ;CERTIFY ALREADY CHECKED IN DOCUMENT
  S PRCFD("LOGIN")="",PRCFDX("ED")=""
@@ -8,6 +8,7 @@ CERT ;CERTIFY ALREADY CHECKED IN DOCUMENT
  S DIC("A")="Select/Barcode INVOICE TRACKING NUMBER: "
 C1 S DIC=421.5,DIC(0)="AEMNZ",DIC("S")="I $D(^(2)),+^(2)=10" D ^DIC K DIC G:Y<0 OUT
  S (PRCF("CIDA"),DA)=+Y K PRCFD("RECERT")
+ I $$VIOLATE^PRCFDSOD(PRCF("CIDA"),DUZ) G OUT
  W:$$CLSD1358^PRCFDE2($P(Y(0),U,7),1) !
  S %A="Do you wish to edit any of the basic invoice information"
  S %B="",%=2 D ^PRCFYN G OUT:%<0

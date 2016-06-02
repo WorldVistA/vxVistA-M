@@ -1,5 +1,5 @@
-PSBMLLKU ;BIRMINGHAM/TEJ-BCMA RPC LOOKUP UTLILITIES ;Mar 2004
- ;;3.0;BAR CODE MED ADMIN;**3,9,11,20,13,38,32**;Mar 2004;Build 32
+PSBMLLKU ;BIRMINGHAM/TEJ - BCMA RPC LOOKUP UTLILITIES ;9/18/12 1:24am
+ ;;3.0;BAR CODE MED ADMIN;**3,9,11,20,13,38,32,56,42,70**;Mar 2004;Build 18
  ;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  ; Reference/IA
@@ -13,7 +13,16 @@ PSBMLLKU ;BIRMINGHAM/TEJ-BCMA RPC LOOKUP UTLILITIES ;Mar 2004
  ; File 50/221
  ; File 211.4/1409
  ;
+ ;*70 - create a lookup for Clinics that returns all patients per 
+ ;      clinic selected for Client to then pass one at a time for
+ ;      coversheet reports and enable the NEXT button for user
+ ;      selection to process the next DFN for a coversheet report.
+ ;
 RPC(RESULTS,PSBREC) ; Remote Procedure Call Entry Point.
+ ;
+ ;*70 piece out mode if exists & reset 0 node for bkwds compatability
+ N PSBCLINORD
+ S PSBCLINORD=$P(PSBREC(0),U,2),PSBREC(0)=$P(PSBREC(0),U)
  ;
  S RESULTS="" D @(PSBREC(0)_"(.RESULTS,.PSBREC)") Q
  Q
@@ -67,21 +76,52 @@ PTLKUP(RESULTS,PSBREC) ; Patient lookup handled separately for security
  ;          (Person(s) in PATIENT File (#2) meeting search criteria)
  ;
  ;
- K RESULTS
- S PSBDATA=$E(PSBREC(1),1,60)
- S PSBDATA1=PSBDATA
- N PSBINDX S PSBINDX="" K ^TMP("DILIST",$J)
- I $E(PSBDATA,$L(PSBDATA)-10,60)=" [MAS WARD]" S PSBINDX="CN" S PSBDATA=$P(PSBDATA," [MAS WARD]")
- I $E(PSBDATA,$L(PSBDATA)-11,60)=" [NURS UNIT]" S PSBINDX="CN" S PSBDATA=$P(PSBDATA," [NURS UNIT]") D
- .K PSBPT S PSBPT(0)=0
- .S PSBZ=0 F  S PSBZ=$O(^NURSF(211.4,PSBZ)) Q:PSBZ'?.N  I $$GET1^DIQ(211.4,PSBZ_",",.01)=PSBDATA S PSBY=PSBZ Q
- .K PSBDATA S PSBDATA=""
- .S PSBX=0 F  S PSBX=$O(^NURSF(211.4,PSBY,3,PSBX)) Q:PSBX=""  S PSBDATA(PSBX)=$$GET1^DIQ(42,$P(^NURSF(211.4,PSBY,3,PSBX,0),U)_",",.01)
+ N PSBNRSWD,PSBINDX,PSBRPT
+ K RESULTS,PSBDATA
+ K PSBPT S PSBPT(0)=0
+ S PSBINDX="" K ^TMP("DILIST",$J)
+ I PSBCLINORD'="C" D
+ .S PSBDATA=$E(PSBREC(1),1,60)
+ .I PSBDATA?12N!(PSBDATA?1.6N)&(DUZ("AG")="I") D  Q  ; HRN/ASUFAC code
+ ..N X
+ ..S X=$$HRCNF^APSPFUNC($S($L(PSBDATA)=12:PSBDATA,1:$$PAD($$GET1^DIQ(9999999.06,+DUZ(2),.12))_$$PAD(PSBDATA)))
+ ..I X<0 D  Q
+ ...S RESULTS(0)=1,RESULTS(1)="-1^No patients matching '"_PSBDATA_"'."
+ ..S RESULTS(0)=1
+ ..S RESULTS(1)=$$PTREC(X)
+ .S PSBDATA1=PSBDATA
+ .I $E(PSBDATA,$L(PSBDATA)-10,60)=" [MAS WARD]" S PSBINDX="CN" S PSBDATA=$P(PSBDATA," [MAS WARD]")
+ .I $E(PSBDATA,$L(PSBDATA)-11,60)=" [NURS UNIT]" S PSBINDX="CN" S PSBDATA=$P(PSBDATA," [NURS UNIT]") D
+ ..K PSBPT S PSBPT(0)=0
+ ..S PSBZ=0 F  S PSBZ=$O(^NURSF(211.4,PSBZ)) Q:PSBZ'?.N  S PSBNRSWD=$$GET1^DIQ(211.4,PSBZ_",",.01) I $$UCASE^XUSG(PSBNRSWD)=PSBDATA S PSBY=PSBZ Q
+ ..K PSBDATA S PSBDATA=""
+ ..S PSBX=0 F  S PSBX=$O(^NURSF(211.4,PSBY,3,PSBX)) Q:PSBX=""  S PSBDATA(PSBX)=$$GET1^DIQ(42,$P(^NURSF(211.4,PSBY,3,PSBX,0),U)_",",.01)
+ ;
+ I PSBCLINORD="C" D
+ .;Clinic mode report - get and return array of all DFN's that belong
+ .;  to clinics passed in by user.
+ .F QQ=0:0 S QQ=$O(PSBREC(QQ)) Q:'QQ  D
+ ..S PSBRPT(2,QQ,0)=PSBREC(QQ)
+ ..S PSBRPT(2,"B",PSBREC(QQ),QQ)=""
+ .S PSBDATA=1 D CLIN^PSBO(.PSBRPT,.PSBDATA)
+ .I $D(PSBDATA)=11 D
+ ..N DFNXX S PSBCNT=0
+ ..F DFNXX=0:0 S DFNXX=$O(PSBDATA(DFNXX)) Q:'DFNXX  D
+ ...S PSBCNT=PSBCNT+1,RESULTS(PSBCNT)=$$PTREC(DFNXX)
+ .; check if any data found
+ .I '$D(RESULTS) D
+ ..S RESULTS(0)=1
+ ..S RESULTS(1)="-1^No patients matching Clinic Search List"
+ .E  D
+ ..S RESULTS(0)=+$O(RESULTS(""),-1)
+ ..S PSBINDX="CN"
+ I PSBCLINORD="C",+RESULTS(1)=-1 Q
+ ;
  I PSBINDX="" S PSBINDX=$S(PSBDATA?9N.1P:"SSN",PSBDATA?4N.1P:"BS5^BS",1:PSBINDX)
  I ($O(PSBDATA(""))'>0) D FIND^DIC(2,"","@;.01;.02;.03;.09","MP",PSBDATA,200,PSBINDX)
  I ($O(PSBDATA(""))>0) D
  .S PSBX="",PSBY=1 F  S PSBX=$O(PSBDATA(PSBX)) Q:PSBX=""  D  K ^TMP("DILIST",$J) Q:$P(PSBPT(0),U,3)=1
- ..D FIND^DIC(2,"","@;.01;.02;.03;.09","MP",PSBDATA(PSBX),200,PSBINDX)
+ ..D FIND^DIC(2,"","@;.01;.02;.03;.09","MPO",PSBDATA(PSBX),200,PSBINDX)
  ..S PSBZ=0 F  S PSBZ=$O(^TMP("DILIST",$J,PSBZ)) Q:PSBZ=""  S PSBPT(PSBY,0)=^TMP("DILIST",$J,PSBZ,0),PSBPT(0)=PSBY,PSBY=PSBY+1 I PSBY>200 S $P(PSBPT(0),U,3)=1
  K:+$G(PSBPT(0))=0 PSBPT
  I $D(PSBPT) M ^TMP("DILIST",$J)=PSBPT
@@ -98,11 +138,15 @@ PTREC(DFN) ;
  ; Extrinsic to return a Pt Rec  in standard list format
  N PSBXX
  S PSBXX=$G(^DPT(DFN,0))
- S PSBXX=DFN_U_$P(PSBXX,U,1)_U_$P(PSBXX,U,2)_U_$P(PSBXX,U,3)_U_$P(PSBXX,U,9)
+ S PSBXX=DFN_U_$P(PSBXX,U,1)_U_$P(PSBXX,U,2)_U_$P(PSBXX,U,3)_U_$S(DUZ("AG")="I":$$HRCNF^BDGF2(DFN,DUZ(2)),1:$P(PSBXX,U,9))
  S $P(PSBXX,U,6)=$$GET1^DIQ(2,DFN_",",.1)
  S $P(PSBXX,U,7)=$$GET1^DIQ(2,DFN_",",.101)
  S $P(PSBXX,U,10)=$$DOB^DPTLK1(DFN)
- S $P(PSBXX,U,11)=$$SSN^DPTLK1(DFN)
+ S $P(PSBXX,U,11)=$S(DUZ("AG")="I":$$HRN^AUPNPAT(DFN,DUZ(2)),1:$$SSN^DPTLK1(DFN))
+ ;DSS/SMP - BEGIN MODS
+ I $G(^%ZOSF("ZVX"))["VX" D
+ .S ($P(PSBXX,U,5),$P(PSBXX,U,11))=$$ID^VFDDFN(DFN,,,,1,3)
+ ;DSS/SMP - END MODS
  Q PSBXX
  ;
 SELECTAD(RESULTS,PSBREC) ; Select Administration
@@ -125,7 +169,11 @@ SELECTAD(RESULTS,PSBREC) ; Select Administration
  .S $P(RESULTS(1),U)=PSBIEN
  .S $P(RESULTS(1),U,2)=$$GET1^DIQ(53.79,PSBIEN_",",.01,"I")
  .S $P(RESULTS(1),U,3)=$$GET1^DIQ(53.79,PSBIEN_",",.01)
- .S $P(RESULTS(1),U,4)=$$GET1^DIQ(2,$P(RESULTS(1),U,2)_",",.09)
+ .;DSS/SMP - BEGIN MODS
+ .I $G(^%ZOSF("ZVX"))["VX" D
+ ..S $P(RESULTS(1),U,4)=$$ID^VFDDFN($P(RESULTS(1),U,2),,,,1,3)
+ .E  S $P(RESULTS(1),U,4)=$$GET1^DIQ(2,$P(RESULTS(1),U,2)_",",.09)
+ .;DSS/SMP - END MODS
  .S $P(RESULTS(1),U,5)=$$GET1^DIQ(53.79,PSBIEN_",",.08,"I")_"~"_$$GET1^DIQ(53.79,PSBIEN_",",.08)
  .S $P(RESULTS(1),U,6)=$$GET1^DIQ(53.79,PSBIEN_",",.26)
  .S $P(RESULTS(1),U,7)=$S($$GET1^DIQ(53.79,PSBIEN_",",.09,"I")']"":"U",1:$$GET1^DIQ(53.79,PSBIEN_",",.09,"I"))
@@ -201,3 +249,5 @@ KILLAADT ;
  K ^PSB(53.79,"AADT",DFN,PSBSRCH,PSBIEN)
  Q
  ;
+PAD(VAL) ; Return VAL with leading zeroes padded to 6 characters
+ Q $E("000000",1,6-$L(VAL))_VAL

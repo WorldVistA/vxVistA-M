@@ -1,5 +1,5 @@
-DVBHQM11 ;ISC-ALBANY/JLU/PKE-create mail message ;10/27/87  10:50
- ;;4.0;HINQ;**7,20,49**;03/25/92
+DVBHQM11 ;ISC-ALBANY/JLU/PKE - create mail message;10/27/87  10:50
+ ;;4.0;HINQ;**7,20,49,65**;03/25/92;Build 19
  ;
 LIN Q:CT>100  S CT=CT+1,A1=A_CT_",0)",@A1=T1 Q
 DD S:Y Y=$S($E(Y,4,5):$P("JAN^FEB^MAR^APR^MAY^JUN^JUL^AUG^SEP^OCT^NOV^DEC","^",+$E(Y,4,5))_" ",1:"")_$S($E(Y,6,7):+$E(Y,6,7)_",",1:"")_($E(Y,1,3)+1700)_$P("@"_$E(Y_0,9,10)_":"_$E(Y_"000",11,12),"^",Y[".") S:$L(Y)=10 Y=Y_" " Q
@@ -42,6 +42,19 @@ P4 Q:'$D(DVBREF)
 P5 Q:'$D(DVBP(5))  S T1=$P(DVBP(5),U) I T1 S T1="PFOP Balance : "_" $"_+$E(T1,1,6)_"."_$E(T1,7,8) D LIN Q
  ;
  Q
+ ;
+ ;DVB*4.0*65
+P6 ;
+ I $P(DVBP(1),U,10)>0 S M=$E($P(DVBP(1),U,10),1,2) D MM^DVBHQM11 D
+ . S T1="Pension Award Eff Date = "_M_" "_$S(+$E($P(DVBP(1),U,10),3,4)>0:$E($P(DVBP(1),U,10),3,4)_", ",1:" ")_$E($P(DVBP(1),U,10),5,8) S:$P(DVBP(1),U,11)]"" T1=T1_"            Reason code = "_$P(DVBP(1),U,11) D LIN
+ I $P(DVBP(1),U,12)>0 S M=$E($P(DVBP(1),U,12),1,2) D MM^DVBHQM11 D
+ . S T1="    Pension Terminated = "_M_" "_$S(+$E($P(DVBP(1),U,12),3,4)>0:$E($P(DVBP(1),U,12),3,4)_", ",1:" ")_$E($P(DVBP(1),U,12),5,8) S:$P(DVBP(1),U,13)]"" T1=T1_"            Reason code = "_$P(DVBP(1),U,13) D LIN
+ I $P(DVBP(1),U,14)'?1" "." " S T1="                                                 Reason code = "_$P(DVBP(1),U,14) D LIN
+ I $P(DVBP(1),U,15)'?1" "." " S T1="                                                 Reason code = "_$P(DVBP(1),U,15) D LIN
+ I $P(DVBP(1),U,16)'?1" "." " S T1="                                                 Reason code = "_$P(DVBP(1),U,16) D LIN
+ ;
+ Q
+ ;
 EMP S T1=" " D LIN Q
  ;
 HD S T1="Diary data:" D LIN Q

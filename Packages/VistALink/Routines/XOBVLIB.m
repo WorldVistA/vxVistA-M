@@ -1,7 +1,6 @@
 XOBVLIB ;; mjk/alb - VistaLink Programmer Library ; 07/27/2002  13:00
- ;;1.5;VistALink;;Sep 09, 2005
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.0.026]
- ;
+ ;;1.6;VistALink;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
  QUIT
  ; --------------------------------------------------------------
  ;              Application Developer Supported Calls
@@ -131,7 +130,7 @@ GETRATE() ; -- get J2SE heartbeat rate in seconds
  SET X=$PIECE($GET(^XOB(18.01,1,0)),"^",2)
  QUIT $SELECT(X:X,1:180)
  ;
-GETDELTA() ; -- get J2SE latancy delta in seconds
+GETDELTA() ; -- get J2SE latency delta in seconds
  NEW X
  SET X=$PIECE($GET(^XOB(18.01,1,0)),"^",3)
  QUIT $SELECT(X:X,1:180)
@@ -141,7 +140,7 @@ GETASTO() ; -- get J2EE application server time out in seconds (one day = 86400)
  SET X=$PIECE($GET(^XOB(18.01,1,0)),"^",4)
  QUIT $SELECT(X:X,1:86400)
  ;
-GETRASTO() ; -- get J2EE application server reauthenticated seesion time out in seconds (ten minutes = 600)
+GETRASTO() ; -- get J2EE application server reauthenticated session time out in seconds (ten minutes = 600)
  NEW X
  SET X=$PIECE($GET(^XOB(18.01,1,0)),"^",5)
  QUIT $SELECT(X:X,1:600)
@@ -159,8 +158,10 @@ ENVHDR(TYPE,SCHEMA) ; -- vistalink beg tag (header)
  SET X=$$XMLHDR()
  SET X=X_"<VistaLink"
  SET X=X_" messageType="""_TYPE_""""
- ; -- indicates to VL v1.0 client that this VL v1.5 server is backwards compatible
- SET VLVER="1.5"
+ SET VLVER="1.6"
+ ; -- indicates to VL v1.5 client that this VL v1.6 server is backwards compatible
+ IF $GET(XOBDATA("VL VERSION"))="1.5" SET VLVER="1.5"
+ ; -- indicates to VL v1.0 client that this VL v1.6 server is backwards compatible
  IF $GET(XOBDATA("VL VERSION"))="1.0" SET VLVER="1.0"
  SET X=X_" version="""_VLVER_""""
  SET X=X_" xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"""

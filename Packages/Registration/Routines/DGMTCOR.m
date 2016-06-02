@@ -1,5 +1,5 @@
-DGMTCOR ;ALB/CAW,SCG,LBD - Check Copay Test Requirements ; 03/03/03 8:15am
- ;;5.3;Registration;**21,45,182,290,305,330,344,495,564**;Aug 13, 1993
+DGMTCOR ;ALB/CAW,SCG,LBD,TMK - Check Copay Test Requirements;07/28/08
+ ;;5.3;Registration;**21,45,182,290,305,330,344,495,564,773,840,858**;Aug 13, 1993;Build 30
  ;
  ;A patient may apply for a copay test under the following conditions:
  ;  - Applicant is a veteran
@@ -8,6 +8,7 @@ DGMTCOR ;ALB/CAW,SCG,LBD - Check Copay Test Requirements ; 03/03/03 8:15am
  ;    - Aid and Attendance or
  ;    - Housebound or
  ;    - VA Pension
+ ;    - Catastrophically Disabled
  ;  - Primary Eligibility is NSC
  ;    - who has NOT been means tested
  ;    - who claims exposure to agent orange or ionizing radiation
@@ -25,6 +26,7 @@ DGMTCOR ;ALB/CAW,SCG,LBD - Check Copay Test Requirements ; 03/03/03 8:15am
  ;
  ; Input  -- DFN     Patient IEN
  ;           DGADDF  Means Test Add Flag (optional)
+ ;           DGNOIVMUPD Do Not Update IVM Copay Test Flag (optional)
  ; Output -- DGMTCOR  Copay Test Flag
  ;                   (1 if eligible and 0 if not eligible)
  ;
@@ -65,23 +67,29 @@ CHK N STATUS,DGELIG,DGE,DGI,DGNODE,DGMDOD,DGMTDT,DGMTI,DGMTL
  S DGI=$P($G(^DPT(DFN,.36)),"^"),DGELIG=U_$P($G(^DIC(8,+DGI,0)),U,9)_U
  S DGI=0 F  S DGI=$O(^DPT(DFN,"E",DGI)) Q:'DGI  S DGE=$P($G(^DPT(DFN,"E",DGI,0)),U),DGELIG=DGELIG_$P($G(^DIC(8,+DGE,0)),U,9)_U
  I (DGELIG["^1^") S DGMTCOR=0,DGWRT=3 G CHKQ  ;SC 50-100%
- F DGI=.3,.362,.52 S DGNODE(DGI)=$G(^DPT(DFN,DGI))
+ F DGI=.3,.362,.39,.52 S DGNODE(DGI)=$G(^DPT(DFN,DGI)) ;DG*5.3*840
  I $P(DGNODE(.362),U,12)["Y"!(DGELIG["^2^") S DGMTCOR=0,DGWRT=5 G CHKQ ;A&A
  I $P(DGNODE(.362),U,13)["Y"!(DGELIG["^15^") S DGMTCOR=0,DGWRT=6 G CHKQ ;HB
  I $P(DGNODE(.362),U,14)["Y"!(DGELIG["^4^") S DGMTCOR=0,DGWRT=7 G CHKQ ;PENSION
  I $P(DGNODE(.52),U,5)["Y"!(DGELIG["^18^") S DGMTCOR=0,DGWRT=10 G CHKQ ;POW (DG*5.3*564)
+ I $P(DGNODE(.39),U,6)["Y"!(DGELIG["^21^") S DGMTCOR=0,DGWRT=12 G CHKQ ;CD (DG*5.3*840
  I $P(DGNODE(.3),U,5)["Y"&($P(DGNODE(.3),U,2)>0)&($P(DGNODE(.362),U,20)>0) S DGMTCOR=0,DGWRT=11 G CHKQ ;UNEMPLOYABLE (DG*5.3*564)
  ;brm added next 3 lines for DG*5.3*290
  N DGDOM,DGDOM1,VAHOW,VAROOT,VAINDT,VAIP,VAERR,NOW
  D DOM^DGMTR I $G(DGDOM) S DGMTCOR=0,DGRGAUTO=0,DGWRT=8 Q        ;DOM
  D IN5^VADPT I $G(VAIP(1))'="" S DGMTCOR=0,DGRGAUTO=0,DGWRT=9 Q  ;INP
- I DGMTI,'$$OLD^DGMTU4(DGMTDT) S STATUS=$P($G(^DGMT(408.31,+DGMTI,0)),U,3) I STATUS'="3" S DGMTCOR=0,DGWRT=4 G CHKQ
+ ;DG*5.3*858 MT less than 1 year old as of "VFA Start Date" and point forward do not expire
+ I DGMTI,'$$OLDMTPF^DGMTU4(DGMTDT) S STATUS=$P($G(^DGMT(408.31,+DGMTI,0)),U,3) I STATUS'="3" S DGMTCOR=0,DGWRT=4 G CHKQ
 CHKQ Q
  ;
 NLA ; Change Status to NO LONGER APPLICABLE - if appropriate
  ;
  N DGCS,DGMTI,DGMT0,DGINI,DGINR,DGVAL,DGFL,DGFLD,DGIEN,DGMTACT,TDATE
  S DGMTI=+$$LST^DGMTU(DFN,"",2) Q:'DGMTI!($P($G(^DGMT(408.31,DGMTI,0)),U,3)=10)
+ ; Do not allow update of IVM test by site
+ I $G(DGNOIVMUPD),$$IVMCVT^DGMTCOR(DGMTI) D  Q  ;Check if converted IVM MT
+ . ;I '$G(DGMSGF),$G(DGNOIVMUPD)<2 W !,"IVM RX COPAY TEST EXISTS, BUT VISTA CALCULATES 'NO LONGER APPLICABLE'",!,"CONTACT IVM TO CLEAR UP THE DISCREPANCY - YOU CANNOT UPDATE AN IVM TEST"
+ . S DGNOIVMUPD=2 ; Prevent double printing of the message
  S DGMT0=$G(^DGMT(408.31,DGMTI,0)) Q:'DGMT0
  S DGCS=$P(DGMT0,U,3)
  S TDATE=+DGMT0
@@ -128,3 +136,20 @@ QREGAUTO ;Queues off test done by IB recalculating CP status
  D ^%ZTLOAD
  K ZTDESC,ZTDTH,ZTIO,ZTRTN,ZTSAVE,ZTSK
  Q
+ ;
+IVMCVT(IVMTIEN) ; Check for a converted IVM Means Test
+ ;  Input  IVMTIEN - MT IEN to check
+ ;  Return 1 - if converted MT
+ ;         0 - if not a converted MT
+ ;
+ N FLAG,IVMAR
+ S FLAG=0
+ I '$G(IVMTIEN) G IVMQ
+ D GETS^DIQ(408.31,IVMTIEN,".23;.25","E","IVMAR")
+ ; To identify an IVM converted test in the ANNUAL MEANS TEST, #408.31, if the Source of Test (#.23)
+ ; is equal to 'IVM' OR the Date IVM Verified MT Completed (#.25) is populated, then the test should
+ ; be considered a converted test. 
+ I IVMAR(408.31,IVMTIEN_",",.23,"E")="IVM" S FLAG=1 G IVMQ
+ I IVMAR(408.31,IVMTIEN_",",.25,"E")]"" S FLAG=1 G IVMQ
+IVMQ ;
+ Q FLAG

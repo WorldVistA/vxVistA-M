@@ -1,5 +1,5 @@
 IBCNQ ;ALB/MJB - MCCR PATIENT BILLING INQUIRY ;13 JUN 88 13:52
- ;;2.0;INTEGRATED BILLING;**51,320,377**;21-MAR-94;Build 23
+ ;;2.0;INTEGRATED BILLING;**51,320,377,433**;21-MAR-94;Build 36
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  ;MAP TO DGCRNQ
@@ -84,7 +84,8 @@ RETN I $D(^DGCR(399,IBIFN,"R",IB,0)) S IBN=^(0),Y=$P($P(IBN,"^"),".") D D^DIQ W 
 HDR D PAUSE Q:IBQUIT
 HDR1 S L="",$P(L,"=",80)="",IBPAGE=IBPAGE+1
  W:$E(IOST,1,2)["C-"!(IBPAGE>1) @IOF
- W $E($P(IBPT,"^"),1,20),"   ",$P(IBPT,"^",2),?38,IBBNO,?51,IBNOW,?72,"PAGE: ",IBPAGE,!,L
+ ;W $E($P(IBPT,"^"),1,20),"   ",$P(IBPT,"^",2),?38,IBBNO,?51,IBNOW,?72,"PAGE: ",IBPAGE,!,L
+ W $E($P(IBPT,"^"),1,20),"  ",$P(IBPT,"^",2),?36,IBBNO,?51,IBNOW,?72,"PAGE: ",IBPAGE,!,L
  K L Q
  ;
 OPDATE ; List Outpatient Visit Dates.

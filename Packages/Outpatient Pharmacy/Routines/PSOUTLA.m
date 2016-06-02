@@ -1,5 +1,5 @@
 PSOUTLA ;BHAM ISC/AMC - pharmacy utility program ; 07/24/96  1:13 pm
- ;;7.0;OUTPATIENT PHARMACY;**1,15,23,56,126,222**;DEC 1997;Build 12
+ ;;7.0;OUTPATIENT PHARMACY;**1,15,23,56,126,222,354**;DEC 1997;Build 29
  ;External reference ^PS(54 supported by DBIA 2227
  ;External reference ^PSDRUG( supported by DBIA 221
 CHK I '$D(PY(PSPR)) W !?10,$C(7),"  # ",PSPR," is not a valid choice." S PSPOP=1 Q
@@ -40,6 +40,10 @@ EDNEW K PSMAX,PSFMAX F DEA=1:1 Q:$E(PSODEA,DEA)=""  I $E(+PSODEA,DEA)>1,$E(+PSOD
  E  D
  .S PSOX1=PTRF,PSOX=$S(PSOX1=11:11,1:PSOX1),PSOX=$S('PSOX:0,PSDAYS=90:3,1:PSOX)
  .S PSDY1=$S(PSDAYS<60:11,PSDAYS'<60&(PSDAYS'>89):5,PSDAYS=90:3,1:0) S MAX=$S(PSOX'>PSDY1:PSOX,1:PSDY1)
+ .;DSS/SMP - BEGIN MOD
+ .I $G(^%ZOSF("ZVX"))["VX",$G(PSDAYS) D
+ ..S MAX=366\PSDAYS-1 S:MAX<0 MAX=0 S PTRF=MAX
+ .;DSS/SMP - END MOD
 CLOZPAT I PSRF>MAX D
  .W $C(7),!!,PSRF_" refills are not correct for a "_PSDAYS_" day supply.",!,"Please enter correct # of refills for a "_PSDAYS_" day supply. Max refills allowed is "_MAX_".",!
  .;S (PSMAX("MAX"),PSFMAX("MAX"))=MAX,(PSMAX("RF"),PSFMAX("RF"))=PSRF,(PSMAX("DAYS"),PSFMAX("DAYS"))=PSDAYS,(PSMAX,PSFMAX)=1
@@ -115,4 +119,8 @@ SUSFDK ;
  I '$P($G(^PS(52.5,SUSIEN,0)),"^",5),'$P($G(^(0)),"^",13) K ^PS(52.5,"C",X,SUSIEN) D
  .I $P($G(^PS(52.5,SUSIEN,0)),"^",7)="Q" K ^PS(52.5,"AQ",X,+$P($G(^PS(52.5,SUSIEN,0)),"^",3),SUSIEN) D KCMPX^PSOCMOP(SUSIEN,"Q") Q
  .K ^PS(52.5,"AC",+$P($G(^PS(52.5,SUSIEN,0)),"^",3),X,SUSIEN)
+ Q
+ADD ;enter/edit automated devices - OPAI
+ W ! S (DLAYGO,DIC,DIE)=52.53,DIC("A")="Select ADD Name: ",DIC(0)="AEQML" D ^DIC G:"^"[$E(X) ADDX G:Y<1 ADD S DA=+Y,DR=".01;1;2;3" D ^DIE G ADD
+ADDX K DIE,DIC,DA,Y,X,DR
  Q

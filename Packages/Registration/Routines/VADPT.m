@@ -1,22 +1,21 @@
-VADPT ;ALB/MRL/MJK,ERC - RETURN PATIENT VARIABLE ARRAYS [DRIVER] ; 8/1/08 1:29pm
- ;;5.3;Registration;**193,343,389,415,489,498,688**;Aug 13, 1993;Build 153
+VADPT ;ALB/MRL/MJK,ERC,TDM - RETURN PATIENT VARIABLE ARRAYS [DRIVER] ; 7/28/09 1:52pm
+ ;;5.3;Registration;**193,343,389,415,489,498,688,754**;Aug 13, 1993;Build 15
  ;DFN = Patient IFN [if not passed entire array returned as null]
  ;
 DEM ;Demographic Variables
- ;DSS/RAC - BEGIN MOD - add vxVistA fields
+ ;DSS/RAC/LM - BEGIN MOD - add vxVistA fields/Revise OSEHRA check
  ;S VAN=1,VAN(1)=12,VAV="VADM" D ^VADPT0 Q
  S VAN=1,VAN(1)=12,VAV="VADM" D ^VADPT0
- Q:$T(VX^VFDI0000)=""  Q:$$VX^VFDI0000'["VX"
+ Q:'($G(^%ZOSF("ZVX"))["VX")
  N VFDEM D VXDEM^VFDCDPT(.VFDEM,DFN)
  N F S F=0 F  S F=$O(VFDEM(F)) Q:'F  S VADM(F)=VFDEM(F)
  ;DSS/RAC - END MOD
- Q
  ;
 OPD ;Other Patient Data
- S VAN=2,VAN(1)=7,VAV="VAPD" D ^VADPT0 Q
+ S VAN=2,VAN(1)=8,VAV="VAPD" D ^VADPT0 Q
  ;
 ADD ;Current Address
- S VAN=3,VAN(1)=28,VAV="VAPA" D ^VADPT0 Q
+ S VAN=3,VAN(1)=29,VAV="VAPA" D ^VADPT0 Q
  ;
 OAD ;Other Patient Variables
  S VAN=4,VAN(1)=11,VAV="VAOA" D ^VADPT0 Q

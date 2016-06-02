@@ -1,5 +1,5 @@
 DGRPECE ;ALB/MRY,ERC,BAJ - REGISTRATION CATASTROPHIC EDITS ; 10/4/06 3:27pm
- ;;5.3;Registration;**638,682,700,720,653,688,750**;Aug 13, 1993;Build 6
+ ;;5.3;Registration;**638,682,700,720,653,688,750,831**;Aug 13, 1993;Build 10
  ;
 CEDITS(DFN) ;catastrophic edits  - buffer values, save after check
  ;Input;
@@ -187,11 +187,11 @@ AFTER(BEF,BUF,SAV) ;prevent catastrophic edit checks
  N DGAUDIEN,DGFLD,DGTYP
  S DGAUDIEN=0
  F   S DGAUDIEN=$O(^TMP("DGRPAUD",$J,DFN,DGAUDIEN)) Q:'DGAUDIEN  D
- .S DGFLD=$P(^TMP("DGRPAUD",$J,DFN,DGAUDIEN),U,2),DGTYP=$P(^TMP("DGRPAUD",$J,DFN,DGAUDIEN),U,4)
+ .S DGFLD=$P(^TMP("DGRPAUD",$J,DFN,DGAUDIEN),U,2),DGTYP=$P(^TMP("DGRPAUD",$J,DFN,DGAUDIEN),U,5)
  .I DGFLD=.01 S BEF("NAME")=DGTYP
  .I DGFLD=.09 S BEF("SSN")=DGTYP
  .I DGFLD=.02 S BEF("SEX")=DGTYP
- .I DGFLD=.03 S BEF("DOB")=DGTYP,BEF("DOB")=$$HTFM^XLFDT(BEF("DOB"),U)
+ .I DGFLD=.03 S BEF("DOB")=DGTYP
  I DGCNT<2 Q 1 ;make one change w/o CE message
  I DGCNT>1 Q 2 ;more than 1 change, send CE message
  K ^TMP("DGRPAUD")

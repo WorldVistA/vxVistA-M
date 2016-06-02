@@ -1,5 +1,5 @@
-LR7OSAP ;DALOI/STAFF - Silent AP rpt (compare to LRAPCUM) ;12/03/09  15:42
- ;;5.2;LAB SERVICE;**121,187,230,256,259,317,350**;Sep 27, 1994;Build 7
+LR7OSAP ;DALOI/STAFF - Silent AP rpt (compare to LRAPCUM) ;03/21/13  15:30
+ ;;5.2;LAB SERVICE;**121,187,230,256,259,317,350,427**;Sep 27, 1994;Build 18
  ;
 GET I '$D(^LR(LRDFN,LRSS)) Q
  N FST,X
@@ -31,9 +31,8 @@ F(PIECE) ;
  ; Original line was
  ;I '$G(PIECE) D WRAP^LR7OSAP1("^LR("_LRDFN_","""_LRSS_""","_LRI_","_LRV_")",79) Q
  I '$G(PIECE) D  Q
- . I $$VFD D WRAP^VFDLR7OA(LRDFN,LRSS,LRI,LRV) Q
- . D WRAP^LR7OSAP1("^LR("_LRDFN_","""_LRSS_""","_LRI_","_LRV_")",79)
- . Q
+ . I $$VFD,$T(WRAP^VFDLR7OA)]"" D WRAP^VFDLR7OA(LRDFN,LRSS,LRI,LRV) I 1
+ . E  D WRAP^LR7OSAP1("^LR("_LRDFN_","""_LRSS_""","_LRI_","_LRV_")",79)
  ;DSS/JDB/RAF - END MODS
  S C=0
  F  S C=$O(^LR(LRDFN,LRSS,LRI,LRV,C)) Q:'C  S X=$P(^(C,0),"^") D LN S ^TMP("LRC",$J,GCNT,0)=$$S^LR7OS(1,CCNT,X)
@@ -161,7 +160,8 @@ W ; Called from above and LR7OSAP4
  .. D:X U
  I $D(^LR(LRDFN,LRSS,LRI,2)) D B
  ;
- I $D(^LR(LRDFN,LRSS,LRI,99)) D LN S ^TMP("LRC",$J,GCNT,0)=$$S^LR7OS(1,CCNT,"Comments:") S LRV=99 D F(1)
+ ; DALOI/LMT - LR,427 - Removed comments from report to restore pre-LR,350 behavior
+ ;I $D(^LR(LRDFN,LRSS,LRI,99)) D LN S ^TMP("LRC",$J,GCNT,0)=$$S^LR7OS(1,CCNT,"Comments:") S LRV=99 D F(1)
  ;
  ; List performing labs
  D PPL^LR7OSMZ1(LRDFN,LRSS,LRI)
@@ -274,12 +274,13 @@ FIND(SS) ; Find a valid entry in 68
  N I,Y
  S I=0,Y="" F  S I=$O(^LRO(68,I)) Q:I<1  I $P($G(^LRO(68,I,0)),"^",2)=SS S Y=I Q
  Q Y
+ ;
  ;DSS/RAF - BEGIN MODS
 VFD() N A S A=$G(^%ZOSF("ZVX")) Q $S(A="VXS":2,A["VX":1,1:0)
  ;
 VFD2 ;DSS/RAF - add ref lab acc#
  Q:'$$VFD
- D LN S ^TMP("LRC",$J,GCNT,0)=$$S^LR7OS(1,CCNT,"Ref Lab Acc#: "_$P($G(^LR(LRDFN,"SP",LRI,"ORU")),U,4))
+ D LN S ^TMP("LRC",$J,GCNT,0)=$$S^LR7OS(1,CCNT,"HL7 Ref Lab Acc#: "_$P($G(^LR(LRDFN,"SP",LRI,"ORU")),U,4))
  I $D(^LR(LRDFN,LRSS,LRI,99)) D LN S ^TMP("LRC",$J,GCNT,0)=$$S^LR7OS(1,CCNT,"Comments:") S LRV=99 D F(1)
  D LN S ^TMP("LRC",$J,GCNT,0)=$$S^LR7OS(1,CCNT,"-------------------------------------")
  Q

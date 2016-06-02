@@ -1,13 +1,14 @@
-PSIVORFA ;BIR/MLM-FILE/RETRIEVE ORDERS IN 53.1 ;26 Jun 98 / 9:16 AM
- ;;5.0; INPATIENT MEDICATIONS ;**4,7,18,28,50,71,58,91,80,110,111,134**;16 DEC 97;Build 124
+PSIVORFA ;BIR/MLM-FILE/RETRIEVE ORDERS IN 53.1 ; 8/17/09 9:23am
+ ;;5.0;INPATIENT MEDICATIONS;**4,7,18,28,50,71,58,91,80,110,111,134,225,267,275,279**;16 DEC 97;Build 150
  ;
  ; Reference to ^PS(51.1 supported by DBIA 2177.
  ; Reference to ^PS(51.2 supported by DBIA 2178.
  ; Reference to ^PS(52.7 supported by DBIA 2173.
  ; Reference to ^PS(52.6 supported by DBIA 1231.
  ;
-GT531(DFN,ON) ; Retrieve order data from 53.1 and place into local array
+GT531(DFN,ON,PSJAPI) ; Retrieve order data from 53.1 and place into local array
  ;
+ ; PSJAPI - If being called from background job, PSJAPI=1.
  NEW PSGOES S PSGOES=1
  F X="CUM","LF","LFA","LF","PRNTON" S P(X)=""
  S Y=$G(^PS(53.1,+ON,0)),P(17)=$P(Y,U,9),P("LOG")=$P(Y,U,16),(P(21),P("21FLG"),PSJORIFN)=$P(Y,U,21)
@@ -24,10 +25,16 @@ GT531(DFN,ON) ; Retrieve order data from 53.1 and place into local array
  S Y=$G(^PS(53.1,+ON,4)),P("CLRK")=$P(Y,U,7)_U_$P($G(^VA(200,+$P(Y,U,7),0)),U),P("REN")=$P(Y,U,9),X=P(9)
  I $P($G(^PS(53.1,+ON,0)),U,7)="P",(P(9)'["PRN") S P(9)=P(9)_" PRN"
  K PSGST,XT
- I P(9)]"",(P(11)="") D  S P(15)=$S($G(XT)]""&'+$G(XT):XT,+$G(XT)>0:XT,$G(PSGS0XT):PSGS0XT,1:1440),P(11)=Y
+ ;PSJ*5*225 remove 1440 default
+ I P(9)]"",P(9)'["PRN",(P(11)="") D  S P(15)=$S($G(XT)]""&'+$G(XT):XT,+$G(XT)>0:XT,$G(PSGS0XT):PSGS0XT,1:1440),P(11)=Y
  . I $O(^PS(51.1,"APPSJ",P(9),0)) D DIC^PSGORS0 Q
  . I '$O(^PS(51.1,"APPSJ",P(9),0)) N NOECH,PSGSCH S NOECH=1 D EN^PSIVSP
  S Y=$G(^PS(53.1,+ON,8)),P(4)=$P(Y,U),P(23)=$P(Y,U,2),P("SYRS")=$P(Y,U,3),P(5)=$P(Y,U,4),P(8)=$P(Y,U,5),P(7)=$P(Y,U,7),P("IVRM")=$P(Y,U,8)
+ I ($G(^PS(53.1,+ON,17))?1.N) S P("NUMLBL")=$G(^(17))
+ I '$G(P("NUMLBL")) S P("NUMLBL")=$P($G(P(8)),"@",2)
+ N PSJABBIN S PSJABBIN=$P(P(8),"@") I PSJABBIN]"" D
+ .Q:(P(8)?1"INFUSE OVER "1.N1" MINUTES")
+ .D EXPINF^PSIVEDT1(.PSJABBIN,1) S P(8)=PSJABBIN_$S($G(P("NUMLBL"))?1.N:"@"_P("NUMLBL"),1:"")
  S P(4)=$S(P(4)'="":P(4),$G(PSIVTYPE):PSIVTYPE,1:"")
  S:'P("IVRM")&($D(PSIVSN)) P("IVRM")=+PSIVSN S Y=$G(^PS(59.5,+P("IVRM"),0)),$P(P("IVRM"),U,2)=$P(Y,U),Y=$G(^PS(53.1,+ON,9)),P("REM")=$P(Y,U),P("OPI")=$P(Y,U,2,3)
  S P("DTYP")=$S(P(4)="":0,P(4)="P"!(P(23)="P")!(P(5)):1,P(4)="H":2,1:3)
@@ -37,6 +44,7 @@ GT531(DFN,ON) ; Retrieve order data from 53.1 and place into local array
  .S P("DUR")=$P(ND2P5,"^",2)
  .S P("LIMIT")=$P(ND2P5,"^",4)
  .S P("IVCAT")=$P(ND2P5,"^",5)
+ N LONGOPI S LONGOPI=$$GETOPI^PSJBCMA5(DFN,ON,$S($G(PSJAPI):1,1:""))
  Q
 GTDRG ;
  K DRG F X="AD","SOL" S FIL=$S(X="AD":52.6,1:52.7) F Y=0:0 S Y=$O(^PS(53.1,+ON,X,Y)) Q:'Y  D
@@ -59,12 +67,17 @@ PUT531 ; Move data in local variables to 53.1
  .I $G(IVLIMIT) S $P(^PS(53.1,+ON,2.5),"^",4)=DUR K IVLIMIT Q
  .S $P(^PS(53.1,+ON,2.5),"^",2)=DUR
  F X=0,2,4,8,9 S ^PS(53.1,+ON,X)=ND(X)
+ I $G(P("NUMLBL"))?1.N!($G(P("NUMLBL"))="") S $P(^PS(53.1,+ON,17),"^")=$G(P("NUMLBL"))
  S PSIVCAT=$$IVCAT^PSJHLU(DFN,ON,.P) S:PSIVCAT]"" $P(^PS(53.1,+ON,2.5),"^",5)=PSIVCAT K PSIVCAT
  S:'+$G(^PS(53.1,+ON,.2)) $P(^(.2),U,1,3)=+P("PD")_U_P("DO")_U_$G(P("NAT"))
  F DRGT="AD","SOL" D:$D(DRG(DRGT)) PTD531
  K DA,DIK S PSGS0Y=P(11),PSGS0XT=P(15),DA=+ON,DIK="^PS(53.1," D IX^DIK K DA,DIK,PSGS0Y,PSGS0XT,ND,^PS(53.1,"AS","P",DFN,+ON)
  K:P(17)="A" ^PS(53.1,"AS","N",DFN,+ON)
  S:P(15)="D" $P(^PS(53.1,+ON,2),U,6)="D"
+ I $G(PSJINFIN) K PSJINFIN I $D(^PS(53.45,+$G(PSJSYSP),6)),'$D(^PS(53.1,+ON,"A")),'$D(^PS(53.1,+ON,16)) S PSJINFIN=2
+ I $G(PSJSYSP) D
+ .I '$D(^PS(53.45,+PSJSYSP,6)) I $G(PSJORD)["V"!($G(PSJORD)["P") I '$D(^PS(53.1,+ON,16)) N I S I=$$GETOPI^PSJBCMA5(DFN,PSJORD)
+ .I $D(^PS(53.45,+PSJSYSP,6)) D FILEOPI^PSJBCMA5(DFN,ON)
  Q
  ;
 UPD100 ; Update order data in file 100

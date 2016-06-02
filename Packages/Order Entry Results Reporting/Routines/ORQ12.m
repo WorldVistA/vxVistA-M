@@ -1,6 +1,5 @@
-ORQ12 ; slc/dcm - Get patient orders in context ;06/29/06
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**12,27,78,92,116,190,220,215,243**;Dec 17, 1997;Build 147
- ;Copyright 1995-2012,Document Storage Systems Inc.,All Rights Reserved
+ORQ12 ; slc/dcm - Get patient orders in context ; 11/1/11 11:39am
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**12,27,78,92,116,190,220,215,243,356**;Dec 17, 1997;Build 18
 GET(IFN,NEWD,DETAIL,ACTOR) ; -- Setup TMP array
  ; IFN=ifn of order
  ; NEWD=3rd subscript in ^TMP("ORR",$J, node (ORLIST)
@@ -26,10 +25,12 @@ TEXT(ORTX,ORIFN,WIDTH) ; -- Returns text of order ORIFN in ORTX(#)
  ;D:$O(^OR(100,ORIFN,1,0)) CNV^ORY92(ORIFN) ;convert text otf
  S OR0=$G(^OR(100,ORIFN,0)),OR3=$G(^(3)),OR6=$G(^(6)),ORX=$G(^(8,ORACT,0))
  S ORTX=1,ORTX(1)=""
- ;DSS/LM - BEGIN MODS - remove NON-VA MEDS
+ ;DSS/SMP - BEGIN MODS - Deveteranize
  ;I $P($G(OR0),U,11)'="",($P(^ORD(100.98,$P(OR0,U,11),0),U)="NON-VA MEDICATIONS") S X="Non-VA" D ADD
- I $P($G(OR0),U,11)'="",($P(^ORD(100.98,$P(OR0,U,11),0),U)="NON-VA MEDICATIONS") S X="OTC/Else" D ADD
- ;DSS/LM - END MODS
+ I $P($G(OR0),U,11)'="",($P(^ORD(100.98,$P(OR0,U,11),0),U)="NON-VA MEDICATIONS") D  D ADD
+ .I $G(^%ZOSF("ZVX"))["VX" S X="OTC/Else"
+ .E  S X="Non-VA"
+ ;DSS/SMP - END MODS
  G:$G(ORIGVIEW)>1 T1
  S:$P(OR0,U,14)=$O(^DIC(9.4,"C","OR",0)) ORTX(1)=">>" ;generic
  S X=$$ACTION($P(ORX,U,2)) D:$L(X) ADD
@@ -42,10 +43,10 @@ TEXT(ORTX,ORIFN,WIDTH) ; -- Returns text of order ORIFN in ORTX(#)
  . .F  S ORI=$O(^OR(100,ORIG,8,ORIGTA,.1,ORI)) Q:ORI'>0  S X=$G(^(ORI,0)) S:$E(X,1,3)=">> " X=$E(X,4,999) D ADD
  . .S X=" to" D ADD
 T1 S ORTA=+$P(ORX,U,14),FIRST=+$O(^OR(100,ORIFN,8,ORTA,.1,0))
- ;DSS/MKN - BEGIN MOD - If vxVistA environment assemble complete message if Free Text or Newcrop order
+ ;DSS/SMP - BEGIN MOD - Assemble complete message if Free Text or Newcrop
  N VFDFO S VFDFO=0
- I +$G(VFDMR) D  ;VFDMR is a flag that is set in ORD^ORWRP1 and ORS^ORWP1 to indicate vxVistA environment
- . N VFDVX,VFDX 
+ I +$G(VFDMR) D  ;VFDMR is set in ORD^ORWRP1 and ORS^ORWP1
+ . N VFDVX,VFDX
  . S ORI=$O(^OR(100,ORIFN,8,ORTA,.1,0)) I ORI S X=^(ORI,0) S:$E(X,1,3)=">> " X=$E(X,4,999) D
  . . I $E(X,1,3)="~99" D  Q
  . . . S ORI=0,X="" F  S ORI=$O(^OR(100,ORIFN,8,ORTA,.1,ORI)) Q:ORI'>0  D
@@ -56,7 +57,8 @@ T1 S ORTA=+$P(ORX,U,14),FIRST=+$O(^OR(100,ORIFN,8,ORTA,.1,0))
  . ;S ORI=0 F  S ORI=$O(^OR(100,ORIFN,8,ORTA,.1,ORI)) Q:ORI'>0  S X=$G(^(ORI,0)) S:(FIRST=ORI)&($E(X,1,3)=">> ") X=$E(X,4,999) D:$L(X) ADD
  I +$G(VFDMR)=0!(VFDFO) D
  . S ORI=0 F  S ORI=$O(^OR(100,ORIFN,8,ORTA,.1,ORI)) Q:ORI'>0  S X=$G(^(ORI,0)) S:(FIRST=ORI)&($E(X,1,3)=">> ") X=$E(X,4,999) D:$L(X) ADD
- ;DSS/MKN - END MOD
+ ;DSS/SMP - END MOD
+ Q:$G(ORIGVIEW)>1  ;contents of global only
  Q:$G(ORIGVIEW)>1  ;contents of global only
  S DLG=$P(OR0,U,5) K Y I DLG,$P(DLG,";",2)["101.41",$D(^ORD(101.41,+DLG,9)) X ^(9) I $L($G(Y)) S X=Y D ADD ; additional text
  ; I $P(OR3,U,11)=2 S X="(Renewal)" D ADD
@@ -109,6 +111,8 @@ EXPD ; -- loop through ^XTMP("ORAE" to get expired orders
  S NOW=+$E($$NOW^XLFDT,1,12),TO=0,SDATE=9999999-SDATE,EDATE=9999999-EDATE
  F  S TO=$O(^XTMP("ORAE",PAT,TO)) Q:'TO  I $D(ORGRP(TO)) S TM=EDATE F  S TM=$O(^XTMP("ORAE",PAT,TO,TM)) Q:'TM!(TM>SDATE)!(+TM<EDATE)  D
  . S IFN=0 F  S IFN=$O(^XTMP("ORAE",PAT,TO,TM,IFN)) Q:'IFN  I ('$D(^TMP("ORGOTIT",$J,IFN))!MULT) D
+ .. ;*356 Protect if x-ref dangles.
+ .. I '$D(^OR(100,IFN)) K ^XTMP("ORAE",PAT,TO,TM,IFN) Q
  .. S USTS=$P(^OR(100,IFN,3),U,3)
  .. Q:+$G(USTS)'=7  ;quit if order no longer expired
  .. S ORREP=$P(^OR(100,IFN,3),U,6)

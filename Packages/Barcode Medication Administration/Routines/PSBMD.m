@@ -1,15 +1,20 @@
-PSBMD ;BIRMINGHAM/EFC-BCMA MISSING DOSE FUNCTIONS ;Mar 2004 [5/17/05 8:39am]
- ;;3.0;BAR CODE MED ADMIN;**23**;Mar 2004
+PSBMD ;BIRMINGHAM/EFC - BCMA MISSING DOSE FUNCTIONS ;11/15/12 2:54pm
+ ;;3.0;BAR CODE MED ADMIN;**23,42,70**;Mar 2004;Build 101
  ;
  ; Reference/IA
  ; ^DIC(42/10039
  ; ^DPT(/10035
  ; IN5^VADPT/10061
+ ; DEM^VADPT/10061
  ; ^XMB/10070
  ; 52.6/436
  ; 52.7/437
  ;
-RPC(RESULTS,PSBDFN,PSBDRUG,PSBDOSE,PSBRSN,PSBADMIN,PSBNEED,PSBUID,PSBON,PSBSCHD) ;
+ ;*70 -  add new kernel variable for CO Missing Dose Printer.
+ ;       use Clinc name if passed in for the new field Clinic or
+ ;        assume Ward and get ien.
+ ;
+RPC(RESULTS,PSBDFN,PSBDRUG,PSBDOSE,PSBRSN,PSBADMIN,PSBNEED,PSBUID,PSBON,PSBSCHD,PSBCLIN,PSBCLNIEN) ;
  ;
  ; RPC: PSB SUBMIT MISSING DOSE
  ;
@@ -17,6 +22,7 @@ RPC(RESULTS,PSBDFN,PSBDRUG,PSBDOSE,PSBRSN,PSBADMIN,PSBNEED,PSBUID,PSBON,PSBSCHD)
  ; Allows the client to submit a missing dose interactively
  ;
  N DFN,PSBNOW,PSBFDA,PSBIENS,PSBMD,PSBMSG
+ S PSBCLNIEN=+$G(PSBCLNIEN)    ;*70 insure numeric
  D NEW(.PSBMD)
  I +PSBMD(0)<1 S RESULTS(0)="-1^Unable to create missing dose request"  Q
  S PSBIENS=+PSBMD(0)_","
@@ -25,7 +31,13 @@ RPC(RESULTS,PSBDFN,PSBDRUG,PSBDOSE,PSBRSN,PSBADMIN,PSBNEED,PSBUID,PSBON,PSBSCHD)
  S PSBFDA(53.68,PSBIENS,.03)=DUZ
  S PSBFDA(53.68,PSBIENS,.04)=DUZ(2)
  S PSBFDA(53.68,PSBIENS,.11)=PSBDFN
- S X=$G(^DPT(PSBDFN,.1)) I X]"" S X=$O(^DIC(42,"B",X,0)) S:X PSBFDA(53.68,PSBIENS,.12)=X
+ ; Ward or Clinic - use Clinic name if passed, else get Ward ien.  *70
+ I PSBCLIN]"" D
+ .S PSBFDA(53.68,PSBIENS,1)=PSBCLNIEN
+ E  D
+ .S X=$G(^DPT(PSBDFN,.1))
+ .I X]"" S X=$O(^DIC(42,"B",X,0)) S:X PSBFDA(53.68,PSBIENS,.12)=X
+ .S DFN=PSBDFN D IN5^VADPT S PSBFDA(53.68,PSBIENS,.18)=$P(VAIP(6),U,1)
  S PSBFDA(53.68,PSBIENS,.13)=PSBDRUG
  S PSBFDA(53.68,PSBIENS,.14)=PSBDOSE
  S PSBFDA(53.68,PSBIENS,.15)=PSBRSN
@@ -33,9 +45,8 @@ RPC(RESULTS,PSBDFN,PSBDRUG,PSBDOSE,PSBRSN,PSBADMIN,PSBNEED,PSBUID,PSBON,PSBSCHD)
  S PSBFDA(53.68,PSBIENS,.17)=PSBNEED
  S PSBFDA(53.68,PSBIENS,.19)=PSBSCHD
  S PSBFDA(53.68,PSBIENS,.25)=PSBUID
- S DFN=PSBDFN D IN5^VADPT S PSBFDA(53.68,PSBIENS,.18)=$P(VAIP(6),U,1)
  D FILE^DIE("","PSBFDA","PSBMSG")
- L +^PSB(53.68,+PSBIENS)  ; PSB*3*23
+ L +^PSB(53.68,+PSBIENS):$S($G(DILOCKTM)>0:DILOCKTM,1:3)  ; PSB*3*23
  I $G(PSBUID)'="" D
  .D PSJ1^PSBVT(PSBDFN,PSBON) K PSBADA,PSBSOLA
  .I '$D(PSBUIDA(PSBUID)) F  D PSJ1^PSBVT(PSBDFN,PSBPONX) K PSBADA,PSBSOLA Q:$D(PSBUIDA(PSBUID))  Q:PSBPONX=""
@@ -65,9 +76,10 @@ XQ ; Called via Kernel Menus
  Q
  ;
 SUBMIT(DA) ; Submit Request to Pharmacy
- N PSBWRD,PSBMG,PSBPRT
+ N PSBWRD,PSBMG,PSBPRT,CLIEN
  S PSBWRD=$P(^PSB(53.68,DA,.1),U,2)
  S PSBWRD=+$G(^DIC(42,+PSBWRD,44))
+ I PSBCLIN]"" S CLIEN=+$O(^PS(53.46,"B",PSBCLNIEN,""))
  ;
  ; Get Mail Group
  ;
@@ -75,10 +87,22 @@ SUBMIT(DA) ; Submit Request to Pharmacy
  S:PSBMG="" PSBMG=$$GET^XPAR("DIV","PSB MG MISSING DOSE",,"E")
  S $P(^PSB(53.68,DA,0),U,5)=PSBMG ; Add MG to notification
  ;
- ; Get Printer
+ ; Get Printer - If NO printer can be found, then DO NOT print!!
+ ;*70 - get CO printer if Clinic orders, else IM med & get IM printer
+ ; IM printer uses Variable PSB PRINTER MISSING DOSE
+ ; CO printer can come from 3 sources:
+ ;  1st from Clinic Defintion file for the specific Clinic if defined
+ ;  2nd from the Variable PSB PRINTER CO MISSING DOSE if defined
+ ;  3rd just use the IM med printer Variable.
  ;
- S PSBPRT=$$GET^XPAR(PSBWRD_";SC(","PSB PRINTER MISSING DOSE",,"E")
- S:PSBPRT="" PSBPRT=$$GET^XPAR("DIV","PSB PRINTER MISSING DOSE",,"E")
+ D:PSBCLIN]""                                             ;*70
+ .S PSBPRT=$$GET1^DIQ(53.46,CLIEN,4)
+ .S:PSBPRT="" PSBPRT=$$GET^XPAR("DIV","PSB PRINTER CO MISSING DOSE",,"E")
+ .S:PSBPRT="" PSBPRT=$$GET^XPAR("DIV","PSB PRINTER MISSING DOSE",,"E")
+ D:PSBCLIN=""                                             ;*70
+ .S PSBPRT=$$GET^XPAR(PSBWRD_";SC(","PSB PRINTER MISSING DOSE",,"E")
+ .S:PSBPRT="" PSBPRT=$$GET^XPAR("DIV","PSB PRINTER MISSING DOSE",,"E")
+ ;
  S $P(^PSB(53.68,DA,0),U,6)=PSBPRT ; Add MG to notification
  ;
  ; Send the report to the specified printer
@@ -109,7 +133,7 @@ SUBMIT(DA) ; Submit Request to Pharmacy
 DQ(PSBMD,PSBMM) ; Dequeue report from Taskman
  N PSBFLD,PSBRET
  Q:'$D(^PSB(53.68,PSBMD,0))
- L +^PSB(53.68,PSBMD) ; PSB*3*23
+ L +^PSB(53.68,PSBMD):$S($G(DILOCKTM)>0:DILOCKTM,1:3) ; PSB*3*23
  S PSBCFLD=$P(^PSB(53.68,PSBMD,.1),U,3)
  L -^PSB(53.68,PSBMD) ; PSB*3*23
  D:'$G(PSBMM)  ; It is not a mail message
@@ -117,8 +141,8 @@ DQ(PSBMD,PSBMM) ; Dequeue report from Taskman
  .W !,"Report:       MISSING DOSE REQUEST"
  .W !,"Date Created: " D NOW^%DTC S Y=% D D^DIQ W Y
  .W !,$TR($J("",75)," ","="),!
- I $G(PSBCFLD)'="" F PSBFLD=.01,.02,.03,.04,.05,.06,.11,.12,.18,.13,.14,.19,.15,.16,.17 D OUT
- I $G(PSBCFLD)="" F PSBFLD=.01,.02,.03,.04,.05,.06,.11,.12,.18,.25,.15,.19,.16,.17 D OUT
+ I $G(PSBCFLD)'="" F PSBFLD=.01,.02,.03,.04,.05,.06,.11,.12,.18,1,.13,.14,.19,.15,.16,.17 D OUT  ;*70
+ I $G(PSBCFLD)="" F PSBFLD=.01,.02,.03,.04,.05,.06,.11,.12,.18,1,.25,.15,.19,.16,.17 D OUT  ;*70
  I $D(^PSB(53.68,PSBMD,.6)) S X=0 F  S X=$O(^PSB(53.68,PSBMD,.6,X)) Q:'X  W !?3,"ADDITIVE:  ",$$GET1^DIQ(52.6,+^PSB(53.68,PSBMD,.6,X,0),.01)
  I $D(^PSB(53.68,PSBMD,.7)) S X=0 F  S X=$O(^PSB(53.68,PSBMD,.7,X)) Q:'X  W !?3,"SOLUTION:  ",$$GET1^DIQ(52.7,+^PSB(53.68,PSBMD,.7,X,0),.01)
  Q
@@ -127,9 +151,13 @@ OUT ;
  W !?3,PSBRET("LABEL"),":" F  Q:$X>30  W "."
  W $$GET1^DIQ(53.68,PSBMD_",",PSBFLD)
  I PSBFLD=.11 D
- .S PSBDFN=$$GET1^DIQ(53.68,PSBMD_",",.11,"I")
- .W !?3,"SSN (LAST 4 NUMBERS):" F  Q:$X>30  W "."
- .W $E($$GET1^DIQ(2,PSBDFN_",",.09),6,9)
+ .N DFN,VA,VADM S DFN=$$GET1^DIQ(53.68,PSBMD_",",.11,"I") D DEM^VADPT
+ .W !?3,$$GET^XPAR("ALL","PSB PATIENT ID LABEL")
+ .I $G(DUZ("AG"))="I" D
+ ..W ":" F  Q:$X>30  W "."
+ .E  D
+ ..W " (LAST 4 NUMBERS):" F  Q:$X>30  W "."
+ .W VA("BID")
  W:PSBFLD=.13 " ("_$P($G(^PSB(53.68,PSBMD,.1)),U,3)_")"
  S ZTREQ="@"
  Q
@@ -141,7 +169,7 @@ NEW(RESULTS) ; Create a new missing dose request
  I '+$G(DUZ) S RESULTS(0)="-1^Undefined User" Q
  I '$G(DUZ(2)) S RESULTS(0)="-1^Undefined Division" Q
  ; Lock Log
- L +^PSB(53.68,0):3
+ L +^PSB(53.68,0):$S($G(DILOCKTM)>0:DILOCKTM,1:3)
  E  S RESULTS(0)="-1^Request Log Locked" Q
  ; Generate Unique Entry and Create
  F  D NOW^%DTC S X=$E(%_"000000",1,14),X=(1700+$E(X,1,3))_$E(X,4,14),X="MD-"_$TR(X,".","-") Q:'$D(^PSB(53.68,"B",X))
@@ -169,7 +197,7 @@ VAL(PSBFLDS) ; Validate that fields in PSBFLDS are filled in
  Q
  ;
 FLWUP ; Follow-Up on missing dose
- N DIR,PSBIEN,PSBX,DA,DR,DDSFILE,PSBHDR,PSBDRUG
+ N DIR,PSBIEN,PSBX,DA,DR,DDSFILE,PSBHDR,PSBDRUG,LOC            ;*70
  S Y="" F  Q:Y="^"  D
  .K ^TMP("PSB",$J) S X=""
  .F  S X=$O(^PSB(53.68,"AS",1,X),-1) Q:'X  S Y=$O(^TMP("PSB",$J,""),-1)+1,^TMP("PSB",$J,Y)=X,^TMP("PSB",$J,0)=Y
@@ -179,7 +207,9 @@ FLWUP ; Follow-Up on missing dose
  .F PSBX=0:0 S PSBX=$O(^TMP("PSB",$J,PSBX)) Q:'PSBX!(Y="^")  S PSBIEN=^(PSBX)_"," D
  ..W !,$J(PSBX,2),". ",$$GET1^DIQ(53.68,PSBIEN,.01)
  ..W ?25,$$GET1^DIQ(53.68,PSBIEN,.11)
- ..W ?57,$$GET1^DIQ(53.68,PSBIEN,.12)
+ ..; get correct location                                     ;*70
+ ..S LOC=$S($$GET1^DIQ(53.68,PSBIEN,1)]"":$$GET1^DIQ(53.68,PSBIEN,1),1:$$GET1^DIQ(53.68,PSBIEN,.12))
+ ..W ?57,LOC                                                  ;*70
  ..S PSBDRUG=$$GET1^DIQ(53.68,PSBIEN,.13)
  ..I PSBDRUG]"" W !?5,PSBDRUG
  ..I PSBDRUG="" D

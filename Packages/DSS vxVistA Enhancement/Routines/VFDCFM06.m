@@ -1,6 +1,6 @@
-VFDCFM06 ;DSS/SGM - FILEMAN DD UTILITIES ; 1/30/2013 14:05
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 13
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
+VFDCFM06 ;DSS/SGM - FILEMAN DD UTILITIES ; 02/12/2014 13:20
+ ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 2
+ ;Copyright 1995-2014,Document Storage Systems Inc. All Rights Reserved
  ;
  ;Fileman utilites for accessing the DD structure
  ;
@@ -115,7 +115,7 @@ MULT(VFDCM,VFDN) ; rpc: VFDC FM GET FIELD ATTRIB MULT
  ; TYPE    n   default = 1
  ;             if TYPE=1, then return VFDCM(fld#,attrib_name)=value
  ;               for wp fields, return VFDCM(fld#,att name,#)=text
- ;               else return VFDCM(#)=field#^attrib_name^value  [for RPC]
+ ;               else return VFDCM(#)=field#^attrib_name^value[for RPC]
  ;               for wp fields, return VFDCM(#)=fld#^att name^text
  ; ATT     y   list of attributes to return
  ;             ';'-delimiter string of attrib names
@@ -276,7 +276,7 @@ FLDCK ; check for valid file/fld
  ;
 INIT(STR) ; str - ^-delimited string of variable names to initialize
  N I,X
- F I=1:1:$L(STR,U) S X=$P(STR,U,I) I X'="" S @X=$G(@X)
+ F I=1:1:$L(STR,U) S X=$P(STR,U,I) S:X'="" @(X_"=$G(@X)")
  I STR["FLAG",$G(FLAG)'="" S FLAG=$$CNVT^VFDVUTL(FLAG,"10NZ","U")
  I STR["TYPE" S TYPE=$S(TYPE=1:1,$$BROKER^VFDVUTL:0,TYPE="":1,1:TYPE)
  Q

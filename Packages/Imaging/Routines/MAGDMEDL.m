@@ -1,5 +1,6 @@
-MAGDMEDL ;WOIFO/LB - Routine to look up entries in the Medicine files ; 05/16/2005  09:18
- ;;3.0;IMAGING;**51**;26-August-2005
+MAGDMEDL ;WOIFO/LB - Routine to look up entries in the Medicine files ; 06/06/2007 09:42
+ ;;3.0;IMAGING;**51,54**;03-July-2009;;Build 1424
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGDMEDL ;WOIFO/LB - Routine to look up entries in the Medicine files ; 05/16/20
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -16,6 +16,7 @@ MAGDMEDL ;WOIFO/LB - Routine to look up entries in the Medicine files ; 05/16/20
  ;; +---------------------------------------------------------------+
  ;;
  Q
+ ;
 SELECT(ITEM,ARRAY) ;
  ;
  N CNT,DIR,DIROUT,DIRUT,ENTRY
@@ -46,10 +47,8 @@ LOOP(ARRAY,MAGPAT,SUB,CASEDT) ;
  Q:'$$FIND1^DIC(2,,"A",MAGPAT,"","")
  S PATNME=$P(^DPT(MAGPAT,0),"^"),SSN=$P(^(0),"^",9)
  S PATIENT=PATNME_" "_SSN
- I 'CASEDT S CASEDT=DT
- S X1=CASEDT,X2=-3 D C^%DTC S BEG=X
- S END=CASEDT+.9999
- S CNT=0,CDT=BEG-.001
+ S:'CASEDT CASEDT=DT
+ S BEG=$$FMADD^XLFDT(CASEDT,-3),END=CASEDT+.9999,CNT=0,CDT=BEG-.001
  F  S CDT=$O(MAGMC(MAGPAT,SUB,CDT)) Q:'CDT!(CDT>END)  D
  . S EN=0 F  S EN=$O(MAGMC(MAGPAT,SUB,CDT,EN)) Q:'EN  D
  . . S DATA=MAGMC(MAGPAT,SUB,CDT,EN)
@@ -69,6 +68,7 @@ LOOP(ARRAY,MAGPAT,SUB,CASEDT) ;
  . . . S ARRAY(CNT,1)=DICOM_"^"_PATNME_"^"_SSN_"^"_EN_"^"_PRCNM_"^"_PRC_"^"_$G(IMAGEPTR)_"^"_MEDFILE
  I CNT S ARRAY(0)="1^"_CNT_"^Medicine file entries for "_PATIENT
  Q
+ ;
 DISPLAY(ARRAY) ;
  ; Call routine needs to pass array in the following sequence
  ; ARRAY(0)= 1 or 0 ^ #entries ^ message
@@ -89,12 +89,15 @@ DISPLAY(ARRAY) ;
  . D:$Y+3>IOSL ASKQ
  I 'OUT D ASKQ S RES=ITEM
  Q RES
+ ;
 HEAD ;
  W:$Y+3>IOSL @IOF W !,MSG
  Q
+ ;
 LINE ;
  W !,ENTRY,".) "_OUTPUT
  Q
+ ;
 ASKQ ;
  N X,Y,DIR
  S DIR(0)="L^1:"_$S('ENTRY:ITEMS,1:ENTRY)
@@ -106,6 +109,7 @@ ASKQ ;
  W !,"You have selected ",$P($G(ARRAY(ITEM)),"^")
  S OUT=1
  Q
+ ;
 ASKMORE() ;
  N DIR,DATE,X,XX,Y
  Q:'$D(MAGPAT)
@@ -123,3 +127,4 @@ ASKMORE() ;
  I $D(XX(0)),$P(XX(0),"^")=0 D  Q 0
  . W "No entries found."
  Q 1
+ ;

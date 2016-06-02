@@ -1,5 +1,5 @@
 VFDORP ;DSS/LM - RPC wrapper orders print data ;23 Nov 2010 10:04
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 153
+ ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;**11**;28 Jan 2013;Build 1
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  ;         Support for multiple package references
@@ -39,7 +39,8 @@ DATA(VFDRSLT,VFDORLST,VFDCMT,VFDPKG,VFDPRINT,VFDLREF) ;RPC: VFD ORDER PRINT DATA
  ;
  S VFDRSLT=$NA(^TMP("VFDORP",$J)) K @VFDRSLT
  N VFDSORT D SORT(.VFDSORT,.VFDORLST) ;7/16/2007 - Sort orders by package prefix
- N VFDLRSLT,VFDPRSLT,VFDORPKG
+ N VFDLRSLT,VFDPRSLT,VFDORPKG,VFDLST
+ ;Patch 11 news var. vfdlst to correct dc multiple order printing issue
  D:VFDLR  ;LR - Laboratory
  .K VFDORPKG M VFDORPKG=VFDSORT("LR") Q:'$D(VFDORPKG)
  .D LAB^VFDLRLST(.VFDLRSLT,.VFDORPKG,.VFDPRINT,.VFDLREF)

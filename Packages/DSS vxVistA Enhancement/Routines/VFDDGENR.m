@@ -1,6 +1,6 @@
-VFDDGENR ;DSS/LM - VFD ENROLLMENT remote procedures ; 12/01/2011 16:10
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 153
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
+VFDDGENR ;DSS/LM/SMP - VFD ENROLLMENT remote procedures ; 09/16/2015 09:45
+ ;;15.0;DSS,INC VXVISTA OPEN SOURCE;**2**;28 Jan 2013;Build 3
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ;
  Q
  ;
@@ -108,7 +108,9 @@ DX(VFDDX) ; Convert to ICD DIAGNOSIS IEN
 XDX(VFDDX) ; Append diagnosis code and short description to DX IEN
  ; VFDDX - req - ICD DIAGNOSIS IEN
  ;
- N I,X,VFDZ S VFDZ=$$ICDDX^ICDCODE($G(VFDDX))
+ N I,X,SRC,VFDZ
+ S SRC=$$GET1^DIQ(80,$G(VFDDX),1.1)
+ S VFDZ=$$ICDDX^ICDEX($$CODEC^ICDEX(80,$G(VFDDX)),DT,SRC)
  Q VFDDX_U_$P(VFDZ,U,2)_U_$P(VFDZ,U,4)
  ;
 NDX(VFDNDX,VFDSRC) ; Construct index from source

@@ -1,5 +1,5 @@
-DGCLEAR ;ALB/BAJ - REGISTRATION CROSS REFERENCE CLEANUP ;01/09/2006
- ;;5.3;Registration;**653,688**;Aug 13, 1993;Build 29
+DGCLEAR ;ALB/BAJ,TDM - REGISTRATION CROSS REFERENCE CLEANUP ; 12/22/08 4:14pm
+ ;;5.3;Registration;**653,688,754**;Aug 13, 1993;Build 46
  ;
  ; Called from ASK^DGLOCK or ADK^DGLOCK3, The purpose of this routine is to clear All temporary or confidential address fields
  ; Also called from Z07 process to clear Permanent address before update 
@@ -44,6 +44,7 @@ DTABLE ;TABLE of Foreign and Domestic fields: structure -->>;;Description;;(T)EM
  ;;CONFIDENTIAL ZIP CODE;;C;2;.1416;@
  ;;CONFIDENTIAL ADDRESS START DATE;;C;2;.1417;@
  ;;CONFIDENTIAL ADDRESS END DATE;;C;2;.1418;@
+ ;;CONFIDENTIAL PHONE NUMBER;;C;2;.1315;@
  ;;CONFIDENTIAL ADDRESS PROVINCE;;C;2;.14114;@
  ;;CONFIDENTIAL ADDRESS POSTAL CODE;;C;2;.14115;@
  ;;CONFIDENTIAL ADDRESS COUNTRY;;C;2;.14116;@

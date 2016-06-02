@@ -1,15 +1,22 @@
-XUS2 ;SF/RWF - TO CHECK OR RETURN USER ATTRIBUTES ;11/29/2006
- ;;8.0;KERNEL;**59,180,313,419,437**;Jul 10, 1995;Build 2
+XUS2 ;SF/RWF - TO CHECK OR RETURN USER ATTRIBUTES ;2/1/2012
+ ;;8.0;KERNEL;**59,180,313,419,437,574**;Jul 10, 1995;Build 4
+ ;Per VHA Directive 2004-038, this routine should not be modified
  Q
  ;
-ACCED ; ACCESS CODE EDIT from DD
- ;DSS/LM - Begin Mod
- D X^VFDXTX("ACCESS CODE EDIT") Q
- ;DSS/LM - Mod End
+ ;DSS/SGM - BEGIN MODS
+ ; This routine needs to be edited in multiple locations.  Instead of
+ ; putting two lines ;DSS/init - BEGIN MODS and ;DSS/init - END MODS
+ ; around each one, the line modified will usually have the comment
+ ; ' ;vxvista' appended to the end of the line.
+ ; To find all mods, search this routine for "vxvista" or ";DSS"
+ ; NOTE: $$VXNET is test to see if network authentication is enabled
+ ;
+ACCED ; ACCESS CODE EDIT from DD or Screenman form
  I "Nn"[$E(X,1) S X="" Q
  I "Yy"'[$E(X,1) K X Q
  N DIR,DIR0,XUAUTO,XUK
  S XUAUTO=($P($G(^XTV(8989.3,1,3)),U,1)="y"),XUH=""
+ I $$VXNET,'$D(DDS) D VXTEXT("TNETA",1,1) ;DSS/vxvista
 AC1 D CLR,AAUTO:XUAUTO,AASK:'XUAUTO G OUT:$D(DIRUT) D REASK G OUT:$D(DIRUT),AC1:'XUK D CLR,AST(XUH)
  G OUT
  ;
@@ -22,8 +29,12 @@ AASK ;Ask for Access code
 AASK1 ;
  W "Enter a new ACCESS CODE <Hidden>: " D GET Q:$D(DIRUT)
  I X="@" D DEL D:Y'=1 DIRUT S XUH="",XUEX=1 Q
- I X[$C(34)!(X[";")!(X["^")!(X[":")!(X'?.UNP)!($L(X)>20)!($L(X)<6)!(X="MAIL-BOX") D CLR W $C(7),$$AVHLPTXT(1) D AHELP Q
- I 'XUAUTO,((X?6.20A)!(X?6.20N)) D CLR W $C(7),$$AVHLPTXT(1),! Q
+ ;DSS/vxvista - including this line, 3 new lines inserted
+ ;   the 2 original VA code lines now start with I 'VFDX
+ N VFDX S VFDX=0 I $$VXCK S VFDX=$$AASK1^VFDXUS2B Q:'VFDX
+ I 'VFDX I X[$C(34)!(X[";")!(X["^")!(X[":")!(X'?.UNP)!($L(X)>20)!($L(X)<6)!(X="MAIL-BOX") D CLR W $C(7),$$AVHLPTXT(1) D AHELP Q
+ I 'VFDX I 'XUAUTO,((X?6.20A)!(X?6.20N)) D CLR W $C(7),$$AVHLPTXT(1),! Q
+ ;DSS/vxvista - END MODS - local mods this block
  S XUU=X,X=$$EN^XUSHSH(X),XUH=X,XMB(1)=$O(^VA(200,"A",XUH,0)) I XMB(1),XMB(1)'=DA S XMB="XUS ACCESS CODE VIOLATION",XMB(1)=$P(^VA(200,XMB(1),0),"^"),XMDUN="Security" D ^XMB
  I $D(^VA(200,"AOLD",XUH))!$D(^VA(200,"A",XUH)) D CLR W $C(7),"This has been used previously as an ACCESS CODE.",! Q
  S XUEX=1 ;Now we can quit
@@ -39,13 +50,16 @@ AST(XUH) ;Change ACCESS CODE and index.
  N FDA,IEN,ERR
  S IEN=DA_","
  S FDA(200,IEN,2)=XUH D FILE^DIE("","FDA","ERR")
- W !,"The VERIFY CODE has been deleted as a security measure.",!,"You will need to enter a new VERIFY code so the user can sign-on.",$C(7)
- D VST("",1)
+ ;DSS/vxvista - if network authentication, don't delete VC
+ ;  2 original VA lines now start with I '$$VXNET
+ I '$$VXNET(DA) W !,"The VERIFY CODE has been deleted as a security measure.",!,"You will need to enter a new VERIFY code so the user can sign-on.",$C(7)
+ I '$$VXNET(DA) D VST("",1)
  I $D(^XMB(3.7,DA,0))[0 S Y=DA D NEW^XM ;Make sure has a Mailbox
  Q
  ;
 GET ;Get the user input and convert case.
  S X=$$ACCEPT^XUS I (X["^")!('$L(X)) D DIRUT
+ I $$VXCK S X=$$VCASE^VFDXUS2B(X) Q  ;DSS/vxvista
  S X=$$UP^XLFSTR(X)
  Q
  ;
@@ -62,21 +76,18 @@ NEWCODE D REASK I XUK W !,"OK, remember this code for next time!"
  G OUT
  ;
 CVC ;From XUS1
- ;DSS/LM - Begin Mod
- D X^VFDXTX("CHANGE VERIFY CODE") Q
- ;DSS/LM - Mod End
+ I $$VXNET(DUZ) D CLR,VXTEXT("TNETV",1,1) G OUT ;DSS/vxvista
  N DA,X
  S DA=DUZ,X="Y"
  W !,"You must change your VERIFY CODE at this time."
  ;Fall into next code
 VERED ; VERIFY CODE EDIT From DD
- ;DSS/LM - Begin Mod
- D X^VFDXTX("VERIFY CODE EDIT") Q
- ;DSS/LM - Mod End
- N DIR,DIR0,XUAUTO
+ N DIR,DIR0,XUAUTO,XUSVCMIN,XUSVCACCT S XUSVCACCT=$$SVCACCT(DA),XUSVCMIN=$S(+XUSVCACCT:12,1:8)
  I "Nn"[$E(X,1) S X="" Q
  I "Yy"'[$E(X,1) K X Q
  S XUH="",XUAUTO=($P($G(^XTV(8989.3,1,3)),U,3)="y") S:DUZ=DA XUAUTO="n" ;Auto only for admin
+ I $$VXNET(DA) D CLR,VXTEXT("TNETV",1,1) G OUT ;DSS/vxvista
+ N VFDVC S VFDVC=1 ;DSS/vxvista - flag so we know we are in VC edit
 VC1 D CLR,VASK:'XUAUTO,VAUTO:XUAUTO G OUT:$D(DIRUT) D REASK G OUT:$D(DIRUT),VC1:'XUK D CLR,VST(XUH,1)
  D CALL^XUSERP(DA,2)
  G OUT
@@ -88,12 +99,13 @@ VASK1 W "Enter a new VERIFY CODE: " D GET Q:$D(DIRUT)
  D CLR S XUU=X,X=$$EN^XUSHSH(X),XUH=X,Y=$$VCHK(XUU,XUH) I +Y W $C(7),$P(Y,U,2,9),! D:+Y=1 VHELP G VASK1
  Q
  ;
-VCHK(S,EC) ;Call with String and Encripted versions
+VCHK(S,EC) ;Call with String and Encrypted versions
+ I $$VXCK N VXCK S VXCK=$$VCHK^VFDXUS2B(S,EC) Q:VXCK'=-1 VXCK ;DSS/vxvista
  ;Updated per VHA directive 6210 Strong Passwords
- N PUNC,NA S PUNC="~`!@#$%&*()_-+=|\{}[]'<>,.?/"
- S NA("FILE")=200,NA("FIELD")=.01,NA("IENS")=DA_",",NA=$$HLNAME^XLFNAME(.NA)
- I ($L(S)<8)!($L(S)>20)!(S'?.UNP)!(S[";")!(S["^")!(S[":") Q "1^"_$$AVHLPTXT
- I (S?8.20A)!(S?8.20N)!(S?8.20P)!(S?8.20AN)!(S?8.20AP)!(S?8.20NP) Q "2^VERIFY CODE must be a mix of alpha and numerics and punctuation."
+ N PUNC,NA,XUPAT S PUNC="~`!@#$%&*()_-+=|\{}[]'<>,.?/"
+ S NA("FILE")=200,NA("FIELD")=.01,NA("IENS")=DA_",",NA=$$HLNAME^XLFNAME(.NA),XUPAT=XUSVCMIN_".20"
+ I ($L(S)<XUSVCMIN)!($L(S)>20)!(S'?.UNP)!(S[";")!(S["^")!(S[":") Q "1^"_$$AVHLPTXT
+ I (S?@(XUPAT_"A"))!(S?@(XUPAT_"N"))!(S?@(XUPAT_"P"))!(S?@(XUPAT_"AN"))!(S?@(XUPAT_"AP"))!(S?@(XUPAT_"NP")) Q "2^VERIFY CODE must be a mix of alpha and numerics and punctuation."
  I $D(^VA(200,DA,.1)),EC=$P(^(.1),U,2) Q "3^This code is the same as the current one."
  I $D(^VA(200,DA,"VOLD",EC)) Q "4^This has been used previously as the VERIFY CODE."
  I EC=$P(^VA(200,DA,0),U,3) Q "5^VERIFY CODE must be different than the ACCESS CODE."
@@ -106,6 +118,9 @@ VST(XUH,%) ;
  S:XUH="" XUH="@" ;11.2 get triggerd
  S FDA(200,IEN,11)=XUH D FILE^DIE("","FDA","ERR")
  I $D(ERR) D ^%ZTER
+ I (DUZ'=(+IEN))&$$SVCACCT(+IEN)&(XUH'="@") D  ;override trigger of 11.2 by 11 for svc accts
+ .K FDA,ERR S FDA(200,IEN,11.2)=$H D FILE^DIE("","FDA","ERR")
+ .I $D(ERR) D ^%ZTER
  S:DA=DUZ DUZ("NEWCODE")=XUH Q
  ;
 DEL ;
@@ -167,23 +182,43 @@ CHK1 W "Please enter your CURRENT verify code: " D GET Q:$D(DIRUT) 0
  Q 0
  ;
 BRCVC(XV1,XV2) ;Broker change VC, return 0 if good, '1^msg' if bad.
- ;DSS/LM - Begin Mod
- N VFDXRSLT D X^VFDXTX("BROKER CHANGE VERIFY CODE") Q $G(VFDXRSLT)
- ;DSS/LM - Mod End
- N XUU,XUH
+ I $G(DUZ)>0,$$VXNET(DUZ) Q $$BRCVC^VFDXUS2B ;DSS/vxvista
+ N XUU,XUH,XUSVCMIN S XUSVCMIN=8
  Q:$G(DUZ)'>0 "1^Bad DUZ" S DA=DUZ,XUH=$$EN^XUSHSH(XV2)
  I $P($G(^VA(200,DUZ,.1)),"^",2)'=$$EN^XUSHSH(XV1) Q "1^Sorry that isn't the correct current code"
  S Y=$$VCHK(XV2,XUH) Q:Y Y
  D VST(XUH,0),CALL^XUSERP(DA,2)
  Q 0
  ;
+SVCACCT(XUSDUZ) ;return 1^CONNECTOR PROXY if CP svc acct; 0 if not svc acct
+ Q:$$ISUSERCP^XUSAP1(XUSDUZ) "1^CONNECTOR PROXY"
+ Q 0
+ ;
 AVHLPTXT(%) ;
- ;DSS/LM - Begin Mod
- N VFDXHELP D X^VFDXTX("AV HELP TEXT") Q $G(VFDXHELP)
- ;DSS/LM - Mod End
- Q "Enter "_$S($G(%):"6-20",1:"8-20")_" characters mixed alphanumeric and punctuation (except '^', ';', ':')."
+ Q "Enter "_$S($G(%):"6-20",+$G(XUSVCMIN):XUSVCMIN_"-20",1:"8-20")_" characters mixed alphanumeric and punctuation (except '^', ';', ':')"
  ;
  ;Left over code, Don't think it is called anymore.
  G XUS2^XUVERIFY ;All check or return user attributes moved to XUVERIFY
 USER G USER^XUVERIFY
 EDIT G EDIT^XUVERIFY
+ ;
+ ;DSS/vxvista/sgm - >>>>BEGIN MODS<<<<<
+VXCK(T) ; since in XUS2, need to first verify VFDXUS2B exists
+ Q:$T(VXCK^VFDXUS2B)="" 0 Q $$VXCK^VFDXUS2B($G(T))
+ ;
+VXNET(VI) ; see description in VFDXUS2B
+ N VX S VX=$$VXCK S:VX VX=$$VXNET^VFDXUS2B($G(VI)) Q VX
+ ;
+VXTEXT(TAG,WR,BELL) D TEXT^VFDXUS2B(,TAG,WR,BELL) Q
+ ;
+VFD(VFDN) ; vxVistA call to VFDXTX for implementation specific override
+ ; 9/20/2013 - do not believe this is invoked now
+ N NAME S VFDN=$G(VFDN) Q:'$$VXCK(1)
+ I VFDN=1 S NAME="ACCESS CODE EDIT"
+ I VFDN=2 S NAME="CHANGE VERIFY CODE"
+ I VFDN=3 S NAME="VERFIY CODE EDIT"
+ I VFDN=4 S NAME="BROKER CHANGE VERIFY CODE" N VFDXRSLT
+ I VFDN=5 S NAME="AV HELP TEXT" N VFDXHELP
+ D X^VFDXTX(NAME)
+ I VFDN>3 Q $S(VFDN=4:$G(VFDXRSLT),1:$G(VFDXHELP))
+ Q

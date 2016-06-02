@@ -1,6 +1,6 @@
-RCDPEM ;ALB/TMK - POST EFT, ERA MATCHING TO EFT ;05-NOV-02
- ;;4.5;Accounts Receivable;**173,255**;Mar 20, 1995;Build 1
- ;;Per VHA Directive 10-93-142, this routine should not be modified.
+RCDPEM ;ALB/TMK/PJH - POST EFT, ERA MATCHING TO EFT ;5/31/11 6:15pm
+ ;;4.5;Accounts Receivable;**173,255,269,276,283**;Mar 20, 1995;Build 8
+ ;;Per VHA Directive 2004-038, this routine should not be modified
  ; IA 4050 covers call to SPL1^IBCEOBAR
  Q
  ; Note - keep processing in line with RCDPXPAP 
@@ -24,7 +24,7 @@ EN ; Post EFT deposits, auto-match EFT's and ERA's
  ; Post deposits for any unposted EFTs in file 344.3
  ; 'Unposted' EFTs have a 0 in AMOUNT POSTED field
  S ^TMP($J,"RCTOT","EFT_DEP")=0
- S RCZ=0 F  S RCZ=$O(^RCY(344.3,"APOST",0,RCZ)) Q:'RCZ  S RC0=$G(^RCY(344.3,RCZ,0))  I RC0'="",$P(RC0,U,8),($E($P(RC0,U,6),1,3)="469")!($E($P(RC0,U,6),1,3)="569") D
+ S RCZ=0 F  S RCZ=$O(^RCY(344.3,"APOST",0,RCZ)) Q:'RCZ  S RC0=$G(^RCY(344.3,RCZ,0))  I RC0'="",$P(RC0,U,8) D
  . S ^TMP($J,"RCTOT","EFT_DEP")=^TMP($J,"RCTOT","EFT_DEP")+1
  . ; Verify check sums
  . S RCSUM=$$CHKSUM^RCDPESR3(RCZ)
@@ -67,6 +67,10 @@ EN ; Post EFT deposits, auto-match EFT's and ERA's
  D MATCH(0,1)
  L -^RCY(344.3,"ALOCK")
 ENQ K ^TMP($J,"RCDPETOT")
+ ;
+ ;ePayments 5010 part II enhancements
+ ;Create Bulletins of EEOB Moved or Copied today
+ D EN^RCDPEM8
  Q
  ;
 MATCH(RCMAN,RCPROC) ; Try to matched unmatched EFTs
@@ -104,7 +108,7 @@ LOCKDEP(RCDEP,LOCK) ; Lock/confirm deposit ien RCDEP file 341.1
  ; If LOCK = 1 lock deposit
  ; If LOCK = 0 unlock deposit
  I $G(LOCK) D
- . L +^RCY(344.1,RCDEP,0)
+ . L +^RCY(344.1,RCDEP,0):5
  . D CONFIRM^RCDPUDEP(RCDEP) ; confirm to prevent changes
  I '$G(LOCK) L -^RCY(344.1,RCDEP,0)
  Q
@@ -129,7 +133,9 @@ RCPTDET(RCRZ,RECTDA1,RCER) ; Adds detail to a receipt based on file 344.49
  . D DET(RCRZ,RCR,RECTDA1,RCTRANDA)
  . S RCSPL(RCZ0\1,+RCZ0)=RCZ0
  S Z=0 F  S Z=$O(RCSPL(Z)) Q:'Z  S RCQ=+$G(RCSPL(Z)) I RCQ D
- . S Z1=$O(RCSPL(Z,"")) Q:$O(RCSPL(Z,""),-1)=Z1  ; No split occurred
+ .;;Move EEOB if one claim entered-changed 10/19/11-see +25^RCDPEWL8
+ . S Z1=$O(RCSPL(Z,"")) Q:Z1=""
+ . I $O(RCSPL(Z,""),-1)=Z1,'$$SPLIT(Z,Z1,RCERA) Q  ; No split occurred
  . S Z1=0 F  S Z1=$O(RCSPL(Z,Z1)) Q:'Z1  S Z0=$G(RCSPL(Z,Z1)) D
  .. S Q=+$P($G(^RCY(344.4,RCRZ,1,RCQ,0)),U,2) ; EOB detail rec
  .. Q:'Q
@@ -139,6 +145,18 @@ RCPTDET(RCRZ,RECTDA1,RCER) ; Adds detail to a receipt based on file 344.49
  ... D SPL1^IBCEOBAR(Q,$P(Z0,U,2),$P(Z0,U,7),$P(Z0,U,6)) ; Add the split bill # ; IA 4050
  ;
  Q
+SPLIT(Z,Z1,RCERA) ;Check if worklist was split but to to single claim
+ N SUB,NBILL,OBILL
+ ;Find split line in scratchpad
+ S SUB=$O(^RCY(344.49,RCERA,1,"B",Z1,"")) Q:'SUB 0
+ ;Get original claim number from scratchpad
+ S OBILL=$P($G(^RCY(344.49,RCERA,1,SUB-1,0)),U,2)
+ ;New claim number
+ S NBILL=$P(RCSPL(Z,Z1),U,2)
+ ;If new and old claim are not the same this is a move via split
+ I OBILL'="",OBILL'=NBILL Q 1
+ ;Otherwise this is not a split
+ Q 0
  ;
 DET(RCZ,RCR,RECTDA1,RCTRANDA) ; Store receipt detail
  ; RCZ = ien of entry file 344.49
@@ -153,7 +171,7 @@ DET(RCZ,RCR,RECTDA1,RCTRANDA) ; Store receipt detail
  S RCZ0=$G(^RCY(344.49,RCZ,1,RCR,0))
  S DR="",RCUP=+$O(^RCY(344.49,RCZ,1,"B",+RCZ0/1,0)),RCUP=$G(^RCY(344.49,RCZ,1,RCUP,0))
  I $P(RCZ0,U,7) S DR=".09////^S X="_+$P(RCZ0,U,7)_"_$C(59)_""PRCA(430,"";"
- S DR=DR_".04////"_(+$P(RCZ0,U,3))_";"_$S($P(RC0,U,4)'="":".13////"_$P(RC0,U,4)_";",1:"")_".27////"_RCR_";"
+ S DR=DR_".04////"_(+$P(RCZ0,U,3))_";.27////"_RCR_";"
  I $P(RC0,U,5)'="" S DR=DR_".1////"_$P(RC0,U,5)_";"
  I $P(RC0,U,6)'="" S DR=DR_".08////"_$P(RC0,U,6)_";"
  S RCCOM=$P(RCZ0,U,10)

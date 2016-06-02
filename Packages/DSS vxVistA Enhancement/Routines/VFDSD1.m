@@ -1,5 +1,5 @@
-VFDSD1 ;DSS/PDW - PATIENT LIST FOR SCHED PROV;15 Jan 2009 10:03
- ;;2009.2;DSS,INC VXVISTA OPEN SOURCE;;01 Dec 2009
+VFDSD1 ;DSS/PDW - PATIENT LIST FOR SCHED PROV; 08/27/2015 12:15
+ ;;2013.1;DSS,INC VXVISTA OPEN SOURCE;**70**;01 Dec 2009;Build 2
  ;Copyright 1995-2009,Document Storage Systems Inc. All Rights Reserved
  ;
  ;This routine should on be invoked from the VFDSD routine
@@ -29,37 +29,34 @@ SCHPATLK(VFDRSLT,VFDINFO) ;RPC VFD SD SCHED PROV PAT LIVDSZDST
  S X=$$SDSCHPRV I (X<1)!($G(VFD)="TEST") S @G@(1)=X Q
  ; now have VFD("LOC",loc)=""  VFD("PRV",duz#)=""
  ; additional qa
- I '$D(VFD("LOC")),'$D(VFD("PRV")) S VFD("PRV",DUZ)=""
- I $D(VFD("LOC")),'$D(VFD("PRV")) S VFD("PRV")="A"
- I $G(VFD("PRV"))'="A" S VFD("PRV")=""
  I '$D(VFD("LOC")) S VFD("LOC")="A"
+ I '$D(VFD("PRV")) S VFD("PRV")="A"
+ I $G(VFD("PRV"))'="A" S VFD("PRV")=""
  I '$G(SDT) S SDT=DT
  I '$G(EDT) S EDT=DT
  I EDT?7N S EDT=EDT+.24
  S SDT=SDT-.000001
  S:'($D(VFD("LOC"))#2) VFD("LOC")=""
  S:'($D(VFD("PRV"))#2) VFD("PRV")=""
- S R=$NA(^SC("VFDBYLOC")),(N,PROV)=0
- F  S PROV=$O(@R@(PROV)) Q:'PROV  D
- .I VFD("PRV")'="A",'$D(VFD("PRV",PROV)) Q
- .S LOC=0 F  S LOC=$O(@R@(PROV,LOC)) Q:'LOC  D
- ..I VFD("LOC")'="A",'$D(VFD("LOC",LOC)) Q
- ..I '$D(TMP("LOC",LOC)) S TMP("LOC",LOC)=$P(^SC(LOC,0),U)
- ..S APPT=SDT F  S APPT=$O(@R@(PROV,LOC,APPT)) Q:APPT>EDT!'APPT  D
- ...S Y=$P(APPT,":",1,2)
- ...I '$D(TMP("DT",Y)) S TMP("DT",Y)=$TR($$FMTE^XLFDT(Y),"@"," ")
- ...S Z=0 F  S Z=$O(@R@(PROV,LOC,APPT,Z)) Q:'Z  S DFN=^(Z) D
- ....S TMP("DFN",DFN)=$P(^DPT(DFN,0),U)
- ....S X=DFN_";"_TMP("DFN",DFN)_U_LOC_";"_TMP("LOC",LOC)_U
- ....S X=X_Y_";"_TMP("DT",Y)
- ....S N=N+1,@G@(TMP("DFN",DFN),$P(APPT,":",1,2),N)=X
- ....Q
- ...Q
- ..Q
- .Q
+ S (N,LOC)=0 F  S LOC=$O(^SC(LOC)) Q:'LOC  D
+ .Q:'$$FILTLOC(LOC)
+ .S APPT=SDT F  S APPT=$O(^SC(LOC,"S",APPT)) Q:APPT>EDT!'APPT  D
+ ..S Y=0 F  S Y=$O(^SC(LOC,"S",APPT,Y)) Q:'Y  D
+ ...S Z=0 F  S Z=$O(^SC(LOC,"S",APPT,Y,Z)) Q:'Z  S Z(0)=^(Z,0) D
+ ....S DFN=+Z(0),PROV=+$G(^SC(LOC,"S",APPT,Y,Z,21600))
+ ....Q:'$$FILTPRV(PROV)  D ADD(DFN,LOC,APPT)
  I '$D(@G) S @G@(1)=$$ERR(7)
  Q
+ ;
  ;-----------------------  PRIVATE SUBROUTINES  -----------------------
+ADD(DFN,LOC,APPT) ; Add Appointment to return
+ N X
+ S DFN=DFN_";"_$$GET1^DIQ(2,DFN,.01)
+ S LOC=LOC_";"_$$GET1^DIQ(44,LOC,.01)
+ S APPT=APPT_";"_$TR($$FMTE^XLFDT(APPT),"@"," ")
+ S X=DFN_U_LOC_U_APPT
+ S N=N+1,@G@($P(DFN,";",2),APPT,N)=X
+ Q
 ERR(A) ;
  I A=1 Q "-1^Invalid input mnemonic received: "_X
  I A=2 Q "-1^Invalid value received for "_X_": "_Y
@@ -70,6 +67,18 @@ ERR(A) ;
  I A=7 Q "-1^No appointments found for search criteria"
  I A=8 Q "-1^SCHEDULED PROVIDER FIELD not defined in file 44"
  Q 1
+ ;
+FILTLOC(L) ; Filter on LOCATION
+ ; Return 1 to continue processing
+ ; Return 0 to filter out this location
+ I VFD("LOC")="A" Q 1
+ Q $D(VFD("LOC",L))
+ ;
+FILTPRV(P) ; Filter on LOCATION
+ ; Return 1 to continue processing
+ ; Return 0 to filter out this location
+ I VFD("PRV")="A" Q 1
+ Q $D(VFD("PRV",P))
  ;
 QA() ; qa input
  I "^EDT^LOC^PRV^SDT^TEST^"'[(U_X_U) S ERR=$$ERR(1) Q 0

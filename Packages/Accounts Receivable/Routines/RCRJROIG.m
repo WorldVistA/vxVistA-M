@@ -1,5 +1,5 @@
 RCRJROIG ;WISC/RFJ-send data for oig extract ;1 Jul 99
- ;;4.5;Accounts Receivable;**103,174,203,205,220**;Mar 20, 1995
+ ;;4.5;Accounts Receivable;**103,174,203,205,220,270**;Mar 20, 1995;Build 25
  ;;Per VHA Directive 10-93-142, this routine should not be modified.
  Q
  ;
@@ -46,7 +46,7 @@ OIG(DATEEND) ;  send data to the OIG
  .   S DATA=^TMP($J,"RCRJROIG",BILLDA)
  .   S DATA0=^PRCA(430,BILLDA,0)
  .   ;  bill number, position 1-11
- .   S OIGDATA=$$LJ^XLFSTR($P(DATA0,"^"),11)
+ .   S OIGDATA=$E($$LJ^XLFSTR($P(DATA0,"^"),11),1,11)  ; WCJ;PRCA*4.5*270
  .   ;  category, position 12-36
  .   S OIGDATA=OIGDATA_$$LJ^XLFSTR($E($P($G(^PRCA(430.2,+$P(DATA0,"^",2),0)),"^"),1,25),25)
  .   ;  status, position 37-56

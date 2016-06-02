@@ -1,11 +1,11 @@
-RCDPEWL8 ;ALB/TMK - EDI LOCKBOX WORKLIST ERA LEVEL ;12-FEB-04
- ;;4.5;Accounts Receivable;**208**;Mar 20, 1995
- ;;Per VHA Directive 10-93-142, this routine should not be modified.
+RCDPEWL8 ;ALB/TMK/PJH - EDI LOCKBOX WORKLIST ERA LEVEL ;12-FEB-04
+ ;;4.5;Accounts Receivable;**208,269,276**;Mar 20, 1995;Build 87
+ ;;Per VHA Directive 2004-038, this routine should not be modified.
  Q
  ;
 FILESP ; Action that files the split lines
  ; Assumes RCDIR,RCLINE,RCSCR,RCSPLIT array defined
- N RCTOT,Z,RCZ0,RCZ1,DTOUT,DUOUT,DIR,X,Y,DIE,DA,DR,DIC,DD,DO,DLAYGO,RCZ,RCZZ,RCZT
+ N RCTOT,Z,RCZ0,RCZ1,DTOUT,DUOUT,DIR,X,Y,DIE,DA,DR,DIC,DD,DO,DLAYGO,RCZ,RCZZ,RCZT,VALBCK
  D FULL^VALM1
  I '$G(^TMP("RCDPE_EOB_SPLIT_OK",$J)) D  Q
  . S VALMBCK="R"
@@ -19,6 +19,14 @@ FILESP ; Action that files the split lines
  S DA(1)=RCSCR
  S RCZ0=+$P(RCLINE,U,2),RCZZ=+$G(^RCY(344.49,DA(1),1,RCZ0,0)),RCZZ(1)=""
  S RCZ=+$O(RCSPLIT(0))
+ ;
+ ;Option to move/copy EOB
+ I RCZ D  Q:$G(VALMBCK)="Q"
+ .;;Move/Copy removed 10/19/11-now in receipt creation +136^RCDPEM
+ .;;Q:$$UPDWL^RCDPEM5($P(RCDIR,U),.RCSPLIT,RCERA)
+ .;;User abort
+ .;;K ^TMP($J,"RCDPE_SPLIT_FILE") S VALMBCK="Q"
+ ;
  I RCZ D
  . S DIE="^RCY(344.49,"_DA(1)_",1,",DA=RCZ0,RCZT=$P(RCSPLIT(RCZ),U,2)+$P(RCSPLIT(RCZ),U,3)
  . S DR=".02////"_$P(RCSPLIT(RCZ),U)_";.05////"_$J(+$P(RCSPLIT(RCZ),U,2),"",2)_";.06////"_$J(+RCZT,"",2)_";.08////"_$J($P(RCSPLIT(RCZ),U,3),"",2)
@@ -152,7 +160,8 @@ HASADJ(RCSCR,RCOK) ; Function=1 if WL entry has any adj not yet distributed
  N Z,Z0,RCSTOP
  S RCSTOP=0,RCOK=0
  S Z=0 F  S Z=$O(^RCY(344.49,RCSCR,1,Z)) Q:'Z  S Z0=$G(^(Z,0)) D  Q:RCSTOP
- . I $P(Z0,U,6)>0!$O(^RCY(344.49,RCSCR,1,Z,1,0)) S RCOK=1 Q
+ . ;HIPAA 5010 - negative value now takes precedence over adjustment
+ . I $P(Z0,U,6)>0!$O(^RCY(344.49,RCSCR,1,Z,1,0)) S RCOK=1
  . I $P(Z0,U,6)<0 S RCSTOP=1
  Q RCSTOP
  ;

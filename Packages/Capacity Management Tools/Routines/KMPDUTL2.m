@@ -1,5 +1,5 @@
 KMPDUTL2 ;OAK/RAK - CM Tools Utility ;6/21/05  10:18
- ;;2.0;CAPACITY MANAGEMENT TOOLS;**4**;Mar 22, 2002
+ ;;3.0;KMPD;;Jan 22, 2009;Build 42
  ;
 DATERNG(KMPUY,KMPUSTR,KMPUEND) ;-- date range
  ;---------------------------------------------------------------------
@@ -60,17 +60,17 @@ EMAIL(KMPDSUBJ,KMPDTEXT,KMPDTO) ; check and process errors.
  ;             accepted by XMTEXT - TEXT(
  ;                                  ^TMP($J,"TEXT",
  ; KMPDTO..... Address for email recipient:
- ;              G.KMP2-RUM@FO-ALBANY.MED.VA.GOV
- ;              G.KMP4-CMTOOLS@FO-ALBANY.MED.VA.GOV
- ;              G.CAPACITY,MANAGEMENT@FO-ALBANY.MED.GOV
+ ;              G.KMP2-RUM@FO-ALBANY.domain.ext
+ ;              G.KMP4-CMTOOLS@FO-ALBANY.domain.ext
+ ;              G.CAPACITY,MANAGEMENT@FO-ALBANY.domain.ext
  ;             If no value is passed the default will be 
- ;              G.KMP4-CMTOOLS@FO-ALBANY.MED.VA.GOV
+ ;              G.KMP4-CMTOOLS@FO-ALBANY.domain.ext
  ;              
  ;-----------------------------------------------------------------------
  ;
  Q:$G(KMPDTEXT)=""
  S KMPDSUBJ=$S($G(KMPDSUBJ)="":"CM Error",1:KMPDSUBJ)
- S KMPDTO=$S($G(KMPDTO)="":"G.KMP4-CMTOOLS@FO-ALBANY.MED.VA.GOV",1:KMPDTO)
+ S KMPDTO=$S($G(KMPDTO)="":"G.KMP4-CMTOOLS@FO-ALBANY.domain.ext",1:KMPDTO)
  ;
  N H,I,LN,N,O,SITE,TEXT,TL,XMSUB,X,XMTEXT,XMY,XMZ,Y,Z
  ;

@@ -1,6 +1,6 @@
 PRCB1F1 ;WISC/PLT-PRCB1F continue ;9/17/96  16:33
-V ;;5.1;IFCAP;;Oct 20, 2000
- ;Per VHA Directive 10-93-142, this routine should not be modified.
+V ;;5.1;IFCAP;**142**;Oct 20, 2000;Build 5
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  QUIT  ;invalid entry
  ;
  ;prcduz - user id #
@@ -56,9 +56,11 @@ ACCR(PRCA,PRCTD) ;compiling accrual data
  S X=PRCID,X("DR")="1///^S X=""N"""
  D ADD^PRC0B1(.X,.Y,"440.7;^PRCH(440.7,")
  S PRCRI(440.7)=+Y
+LOCK L +^PRCH(440.7,PRCRI(440.7)):20 E  G LOCK
  S PRCB=$P($$QTRDATE^PRC0D($P(PRCA,"^",2),$P(PRCA,"^",3)),"^",7)
  S PRCDF=$P($$QTRDATE^PRC0D($P(PRCA,"^",2),1),"^",7),PRCDE=$P(PRCA,"^",8)+31
  D 410,4406
+ L -^PRCH(440.7,PRCRI(440.7))
  QUIT
  ;
 410 ;compiling purchase card orders
@@ -87,7 +89,7 @@ ACCR(PRCA,PRCTD) ;compiling accrual data
 4406 ;compiling unreconciled records
  N A,B,C,D,X,Y
  S PRCRI="N"
- F  S PRCRI=$O(^PRCH(440.6,"ST",PRCRI)) Q:PRCRI'?1"N".E  S PRCRI(440.6)=0 F  S PRCRI(440.6)=$O(^PRCH(440.6,"ST",PRCRI,PRCRI(440.6))) Q:'PRCRI(440.6)  S A=^PRCH(440.6,PRCRI(440.6),0),B=$P(A,"^",6),C=^(5) D:B-1<PRCDE
+ F  S PRCRI=$O(^PRCH(440.6,"ST",PRCRI)) Q:PRCRI'?1"N".E  S PRCRI(440.6)=0 F  S PRCRI(440.6)=$O(^PRCH(440.6,"ST",PRCRI,PRCRI(440.6))) Q:'PRCRI(440.6)  S A=$G(^PRCH(440.6,PRCRI(440.6),0)),B=$P(A,"^",6),C=^(5) D:B-1<PRCDE
  . QUIT:PRC("SITE")-$P(A,"^",8)
  . S PRCBBFY=$P($$YEAR^PRC0C($E($P(A,"^",11),2,3)),"^")
  . S PRCBBEY=$P($$YEAR^PRC0C($E($P(A,"^",12),2,3)),"^")

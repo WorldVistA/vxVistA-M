@@ -1,5 +1,5 @@
 SDROUT0 ;BSN/GRR - ROUTING SLIPS BY CLINIC ;11/12/91  16:07
- ;;5.3;Scheduling;**343,377**;Aug 13, 1993
+ ;;5.3;Scheduling;**343,377,509**;Aug 13, 1993;Build 37
 GO S SDCNT=0 D GO1 G:ORDER=2!(ORDER=3) CLIN
  F G=0:0 S I=$O(^UTILITY($J,I)) Q:I=""  F J=0:0 S J=$O(^UTILITY($J,I,J)) Q:J=""  S P=0 D HED^SDROUT2,HD^SDROUT2,CNT F K=0:0 S K=$O(^UTILITY($J,I,J,K)) D:K="" FUT Q:K=""  S L=0 F LL=0:0 S L=$O(^UTILITY($J,I,J,K,L)) Q:L=""  D LIN,X
  W:IOF]"" !,@IOF G END^SDROUT1
@@ -27,9 +27,11 @@ PLOC I VAUTC=0,'$D(VAUTC(SC)) Q
 COL S V=0 I $P(^SC(SC,"S",GDATE,1,L,0),"^",10)]"" S V=$P(^(0),"^",10),V=$S($D(^DIC(8,+V,0)):$P(^(0),"^",9)=13,1:0)
  Q
 CKP I SDREP D CKP1 Q
+ I 'DFN S DA(2)=SC,DA(1)=GDATE,DA=L,DIK="^SC("_DA(2)_",""S"","_DA(1)_",1," D ^DIK S POP=1 K DA,DIK Q   ;SD*509 kill bad node when DFN is null
  I $D(^DPT(DFN,"S",GDATE,0)),$P(^(0),"^",2)'["C",$S($D(SDI1):1,SDX["ALL":1,SDIQ=1:1,$P(^(0),"^",6)'["Y":1,1:0) S POP=0
  Q
-CKP1 I $S('$D(^DPT(DFN,"S",GDATE,0)):1,$P(^(0),"^",2)["C":1,1:0) S POP=1 Q
+CKP1 I 'DFN S DA(2)=SC,DA(1)=GDATE,DA=L,DIK="^SC("_DA(2)_",""S"","_DA(1)_",1," D ^DIK S POP=1 K DA,DIK Q   ;SD*509 kill bad node when DFN is null
+ I $S('$D(^DPT(DFN,"S",GDATE,0)):1,$P(^(0),"^",2)["C":1,1:0) S POP=1 Q
  I SDX["ALL" S POP=0 Q
  I $P(^DPT(DFN,"S",GDATE,0),"^",13)']""!($P(^(0),"^",13)=SDSTART) S POP=0,$P(^(0),"^",13)=SDSTART Q
  S POP=1 Q
@@ -60,3 +62,4 @@ TIME F K=0:0 S K=$O(^UTILITY($J,"B",J,K)) D:K="" FUT Q:K=""  S L=^(K) D LIN,X1
 X1 I $P(^UTILITY($J,"A",I,SDTD,J),"^",2)]"" W !,?4,$P(^(J),"^",2) Q
  I $D(^DPT(+J,.36)),$D(^DIC(8,+^DPT(+J,.36),0)),$P(^(0),"^",9)=13 W !,?4,"** COLLATERAL **"
  Q
+ ;

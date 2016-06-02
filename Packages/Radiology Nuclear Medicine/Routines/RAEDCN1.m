@@ -1,5 +1,5 @@
 RAEDCN1 ;HISC/GJC-Utility routine for RAEDCN ;9/18/97  13:49
- ;;5.0;Radiology/Nuclear Medicine;**18,45,93**;Mar 16, 1998;Build 3
+ ;;5.0;Radiology/Nuclear Medicine;**18,45,93,106**;Mar 16, 1998;Build 2
  ; last modif by SS for P18
  ; 07/15/2008 BAY/KAM rem call 249750 RA*5*93 Correct DIK Calls
 UNDEF ; Message for undefined imaging types
@@ -10,12 +10,27 @@ UNDEF ; Message for undefined imaging types
  W !?5,"An Imaging Type was not defined for the following Imaging"
  W !?5,"Location: "_$P(^SC($P($G(^RA(79.1,+RAMLC,0)),U),0),U)_"."
  Q
+ ;
 STUB(RARPT) ; Determine if this is an imaging stub report.
- ; Input: RARPT-ien of the report record
- ; Output: 1 if an imaging stub rpt, else 0
- N RA0 S RA0=$O(^RARPT(RARPT,"L",""),-1) ; most recent activity on rpt
- I RA0>0,$P($G(^RARPT(RARPT,"L",RA0,0)),U,2)="C",$P(^RARPT(RARPT,0),U,5)="",$O(^RARPT(RARPT,2005,0)),'$D(^RARPT(RARPT,"I")),'$D(^("P")),'$D(^("R")) Q 1 ; rpt is an image stub
- Q 0 ; (non-stub rpt record)
+ ; Input : RARPT: IEN of the report record
+ ; Output: 1 if an imaging stub report, else 0
+ ;
+ ;new business rules with the advent of RA*5.0*106. An
+ ;'images collected' (Activity Log, TYPE OF ACTION field)
+ ;event no longer defines a stub report. A stub report is
+ ;defined as a report with the following traits:
+ ;-------------------------------------------------------
+ ;* Has attached images
+ ;* Does not have a REPORT STATUS value
+ ;* Does not have impression text
+ ;* Does not have a problem statement
+ ;* Does not have report text
+ ;
+ ;sanity check
+ Q:RARPT'>0 0 Q:'($D(^RARPT(RARPT,0))#2) 0
+ ;
+ I $P(^RARPT(RARPT,0),U,5)="",$O(^RARPT(RARPT,2005,0)),'$D(^RARPT(RARPT,"I")),'$D(^("P")),'$D(^("R")) Q 1
+ Q 0
  ;
 PSET(RADFN,RADTI,RACNI) ; Determine if this exam is part of a printset.
  ; Input: RADFN-patient dfn <-> RADTI-exam timestamp <-> RACNI-exam ien

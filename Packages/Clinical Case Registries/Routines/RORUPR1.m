@@ -1,5 +1,18 @@
-RORUPR1 ;HCIOFO/SG - SELECTION RULES PREPARATION  ; 11/20/05 4:56pm
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORUPR1 ;HCIOFO/SG - SELECTION RULES PREPARATION ;11/20/05 4:56pm
+ ;;1.5;CLINICAL CASE REGISTRIES;**12,19**;Feb 17, 2006;Build 43
+ ;
+ ;01/04/2011 BAY/KAM ROR*1.5*12 Remedy Call 421530 Populate a variable
+ ;                              to assist with Lab Test Result Code
+ ;                              identification in GCPR^LA7QRY
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                       --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*19   FEB  2012   K GUPTA      Support for ICD-10 Coding System
+ ;******************************************************************************
+ ;******************************************************************************
  ;
  Q
  ;
@@ -85,7 +98,8 @@ LABSRCH() ;
  . S TMP=$$ERROR^RORERR(-55,,,,TMP)
  Q:RC<0 RC
  ;--- Prepare a list of Lab result codes for GCPR^LA7QRY
- S LRCODE=""
+ ;01/04/2011 BAY/KAM ROR*1.5*12 added RORLRC variable set to next line
+ S LRCODE="",RORLRC="CH"
  F IR=1:1  S LRCODE=$O(RORLRC("B",LRCODE))  Q:LRCODE=""  D
  . S RORLRC(IR)=LRCODE
  K RORLRC("B")
@@ -136,7 +150,8 @@ LOADRULE(RULENAME,REGIEN,LEVEL) ;
  ;---
  N DATELMT,DEPRLC,EXPR,FILE,I,IENS,RORBUF,RORMSG,RULIEN,TMP
  ;--- Load the rule data
- D FIND^DIC(798.2,,"@;1;2I","X",RULENAME,2,"B",,,"RORBUF","RORMSG")
+ ;D FIND^DIC(798.2,,"@;1;2I","X",RULENAME,2,"B",,,"RORBUF","RORMSG")
+ D FIND^DIC(798.2,,"@;1;2I;7I","X",RULENAME,2,"B",,,"RORBUF","RORMSG") ;load the new coding system internal value
  S RC=$$DBS^RORERR("RORMSG",-9)  Q:RC<0 RC
  Q:$G(RORBUF("DILIST",0))<1 $$ERROR^RORERR(-3,,RULENAME)
  Q:$G(RORBUF("DILIST",0))>1 $$ERROR^RORERR(-4,,RULENAME)
@@ -149,6 +164,7 @@ LOADRULE(RULENAME,REGIEN,LEVEL) ;
  Q:RC<0 RC
  S @RORUPDPI@(3,RULENAME,1)=EXPR
  S @RORUPDPI@(3,RULENAME,2,REGIEN)=""
+ S @RORUPDPI@(3,RULENAME,4)=RORBUF("DILIST","ID",1,7) ;store the coding system
  M @RORUPDPI@(1,FILE,"F")=EXPR("F")
  S:'$G(LEVEL) RORUPD("LM1",RULENAME)=""
  M @RORUPDPI@(4)=EXPR("L")

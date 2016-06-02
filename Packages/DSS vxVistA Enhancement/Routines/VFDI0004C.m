@@ -1,5 +1,5 @@
 VFDI0004C ;DSS/SGM -VFD KERNEL 2011.1.1 ENV/PRE/POST ; 11/30/2012 20:10
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 86
+ ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 97
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
 ENV ; environmental check

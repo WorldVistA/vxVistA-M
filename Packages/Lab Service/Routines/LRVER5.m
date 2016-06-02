@@ -1,5 +1,5 @@
 LRVER5 ;DALOI/STAFF - LAB ROUTINE DATA VERIFICATION ;05/17/12  15:37
- ;;5.2;LAB SERVICE;**42,153,283,286,350**;Sep 27, 1994;Build 230
+ ;;5.2;LAB SERVICE;**42,153,283,286,350**;Sep 27, 1994;Build 2
  ;
  ; ZEXCEPT is used to identify variables which are external to a specific TAG
  ;         used in conjunction with Eclipse M-editor.
@@ -215,6 +215,11 @@ V25 ; From LRVER4, LRSTUF2
  ; Normal ranges, units, delta checks and default value
  I $D(^LAB(60,LRTX,1,+$G(LRSPEC),0)) D
  . S LRNG=^LAB(60,LRTX,1,+$G(LRSPEC),0)
+ . ;DSS/FHS - START MOD FOR MULTI-NORMAL RANGE CALL 5/19/2014   OMH Enhancement
+ . I $D(^VFDLR(21660,"AC",LRTX,LRSPEC)) D
+ . . N DA,LRNGX,LRVVIEN,LRVVRFY
+ . . D RANGE^VFDLRX(LRTX,LRSPEC)
+ . ;DSS/FHS - END MOD
  . S LRDEL=$G(^LAB(62.1,+$P(LRNG,U,8),1))
  . S LRDEL(1)=$G(^LAB(62.1,+$P(LRNG,U,8),2),"Q")
  . S X2=$P(LRNG,U,9)
@@ -415,3 +420,4 @@ ASKPLNR ; Ask user for performing lab normal ranges and units when entering
  S LRNGS=LRNG
  ;
  Q
+ ;;2013.1;VENDOR - DOCUMENT STORAGE SYS;**17**;05 May 2014

@@ -1,5 +1,5 @@
-SROP ;B'HAM ISC/MAM - SELECT CASE ; [ 03/10/97  3:22 PM ]
- ;;3.0; Surgery ;**7,44,58,64,104**;24 Jun 93
+SROP ;BIR/MAM - SELECT CASE ;08/02/11
+ ;;3.0;Surgery;**7,44,58,64,104,176,177**;24 Jun 93;Build 89
  I '$D(^XUSEC("SROEDIT",DUZ))!$D(DUZ("SAV")) K SRNEWOP G ^SROPS
  S SRSOUT=0 K DIC S DIC("A")="Select Patient: ",DIC=2,DIC(0)="QEAM" D ^DIC K DIC I Y<0 S SRSOUT=1 G END
  S DFN=+Y D DEM^VADPT D HDR
@@ -11,11 +11,14 @@ OPT S SRSOUT=0 W !!!,"Select Operation: " R X:DTIME I '$T!("^"[X) S SRSOUT=1 G E
  I X=CNT G ^SRONEW
  S SRTN=+SRCASE(X) I $P(^SRF(SRTN,0),"^",4)="" D SS^SRSCHUP I SRSOUT G END
 ENTER ; edit or delete
+ ;JAS - 7/31/13 - Patch 177 (NEXT LINE)
+ N SRICDV S SRICDV=$$ICDSTR^SROICD(SRTN)
  S SROP=SRTN,SRSDATE=$P(^SRF(SRTN,0),"^",9) D HDR I $E(SRSDATE,1,7)>DT D FUTURE G:SRSOUT END I '$D(SRTN) D HDR G ADT
  W !,?1 D CASE W !!,"1. Enter Information",!,"2. Review Information",!,"3. Delete Surgery Case",!!,"Select Number:  1//  " R X:DTIME I '$T!(X["^") S SRSOUT=1 G END
  S:X="" X=1 I X<1!(X>3)!(X'?.N) D HELP G ENTER
  I X=3 D ^SROPDEL G END
  I X=2 D RT K DR S ST="REVIEW" D EN2^SROVAR S Q3("VIEW")="",DR="[SROMEN-OPER]",DA=SRTN,DIE=130 D ^SRCUSS K Q3("VIEW") G END
+ I '$D(^SRF(SRTN,52)),$P($G(^SRF(SRTN,.2)),"^",12)="" S ^SRF(SRTN,52)="0^0^0^0^0^0"  ; default flash sterilization fields to zero
  D ^SROPCE1
  Q
 LIST ; list cases

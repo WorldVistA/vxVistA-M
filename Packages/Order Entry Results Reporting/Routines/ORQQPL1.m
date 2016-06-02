@@ -1,44 +1,60 @@
-ORQQPL1 ; ALB/PDR/REV - PROBLEM LIST FOR CPRS GUI ;11/19/09  10:06
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**10,85,148,173,203,206,249,243,280**;Dec 17, 1997;Build 7
+ORQQPL1 ; ALB/PDR,REV,ISL/JER/TC - PROBLEM LIST FOR CPRS GUI ;12/05/13  13:15
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**10,85,148,173,203,206,249,243,280,306,361,385**;Dec 17, 1997;Build 29
  ;
  ;------------------------- GET PROBLEM FROM LEXICON -------------------
  ;
 LEXSRCH(LIST,FROM,N,VIEW,ORDATE) ; Get candidate Problems from LEX file
- N LEX,VAL,VAL1,COD,CIEN,SYS,MAX,NAME
+ N LEX,VAL,VAL1,COD,CIEN,SYS,MAX,NAME,ORIMPDT,ICDCSYS,ICDCODE
+ S ORIMPDT=$$IMPDATE^LEXU("10D")
  S:'+$G(ORDATE) ORDATE=DT
  S:'$G(N) N=100
  S:'$L($G(VIEW)) VIEW="PL1"
  D CONFIG^LEXSET("GMPL",VIEW,ORDATE)
  D LOOK^LEXA(FROM,"GMPL",N,"",ORDATE)
  S S=0
+ ;DSS/SMP - BEGIN MODS
+ N VFD S VFD=0
+ ;DSS/SMP - END MODS
  F  S S=$O(LEX("LIST",S)) Q:S<1  D
  . S VAL1=LEX("LIST",S)
- . S COD="",CIEN="",SYS="",NAME=""
+ . S COD="",CIEN="",SYS="",NAME="",ICDCODE=""
+ . S ICDCSYS=$S(ORDATE<ORIMPDT:"ICD",1:"10D")
  . I $L(VAL1,"CPT-4 ")>1 D
- .. S SYS="ICD-9-CM "
- .. S COD="799.9"
+ .. S SYS=$S(ORDATE<ORIMPDT:"ICD-9-CM ",1:"ICD-10-CM ")
+ .. S COD=$S(ORDATE<ORIMPDT:"799.9",1:"R69")
  .. S CIEN=""
  .. S NAME=$P(VAL1," (CPT-4")
  . I $L(VAL1,"DSM-IV ")>1 D
  .. S SYS="DSM-IV "
  .. S COD=$P($P(VAL1,SYS,2),")")
  .. S:COD["/" COD=$P(COD,"/",1)
- .. S CIEN=$$CODEN^ICDCODE($$ICDONE^LEXU($P(VAL1,U,1),ORDATE),80)
+ .. S ICDCODE=$$ONE^LEXU($P(VAL1,U,1),ORDATE,ICDCSYS)
+ .. S ICDCODE=$S(ICDCODE["":COD,1:ICDCODE)
+ .. S CIEN=+$$ICDDATA^ICDXCODE(ICDCSYS,$G(ICDCODE),ORDATE,"E")
  .. S NAME=$P(VAL1," (DSM-IV")
  .. ;
  . I $L(VAL1,"(TITLE 38 ")>1 D
  .. S SYS="TITLE 38 "
  .. S COD=$P($P(VAL1,SYS,2),")")
  .. S:COD["/" COD=$P(COD,"/",1)
- .. S CIEN=$$CODEN^ICDCODE($$ICDONE^LEXU($P(VAL1,U,1),ORDATE),80)
+ .. S ICDCODE=$$ONE^LEXU($P(VAL1,U,1),ORDATE,ICDCSYS)
+ .. S ICDCODE=$S(ICDCODE["":COD,1:ICDCODE)
+ .. S CIEN=+$$ICDDATA^ICDXCODE(ICDCSYS,$G(ICDCODE),ORDATE,"E")
  .. S NAME=$P(VAL1,"(TITLE 38 ")
  .. ;
  . I $L(VAL1,"ICD-9-CM ")>1 D
  .. S SYS="ICD-9-CM "
  .. S COD=$P($P(VAL1,SYS,2),")")
  .. S:COD["/" COD=$P(COD,"/",1)
- .. S CIEN=+$$CODEN^ICDCODE(COD,80)
+ .. S CIEN=+$$ICDDATA^ICDXCODE("DIAG",$G(COD),ORDATE,"E")
  .. S NAME=$P(VAL1," (ICD-9-CM")
+ .. ;
+ . I $L(VAL1,"ICD-10-CM ")>1 D
+ .. S SYS="ICD-10-CM "
+ .. S COD=$P($P(VAL1,SYS,2),")")
+ .. S:COD["/" COD=$P(COD,"/",1)
+ .. S CIEN=+$$ICDDATA^ICDXCODE("DIAG",$G(COD),ORDATE,"E")
+ .. S NAME=$P(VAL1," (ICD-10-CM")
  . I $L(NAME)=0 S NAME=$P($P(VAL1," (")," *")
  . ;
  . ; jeh Clean left over codes
@@ -46,23 +62,29 @@ LEXSRCH(LIST,FROM,N,VIEW,ORDATE) ; Get candidate Problems from LEX file
  . S NAME=$P(NAME," (DSM-IV")
  . S NAME=$P(NAME,"(TITLE 38 ")
  . S NAME=$P(NAME," (ICD-9-CM")
+ . S NAME=$P(NAME," (ICD-10-CM")
  . ;
  . S VAL=NAME_U_COD_U_CIEN_U_SYS ; ien^.01^icd^icdifn^system
- . ;DSS/RAF - BEGIN MODS - do not return empty strings
- . ;          original VA code is commented out 
+ . ;DSS/SMP - BEGIN MODS - do not return empty string
  . I '$$VFD(2) S LIST(S)=VAL,MAX=S
- .; S LIST(S)=VAL
- .; S MAX=S
+ . ;S LIST(S)=VAL
+ . ;S MAX=S
+ . ;DSS/SMP - END MODS
  I $G(MAX)'="" S LIST(MAX+1)=$G(LEX("MAT"))
- K ^TMP("LEXSCH",$J),VFD
- ;DSS/RAF - END MODS
+ K ^TMP("LEXSCH",$J)
+ Q
+ ;
+SORT(LEX) ; Sort terms alphabetically
+ N ORI S ORI=0
+ F  S ORI=$O(LEX("LIST",ORI)) Q:+ORI'>0  S LEX("ALPHA",$E($P(LEX("LIST",ORI),U,2),1,255),ORI)=""
  Q
  ;
 ICDREC(COD) ;
- N CODIEN
+ N CODIEN,ICDCSYS
  I COD="" Q ""
  S COD=$P($P(COD,U),"/")
- S CODIEN=$$CODEN^ICDCODE(COD,80) ;ICR #3990
+ S ICDCSYS=$$SAB^ICDEX(+$$CODECS^ICDEX($G(COD),80,DT),DT) ;ICR #5747
+ S CODIEN=+$$ICDDATA^ICDXCODE(ICDCSYS,$G(COD),DT,"E") ;ICR #5699
  Q CODIEN
  ;
 CPTREC(COD) ;
@@ -82,12 +104,12 @@ EDLOAD(RETURN,DA,GMPROV,GMPVAMC) ; LOAD  EDIT ARRAYS
 LOADFLDS(RETURN,NAM,TYP,I) ; LOAD FIELDS FOR TYPE OF ARRAY
  N S,V,CVP,PN,PID
  S S="",V=$C(254)
- ;DSS/SGM - BEGIN MODS - return all fields
+ ;DSS/SMP - BEGIN MODS - return all fields
  I $$VFD(1)
  E  F  S S=$O(@NAM@(S)) Q:S=10  D
  . S RETURN(I)=TYP_V_S_V_@NAM@(S)
  . S I=I+1
- ;DSS/SGM - END MODS
+ ;DSS/SMP - END MODS
  S S=""
  F  S S=$O(@NAM@(10,S)) Q:S=""  D
  . S CVP=@NAM@(10,S)
@@ -96,17 +118,21 @@ LOADFLDS(RETURN,NAM,TYP,I) ; LOAD FIELDS FOR TYPE OF ARRAY
  . I PID'=""  S PN=$$GET1^DIQ(200,PID,.01) ; get provider name
  . S RETURN(I)=TYP_V_"10,"_S_V_CVP_U_PN
  . S I=I+1
+ S S=80000
+ F  S S=$O(@NAM@(S)) Q:S=""  D
+ . S RETURN(I)=TYP_V_S_V_@NAM@(S)
+ . S I=I+1
  Q
  ;
-EDSAVE(RETURN,GMPIFN,GMPROV,GMPVAMC,UT,EDARRAY) ; SAVE EDITED RES
+EDSAVE(RETURN,GMPIFN,GMPROV,GMPVAMC,UT,EDARRAY,GMPSRCH) ; SAVE EDITED RES
  ; RETURN - boolean, 1 success, 0 failure
  ; EDARRAY - array used for indirect sets of GMPORIG() and GMPFLDS()
  ;
  N GMPFLD,GMPORIG,S,GMPLUSER
+ S GMPSRCH=$G(GMPSRCH)
  S RETURN=1 ; initialize for success
  I UT S GMPLUSER=1
  ;
- ;S GMPLUSER=1
  S S=""
  F  S S=$O(EDARRAY(S)) Q:S=""  D
  . S @EDARRAY(S)
@@ -126,23 +152,23 @@ UPDATE(ORRETURN,UPDARRAY) ; UPDATE A PROBLEM RECORD
  ; or addition of multiple comments.
  ; Use initially just for status updates.
  ;
- N S,GMPL,GMPORIG ; last 2 vars created in nested call
+ N S,GMPL,GMPORIG,ORARRAY ; last 2 vars created in nested call
  S S=""
  F  S S=$O(UPDARRAY(S)) Q:S=""  D
  . S @UPDARRAY(S)
  D UPDATE^GMPLUTL(.ORARRAY,.ORRETURN)
- K ORARRAY
  ; broker wont pick up root node RETURN
  S ORRETURN(1)=ORRETURN(0) ; error text
  S ORRETURN(0)=ORRETURN ; gmpdfn
  I ORRETURN(0)=""  S ORRETURN=1 ; insurance ? need
  Q
  ;
-ADDSAVE(RETURN,GMPDFN,GMPROV,GMPVAMC,ADDARRAY) ; SAVE NEW RECORD
+ADDSAVE(RETURN,GMPDFN,GMPROV,GMPVAMC,ADDARRAY,GMPSRCH) ; SAVE NEW RECORD
  ; RETURN - Problem IFN if success, 0 otherwise
  ; ADDARRAY - array used for indirect sets of  GMPFLDS()
  ;
  N DA,GMPFLD,GMPORIG,S
+ S GMPSRCH=$G(GMPSRCH)
  S RETURN=0 ;
  L +^AUPNPROB(0):10
  Q:'$T  ; bail out if no lock
@@ -163,12 +189,13 @@ INITUSER(RETURN,ORDUZ) ; INITIALIZE FOR NEW USER
  ; taken from INIT^GMPLMGR
  ; leave GMPLUSER on symbol table - is evaluated in EDITSAVE
  ;
- N X,PV,CTXT,GMPLPROV
- S GMPLUSER=$$CLINUSER(DUZ)
+ N X,PV,CTXT,GMPLPROV,ORENT
+ S ORDUZ=$G(ORDUZ,DUZ)
+ S GMPLUSER=$$CLINUSER(ORDUZ)
  S CTXT=$$GET^XPAR("ALL","ORCH CONTEXT PROBLEMS",1)
  S X=$G(^GMPL(125.99,1,0)) ; IN1+6^GMPLMGR
  S RETURN(0)=GMPLUSER ;  problem list user, or other user
- S RETURN(1)=$$VIEW^GMPLX1(DUZ) ; GMPLVIEW("VIEW") - users default view
+ S RETURN(1)=$$VIEW^GMPLX1(ORDUZ) ; GMPLVIEW("VIEW") - users default view
  S RETURN(2)=+$P(X,U,2) ; verify transcribed problems
  S RETURN(3)=+$P(X,U,3) ; prompt for chart copy
  S RETURN(4)=+$P(X,U,4) ; use lexicon
@@ -178,10 +205,10 @@ INITUSER(RETURN,ORDUZ) ; INITIALIZE FOR NEW USER
  I +GMPLPROV>0,$D(^VA(200,GMPLPROV)) D
  . S RETURN(7)=GMPLPROV_U_$P(^VA(200,GMPLPROV,0),U)
  E  S RETURN(7)="0^All"
- S RETURN(8)=$$SERVICE^GMPLX1(DUZ) ; user's service/section
+ S RETURN(8)=$$SERVICE^GMPLX1(ORDUZ) ; user's service/section
  ; Guessing from what I see in the data that $$VIEW^GMPLX1 actually returns a composite
  ; of default view (in/out patient)/(c1/c2... if out patient i.e. GMPLVIEW("CLIN")) or
- ;                                 /(s1/s2... if in patient i.e. GMPLVIEW("SERV"))
+ ;                                                      /(s1/s2... if in patient i.e. GMPLVIEW("SERV"))
  ; Going with this assumption for now:
  I $L(RETURN(1),"/")>1 D
  . S PV=RETURN(1)
@@ -192,6 +219,8 @@ INITUSER(RETURN,ORDUZ) ; INITIALIZE FOR NEW USER
  S RETURN(10)=$G(GMPLVIEW("CLIN")) ; ??? Where from - see tech doc
  S RETURN(11)=""
  S RETURN(12)=+$P($G(CTXT),";",4)    ; should comments display?
+ S ORENT="ALL^SRV.`"_+$$SERVICE^GMPLX1(ORDUZ,1)
+ S RETURN(13)=+$$GET^XPAR(ORENT,"ORQQPL SUPPRESS CODES",1) ; suppress codes?
  K GMPLVIEW
  Q
  ;
@@ -259,13 +288,39 @@ DUP(Y,DFN,TERM,TEXT) ;Check for duplicate problem
  I $P(^AUPNPROB(Y,1),U,2)="H" S Y=0 Q
  S Y=Y_U_$P(^AUPNPROB(Y,0),U,12)
  Q
- ;DSS/SGM - BEGIN MODS - all following lines added by vxVistA
-VFDVX() Q:$T(VX^VFDI0000)="" 0 Q:'($$VX^VFDI0000["VX") 0 Q 1
+GETDX(CODE,SYS,ORIDT) ; Get ICD associated with SNOMED CT or VHAT Code
+ N LEX,ORI,ORY,ORUH,IMPLDT,ORCSYSPR
+ S ORIDT=$G(ORIDT,DT)
+ S ORY=0,IMPLDT=$$IMPDATE^LEXU("10D")
+ S ORUH=$S(ORIDT<IMPLDT:"799.9",1:"R69.")
+ S ORCSYSPR=$S(ORIDT<IMPLDT:1,1:30)
+ I SYS["VHAT" D  I 1
+ . I ORIDT<IMPLDT S ORY=$$GETASSN^LEXTRAN1(CODE,"VHAT2ICD") I 1
+ . E  S ORY=0
+ E  D
+ . I ORIDT<IMPLDT S ORY=$$GETASSN^LEXTRAN1(CODE,"SCT2ICD") I 1
+ . E  S ORY=0
+ I $S(+ORY'>0:1,+$P(ORY,U,2)'>0:1,+LEX'>0:1,1:0) S ORY=ORUH G GETDXX
+ S ORI=0,ORY=""
+ F  S ORI=$O(LEX(ORI)) Q:+ORI'>0  D
+ . N ICD
+ . S ICD=$O(LEX(ORI,""))
+ . S:'+$$STATCHK^ICDXCODE(ORCSYSPR,ICD,ORIDT) ICD=""
+ . I ICD]"" S ORY=$S(ORY'="":ORY_"/",1:"")_ICD
+ I (ORY]""),(ORY'[".") S ORY=ORY_"."
+GETDXX Q ORY
+TEST ; test invocation
+ N LIST,I S I=""
+ D LEXSRCH(.LIST,"diabetes with neuro",10,"GMPL",DT)
+ F  S I=$O(LIST(I)) Q:+I'>0  W !,LIST(I)
+ Q
+ ;
+ ;DSS/SMP - BEGIN MODS - all following lines added by vxVistA
+VFDVX() Q $G(^%ZOSF("ZVX"))["VX"
 VFD(N) ;
  I '$$VFDVX Q 0
  ; only return top level fields, GMPLFD(10,0) valued, GMPLFD(10) is not
  I N=1 F  S S=$O(@NAM@(S)) Q:S=""  I ($D(@NAM@(S))#2)>0 D
  . S RETURN(I)=TYP_V_S_V_@NAM@(S) S I=I+1
- . Q
  I N=2,VAL'["^^^" S VFD=1+$G(VFD),LIST(VFD)=VAL,MAX=VFD
  Q 1

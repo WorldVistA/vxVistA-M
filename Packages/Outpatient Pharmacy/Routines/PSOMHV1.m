@@ -1,5 +1,5 @@
 PSOMHV1 ;BIR/MHA - MHV API, Build patient medication ; 4/20/05 8:54am
- ;;7.0;OUTPATIENT PHARMACY;**204**;DEC 1997;Build 153
+ ;;7.0;OUTPATIENT PHARMACY;**204**;DEC 1997;Build 164
  ;External reference ^PS(55 supported by DBIA 2228
  ;External reference ^PSDRUG( supported by DBIA 221
  ;External reference to ^PS(51 supported by DBIA 2224

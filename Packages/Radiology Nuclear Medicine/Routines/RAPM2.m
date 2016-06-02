@@ -1,6 +1,10 @@
-RAPM2 ;HOIFO/TH-Radiology Performance Monitors/Indicator; ;2/26/04  12:41
- ;;5.0;Radiology/Nuclear Medicine;**37,44,48,63,67**;Mar 16, 1998
+RAPM2 ;HOIFO/TH-Radiology Performance Monitors/Indicator; ;3/20/04  12:41
+ ;;5.0;Radiology/Nuclear Medicine;**37,44,48,63,67,99,47**;Mar 16, 1998;Build 21
  ; IA 10090 allows Read w/Fileman for entire file 4
+ ; Supported IA #10103 reference to ^XLFDT
+ ; Supported IA #2056 reference to ^DIQ
+ ; Supported IA #2541 reference to KSP^XUPARAM
+ ; RVD - 3/20/09 p99
  ; Print Detail report
 DETAIL ; Print Detail report
  I ($Y+5)>IOSL!(RARPT="B") D
@@ -22,10 +26,10 @@ DHDR ; Header
  I ($Y+5)>IOSL D
  . S RAPG=RAPG+1,RAHD(0)="Detail Verification Timeliness Report"
  . W @IOF,!?(RAIOM-$L(RAHD(0))\2),RAHD(0),?(RAIOM-10),"Page: ",$G(RAPG)
- W !!,?32,"Date/Time",?48,"Date/Time",?68,"Date/Time",?102,"Cat"
+ W !!,?34,"Date/Time",?49,"Date/Time",?69,"Date/Time",?102,"Cat"
  W ?106,"Rpt",?110,"Img",?116,"Procedure"
- W !,"Patient Name",?18,"Case #",?32,"Registered",?48,"Transcribed",?62,"Hrs"
- W ?68,"Verified",?82,"Hrs",?87,"Radiologist",?102,"Exm",?106,"Sts"
+ W !,"Patient Name",?17,"Case #",?34,"Registered",?49,"Transcribed",?63,"Hrs"
+ W ?69,"Verified",?83,"Hrs",?88,"Radiologist",?102,"Exm",?106,"Sts"
  W ?110,"Typ",?119,"Name",!
  Q
  ;
@@ -57,12 +61,12 @@ DET ; Print detail records
  . Q:RAXIT
  . D DHDR
  Q:RAXIT
- W !,$E($P(RAREC,U,2),1,15)
- W ?17,$P(RAREC,U,1)
- W ?31,$P($$FMTE^XLFDT($P(RAREC,U,3),"2FS"),":",1,2)
- W ?46,$P($$FMTE^XLFDT($P(RAREC,U,4),"2FS"),":",1,2),?61,$J($P(RAREC,U,12),4)
- W ?66,$P($$FMTE^XLFDT($P(RAREC,U,5),"2FS"),":",1,2),?81,$J($P(RAREC,U,13),4)
- I $P(RAREC,U,6)'="" W ?86,$E($P(RAREC,U,6),1,16)
+ W !,$E($P(RAREC,U,2),1,14)
+ W ?16,$P(RAREC,U,1)
+ W ?33,$P($$FMTE^XLFDT($P(RAREC,U,3),"2FS"),":",1,2)
+ W ?48,$P($$FMTE^XLFDT($P(RAREC,U,4),"2FS"),":",1,2),?63,$J($P(RAREC,U,12),4)
+ W ?68,$P($$FMTE^XLFDT($P(RAREC,U,5),"2FS"),":",1,2),?82,$J($P(RAREC,U,13),4)
+ I $P(RAREC,U,6)'="" W ?88,$E($P(RAREC,U,6),1,14)
  W ?104,$P(RAREC,U,7),?107,$P(RAREC,U,8)
  W ?110,$E($P(RAREC,U,9),1,3),?114,$E($P(RAREC,U,14),1,15)
  W:$P(RAREC,U,11)="" ?130,"*D"
@@ -93,7 +97,8 @@ STORE ; Store detail information
  S RATDFHR=$S(RATDFHR="":"",RATDFHR<1:"<1",RATDFHR>999:">999",1:RATDFHR)
  S RAVDFHR=$S(RAVDFHR="":"",RAVDFHR<1:"<1",RAVDFHR>999:">999",1:RAVDFHR)
  ;
- S RAREC1=RACN_U_RAPATNM_U_RADTE_U_RARPTDT_U
+ I $$USESSAN^RAHLRU1() S RAREC1=RACNDSP_U_RAPATNM_U_RADTE_U_RARPTDT_U
+ I '$$USESSAN^RAHLRU1() S RAREC1=RACN_U_RAPATNM_U_RADTE_U_RARPTDT_U
  S RAREC1=RAREC1_RAVERDT_U_RAPRIMNM_U_RACAT_U_RARPTST_U_RAIMGTYP_U
  S RAREC1=RAREC1_RADFN_U_RACHKDIV_U_RATDFHR_U_RAVDFHR_U_RAPRCN
  ;
@@ -127,7 +132,8 @@ EMAIL ; Ask if ready to email the summary report
 SEND ; Send summary report to mail group
  I RAANS=0,RAANS2=0 Q
  N RA1,RA2,RASVSUB,RASVTEXT,RASTR
- S XMSUB="Radiology Summary Verification Timeliness"
+ S:$G(RAP99) XMSUB="Radiology Timeliness Performance Reports"
+ S:'$G(RAP99) XMSUB="Radiology Summary Verification Timeliness"
  S XMDUZ=DUZ
  S XMTEXT="^TMP($J,""RAPM"","
  S RASVSUB=XMSUB,RASVTEXT=XMTEXT
@@ -155,7 +161,7 @@ SEND ; Send summary report to mail group
  . Q
  K XMDUZ
  Q
-HDR(RATYP) ; Print appropriate header
+HDR(RATYP) ; Print appropriate header and process wait and time
  U:RAIO IO S RAPG=$G(RAPG)+1
  I RAPG>1!($E(IOST,1,2)="C-") W:RAIO @IOF
  I $E(IOST,1,2)="P-",(RAPG>1) W:RAIO @IOF
@@ -163,10 +169,11 @@ HDR(RATYP) ; Print appropriate header
  S RAHD(0)=RAHD(0)_" Verification Timeliness Report"
  S RAIOM=$S(RATYP="S":80,1:IOM)
  W:RAIO !?(RAIOM-$L(RAHD(0))\2),RAHD(0),?(RAIOM-10),"Page: ",$G(RAPG),!
- I RATYP="S" S RAN=1 D
+ I RATYP="S" S RAN=RAN+1 D
  . S ^TMP($J,"RAPM",RAN)="                     Summary Verification Timeliness Report          Page: "_$G(RAPG) S RAN=RAN+1
  . S ^TMP($J,"RAPM",RAN)="",RAN=RAN+1
  ;
+ S:'$G(DUZ(2)) DUZ(2)=$$KSP^XUPARAM("INST")  ;added by p99
  D GETS^DIQ(4,DUZ(2),".01;14*;99","E","RAR","RAMSG")
  K X
  S X(1)=RAR(4,DUZ(2)_",",.01,"E") ; Name of facility
@@ -193,17 +200,19 @@ HDR(RATYP) ; Print appropriate header
  ;
  W:RAIO !,"Exam Date Range: "
  W:RAIO $$FMTE^XLFDT(RABDATE,"2D")," - ",$$FMTE^XLFDT(RAEDATE,"2D")
- I RATYP="S" S ^TMP($J,"RAPM",RAN)="Exam Date Range: "_$$FMTE^XLFDT(RABDATE,"2D")_" - "_$$FMTE^XLFDT(RAEDATE,"2D") S RAN=RAN+1
+ I RATYP="S" D
+ .S:'$G(RAP99) ^TMP($J,"RAPM",RAN)=""
+ .S RAN=RAN+1,^TMP($J,"RAPM",RAN)="Exam Date Range: "_$$FMTE^XLFDT(RABDATE,"2D")_" - "_$$FMTE^XLFDT(RAEDATE,"2D")_"       " S RAN=RAN+1
  ;
  W:RAIO !,"Imaging Type(s): "
- I RATYP="S" S ^TMP($J,"RAPM",RAN)="Imaging Type(s): "
+ I RATYP="S",'$G(RAP99) S RAN=RAN+1,^TMP($J,"RAPM",RAN)="",RAN=RAN+1,^TMP($J,"RAPM",RAN)="Imaging Type(s): "
  D IMG
  S:RATYP="S" RAN=RAN+1
  ;
  ; Run date and time
  S NOW=$$NOW^XLFDT,NOW=$P(NOW,".",1)_"."_$E($P(NOW,".",2),1,4)
  W:RAIO !,"Run Date/Time: ",$$FMTE^XLFDT(NOW,"2P"),!
- I RATYP="S" S ^TMP($J,"RAPM",RAN)="Run Date/Time: "_$$FMTE^XLFDT(NOW,"2P"),RAN=RAN+1
+ I RATYP="S" S RAN=RAN+1,^TMP($J,"RAPM",RAN)="Run Date/Time: "_$$FMTE^XLFDT(NOW,"2P"),RAN=RAN+1
  I RARAD D
  . W:RAIO !,"Primary Interpreting Staff Physician: ",$$GET1^DIQ(200,RARAD,.01),!
  . I RATYP="S" D
@@ -223,7 +232,7 @@ DIV ; List selected Division
  . . I RATYP="S" S ^TMP($J,"RAPM",RAN)=^TMP($J,"RAPM",RAN)_RADIV_$S($O(^TMP($J,"RA D-TYPE",RADIV))]"":", ",1:"")
  . I $X>(RAIOM-$L("Division(s): ")) D
  . . W:RAIO !?($X+$L("Division(s): "))
- . . I RATYP="S" S RAN=RAN+1,^TMP($J,"RAPM",RAN)="         "
+ . . I RATYP="S" S:'$G(RAP99) RAN=RAN+1,^TMP($J,"RAPM",RAN)="         "
  Q
 IMG ; List selected Imaging Type(s)
  Q:'$D(^TMP($J,"RA I-TYPE"))
@@ -235,10 +244,10 @@ IMG ; List selected Imaging Type(s)
  . S RATAIL=$S($O(^TMP($J,"RA I-TYPE",RAIMG))]"":", ",1:"")
  . I (RALUSED+$L(RAIMG)+$L(RATAIL))>RALMAX D
  .. W:RAIO !?RALDENT
- .. I RATYP="S" S RAN=RAN+1,^TMP($J,"RAPM",RAN)="                 "
+ .. I RATYP="S",'$G(RAP99) S RAN=RAN+1,^TMP($J,"RAPM",RAN)="                 "
  .. S RALUSED=0
  .. Q
  . W:RAIO RAIMG_RATAIL
- . I RATYP="S" S ^TMP($J,"RAPM",RAN)=^TMP($J,"RAPM",RAN)_RAIMG_RATAIL
+ . I RATYP="S",'$G(RAP99) S ^TMP($J,"RAPM",RAN)=^TMP($J,"RAPM",RAN)_RAIMG_RATAIL
  . S RALUSED=RALUSED+$L(RAIMG)+$L(RATAIL)
  Q

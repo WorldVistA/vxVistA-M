@@ -1,5 +1,5 @@
 LR7OSUM ;DALOI/STAFF - Silent Patient cum ;11/19/09  18:15
- ;;5.2;LAB SERVICE;**121,187,230,256,350**;Sep 27, 1994;Build 230
+ ;;5.2;LAB SERVICE;**121,187,230,256,350**;Sep 27, 1994;Build 2
  ;
  ;
 DFN S LRIN=0,LRIDT=0,LREND=0,LROUT=9999999
@@ -33,6 +33,18 @@ LRLLOC ;
 END ; Cleanup variables
  D END^LRACM
  D CLEAN
+ ;DSS/FHS - BEGIN MOD - Kill Multi-normal range result globals
+ ; Trap output if Debug trap is set (VFDIEN>0)
+ ; Cleanup variables
+ ;
+ I $G(VFDIEN) D
+ . S ^XTMP("LRNR",VFDIEN,"LRC",0)=$G(VFDIEN)
+ . I $D(^TMP("LRC",$J)) M ^XTMP("LRNR",VFDIEN,"LRC")=^TMP("LRC",$J)
+ . M ^XTMP("LRNR",VFDIEN,"U")=^XTMP("LRNR","U",$J)
+ . K ^XTMP("LRNR","U",$J)
+ K VFDIEN,LRNR
+ K LRFFDT,LRFULL,LRG,LRSH,LRSHD,LRTM,LRUDT,TEST,VFDCNT
+ ;DSS/FHS - END MOD - Dec 10, 2014
  ;
  Q
  ;
@@ -49,11 +61,33 @@ EN(Y,DFN,SDATE,EDATE,COUNT,LRGIOM,SUBHEAD) ; Enter here to get silent lab result
  ;  LRGIOM = Right margin
  ; SUBHEAD = Array of subheaders from file 64.5, misc, micro & AP to show results.  Null param = get all results
  ;
+ ;DSS/FHS - BEGIN MOD - TRAP CUM Report INPUT/OUTPUT DATA
+ N LRNR,VFDIEN,LRIDT,LRDFN,VFDLO,VFDHI,VFDFMT,VFDTRES
+ K ^XTMP("LRNRX"),^TMP("OUT",$J),^XTMP("LRNR","U",$J)
+ I $G(^XTMP("LRNR","I",0)) S VFDIEN=+$G(^XTMP("LRNR","I",0))+1 D
+ . S ^XTMP("LRNR","I",0)=VFDIEN
+ . S ^XTMP("LRNR","I",$J,VFDIEN,"Y")=$G(Y)
+ . S ^XTMP("LRNR","I",$J,VFDIEN,"DFN")=DFN
+ . S ^XTMP("LRNR","I",$J,VFDIEN,"SDATE")=SDATE
+ . S ^XTMP("LRNR","I",$J,VFDIEN,"EDATE")=EDATE
+ . S ^XTMP("LRNR","I",$J,VFDIEN,"COUNT")=$G(COUNT)
+ . S ^XTMP("LRNR","I",$J,VFDIEN,"LRGIOM")=$G(LRGIOM)
+ . S ^XTMP("LRNR","I",$J,VFDIEN,"SUBH")=$G(SUBHEAD)
+ . M ^XTMP("LRNR","I",$J,VFDIEN,"SUBHEAD")=SUBHEAD
+VFDNR ;Entry point for testing called from TESTCUM^VFDLRNR
+ ;Global for report storage ^TMP("LRNR",$J,
+ ;DSS/FHS - END MOD - Dec 10, 2014
+ ;
  Q:'$G(DFN)
  S LRDFN=$$LRDFN^LR7OR1(DFN)
  Q:'LRDFN
  K ^TMP($J,"EVAL")
  N A,AGE,CT1,DIC,DOB,F,G,H,I,IFN,INC,J,K,LR,LRA,LRAA,LRABV,LRACT,LRADM,LRADX,LRCNT,LRCTN,LRDP,LREND,LRJ02,LRMD,LRMIT,LRN,LRNAME,LRPRAC,LRQ,LRRB,LRSAV,LRSPE,LRSPEM,LRTEST,LRTOP,LRTREA,LRUNKNOW,LRUNT,LRVAL,LRW,M,N,P,P7,S1,SP,T,X,X1,XZ,Y,Y1
+ ;DSS/FHS - BEGIN MOD - Jan 8, 2015  Clean up misc variables
+ N LRAG,LRFDE,LRFDT,LRFED,LRIL,LRIN,LRIV,LRJS,LRLFDT,LRLLOC,LRLNS,LRMU
+ N LRMU,LRMULT,LRNHIGH,LRNLOW,LRNP,LRNXSW,LROFDT,LROUT,LRPG,LRPL,LRRNG
+ N LRSND,LRSHN,LRTOPP,LRTOT,LRTS,LRTT,LRVAR,LRWRD,LRWRDVEW,PNM,SSN,ZIP
+ ;DSS/FHS - END MOD - Jan 8, 2015
  D PT^LRX
  S LRADM=$P($G(VAIN(7)),"^",2),LRADX=$G(VAIN(9)),CT1=0
  K VA,VADM,VAERR,VAIN
@@ -97,7 +131,11 @@ PT ; Test with a loop thru multiple patients
  ;
  ;
 CLEAN ; Clean up TMP globals
+ ;
  K ^TMP("LRT",$J),^TMP("LRPLS",$J),^TMP("LRPLS-ADDR",$J),^TMP("LRCMTINDX",$J)
+ ;DSS/FHS - BEGIN MOD - Clean up Multi-Range Globals
+ K ^TMP("OUT",$J),^XTMP("LRNR","U",$J)  ;DSS/RAF 1/23/2015 removed kill of ^TMP("LRH",$J) fix CPRS cum header list
+ ;DSS/FHS - END MOD - Dec 10, 2014
  Q
  ;
  ;
@@ -113,3 +151,4 @@ AP(DFN) ; Get just the AP results
  I GIOM="" S GIOM=80
  D EN(.ZIP,DFN,,,,GIOM,.SUBHEAD)
  Q
+ ;;2013.1;VENDOR - DOCUMENT STORAGE SYS;**17**;05 May 2014

@@ -1,5 +1,5 @@
 IBCECSA4 ;ALB/CXW - IB CLAIMS STATUS AWAITING RESOLUTION SCREEN ;5-AUG-1999
- ;;2.0;INTEGRATED BILLING;**137,155,320,371**;21-MAR-1994;Build 57
+ ;;2.0;INTEGRATED BILLING;**137,155,320,371,433**;21-MAR-1994;Build 36
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
 SMSG ;select message
@@ -85,16 +85,23 @@ CANCEL ;Cancel bill
 CANCELQ S VALMBCK="R"
  Q
  ;
+CRD ; enter here if correcting a bill
+ N IBCNCRD
+ S IBCNCRD=1
 CLONE ;'Copy/cancel bill' protocol action
- N IBX,IBA,IB364,MRACHK,IBIFN
+ N IBX,IBA,IB364,MRACHK,IBIFN,IBKEY
  ; IBX,IBA will be killed during execution - need to protect them
  D FULL^VALM1
  S IBDAX=$O(IBDAX("")),IBIFN=+$P($G(IBDAX(IBDAX)),U)
  I IBDAX="" G CLONEQ
  ; Check for security key
- I '$$KCHK^XUSRB("IB AUTHORIZE") D  G CLONEQ
- . W !!?5,"You don't hold the proper security key to access this function."
- . W !?5,"The necessary key is IB AUTHORIZE.  Please see your manager."
+ S IBKEY=$S($G(IBCNCRD)=1:"IB AUTHORIZE",1:"IB CLON")
+ ;I '$$KCHK^XUSRB("IB AUTHORIZE") D  G CLONEQ
+ I '$$KCHK^XUSRB(IBKEY) D  G CLONEQ
+ . ;W !!?5,"You don't hold the proper security key to access this function."
+ . ;W !?5,"The necessary key is IB AUTHORIZE.  Please see your manager."
+ . W !!?5,"You must hold the "_IBKEY_" security key to access this function."
+ . W !?5,"Please see your manager."
  . D PAUSE^VALM1
  . Q
  D MRACHK I MRACHK G CLONEQ

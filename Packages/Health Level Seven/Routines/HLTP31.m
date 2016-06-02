@@ -1,5 +1,6 @@
-HLTP31 ;SFIRMFO/RSD - Cont. Transaction Processor for TCP ;01/26/2006  15:50
- ;;1.6;HEALTH LEVEL SEVEN;**57,58,66,109,120**;Oct 13, 1995;Build 12
+HLTP31 ;SFIRMFO/RSD - Cont. Transaction Processor for TCP ;07/08/2009  15:33
+ ;;1.6;HEALTH LEVEL SEVEN;**57,58,66,109,120,145**;Oct 13, 1995;Build 4
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  Q
 RSP(X,HLN) ;process response msg. X=ien in 773^msg. ien in 772
@@ -38,7 +39,12 @@ RSP(X,HLN) ;process response msg. X=ien in 773^msg. ien in 772
  ;process ack
  D
  . N HLTCP ;Newed variable to update status in 772.
+ . ; patch HL*1.6*145
+ . ; time: starts to process the incoming message
+ . I $G(HLMTIENS) S $P(^HLMA(+HLMTIENS,"S"),"^",6)=$$NOW^XLFDT
  . D PROCACK^HLTP2(HLMTIEN,HL("EID"),.HLRESLT,.HL)
+ . ; time: ends processing the incoming message
+ . I $G(HLMTIENS) S $P(^HLMA(+HLMTIENS,"S"),"^",7)=$$NOW^XLFDT
  ;update LL, processed 1 msg
  D LLCNT^HLCSTCP(HLDP,2)
  ;process ack successfully
@@ -110,8 +116,21 @@ SETINQUE ;
  ; then set the link field of this message to the link
  I $G(HL("EIDS")),$P(^ORD(101,HL("EIDS"),770),"^",7) S HLLINK=$P(^ORD(101,HL("EIDS"),770),"^",7)
  ;
+ ; patch HL*1.6*145 start
+ F  L +^HLMA(HLMTIENS,0):10 Q:$T  H 1
+ N COUNT
+ F COUNT=1:1:15 Q:($G(^HLMA(HLMTIENS,0))]"")  H COUNT
  I $L($G(HLLINK)) D
  .D ENQUE^HLCSREP(HLLINK,"I",HLMTIENS)
+ .; move message from listener queue to client link queue
+ .S HLDP("HLLINK")=HLLINK
+ .D LLCNT^HLCSTCP(HLDP,1,1)
+ .D LLCNT^HLCSTCP(HLLINK,1)
+ .S $P(^HLMA(HLMTIENS,0),"^",17)=HLLINK
  E  D
  .D ENQUE^HLCSREP(HLDP,"I",HLMTIENS)
+ .S $P(^HLMA(HLMTIENS,0),"^",17)=HLDP
+ S HLDP("SETINQUE")=1
+ L -^HLMA(HLMTIENS,0)
+ ; patch HL*1.6*145 end
  Q

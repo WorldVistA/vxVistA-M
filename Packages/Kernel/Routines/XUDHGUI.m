@@ -1,5 +1,5 @@
-XUDHGUI ;ISF/STAFF,SLC/KCM - Device Utilites for Windows Calls ;07/09/2002  14:28
- ;;8.0;KERNEL;**220**;Jul 10, 1995
+XUDHGUI ;ISF/STAFF,SLC/KCM - Device Utilites for Windows Calls ;03/24/10  10:34
+ ;;8.0;KERNEL;**220,542**;Jul 10, 1995;Build 5
  ;
 DEVICE(LST,FROM,DIR,RMAR) ; Return a subset of entries from the Device file
  ; Return up to 20 entries.
@@ -29,9 +29,8 @@ DEVICE(LST,FROM,DIR,RMAR) ; Return a subset of entries from the Device file
  .. S EXT=0
  .. I X95]"" S %X=$G(DUZ(0)) I %X'="@" S EXT=1 F %A=1:1:$L(%X) I X95[$E(%X,%A) S EXT=0 Q
  .. Q:EXT  ;Security check
- .. I '+X91 S X91=^%ZIS(2,+XSTYPE,1)  ;Get default width & page length
+ .. I '+X91 S X91=$G(^%ZIS(2,+XSTYPE,1),"80^#^60^") ;Get default width & page length p542
  .. I RML>0,(+X91<RML)!(+X91>RMH) Q
  .. S SHOW=$P(X0,U) I SHOW'=FROM S SHOW=FROM_"  <"_SHOW_">"
  .. S I=I+1,LST(I)=IEN_U_$P(X0,U)_U_SHOW_U_$P(X1,U)_U_$P(X91,U)_U_$P(X91,U,3)
  Q
-  

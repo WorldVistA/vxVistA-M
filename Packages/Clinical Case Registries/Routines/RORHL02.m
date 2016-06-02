@@ -1,7 +1,18 @@
-RORHL02 ;HOIFO/CRT,SG - HL7 REGISTRY DATA: CSP,CSR,CSS ; 12/6/05 2:36pm
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORHL02 ;HOIFO/CRT,SG - HL7 REGISTRY DATA: CSP,CSR,CSS ;12/6/05 2:36pm
+ ;;1.5;CLINICAL CASE REGISTRIES;**14**;Feb 17, 2006;Build 24
  ;
  Q
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                 --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*14   APR  2011   A SAUNDERS   CSR: Added HIV DX - FIRST DIAGNOSED
+ ;                                      (#12.08) to CSR-12.  Date of Clnincal
+ ;                                      AIDS logic modified for 'unknown'.
+ ;******************************************************************************
+ ;******************************************************************************
  ;
  ;***** CSP SEGMENTS BUILDER
  ;
@@ -151,7 +162,8 @@ CSR(RORIENS,PTIEN,RORFLDS) ;
  . D GETS^DIQ(799.4,HIVIENS,".02;.03","I","ROROUT","RORMSG")
  . I $G(DIERR)  D  S ERRCNT=ERRCNT+1  Q
  . . D DBS^RORERR("RORMSG",-9,,,799.4,HIVIENS)
- . I '$G(ROROUT(799.4,HIVIENS,.02,"I"))  S TMP=""
+ . ;if not 'yes', set date to null
+ . I $G(ROROUT(799.4,HIVIENS,.02,"I"))'=1  S TMP=""
  . E  S TMP=$G(ROROUT(799.4,HIVIENS,.03,"I"))
  . S RORSEG(9)=$$FM2HL^RORHL7(TMP)
  ;
@@ -162,7 +174,8 @@ CSR(RORIENS,PTIEN,RORFLDS) ;
  ;--- CSR-12 - Risk factors
  I RORFLDS[",12,",HIVIENS'=""  D  Q:RC<0 RC
  . N CNT,EV,FLD,RFLST,RORBUF,RORQUIT,RORRISK
- . S RFLST="14.01;14.02;14.03;14.04;14.07;14.08;14.09;14.1;14.11;14.12;14.13;14.16;14.17"
+ . ;S RFLST="14.01;14.02;14.03;14.04;14.07;14.08;14.09;14.1;14.11;14.12;14.13;14.16;14.17"
+ . S RFLST="14.01;14.02;14.03;14.04;14.07;14.08;14.09;14.1;14.11;14.12;14.13;14.16;14.17;12.08"
  . D GETS^DIQ(799.4,HIVIENS,RFLST,"I","RORBUF","RORMSG")
  . I $G(DIERR)  D  S ERRCNT=ERRCNT+1
  . . D DBS^RORERR("RORMSG",-9,,,799.4,HIVIENS)
@@ -171,8 +184,9 @@ CSR(RORIENS,PTIEN,RORFLDS) ;
  . F CNT=1:1  S FLD=$P(RFLST,";",CNT)  Q:FLD=""  D:FLD>0  Q:RORQUIT
  . . S TMP=$G(RORBUF(799.4,HIVIENS,FLD,"I"))
  . . S EV=$S(TMP=0:"NO",TMP=1:"YES",TMP=9:"UNKNOWN",1:"")
- . . I EV=""  S RORRISK="",RORQUIT=1  Q
- . . S $P(RORRISK,RPS,CNT)=TMP_CS_EV
+ . . ;I EV=""  S RORRISK="",RORQUIT=1  Q  ;risk factors can be null
+ . . I $G(EV)="" S TMP=""
+ . . S $P(RORRISK,RPS,CNT)=$G(TMP)_CS_$G(EV)
  . S RORSEG(12)=RORRISK
  ;
  ;--- Store the segment

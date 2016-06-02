@@ -1,10 +1,26 @@
-RORX007A ;HCIOFO/BH,SG - RADIOLOGY UTILIZATION (OVERFLOW) ; 11/14/06 8:51am
- ;;1.5;CLINICAL CASE REGISTRIES;**1**;Feb 17, 2006;Build 24
+RORX007A ;HOIFO/BH,SG,VAC - RADIOLOGY UTILIZATION (OVERFLOW) ;4/7/09 2:07pm
+ ;;1.5;CLINICAL CASE REGISTRIES;**1,8,13,19,21**;Feb 17, 2006;Build 45
  ;
  ; This routine uses the following IAs:
  ;
  ; #2043         EN1^RAO7PC1 (supported)
  ;
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                 --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*8    MAR  2010   V CARR       Modified to handle ICD9 filter for
+ ;                                      'include' or 'exclude'.
+ ;ROR*1.5*13   DEC  2010   A SAUNDERS   User can select specific patients,
+ ;                                      clinics, or divisions for the report.
+ ;ROR*1.5*19   FEB  2012   K GUPTA      Support for ICD-10 Coding System
+ ;ROR*1.5*21   SEP 2013    T KOPP       Added ICN as last report column if
+ ;                                      additional identifier option selected
+ ;                                      
+ ;******************************************************************************
+ ;******************************************************************************
  Q
  ;
  ;***** APPENDS MODIFIERS TO THE CPT CODE
@@ -22,7 +38,7 @@ CPTMOD(CPT,NODE) ;
  . S:CPM'="" CPT=CPT_"-"_CPM
  Q CPT
  ;
- ;***** LOADS AND PROCESSES THE RADILOGY DATA
+ ;***** LOADS AND PROCESSES THE RADIOLOGY DATA
  ;
  ; DFN           Patient IEN (in file #2)
  ;
@@ -34,7 +50,8 @@ GETDATA(DFN) ;
  N CPT,EXAMID,NODE,PRNAME,RORBUF
  ;--- Get the data
  D EN1^RAO7PC1(DFN,RORSDT,ROREDT,999999)
- Q:'$D(^TMP($J,"RAE1",PATIEN)) 0
+ ;data returned from radiology/nuclear medicine API in ^TMP($J,"RAE1"
+ Q:'$D(^TMP($J,"RAE1",DFN)) 0
  ;
  ;--- Process the data
  S EXAMID=""
@@ -45,8 +62,8 @@ GETDATA(DFN) ;
  . S PRNAME=$E($P(RORBUF,U),1,30)  Q:PRNAME=""
  . S PRNAME=PRNAME_U_$S(CPT'="":CPT,1:" ")
  . ;--- Increment the counters
- . S ^(DFN)=$G(^TMP("RORX007",$J,"PROC",PRNAME,DFN))+1
- . S ^(PRNAME)=$G(^TMP("RORX007",$J,"PAT",DFN,PRNAME))+1
+ . S ^(DFN)=$G(^TMP("RORX007",$J,"PROC",PRNAME,DFN))+1 ;naked reference: ^TMP("RORX007",$J,"PROC",PRNAME,DFN)
+ . S ^(PRNAME)=$G(^TMP("RORX007",$J,"PAT",DFN,PRNAME))+1 ;naked reference: ^TMP("RORX007",$J,"PROC",PRNAME,DFN,PRNAME)
  ;
  ;--- Cleanup
  K ^TMP($J,"RAE1")
@@ -61,7 +78,7 @@ GETDATA(DFN) ;
  ;        0  Ok
  ;
 HEADER(PARTAG) ;
- ;;PATIENTS(#,NAME,LAST4,DOD,TOTAL,UNIQUE)
+ ;;PATIENTS(#,NAME,LAST4,DOD,TOTAL,UNIQUE,ICN)
  ;;PROCEDURES(#,NAME,CPT,PATIENTS,TOTAL)
  ;
  N HEADER,RC
@@ -106,20 +123,38 @@ PARAMS(PARTAG,STDT,ENDT,FLAGS) ;
  ;
 QUERY(FLAGS) ;
  N CNT,ECNT,IEN,IENS,PATIEN,RC,RORMSG,TMP,XREFNODE
+ N RCC,FLAG
+ N RORCDLIST     ; Flag to indicate whether a clinic or division list exists
+ N RORCDSTDT     ; Start date for clinic/division utilization search
+ N RORCDENDT     ; End date for clinic/division utilization search
+ ;
  S XREFNODE=$NA(^RORDATA(798,"AC",+RORREG))
  S (CNT,ECNT,RC)=0
+ ;=== Set up Clinic/Division list parameters
+ S RORCDLIST=$$CDPARMS^RORXU001(.RORTSK,.RORCDSTDT,.RORCDENDT)
+ ;
  ;--- Browse through the registry records
  S IEN=0
- F  S IEN=$O(@XREFNODE@(IEN))  Q:IEN'>0  D  Q:RC<0
+ S FLAG=$G(RORTSK("PARAMS","ICDFILT","A","FILTER"))
+ F  S IEN=$O(@XREFNODE@(IEN)) Q:IEN'>0  D  Q:RC<0
  . S TMP=$S(RORPTN>0:CNT/RORPTN,1:"")
  . S RC=$$LOOP^RORTSK01(TMP)  Q:RC<0
  . S IENS=IEN_",",CNT=CNT+1
+ . ;--- Get the patient DFN
+ . S PATIEN=$$PTIEN^RORUTL01(IEN) Q:PATIEN'>0
+ . ;--- Check for patient list and quit if not on list
+ . I $D(RORTSK("PARAMS","PATIENTS","C")),'$D(RORTSK("PARAMS","PATIENTS","C",PATIEN)) Q
  . ;--- Check if the patient should be skipped
  . Q:$$SKIP^RORXU005(IEN,FLAGS,RORSDT,ROREDT)
- . ;
- . ;--- Get the patient IEN (DFN)
- . S PATIEN=$$PTIEN^RORUTL01(IEN)  Q:PATIEN'>0
- . ;
+ . ;--- Check the patient against the ICD Filter
+ . S RCC=0
+ . I FLAG'="ALL" D
+ . . S RCC=$$ICD^RORXU010(PATIEN)
+ . I (FLAG="INCLUDE")&(RCC=0) Q
+ . I (FLAG="EXCLUDE")&(RCC=1) Q
+ . ;--- End of ICD check
+ . ;--- Check for Clinic or Division list and quit if not in list
+ . I RORCDLIST,'$$CDUTIL^RORXU001(.RORTSK,PATIEN,RORCDSTDT,RORCDENDT) Q
  . ;--- Get the radiology data
  . S RC=$$GETDATA(PATIEN)
  . I RC  S ECNT=ECNT+1  Q:RC<0

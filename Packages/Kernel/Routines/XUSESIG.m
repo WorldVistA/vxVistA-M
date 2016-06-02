@@ -37,6 +37,9 @@ OUT1 K %,D,D0,DA,DIC,DIE,DQ,DR,X,X1,A,K,I,Z Q
 SIG ;Call with DUZ; Return X1="" if fail else hashed ESC.
  N X2,K
  S X2=$G(^VA(200,+$G(DUZ),20)),X1=$P(X2,U,4) I X1="" W !,"No Electronic Signature code to check." Q
+ ;DSS/SMP - BEGIN MODS - Add E-Signature Display
+ I $G(^%ZOSF("ZVX"))["VX",'$$EN^VFDESIG S X1="" Q
+ ;DSS/SMP - END MODS
  S K=0 D S2 Q:X1=""
  Q  ;Following code was to force code change
  N LIFE S LIFE=$$KSP^XUPARAM("LIFETIME")

@@ -1,16 +1,17 @@
-XPDET ;SFISC/RSD - Input tranforms & help for file 9.6 & 9.7 ; 16 Apr 2009  10:26 AM
- ;;8.0;KERNEL;**15,39,41,44,51,58,66,137,229,393**;Jul 10, 1995;Build 7
+XPDET ;SFISC/RSD - Input tranforms & help for file 9.6 & 9.7 ;10/19/2002
+ ;;8.0;KERNEL;**15,39,41,44,51,58,66,137,229,393,539**;Jul 10, 1995;Build 6
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  Q
 INPUTB(X) ;input tranfrom for NAME in BUILD file
  ;X=user input
  ;name must be unique
  I $L(X)>50!($L(X)<3)!$D(^XPD(9.6,"B",X)) K X Q
- ;DSS/LM - Begin Mods
+  ;DSS/SMP - Begin Mods
  I $G(^%ZOSF("ZVX"))["VX" K:'$$VALID^VFDI0000(X) X Q
- ;DSS/SGM - End Mods
+ ;DSS/SMP - End Mods
  I X["*" K:$P(X,"*",2,3)'?1.2N1"."1.2N.1(1"V",1"T").2N1"*"1.6N X Q
  S %=$L(X," ") I %<2 K X Q
- S %=$P(X," ",%) I $L(%,".")<3 K:%'?1.2N1"."1.2N.1(1"V",1"T",1"B").2N X
+ S %=$P(X," ",%) K:%'?1.2N1"."1.2N.1(1"V",1"T",1"B").2N X
  Q
 INPUTE(X) ;input transform for ENTRIES in KERNEL FILES multiple
  ;X=user input
@@ -101,7 +102,7 @@ SCRA(Y) ;screen of ACTION field in ENTRIES multiple in KERNEL FILES multiple, Y=
  Q:D1'=19&(D1'=101) 0
  ;only Options and Protocol can disable
  Q:Y=5 1
- N FGR,X,XPDF,XPDT,XPDZ
+ N FGR,X,XPDF,XPDT,XPDY,XPDZ
  ;get X=name, FGR=global reference, XPDF=file #
  S XPDY=Y,XPDF=D1,X=$P(^XPD(9.6,D0,"KRN",D1,"NM",D2,0),U),FGR=$$FILE^XPDV(D1)
  Q:X="" 0
@@ -161,13 +162,13 @@ PCK(Y) ;check Package File name, Y=ien in package file
  ;DA is undef when you are adding a new Build without a version number
  Q:'$D(^XPD(9.6,+$G(DA),0)) 1
  S Y=$L($P(Z,U)),%=$P(^XPD(9.6,DA,0),U),%=$$PKG^XPDUTL(%)
- ;DSS/SGM - BEGIN MODS
- I $T(VX^VFDI0000)'="",$$VX^VFDI0000(,1)>0 N A D  I A Q 1
+ ;DSS/SMP - BEGIN MODS
+ I $G(^%ZOSF("ZVX"))["VX" N A D  I A Q 1
  . ; allow BUILD NAME to start with the characters of Package PREFIX
  . ; %=<name portion only from BUILD name>  Z=zeroth node from file 9.4
  . N L,P S A=0,P=$P(Z,U,2),L=$L(P) S:L A=($E(%,1,L)=P)
  . Q
- ;DSS/SGM - END MODS
+ ;DSS/SMP - END MODS
  Q $P(Z,U)=$E(%,1,Y)!($P(Z,U,2)=%)
 VOLE(X) ;input transform for VOLUME SET multiple in INSTALL file
  ;X=user input
@@ -188,14 +189,15 @@ ID97 ;identifier for Install file
  D
  .;Loaded, get DATE LOADED
  .I 'XPD9 S XPD=$$FMTE^XLFDT($P(XPD0,U,3),2) Q
- .Q:XPD9>3
+ .Q:XPD9>4
  .;Started, get INSTALL START TIME
  .I XPD9=2 S XPD=$$FMTE^XLFDT($P(XPD1,U),2) Q
- .;Completed, get INSTALL COMPLETE TIME
- .I XPD9=3 S XPD=$$FMTE^XLFDT($P(XPD1,U,3),2) Q
+ .;Completed or De-Installed, get INSTALL COMPLETE TIME
+ .I XPD9>2 S XPD=$$FMTE^XLFDT($P(XPD1,U,3),2) Q
  .;Queued, get QUEUED TASK NUMBER
  .I XPD9=1 S XPD="#"_$P(XPD0,U,6) Q
- S XPDET(1)="   "_$$EXTERNAL^DILFD(9.7,.02,"",XPD9)_"  "_XPD,XPDET(1,"F")="?0"
+ ;S XPDET(1)="   "_$$EXTERNAL^DILFD(9.7,.02,"",XPD9)_"  "_XPD,XPDET(1,"F")="?0"
+ S XPDET(1)="  "_XPD,XPDET(1,"F")="?0"
  S:XPD2]"" XPDET(2)="=> "_$E(XPD2,1,70),XPDET(2,"F")="!?5"
  D EN^DDIOL(.XPDET)
  Q
@@ -212,3 +214,4 @@ PAR964 ;Clear other fields if file is partial.  Called from within form
  D PUT^DDSVAL(DIE,.DA,222.9,"n","","I") ;User Override
  D PUT^DDSVAL(DIE,.DA,224,"","","I") ;Data Screen
  Q
+ ;

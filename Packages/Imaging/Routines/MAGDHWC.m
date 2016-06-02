@@ -1,5 +1,5 @@
-MAGDHWC ;WOIFO/PMK - Capture Consult/Procedure Request data ; 24 Jan 2006  11:50 AM
- ;;3.0;IMAGING;**10,51,46**;16-February-2007;;Build 1023
+MAGDHWC ;WOIFO/PMK/NST - Capture Consult/Procedure Request data ; 27 Aug 2010 8:40 AM
+ ;;3.0;IMAGING;**10,51,46,54,106**;Mar 19, 2002;Build 2002;Feb 28, 2011
  ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -17,7 +17,7 @@ MAGDHWC ;WOIFO/PMK - Capture Consult/Procedure Request data ; 24 Jan 2006  11:50
  ;;
 ENTRY ;
  ; determine the kind of message and branch appropriately
- N %,APTSCHED,CONSULT,DATETIME,DEL,DEL2,DEL3,DEL4,DEL5,DFN
+ N APTSCHED,CONSULT,DATETIME,DEL,DEL2,DEL3,DEL4,DEL5,DFN
  N DIVISION,FILLER1,FWDFROM,FMDATE,FMDATETM,GMRCIEN,HL,HL7,HL7ORC,HL7REC
  N I,IGNORE,ITYPCODE,ITYPNAME,IGNORE,MSGTYPE,OBXSEGNO,ORIGSERV,SERVICE,X,Y,Z
  I $D(GMRCMSG) M HL7=GMRCMSG
@@ -26,7 +26,7 @@ ENTRY ;
  S HL7REC=HL7(1)
  S DEL=$E(HL7REC,4),X=$P(HL7REC,DEL,2)
  F I=1:1:$L(X) S @("DEL"_(I+1))=$E(X,I)
- D NOW^%DTC S FMDATE=%\1,FMDATETM=%
+ S FMDATETM=$$NOW^XLFDT(),FMDATE=FMDATETM\1
  ;
  ; find PID segment and get the DFN
  S I=0 I '$$FINDSEG^MAGDHW0(.HL7,"PID",.I,.X) Q  ; no PID segment
@@ -86,7 +86,6 @@ ENTRY ;
  S I=0 I '$$FINDSEG^MAGDHW0(.HL7,"ZSV",.I,.X) Q  ; no ZSV segment
  S SERVICE=$P($P(X,DEL),DEL2,4)
  D SERVICE ; send this transaction to the DICOM gateway?
- I IGNORE Q  ; just ignore HL7 message, don't send it to DICOM gateway
  ;
  S Z=$P(HL7ORC,DEL,1) ; Order Control
  S Y=$P(HL7ORC,DEL,5) ; Order Status
@@ -102,6 +101,13 @@ ENTRY ;
  . . Q
  . Q
  E  S MSGTYPE="UNKNOWN"
+ ;
+ ;-- patch 106: In case the service is not in file #2006.5831
+ I IGNORE D  Q  ; just ignore HL7 message, don't send it to DICOM gateway
+ . N I
+ . I MSGTYPE["RESULT" S I=$$NEWTIU^MAGDHWA(GMRCIEN)
+ . Q
+ ;
  D MSH^MAGDHWA,PID^MAGDHWA,ORC^MAGDHWA,OBR^MAGDHWA,ZSV^MAGDHWA
  I '$$OBX() D  ; get OBX segment from database
  . S I=$O(HL7(""),-1)+1 S I=$$OBX^MAGDHWS(I)

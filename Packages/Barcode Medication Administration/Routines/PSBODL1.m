@@ -1,8 +1,12 @@
-PSBODL1 ;BIRMINGHAM/VRN-DUE LIST ;Mar 2004
- ;;3.0;BAR CODE MED ADMIN;**5,9,32,28**;Mar 2004;Build 9
+PSBODL1 ;BIRMINGHAM/VRN-DUE LIST ;9/19/12 12:08am
+ ;;3.0;BAR CODE MED ADMIN;**5,9,32,28,68,70**;Mar 2004;Build 29
  ;Per VHA Directive 2004-038 (or future revisions regarding same), this routine should not be modified. 
  ;
+ ;*68 - print New unlimited Wp Special Instructions/OPI fields
+ ;*70 - add Psbsrchl to HDR
+ ;
 EN ;
+ N QQ
  S PSBFOHDR=0
  S PSBORD=0 F  S PSBORD=$O(^TMP("PSBO",$J,DFN,PSBORD)) Q:PSBORD=""  S PSBTYPE=$O(^TMP("PSBO",$J,DFN,PSBORD,"")) D
  .D CLEAN^PSBVT
@@ -69,9 +73,14 @@ EN ;
  .W IOINORM ; Highlight Off
  .S PSBADM=$S(PSBADMIN]"":"Admin Times: "_PSBADMIN,1:"")
  .W:PSBADM]"" $$WRAP(50,27,PSBADM)
- .S X=$S(PSBOTXT]"":PSBOTXT,1:"<None Entered>")
- .I $E(X,1)="!"  S $E(X,1)=""
- .W $$WRAP(14,34,"Spec Inst: "_X),!,$TR($J("",IOM)," ","-")
+ .;*68 begin
+ .I PSBSIFLG,'$G(^TMP("PSJBCMA5",$J,DFN,PSBORD)) D
+ ..W !?14,"Special Instructions:",?36,"<None Entered.>",DFN,U,PSBORD,"<"
+ .D:PSBSIFLG
+ ..F QQ=0:0 S QQ=$O(^TMP("PSJBCMA5",$J,DFN,PSBORD,QQ)) Q:'QQ  D
+ ...W:QQ=1 !?14,"Special Instructions:",?36,^TMP("PSJBCMA5",$J,DFN,PSBORD,QQ)
+ ...W:QQ>1 !?36,^TMP("PSJBCMA5",$J,DFN,PSBORD,QQ)
+ .W !,$TR($J("",IOM)," ","-")
  I '$G(PSBWFLAG) W !!,?10,"** NO SPECIFIED MEDICATIONS TO PRINT **"
  W:PSBFOHDR $$BLANKS(),$$FTR()
  K ^TMP("PSB",$J,"GETADMIN")
@@ -95,9 +104,14 @@ WRAPPUP ;Do wrapping per PSBODL (Due List Report)
  W IOINORM ; Hlight Off
  S PSBADM=$S(PSBADMIN]"":"Admin Times: "_PSBADMIN,1:"")
  W:PSBADM]"" $$WRAP(50,27,PSBADM)
- S X=$S(PSBOTXT]"":PSBOTXT,1:"<None Entered>")
- I $E(X,1)="!"  S $E(X,1)=""
- W $$WRAP(14,34,"Spec Inst: "_X),!,$TR($J("",IOM)," ","-")
+ ;*68 begin
+ I PSBSIFLG,'$G(^TMP("PSJBCMA5",$J,DFN,PSBORD)) W !?14,"Special Instructions:",?36,"<None Entered.>"
+ D:PSBSIFLG
+ .F QQ=0:0 S QQ=$O(^TMP("PSJBCMA5",$J,DFN,PSBORD,QQ)) Q:'QQ  D
+ ..W:QQ=1 !?14,"Special Instructions:"
+ ..W:QQ>1 !
+ ..W ?36,^TMP("PSJBCMA5",$J,DFN,PSBORD,QQ)
+ W !,$TR($J("",IOM)," ","-")
  Q
  ;
 WRAP(X,Y,Z) ; Quick text wrap
@@ -124,7 +138,7 @@ FTR() ; [Extrinsic] Page footer
  ;
 HDR() ; Page Header
  Q:'PSBFOHDR ""
- D PT^PSBOHDR(DFN,.PSBHDR)
+ D PT^PSBOHDR(DFN,.PSBHDR,,,PSBSRCHL)                            ;*70
  W !
  W !
  W !,?(IOM-28\2),"*****   FUTURE ORDERS   *****"

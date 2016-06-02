@@ -1,5 +1,5 @@
-DGREGTE2 ;ALB/BAJ - Temporary & Confidential Address Support Routine; 02/27/2006
- ;;5.3;Registration;**688**;Aug 13, 1993;Build 29
+DGREGTE2 ;ALB/BAJ,TDM,BDB - Temporary & Confidential Address Support Routine; 02/27/2006 ; 12/24/08 12:12pm
+ ;;5.3;Registration;**688,754,851**;Aug 13, 1993;Build 10
  ;
  Q
  ;
@@ -31,9 +31,10 @@ INPT1(DFN,FORGN,PSTR) ; address input prompts
  N FSTR
  ; PSTR contains the full list of address fields to be modified
  ; FSTR contains the field list based on country
- S PSTR=FSLINE1_","_FSLINE2_","_FSLINE3_","_FCITY_","_FSTATE_","_FCOUNTY_","_FZIP_","_FPROV_","_FPSTAL_","_FCNTRY_$S(TYPE="TEMP":","_FPHONE,1:"")
- S FSTR=FSLINE1_","_FSLINE2_","_FSLINE3_","_FCITY_","_FSTATE_","_FCOUNTY_","_FZIP_$S(TYPE="TEMP":","_FPHONE,1:"")
- I FORGN S FSTR=FSLINE1_","_FSLINE2_","_FSLINE3_","_FCITY_","_FPROV_","_FPSTAL_$S(TYPE="TEMP":","_FPHONE,1:"")
+ S PSTR=FSLINE1_","_FSLINE2_","_FSLINE3_","_FCITY_","_FSTATE_","_FCOUNTY_","_FZIP_","_FPROV_","_FPSTAL_","_FCNTRY_","_FPHONE
+ ;S FSTR=FSLINE1_","_FSLINE2_","_FSLINE3_","_FCITY_","_FSTATE_","_FCOUNTY_","_FZIP_","_FPHONE
+ S FSTR=FSLINE1_","_FSLINE2_","_FSLINE3_","_FZIP_","_FPHONE ;DG*5.3*851
+ I FORGN S FSTR=FSLINE1_","_FSLINE2_","_FSLINE3_","_FCITY_","_FPROV_","_FPSTAL_","_FPHONE
  Q FSTR
  ;
 SURE() ; Are you sure prompt
@@ -89,7 +90,7 @@ FLDDAT ; Table of field values STRUCTURE --> Description;;Type;Variable Name;Fie
  ;;State;;CONF;FSTATE;.1415
  ;;County;;CONF;FCOUNTY;.14111
  ;;Zip;;CONF;FZIP;.1416
- ;;Phone;;CONF;FPHONE;
+ ;;Phone;;CONF;FPHONE;.1315
  ;;Province;;CONF;FPROV;.14114
  ;;Postal Code;;CONF;FPSTAL;.14115
  ;;Country;;CONF;FCNTRY;.14116

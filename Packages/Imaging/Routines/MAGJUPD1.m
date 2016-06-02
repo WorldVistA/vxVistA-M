@@ -1,6 +1,6 @@
-MAGJUPD1 ;WOIFO/JHC VistARad Update Exam Status ; 29 Jul 2003  10:02 AM
- ;;3.0;IMAGING;**16,22,18,76**;Jun 22, 2007;Build 19
- ;;Per VHA Directive 2004-038, this routine should not be modified.
+MAGJUPD1 ;WOIFO/JHC - VistARad Update Exam Status ; 25 Mar 2013  5:22 PM
+ ;;3.0;IMAGING;**16,22,18,76,101,120,133**;Mar 19, 2002;Build 5393;Sep 09, 2013
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -8,7 +8,6 @@ MAGJUPD1 ;WOIFO/JHC VistARad Update Exam Status ; 29 Jul 2003  10:02 AM
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -35,12 +34,15 @@ STATUS(MAGGRY,PARAMS,DATA) ; rpc: MAGJ RADSTATUSUPDATE
  ;   RARPT = ptr to Rad Exam Report file
  ;   RADFN,RADTI,RACNI = pointers to Rad Patient File for the exam
  ;   UPDPSKEY = 1/0 -- 1 to update Presentation State &/or Key Image data
+ ;                   = 2 -- update PS data with NO lock in place--Resident workflow, or Sec Key Override
+ ;   DATA = optional array containing prezentation state data; see SAVKPS^MAGJUPD2 for description
  ;   MAGGRY = return results in @MAGGRY
  ;
  N $ETRAP,$ESTACK S $ETRAP="D ERR^MAGJUPD1"
  N RARPT,RADFN,RADTI,RACNI,RAEXT,RACNE,RADTE,RAINT,RAMDV,DIQUIET
  N RAONLINE,ZTQUEUED,RAOR,RASN,RASTI,RAPRTSET,LOGDATA,RSL,TIMESTMP
  N UPDPSKEY,MAGRET,MAGLST,REPLY,UPDFLAG,RADATA,RIST,MAGPSET,RACNILST,ACNLST
+ N PSETLST
  S MAGLST="MAGJUPDATE"
  K MAGGRY S MAGGRY=$NA(^TMP($J,MAGLST)) K @MAGGRY  ; assign MAGGRY value
  S DIQUIET=1 D DT^DICRW
@@ -52,13 +54,16 @@ STATUS(MAGGRY,PARAMS,DATA) ; rpc: MAGJ RADSTATUSUPDATE
  E  S REPLY="0^4~Request Contains Invalid Case Pointer ("_RARPT_")" G STATUSZ
  D GETEXAM2^MAGJUTL1(RADFN,RADTI,RACNI,0,.MAGRET)
  I 'MAGRET S REPLY="0^4~Current Case Not Accessible for Updating" G STATUSZ
-   ; 1  RADFN   RADTI    RACNI   RANME   RASSN    <--Contents of RADATA,
-   ; 6  RADATE  RADTE    RACN    RAPRC   RARPT         from GETEXAM
-   ;11  RAST    DAYCASE  RAELOC  RASTP   RASTORD
-   ;16  RADTPRT
+ ; 1  RADFN   RADTI    RACNI   RANME   RASSN    <--Contents of RADATA,
+ ; 6  RADATE  RADTE    RACN    RAPRC   RARPT         from GETEXAM
+ ;11  RAST    DAYCASE  RAELOC  RASTP   RASTORD
+ ;16  RADTPRT
  S RADATA=$G(^TMP($J,"MAGRAEX",1,1))
- S RAEXT=$P(RADATA,U,12),RACNE=$P(RAEXT,"-",2),RADTE=$P(RADATA,U,7)
+ S RAEXT=$P(RADATA,U,12),RACNE=$P(RAEXT,"-",$L(RAEXT,"-")),RADTE=$P(RADATA,U,7) ; p133: $L for SSAN or old Acn
  S RAINT=RADTI_"-"_RACNI
+ I UPDPSKEY=2 D  G STATUSZ ; P101 update annotations only, if authorized (Resident workflow, or Sec Key Override)
+ . I +MAGJOB("USER",1),'UPDFLAG,($D(DATA)>9) S REPLY="0^1~Case #"_RAEXT_" Closed; No Status Update; annotation updates performed."
+ . E  S UPDPSKEY=0,REPLY="0^4~Invalid request to update annotations for Case #"_RAEXT_"."
  D CLOSE(.RSL,RADFN_U_RADTI_U_RACNI_U_U_1,.LOGDATA) ; unlock the case
  ; proceed only if case was locked by this user
  ;   if it was not Locked, then do NOT update PS, Key Images
@@ -67,19 +72,20 @@ STATUS(MAGGRY,PARAMS,DATA) ; rpc: MAGJ RADSTATUSUPDATE
  S RIST=$P(RSL,U,2) ; CLOSE reports back the type of radiologist
  ; now we know this user had locked the case, & wants to do Status update
  D EN2^RAUTL20(.MAGPSET)  ; get info re rad PrintSet
+ ; Note--above call also sets variable RAPRTSET
  ;
  ; IF exam is not "Examined", and not "Cancelled" and past "Waiting"
  ;    then assume it has already been updated via another pathway,
- ;    either as printset member (via code at tag PRTSET, below),
+ ;    either as printset member (via code below--see PRTSET note...),
  ;    or from a voice-dictation or terminal session by the radiologist
  ;    For these cases, no warning msg is sent
  ; Else, update not allowed, so give warning msg
  ; Note that when the Exam was OPENed, it must have had status "Examined"
  I '$D(^RA(72,"AVC","E",$P(RADATA,U,11))) D  G STATUSX:(+$P(REPLY,U,2)=1),STATUSZ  ; Current Status MUST be "Examined" Category
  . I $P(RADATA,U,15)>2 D  ; assume update has otherwise been done, eg voice dictation or manual entry in Vista
- .. S RACNILST=RACNI,RASTI=$P(RADATA,U,11) ; need for code at tag statusx
- .. I RAPRTSET S REPLY="0^1~Printset Exams with Case #"_RAEXT_" have been updated"
- .. E  S REPLY="0^1~No Update done for Case #"_RAEXT_"--current status is "_$P(RADATA,U,14)
+ . . S RACNILST=RACNI,RASTI=$P(RADATA,U,11) ; need for code at tag statusx
+ . . I RAPRTSET S REPLY="0^1~Printset Exams with Case #"_RAEXT_" have been updated"
+ . . E  S REPLY="0^1~No Update done for Case #"_RAEXT_"--current status is "_$P(RADATA,U,14)
  . E  S REPLY="0^3~No Update Allowed for Case #"_RAEXT_"--current status is "_$P(RADATA,U,14)
  ;
  ; now ready to update exam status
@@ -89,15 +95,16 @@ STATUS(MAGGRY,PARAMS,DATA) ; rpc: MAGJ RADSTATUSUPDATE
  ; Update interpreting radiologist field in Rad file
  I RIST D  I RACNILST="" G STATUSZ
  . N SAVRACNI,RTN S RACNILST=""
-PRTSET . ;  if exam is part of Rad Print-Set, then update all exams of printset
+ . ; PRTSET note: if exam is part of Rad Print-Set, then update all exams of printset
  . I RAPRTSET D
- .. S ACNLST="",SAVRACNI=RACNI,X=0
- .. F I=0:1 S X=$O(MAGPSET(X)) Q:'X  S RACNILST=RACNILST_$S(I:U,1:"")_X S:RACNE'=+MAGPSET(X) ACNLST=ACNLST_", "_"-"_+MAGPSET(X)
+ . . S ACNLST="",SAVRACNI=RACNI,X=0
+ . . N T  ; P133 mod for MAGPSET Data ex.--Old= 256^154^190^4  SSAN= 660-080504-256^154^190^4
+ . . F I=0:1 S X=$O(MAGPSET(X)) Q:'X  S RACNILST=RACNILST_$S(I:U,1:"")_X,T=$P(MAGPSET(X),U) S:RACNE'=$P(T,"-",($L(T,"-"))) ACNLST=ACNLST_", "_$S($L(T,"-")=1:"-",1:"")_T
  . E  S RACNILST=RACNI
  . F I=1:1:$L(RACNILST,U) S RACNI=$P(RACNILST,U,I) I RACNI D  I RACNILST="" Q
- .. S DA(2)=RADFN,DA(1)=RADTI,DA=RACNI
- .. D STUFPHY^RARIC1(DUZ,RIST,.RTN)
- .. I 'RTN S REPLY="0^4~Unable to update Interpreting Radiologist: "_RTN_"." S RACNILST=""
+ . . S DA(2)=RADFN,DA(1)=RADTI,DA=RACNI
+ . . D STUFPHY^RARIC1(DUZ,RIST,.RTN)
+ . . I 'RTN S REPLY="0^4~Unable to update Interpreting Radiologist: "_RTN_"." S RACNILST=""
  . I RAPRTSET S RACNI=SAVRACNI
  S RAONLINE=1,ZTQUEUED=1 D UP1^RAUTL1   ; Suppress msgs, do Status update
  ;<*> K RAONLINE,ZTQUEUED D UP1^RAUTL1 ; <*> Testing Only: ENABLE msgs
@@ -107,8 +114,11 @@ PRTSET . ;  if exam is part of Rad Print-Set, then update all exams of printset
  S REPLY="0^1~For Case #"_$S($G(ACNLST)]"":"s ",1:"")_RAEXT_$S(RAPRTSET:ACNLST,1:"")_", Exam Status updated to "_RASN
  ;
 STATUSX ; Newly Interpreted exam:
- ; Log the Interpreted event
- D LOG^MAGJUTL3("VR-INT",LOGDATA)
+ ; Log the Interpreted event; Printset logging includes all printset members
+ S PSETLST=""
+ I RAPRTSET S X="" D
+ . F I=0:1 S X=$O(MAGPSET(X)) Q:'X  S PSETLST=PSETLST_$S(I:U,1:"")_$P(MAGPSET(X),U)
+ D LOG^MAGJUTL3("VR-INT",LOGDATA,PSETLST)
  ; Update Recent Exams List
  G STATUSZ:'$P(^MAG(2006.69,1,0),U,8)  ; no bkgnd compile enabled
  L +^XTMP("MAGJ2","RECENT"):5

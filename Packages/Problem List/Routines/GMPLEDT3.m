@@ -1,13 +1,14 @@
-GMPLEDT3 ; SLC/MKB/KER -- Problem List edit utilities ; 04/15/2002
- ;;2.0;Problem List;**26,35**;Aug 25, 1994;Build 153
+GMPLEDT3 ; ISL/MKB,KER,JER,TC -- Problem List edit utilities ;08/21/12  13:55
+ ;;2.0;Problem List;**26,35,36,42**;Aug 25, 1994;Build 29
  ;
  ; External References
  ;   DBIA   872  ^ORD(101
+ ;    ICR  5747  $$CODECS^ICDEX
  ;   DBIA 10026  ^XUSEC("GMPL ICD CODE"
  ;   DBIA 10015  EN^DIQ1
  ;   DBIA 10026  ^DIR
  ;   DBIA 10104  $$UP^XLFSTR
- ;                     
+ ;
 MSG() ; List Manager Message Bar
  Q "Enter the number of the item(s) you wish to change"
  ;
@@ -34,21 +35,29 @@ KEYS ; Setup XQORM("KEY") array
  ;
 GETFLDS(DA) ; Define GMPFLD(#) and GMPORIG(#) Arrays with Current Values
  N DIC,DIQ,DR,I,GMPL,CNT,NIFN,FAC,EXT
- ;DSS/CDP 06/18/2007 Start Mod - Added new field Problem Category
- ;21600.01 to lookup
- ;DSS/LM  Revise Cary Parker's modification to include field 21600.02 - 3/16/2011
  S DIC="^AUPNPROB(",DIQ="GMPL",DIQ(0)="IE"
- S DR=".01;.03;.05;.08:1.02;1.05:1.18;21600.01;21600.02" D EN^DIQ1
- F I=.01,.03,.05,.08,.12,.13,1.01,1.02,1.05,1.06,1.07,1.08,1.09,1.1,1.11,1.12,1.13,1.14,1.15,1.16,1.17,1.18,21600.01,21600.02 D
+ ;DSS/SMP - BEGIN MODS - Add local fields
+ N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
+ S DR=".01;.03;.05;.08:1.02;1.05:1.18;80001:80005;80201;80202" D EN^DIQ1
+ I VFD S DR="21600.01;21600.02" D EN^DIQ1 S (VFD(21600.01),VFD(21600.02))=""
+ F I=.01,.03,.05,.08,.12,.13,1.01,1.02,1.05,1.06,1.07,1.08,1.09,1.1,1.11,1.12,1.13,1.14,1.15,1.16,1.17,1.18,80001,80002,80003,80004,80005,80201,80202 S VFD(I)=""
+ S I=0 F  S I=$O(VFD(I)) Q:'I  D
+ . ;DSS/SMP - END MODS
  . S GMPORIG(I)=$G(GMPL(9000011,DA,I,"I")),EXT=""
  . I I=1.01,GMPL(9000011,DA,I,"I")'>1 S GMPORIG(I)="" Q
  . Q:(GMPORIG(I)="")!(I=1.02)
- . I "^.01^.05^.12^1.01^1.05^1.06^1.08^1.1^1.14^21600.01^21600.02^"[(U_I_U) S EXT=GMPL(9000011,DA,I,"E")
- . I "^.03^.08^.13^1.07^1.09^"[(U_I_U) S EXT=$$EXTDT^GMPLX(GMPORIG(I))
+ . I "^.01^.05^.12^1.01^1.05^1.06^1.08^1.1^1.14^80001^80002^80003^80004^80005^"[(U_I_U) S EXT=GMPL(9000011,DA,I,"E")
+ . I "^.03^.08^.13^1.07^1.09^80201^"[(U_I_U) S EXT=$$EXTDT^GMPLX(GMPORIG(I))
+ . I "^80202^"[(U_I_U) S EXT=$P($$CODECS^ICDEX($P(GMPORIG(.01),U,2),80,$P(GMPORIG(80201),U)),U,2)
  . I "^1.11^1.12^1.13^"[(U_I_U) S EXT=$S(I=1.11:"AGENT ORANGE",I=1.12:"RADIATION",1:"ENV CONTAMINANTS")
- . I "^1.15^1.16^1.17^1.18^"[(U_I_U) S EXT=$S(I=1.15:"HEAD/NECK CANCER",1=1.16:"MIL SEXUAL TRAUMA",1=1.17:"COMBAT VET",1:"SHAD")
+ . I "^1.15^1.16^1.17^1.18^"[(U_I_U) S EXT=$S(I=1.15:"HEAD/NECK CANCER",I=1.16:"MIL SEXUAL TRAUMA",I=1.17:"COMBAT VET",1:"SHAD")
  . S GMPORIG(I)=GMPORIG(I)_U_EXT
- S I=0 F  S I=$O(GMPORIG(I)) Q:I'>0  S GMPFLD(I)=GMPORIG(I)
+ I $D(^AUPNPROB(DA,803))=10 D
+ . N CODE S CODE=$P(GMPORIG(.01),U,2)
+ . S I=0 F  S I=$O(^AUPNPROB(DA,803,I)) Q:+I'>0  D
+ . . S $P(CODE,"/",(I+1))=$P($G(^AUPNPROB(DA,803,I,0)),U)
+ . S $P(GMPORIG(.01),U,2)=CODE
+ S I=0 F  S I=$O(GMPORIG(I)) Q:I'>0!(I=10)  S GMPFLD(I)=GMPORIG(I)
  S (CNT,GMPORIG(10,0),GMPFLD(10,0))=0
  S FAC=$O(^AUPNPROB(DA,11,"B",+GMPVAMC,0)) Q:'FAC
  F NIFN=0:0 S NIFN=$O(^AUPNPROB(DA,11,FAC,11,"B",NIFN)) Q:NIFN'>0  D
@@ -57,6 +66,7 @@ GETFLDS(DA) ; Define GMPFLD(#) and GMPORIG(#) Arrays with Current Values
  . S $P(GMPORIG(10,CNT),U,2)=FAC
  . S GMPFLD(10,CNT)=GMPORIG(10,CNT)
  S (GMPORIG(10,0),GMPFLD(10,0))=CNT
+ S I=80000 F  S I=$O(GMPORIG(I)) Q:I'>0  S GMPFLD(I)=GMPORIG(I)
  Q
  ;
 FLDS ; Define GMPFLD("FLD") Array for Editing
@@ -84,7 +94,7 @@ FLDS ; Define GMPFLD("FLD") Array for Editing
  Q
  ;
 JUMP(XFLD) ; Resolve ^- Jump Out of Field Order in Edit
- N I,MATCH,CNT,PROMPT,DIR,X,Y
+ N I,MATCH,CNT,PROMPT,DIR,X,Y,DTOUT,DUOUT
  ;   Passed in as ^XXX
  S XFLD=$$UP^XLFSTR($P(XFLD,U,2))
  I (XFLD="")!(XFLD["^") S GMPQUIT=1 Q

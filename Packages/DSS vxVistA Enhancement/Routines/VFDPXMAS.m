@@ -1,5 +1,5 @@
 VFDPXMAS ;CFS - Build and Pass to auto-check-out ;05/22/2013
- ;;2011.1.3;DSS,INC VXVISTA OPEN SOURCE;**1**;08 Aug 2013
+ ;;2011.1.3;DSS,INC VXVISTA OPEN SOURCE;**1**;08 Aug 2013;Build 2
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ; Builds and passes data to MAS for Auto-checkout

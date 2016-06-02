@@ -1,5 +1,5 @@
-IVMPREC6 ;ALB/KCL/BRM/CKN,TDM - PROCESS INCOMING (Z05 EVENT TYPE) HL7 MESSAGES ; 4/2/09 1:44pm
- ;;2.0; INCOME VERIFICATION MATCH ;**3,4,12,17,34,58,79,102,115,140**; 21-OCT-94;Build 2
+IVMPREC6 ;ALB/KCL/BRM/CKN,TDM,PWC,LBD - PROCESS INCOMING (Z05 EVENT TYPE) HL7 MESSAGES ; 3/10/12 4:06pm
+ ;;2.0;INCOME VERIFICATION MATCH;**3,4,12,17,34,58,79,102,115,140,144,121,151,152**;21-OCT-94;Build 4
  ;;Per VHA Directive 10-93-142, this routine should not be modified.
  ;
  ; This routine will process batch ORU demographic (event type Z05) HL7
@@ -9,8 +9,12 @@ IVMPREC6 ;ALB/KCL/BRM/CKN,TDM - PROCESS INCOMING (Z05 EVENT TYPE) HL7 MESSAGES ;
  ;       {MSH
  ;        PID
  ;        ZPD
+ ;        ZTA
  ;        ZGD
- ;        RF1 (optional)
+ ;        ZCT (1 episode required, multiple possible)
+ ;        ZEM (Veteran)
+ ;        ZEM (Spouse - Optional)
+ ;        RF1 (optional, multiple possible)
  ;       }
  ;       BTS
  ;
@@ -18,7 +22,18 @@ IVMPREC6 ;ALB/KCL/BRM/CKN,TDM - PROCESS INCOMING (Z05 EVENT TYPE) HL7 MESSAGES ;
 EN ; - entry point to process HL7 patient demographic message 
  ;
  N DGENUPLD,VAFCA08,DGRUGA08,COMP,DODSEG,GUARSEG
+ ;N MULTDONE,XREP
+ N XIVMA,IVMALADT,MULTIDONE
  ;
+ ; Setup array to hold all the Allowed Address Types
+ ;F XIVMA="N","P","VAB1","VAB2","VAB3","VAB4" S IVMALADT(XIVMA)=""
+ F XIVMA="P","VAB1","VAB2","VAB3","VAB4" S IVMALADT(XIVMA)=""
+ ; Define the Confidential Address Categories
+ ;S IVMALADT("VACAE")="CA^1"      ; ELIGIBILITY/ENROLLMENT
+ ;S IVMALADT("VACAA")="CA^2"      ; APPOINTMENT/SCHEDULING
+ ;S IVMALADT("VACAC")="CA^3"      ; COPAYMENTS/VETERAN BILLING
+ ;S IVMALADT("VACAM")="CA^4"      ; MEDICAL RECORDS
+ ;S IVMALADT("VACAO")="CA^5"      ; ALL OTHERS
  ; prevent a return Z07 when uploading a Z05 (Patient file triggers)
  S DGENUPLD="ENROLLMENT/ELIGIBILITY UPLOAD IN PROGRESS"
  ;
@@ -28,7 +43,8 @@ EN ; - entry point to process HL7 patient demographic message
  S IVMFLG=0,IVMADFLG=0
  ; - get incoming HL7 message from HL7 Transmission (#772) file
  F IVMDA=0:0 S IVMDA=$O(^TMP($J,IVMRTN,IVMDA)) Q:'IVMDA  S IVMSEG=$G(^(IVMDA,0)) I $E(IVMSEG,1,3)="MSH" D
- .K HLERR
+ .K HLERR,ZEMADRUP
+ .S IVMTSTPT=""                          ;Initialize Temp Addr County
  .;
  .; - message control id from MSH segment
  .S MSGID=$P(IVMSEG,HLFS,10),HLMID=MSGID
@@ -38,6 +54,7 @@ EN ; - entry point to process HL7 patient demographic message
  .;
  .;Set array of Email, Cell, Pager fields
  .D EPCFLDS(.EPCFARY,.EPCDEL)
+ .D AUPBLD(.AUPFARY,.UPDAUPG)
  .; - get next msg segment
  .D NEXT I $E(IVMSEG,1,3)'="PID" D  Q
  ..S HLERR="Missing PID segment" D ACK^IVMPREC
@@ -78,6 +95,15 @@ EN ; - entry point to process HL7 patient demographic message
  .D NEXT I $E(IVMSEG,1,3)="ZEL" D  Q
  ..S HLERR="ZEL segment should not be sent in Z05 message" D ACK^IVMPREC
  .;
+ .I $E(IVMSEG,1,3)'="ZTA" D  Q
+ ..S HLERR="Missing ZTA segment" D ACK^IVMPREC
+ .;Convert "" to null in ZTA segment seq. 7
+ .I $P(IVMSEG,HLFS,8)=HLQ S $P(IVMSEG,HLFS,8)=""
+ .;
+ .; - compare ZTA segment fields with DHCP fields
+ .I 'DODSEG,'GUARSEG D COMPARE(IVMSEG)
+ .D NEXT
+ .;
  .; - get next msg segment
  .I $E(IVMSEG,1,3)'="ZGD" D  Q
  ..S HLERR="Missing ZGD segment" D ACK^IVMPREC
@@ -90,12 +116,37 @@ EN ; - entry point to process HL7 patient demographic message
  .D COMPARE(IVMSEG)
  .;S IVMFLG=0
  .;
+ .;S MULTDONE=0 F XREP=1:1 D  Q:MULTDONE  ;Skip ZCT & ZEM -coming later
+ .;.D NEXT
+ .;.I ($E(IVMSEG,1,3)'="ZCT")&($E(IVMSEG,1,3)'="ZEM") S MULTDONE=1 Q
+ .;S IVMDA=IVMDA-1
+ .;
+ .; - get next msg segment
+ .D NEXT
+ .I $E(IVMSEG,1,3)'="ZCT" D  Q
+ ..S HLERR="Missing ZCT segment" D ACK^IVMPREC
+ .S IVMSEG=$$CLEARF^IVMPRECA(IVMSEG,HLFS)
+ .I 'DODSEG,'GUARSEG D COMPARE(IVMSEG)   ;Process 1st ZCT
+ .S MULTDONE=0 F XREP=1:1 D  Q:MULTDONE  ;Handle possible mult ZCTs
+ ..D NEXT I $E(IVMSEG,1,3)'="ZCT" S MULTDONE=1 Q
+ ..S IVMSEG=$$CLEARF^IVMPRECA(IVMSEG,HLFS)
+ ..I 'DODSEG,'GUARSEG D COMPARE(IVMSEG)
+ .;
+ .S IVMDA=IVMDA-1 D NEXT
+ .I $E(IVMSEG,1,3)'="ZEM" D  Q
+ ..S HLERR="Missing ZEM segment" D ACK^IVMPREC
+ .I 'DODSEG,'GUARSEG D COMPARE(IVMSEG)   ;Process 1st ZEM
+ .S MULTDONE=0 F XREP=1:1 D  Q:MULTDONE  ;Handle possible mult ZEMs
+ ..D NEXT I $E(IVMSEG,1,3)'="ZEM" S MULTDONE=1 Q
+ ..I 'DODSEG,'GUARSEG D COMPARE(IVMSEG)
+ .S IVMDA=IVMDA-1
+ .;
  .; - check for RF1 segment and get segment if it exists
  .;     This process will automatically update patient address data
  .;     in the Patient (#2) file if the incoming address is more
  .;     recent than the existing one.
  .;Modified code to handle multiple RF1 segment - IVM*2*115
- .S (UPDEPC("SAD"),UPDEPC("CPH"),UPDEPC("PNO"),UPDEPC("EAD"))=0
+ .S (UPDEPC("SAD"),UPDEPC("CPH"),UPDEPC("PNO"),UPDEPC("EAD"),UPDEPC("PHH"))=0
  .S QFLG=0 I $$RF1CHK(IVMRTN,IVMDA) F I=1:1 D  Q:QFLG
  ..D NEXT
  ..S IVMSEG=$$CLEARF^IVMPRECA(IVMSEG,HLFS,",7,") ;ignore seq. 6
@@ -103,6 +154,7 @@ EN ; - entry point to process HL7 patient demographic message
  ..I $P(IVMSEG,HLFS,4)="" S QFLG=1 Q  ;Quit if RF1 is blank
  ..D COMPARE(IVMSEG)
  ..I '$$RF1CHK(IVMRTN,IVMDA) S QFLG=1
+ .D AUTOAUP^IVMPREC9(DFN,.UPDAUP,.UPDAUPG)
  .S IVMFLG=0
  ;
  ; - send mail message if necessary
@@ -112,7 +164,7 @@ EN ; - entry point to process HL7 patient demographic message
  I 'IVMCNTR K IVMTEXT,XMSUB
  ;
 ENQ ; - cleanup variables
- K DA,DFN,IVMADDR,IVMADFLG,IVMDA,IVMDHCP,IVMFLAG,IVMFLD,IVMPIECE,IVMSEG,IVMSTART,IVMXREF,DGENUPLD,IVMPID,PIDSTR,ADDRESS,TELECOM,UPDEPC,EPCFARY,IVMDFN,DODSEG,EPCDEL,GUARSEG
+ K DA,DFN,IVMADDR,IVMADFLG,IVMDA,IVMDHCP,IVMFLAG,IVMFLD,IVMPIECE,IVMSEG,IVMSTART,IVMXREF,DGENUPLD,IVMPID,PIDSTR,ADDRESS,TELECOM,UPDEPC,EPCFARY,IVMDFN,DODSEG,EPCDEL,GUARSEG,UPDAUP,IVMRACE,IVMTSTPT
  Q
  ;
  ;
@@ -142,7 +194,10 @@ COMPARE(IVMSEG) ; - compare incoming HL7 segment/fields with DHCP fields
  .; - compare incoming HL7 segment fields with DHCP fields
  .I IVMXREF["PID",(IVMSTART["PID") D PID^IVMPREC8
  .I IVMXREF["ZPD",(IVMSTART["ZPD") D ZPD^IVMPREC8
+ .I IVMXREF["ZTA",(IVMSTART["ZTA") D ZTA^IVMPREC8
  .I IVMXREF["ZGD",(IVMSTART["ZGD") D ZGD^IVMPREC8
+ .I IVMXREF["ZCT",(IVMSTART["ZCT") D ZCT^IVMPREC8
+ .I IVMXREF["ZEM",(IVMSTART["ZEM") D ZEM^IVMPREC8
  .I IVMXREF["RF1",(IVMSTART["RF1") D RF1^IVMPREC8
  Q
  ;
@@ -206,6 +261,7 @@ BLDPID(PIDTMP,IVMPID) ;Build IVMPID subscripted by sequence number
  . S IVMPID(X1)=STR
  Q
 ADDRCHNG(DFN) ;Store Address Change Date/time, Source and site if necessary
+ ;Store Residence Number Change Date/Time, Source and Site (IVM*2*152)
  N IVMVALUE,IVMFIELD
  I '$D(^TMP($J,"CHANGE UPDATE")) Q
  S IVMFIELD=0 F  S IVMFIELD=$O(^TMP($J,"CHANGE UPDATE",IVMFIELD)) Q:IVMFIELD=""  D
@@ -214,6 +270,9 @@ ADDRCHNG(DFN) ;Store Address Change Date/time, Source and site if necessary
  . D ^DIE K DA,DIE,DR
  .; - delete inaccurate Addr Change Site data if Source is not VAMC
  . I IVMFIELD=.119,IVMVALUE'="VAMC" S FDA(2,+DFN_",",.12)="@" D UPDATE^DIE("E","FDA")
+ .; - delete inaccurate Residence Number Change Site data if Source
+ .;   is not VAMC (IVM*2*152)
+ . I IVMFIELD=.1322,IVMVALUE'="VAMC" S FDA(2,+DFN_",",.1323)="@" D UPDATE^DIE("E","FDA")
  K ^TMP($J,"CHANGE UPDATE")
  Q
 EPCFLDS(EPCFARY,EPCDEL) ;
@@ -227,3 +286,34 @@ EPCFLDS(EPCFARY,EPCDEL) ;
  S EPCDEL("CPH")=".134^.139^.1311^.13111"
  S EPCDEL("EAD")=".133^.136^.137^.138"
  Q
+ ;
+AUPBLD(AUPFARY,UPDAUPG) ; Set up array containing fields for auto upload.
+ ;AUPFARY - Contains fields in 301.92 File-Passed by reference
+ ;UPDAUPG - Contains all groups initialized to '0'
+ N AUPSTR,AUPGRP,AUPFLST,AUPPCE,AUPSGSQ,AUPDA
+ F I=3:1 S AUPSTR=$P($T(AUPLST+I),";;",2,3) Q:$P(AUPSTR,";")="QUIT"  D
+ .S AUPGRP=$P(AUPSTR,";"),AUPFLST=$P(AUPSTR,";",2)
+ .F AUPPCE=1:1:$L(AUPFLST,"^") D
+ ..S AUPSGSQ=$P(AUPFLST,"^",AUPPCE) Q:AUPSGSQ=""
+ ..S AUPDA=$O(^IVM(301.92,"C",AUPSGSQ,0)) Q:AUPDA=""
+ ..S AUPFARY(AUPDA)=AUPGRP
+ ..S:AUPGRP'="" UPDAUPG(AUPGRP)=0  ; Default group update flags to '0'
+ Q
+ ;
+AUPLST ; P1;P2
+ ; P1 = Group Name (treat all entries as this group if present)
+ ; P2 = .01 field(s) from 301.92 seperated by '^'
+ ;;D1;ZCT03D1^ZCT04D1^ZCT051D1^ZCT052D1^ZCT053D1^ZCT054D1^ZCT055D1^ZCT06D1^ZCT07D1^ZCT10D1
+ ;;E1;ZCT03E1^ZCT04E1^ZCT051E1^ZCT052E1^ZCT053E1^ZCT054E1^ZCT055E1^ZCT06E1^ZCT07E1^ZCT10E1
+ ;;E2;ZCT03E2^ZCT04E2^ZCT051E2^ZCT052E2^ZCT053E2^ZCT054E2^ZCT055E2^ZCT06E2^ZCT07E2^ZCT10E2
+ ;;K1;ZCT03K1^ZCT04K1^ZCT051K1^ZCT052K1^ZCT053K1^ZCT054K1^ZCT055K1^ZCT06K1^ZCT07K1^ZCT10K1
+ ;;K2;ZCT03K2^ZCT04K2^ZCT051K2^ZCT052K2^ZCT053K2^ZCT054K2^ZCT055K2^ZCT06K2^ZCT07K2^ZCT10K2
+ ;;TA;ZTA02^ZTA03^ZTA04^ZTA051^ZTA052^ZTA053^ZTA054^ZTA055^ZTA056^ZTA058^ZTA059^ZTA07^ZTA08^ZTA09^ZTA054F^ZTA055F
+ ;;;ZEM03^ZEM04^ZEM05^ZEM061^ZEM062^ZEM063^ZEM064^ZEM065^ZEM068^ZEM07^ZEM09
+ ;;;ZEM03S^ZEM04S^ZEM05S^ZEM061S^ZEM062S^ZEM063S^ZEM064S^ZEM065S^ZEM068S^ZEM07S^ZEM09S
+ ;;;PID06^PID10^PID16^PID17^PID22^ZPD30^ZPD06^ZPD07
+ ;;QUIT
+ ;;
+ ;;The following have been disabled until further notice
+ ;;;PID113N^PID114N^PID24^PID13W
+ ;;CA;PID111C^PID112C^PID113C^PID114C^PID114CF^PID115C^PID115CF^PID116C^PID117C^PID118C^PID119C^PID1112C1^PID1112C2^PID13CA^RF161CA^RF171CA

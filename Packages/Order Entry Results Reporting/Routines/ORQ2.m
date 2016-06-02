@@ -1,9 +1,10 @@
-ORQ2 ; SLC/MKB/GSS - Detailed Order Report ;11/16/09  06:07
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**12,56,75,94,141,213,195,243,282,293,280**;Dec 17, 1997;Build 7
+ORQ2 ; SLC/MKB/GSS - Detailed Order Report ;10/21/13  07:06
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**12,56,75,94,141,213,195,243,282,293,280,346,361**;Dec 17, 1997;Build 3
  ;
  ;
  ;Reference to ^DIC(45.7 supported by IA #519
  ;Reference to OERR^VADPT supported by IA #4325
+ ;Reference to CODECS^ICDEX supported by ICR #5747
  ;
 DETAIL(ORY,ORIFN) ; -- Returns details of order ORIFN in ORY(#)
  N X,X2,I,CNT,ORDIALOG,OR0,OR3,OR6,SEQ,ITEM,PRMT,MULT,FIRST,TITLE,INST,DIWL,DIWR,DIWF,ACTION,VAIN,ORIGVIEW,ORNMSP,ORYT
@@ -43,6 +44,12 @@ D3 S CNT=CNT+1,@ORY@(CNT)="Current Data:"
  I $G(VAIN(11)) S CNT=CNT+1,@ORY@(CNT)="Current Attending Physician:  "_$P(VAIN(11),"^",2)
  S CNT=CNT+1,@ORY@(CNT)="Treating Specialty:           "_$P($G(^DIC(45.7,+$P(OR0,U,13),0)),U)
  S CNT=CNT+1,@ORY@(CNT)="Ordering Location:            "_$P($G(^SC(+$P(OR0,U,10),0)),U)
+ ;DSS/DGR - BEGIN MODS
+ D:$$VFD()
+ .N VFD S VFD=$$GET1^DIQ(100,ORIFN,21600.02) 
+ .S:VFD'="" CNT=CNT+1,@ORY@(CNT)="Program Code:                 "_VFD ;display program code if present
+ .S CNT=CNT+1,@ORY@(CNT)="   " ;blank
+ ;DSS/DGR - END MODS
  S CNT=CNT+1,@ORY@(CNT)="Start Date/Time:              "_$S($P(OR0,U,8):$$DATE^ORQ20($P(OR0,U,8)),1:"")
  I $P(OR3,U,5),$P(OR3,U,11)=2 S X=$$ORIG(ORIFN),@ORY@(CNT)=@ORY@(CNT)_" (originally "_$$DATE^ORQ20(X)_")"
  S CNT=CNT+1,@ORY@(CNT)="Stop Date/Time:               "_$S($P(OR0,U,9):$$DATE^ORQ20($P(OR0,U,9)),1:"")
@@ -55,6 +62,7 @@ D4 S CNT=CNT+1,@ORY@(CNT)="Order:" D:$D(IOUON) SETVIDEO(CNT,1,6,IOUON,IOUOFF)
  I '$O(^OR(100,ORIFN,4.5,0)),ORNMSP="RA" D RAD^ORQ21("") Q
  S ORDIALOG=$P(OR0,U,5) Q:$P(ORDIALOG,";",2)="ORD(101,"  ; 2.5 order
  D GETDLG^ORCD(+ORDIALOG),GETORDER^ORCD(ORIFN)
+ I ORNMSP="GMRC" D GMRCXTRA
  S DIWL=1,DIWR=50,DIWF="C50"
  S SEQ=0 F  S SEQ=$O(^ORD(101.41,+ORDIALOG,10,"B",SEQ)) Q:SEQ'>0  S DA=0 F  S DA=$O(^ORD(101.41,+ORDIALOG,10,"B",SEQ,DA)) Q:'DA  D
  . S ITEM=$G(^ORD(101.41,+ORDIALOG,10,DA,0)) Q:$P(ITEM,U,11)  ; child
@@ -68,9 +76,9 @@ D4 S CNT=CNT+1,@ORY@(CNT)="Order:" D:$D(IOUON) SETVIDEO(CNT,1,6,IOUON,IOUOFF)
  . . D ^DIWP
  . . D:$D(^ORD(101.41,+ORDIALOG,10,"DAD",PRMT)) CHILDREN(PRMT)
  . . S I=0 F  S I=$O(^UTILITY($J,"W",DIWL,I)) Q:I'>0  S CNT=CNT+1,@ORY@(CNT)=$S((INST=FIRST)&(I=1):TITLE,1:$$REPEAT^XLFSTR(" ",30))_^(I,0)
- ;DSS/RAF - BEGIN MODS - add performing lab to detailed view
+ ;DSS/RAF/SMP - BEGIN MODS - Add Performing Lab and Collecting Person
  D VFD1
- ;DSS/RAF - END MODS
+ ;DSS/RAF/SMP - END MODS
  I ORNMSP="GMRC",$G(^OR(100,ORIFN,4)) S CNT=CNT+1,@ORY@(CNT)="Consult No.:                  "_+^(4)
  S CNT=CNT+1,@ORY@(CNT)="   " ;blank
  D RAD^ORQ21(1):ORNMSP="RA",MED^ORQ21:ORNMSP="PS" ;add'l data
@@ -95,12 +103,12 @@ D5 K ^TMP($J,"OCDATA") I $$OCAPI^ORCHECK(+ORIFN,"OCDATA") D
  Q
  ;
 XTRA ;
- I $D(^TMP($J,"OCDATA",CK,"OC TEXT",2,0)) N ORXT S ORXT=1 F  S ORXT=$O(^TMP($J,"OCDATA",CK,"OC TEXT",ORXT)) Q:'ORXT  D
+ I $O(^TMP($J,"OCDATA",CK,"OC TEXT",1)) N ORXT S ORXT=1 F  S ORXT=$O(^TMP($J,"OCDATA",CK,"OC TEXT",ORXT)) Q:'ORXT  D
  . S X=^TMP($J,"OCDATA",CK,"OC TEXT",ORXT,0),CDL="              "
  . I $L(X)'>68 S CNT=CNT+1,@ORY@(CNT)=CDL_X Q
  . S DIWL=1,DIWR=68,DIWF="C68" K ^UTILITY($J,"W") D ^DIWP
  . S I=0 F  S I=$O(^UTILITY($J,"W",DIWL,I)) Q:I'>0  S CNT=CNT+1,@ORY@(CNT)=CDL_^(I,0),CDL="              "
- I $D(^TMP($J,"OCDATA",CK,"OC TEXT",2,0)) S X="",CNT=CNT+1,@ORY@(CNT)="              "
+ I $O(^TMP($J,"OCDATA",CK,"OC TEXT",1)) S X="",CNT=CNT+1,@ORY@(CNT)="              "
  Q
  ;
 SUB(IFN) ; -- add suborder or parent
@@ -152,16 +160,58 @@ ORIG(IFN) ; -- Return original start date of [renewal] order
  . I $P(X3,U,11)=2,$P(X3,U,5) S I=$P(X3,U,5) Q  ;loop
  . S Y=$P($G(^OR(100,I,0)),U,8),DONE=1
  Q Y
- ;DSS/SGM - BEGIN MODS
-VFD() ; return 0,1,2
- N A S A=0 I $T(VX^VFDI0000)'="" S A=$$VX^VFDI0000,A=1+(A="VXS")
- Q A
+GMRCXTRA ; expects ORDIALOG to be populated and ORIFN to be present
+ N ORGMROUT,ORDGDA,ORGMRICD,ORCODE,ORISCODE,ORCODSYS
+ I '$G(^OR(100,ORIFN,4)) D
+ . S ORISCODE=ORDIALOG("B","CODE"),ORISCODE=$P(ORISCODE,U,2)
+  . I +$G(ORISCODE)>0 D
+  .. Q:'$D(ORDIALOG(ORISCODE,1))
+  .. S ORCODE=ORDIALOG(ORISCODE,1)
+  .. S ORCODSYS=$$CODECS^ICDEX(ORCODE,"80")
+  .. S ORGMROUT=$P($G(ORCODSYS),U,2)
+ I $G(^OR(100,ORIFN,4)) D
+ . S ORGMROUT="ICD-9-CM"
+ . Q:'$D(^GMR(123,+^OR(100,+ORIFN,4),30.1))
+ . S ORGMRICD=^GMR(123,+^OR(100,+ORIFN,4),30.1)
+ . I $P(ORGMRICD,U,3)="10D" S ORGMROUT="ICD-10-CM"
+ S ORDGDA=$G(ORDIALOG("B","CODE"))
+ Q:'$P(ORDGDA,U,2)
+ S ORDGDA=$P(ORDGDA,U,2)
+ Q:'$D(ORDIALOG(ORDGDA,1))
+ S ORDIALOG(ORDGDA,1)="("_ORGMROUT_" "_ORDIALOG(ORDGDA,1)_")"
+ Q
+ ;
+ ;DSS/SMP - BEGIN MODS
+VFD() ; return 0,1
+ Q $G(^%ZOSF("ZVX"))["VX"
  ;
 VFD1 ; display performing lab in vxCPRS
- I $$VFD D
- . N A,B,X,DIERR,VFDMSG
- . S B="",A=+$$GET1^DIQ(100,ORIFN_",",21600.01,"E","VFDMSG") 
- . I A>0 S B=$$GET1^DIQ(9999999.64,A_",",.01,"E","VFDMSG")
- . S CNT=CNT+1,@ORY@(CNT)="Performing Lab:               "_B
- . Q
+ Q:'$$VFD
+ N A,B,X
+ S B="",A=+$$VFDGET1(100,ORIFN,21600.01,"E")
+ I A>0 S B=$$VFDGET1(9999999.64,A,.01,"E")
+ I B]"" S CNT=CNT+1,@ORY@(CNT)="Performing Lab:               "_B
+ ;
+ ; display collecting person from field 21602 in file 60.01
+ ; VFD LAB COLLECTING PERSON field
+ N COLPERSON,IENS,LRDFN,PREF,LRSS,LRIDT,REFLEX
+ S PREF=$$VFDGET1(100,ORIFN_",",33)
+ S IENS=$P(PREF,";",3)_","_$P(PREF,";",2)
+ S LRSS=$P(PREF,";",4)
+ S LRIDT=$P(PREF,";",5)
+ S REFLEX=$$VFDGET1(100,+ORIFN,3)
+ I REFLEX="LRLAB,AUTOACCEPT" S CNT=CNT+1,@ORY@(CNT)="Collecting Person:            "_REFLEX Q
+ ;
+ I $G(LRSS)']"" D
+ . S COLPERSON=$$VFDGET1(69.01,IENS_",",21602)
+ . I COLPERSON]"" S CNT=CNT+1,@ORY@(CNT)="Collecting Person:            "_$G(COLPERSON)  ;active status
+ I $T(CDUZ^VFDLRU01)]"",$G(LRSS)]"" D
+ . S COLPERSON=$$CDUZ^VFDLRU01(+ORVP,LRSS,LRIDT)
+ . I $G(COLPERSON)]"" S CNT=CNT+1,@ORY@(CNT)="Collecting Person:            "_$G(COLPERSON)  ;complete, partial status
  Q
+ ;
+VFDGET1(FILE,VIEN,FLD,FLG) ;
+ ; only optional parameter is FLG
+ N X,Y,Z,DIERR,VFDERR
+ I $G(VIEN)'="",$E(VIEN,$L(VIEN))'="," S VIEN=VIEN_","
+ Q $$GET1^DIQ(FILE,VIEN,FLD,$G(FLG),"VFDERR")

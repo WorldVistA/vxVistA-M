@@ -1,5 +1,6 @@
-XWB2HL7A ;;ISF/AC - Remote RPCs via HL7. ;03/14/2000  00:36
- ;;1.1;RPC BROKER;**12**;Mar 28, 1997
+XWB2HL7A ;;ISF/AC - Remote RPCs via HL7. ;03/26/09  16:22
+ ;;1.1;RPC BROKER;**12,54**;Mar 28, 1997;Build 5
+ ;Per VHA Directive 2004-038, this routine should not be modified.
 RPCINFO ;RPC Information
  ;Msg Type: SPQ - stored procedure request (event Q01)
  ;--------------
@@ -10,7 +11,7 @@ RPCINFO ;RPC Information
  ;        # of Columns per Row^Column Description
  ;[ DSC ] Continuation Pointer
  ;--------------
- ;Response Msg Type: TBR - tabular data response 
+ ;Response Msg Type: TBR - tabular data response
  ;--------------
  ;MSH Message Header
  ;MSA Message Acknowledgment
@@ -112,37 +113,27 @@ BLDDIST(X) ;Build distribution list -- HLL("LINKS") ARRAY.
  S %=+$O(XWB2LIST(0)) Q:'%
  S HLL("LINKS",1)="XWB RPC SUBSCRIBER"_U_XWB2LIST(%)
  Q
-XLATE(X,%) ;TRANSLATE FS and Encoding characters to Formating codes.
- ;
- N I,I1,I2,L,L1,L2,LCNT,LOVFL,LS,X1,X2,Y
- S X(0)=X
- F I=0:1:2 S L=0 D  Q:L'>255
- .S LS=$L(X(I))
- .F I1=1:1:5 S X1=$E(XWB2EMAP,I1),X2=$E(XWB2MAP2,I1) S L=L+(($L(X(I),X1)-1)*2)
- .S L=L+LS
- .I L>255 D
- ..S LOVFL=L-255
- ..S L1=(LS+1)-$S(LOVFL<170:LOVFL,1:170)
- ..S L1=$S(L1<86:86,1:L1)
- ..S L2=LS-$S(LOVFL<170:LOVFL,1:170)
- ..S L2=$S(L2>85:L2,1:85)
- ..S X(I+1)=$E(X(I),L1,LS)
- ..S X(I)=$E(X(I),1,L2)
- ;
- S %(0)=X(0)
- F I2=0:1:2 Q:'$D(X(I2))  S X=X(I2) D
- .S Y=""
- .F I1=1:1:5 S X1=$E(XWB2EMAP,I1),X2=$E(XWB2MAP2,I1) D
- ..S LS=$L(X)
- ..S L=$L(X,X1)
- ..I L>1 D
- ...F I=1:1:L S Y=Y_$P(X,X1,I)_$S(I'=L:$$ECODE(X2),1:"")
- ...S X=Y,Y=""
- .S %(I2)=X
- S Y=%(0) K %(0)
+XLATE(S,OF) ;TRANSLATE FS and Encoding characters to Formating codes.
+ ;Change ^ > \F\
+ N X,I,I1,I2,I3,FC,TC,N,Y,Y1,L,L1,L2
+ S OF(0)=S
+ F I1=1:1:5 S FC=$E(XWB2EMAP,I1),TC=$E(XWB2MAP2,I1) D
+ . S Y=""
+ . F I2=0,1,2 Q:'$D(OF(I2))  S S=OF(I2) D  S OF(I2)=S
+ . . S L1=1,L2=$F(S,FC) Q:'L2
+ . . F  S Y1=$E(S,L1,L2-2) D  S L1=L2,L2=$F(S,FC,L1) Q:'L2
+ . . . ;If next part wont fit, add it to the overflow node and exit
+ . . . I $L(Y)+$L(Y1)+3>250 S OF(I2+1)=$E(S,L1,$L(S))_$G(OF(I2+1)),OF(I2)=Y,S="" Q
+ . . . S Y=Y_Y1_$$ECODE(TC)
+ . . . Q
+ . . ;Add the rest of S to the output.
+ . . S N=$E(S,L1,$L(S)) I $L(Y)+$L(N)>250 S OF(I2+1)=N_$G(OF(I2+1)),N=""
+ . . S S=Y_N,Y=""
+ . . Q
+ . Q
+ S Y=OF(0) K OF(0)
  Q Y
-ECODE(X) ;
- N Y
- S Y=$E(HL("ECH"),3)_X_$E(HL("ECH"),3)
- Q Y
+ ;
+ECODE(%) ;
+ Q $E(HL("ECH"),3)_%_$E(HL("ECH"),3)
  ;

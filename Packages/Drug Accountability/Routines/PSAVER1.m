@@ -1,5 +1,5 @@
 PSAVER1 ;BIR/JMB-Verify Invoices - CONT'D ;7/23/97
- ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**33,60,65**; 10/24/97;Build 2
+ ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**33,60,65,71**; 10/24/97;Build 10
  ;This routine allows the user to edit processed invoices by selecting
  ;the invoice's line item number. If there are no errors after editing
  ;the line item is verified.
@@ -22,7 +22,8 @@ SEL ;Select line items to be edit
  K PSAVBKG S PSATMP=""
  F PSAPC=1:1 S PSA=$P(PSASEL,",",PSAPC) Q:'PSA  D CORR Q:PSAOUT
  I $O(PSAVBKG(0)) D
- .K ZTSAVE S ZTDESC="Drug Acct. - Verify Prime Vendor Invoices",ZTIO="",ZTDTH=$H,ZTRTN="^PSAVER6",ZTSAVE("PSAVBKG(")="" D ^%ZTLOAD
+ .;K ZTSAVE S ZTDESC="Drug Acct. - Verify Prime Vendor Invoices",ZTIO="",ZTDTH=$H,ZTRTN="^PSAVER6",ZTSAVE("PSAVBKG(")="" D ^%ZTLOAD
+ .D ^PSAVER6
  Q
  ;
 HEADER ;Header with screen hold
@@ -32,6 +33,7 @@ HEADER ;Header with screen hold
  Q
  ;
 CORR N PSASEL1 S PSASEL1=PSASEL N PSASEL  ;;<*65 RJS
+ I $D(^PSD(58.811,"ASTAT","L")) D LCKCHK^PSAVER4
  S PSAIEN=$P(PSAEDIT(PSA),"^"),PSAIEN1=$P(PSAEDIT(PSA),"^",2),PSASEL=PSA ;;*65 RJS>
  S PSAMSG="" D VERLOCK^PSAVER4 ; <== PSA*3*60 (RJS-VMP)
  I $L(PSAMSG) D  Q

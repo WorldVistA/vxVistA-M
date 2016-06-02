@@ -1,5 +1,23 @@
-RORUPDUT ;HCIOFO/SG - REGISTRY UPDATE UTILITIES  ; 8/2/05 9:17am
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORUPDUT ;HCIOFO/SG - REGISTRY UPDATE UTILITIES ;8/2/05 9:17am
+ ;;1.5;CLINICAL CASE REGISTRIES;**18,19**;Feb 17, 2006;Build 43
+ ;
+ ;*****************************************************************************
+ ;*****************************************************************************
+ ;                       --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*18   APR 2012    C RAY        Add logic to define REGIEN for
+ ;                                      ROR SELECTION RULE EXPRESSION
+ ;ROR*1.5*19   FEB  2012   K GUPTA      Support for ICD-10 Coding System
+ ;*****************************************************************************
+ ;****************************************************************************
+ ; This routine uses the following IAs:
+ ;
+ ; #2051  FIND^DIC  (supported)
+ ; #2056  GETS^DIQ (supported)
+ ; #5679  IMPDATE^LEXU (Supported)
+ ;****************************************************************************          
  ;
  ; RORVALS ------------- CALCULATED VALUES
  ;
@@ -52,10 +70,14 @@ RORUPDUT ;HCIOFO/SG - REGISTRY UPDATE UTILITIES  ; 8/2/05 9:17am
 APLRULES(FILE,IENS,MODE,DATE,LOCATION) ;
  N EXPR,HDR,LM,PATIEN,RC,REGIEN,RI,RULENAME,RULENODE,TMP
  S:'$G(DATE) DATE=$$DT^XLFDT
+ S:$G(RORUPD("IMPDATE","ICD10"))="" RORUPD("IMPDATE","ICD10")=$$IMPDATE^LEXU("10D")  ;ICD-10 implementation date
  ;--- Loop through the selection rules
  S RI="",RC=0
  F  S RI=$O(RORUPD("SR",FILE,MODE,RI))  Q:RI=""  D  Q:RC<0
  . S RULENODE=$NA(RORUPD("SR",FILE,MODE,RI))
+ . ;Check if rule is applicable or not based on coding system
+ . Q:(DATE<RORUPD("IMPDATE","ICD10")&(@RULENODE@(3)="30"))  ;quit if date is before ICD-10 implementation date and selection rule is applicable for ICD-10 coding system
+ . Q:(DATE>=RORUPD("IMPDATE","ICD10")&(@RULENODE@(3)="1"))  ;quit if date is on or after ICD-10 implementation date and selection rule is applicable for ICD-9 coding system 
  . S RORVALS("SV","ROR SRDT")=$P(DATE,".")
  . S RORVALS("SV","ROR SRLOC")=$G(LOCATION)
  . S HDR=$G(@RULENODE),RULENAME=$P(HDR,U)
@@ -63,6 +85,9 @@ APLRULES(FILE,IENS,MODE,DATE,LOCATION) ;
  . ;    rule has been already triggered for the patient. So, there is
  . ;    no need to check it again.
  . I $P(HDR,U,3)  Q:'$D(RORUPD("LM",1,RULENAME))
+ . ;--- Get value of registry for selection rule
+ . S REGIEN=$O(@RULENODE@(2,""))
+ . Q:REGIEN=""
  . ;--- Compute the expression of the selection rule
  . X "S RC="_@RULENODE@(1)
  . I $P(HDR,U,3)  Q:'RC  D               ; TOP LEVEL RULE

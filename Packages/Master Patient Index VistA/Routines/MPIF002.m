@@ -1,5 +1,5 @@
 MPIF002 ;CIOFOSF/CMC-UTILITY ROUTINE OF APIS ;JUL 12, 1996
- ;;1.0; MASTER PATIENT INDEX VISTA ;**20,27,33,43**;30 Apr 99
+ ;;1.0; MASTER PATIENT INDEX VISTA ;**20,27,33,43,52**;30 Apr 99;Build 7
  ;
  ;Integration Agreements Utilized:
  ;  ^DPT( - #2070
@@ -66,27 +66,8 @@ TWODFNS(DFN1,DFN2,ICN) ;Logging Exceptions when there are two DFNs trying to hav
  S NAME1=$G(MPIFD1(2,DFN1,.01,"E")),SSN1=$G(MPIFD1(2,DFN1,.09,"E"))
  D GETDATA^MPIFQ0("^DPT(",DFN2,"MPIFD2",".01;.09","EI")
  S NAME2=$G(MPIFD2(2,DFN2,.01,"E")),SSN2=$G(MPIFD2(2,DFN2,.09,"E"))
- D START^RGHLLOG()
- D EXC^RGHLLOG(227,"Patient DFN="_DFN2_"is trying to be assigned ICN "_ICN_" which is already in use for DFN="_DFN1,DFN2)
- D STOP^RGHLLOG()
- ; send format e-mail to RG CIRN DEMOGRAPHICS MAIL GROUP
- N MPIF,XMDUZ,XMSUB,XMY,XMTEXT
- S MPIF(1,1)="Multiple ICN Conflict"
- S MPIF(1,2)=""
- S MPIF(1,3)="Record for Patient "_NAME2_" SSN= "_SSN2_" DFN= "_DFN2
- S MPIF(1,4)="returned ICN "_ICN_" which is already in use by Patient"
- S MPIF(1,5)=NAME1_" SSN= "_SSN1_" DFN= "_DFN1_". This may"
- S MPIF(1,6)="indicate duplicate patients on your system.  Check pair"
- S MPIF(1,7)="to determine if a duplicate record exists. If records are"
- S MPIF(1,8)="found to be duplicates they will need to be merged using"
- S MPIF(1,9)="the Duplicate Record Merge software."
- S MPIF(1,10)=""
- S MPIF(1,11)="Please log a NOIS or contact the MPI Data Quality Management"
- S MPIF(1,12)="Team if you are unable to resolve the conflict."
- S XMDUZ="MPI/PD VISTA PACKAGE"
- S XMSUB="MPI/PD Exception: Multiple ICNs"
- S XMY("G.RG CIRN DEMOGRAPHIC ISSUES")="",XMTEXT="MPIF(1,"
- D ^XMD
+ D ADD^XDRDADDS(.XDRSLT1,2,DFN1,DFN2)
+ ;** 52 replace CIRN exception logging and notification with the creation of Local POTENTIAL DUP MERGE with status of UNVERIFIED
  K MPIFD1,MPIFD2
  Q
 CLEAN(DFN,ARR,MPIRETN) ; clean up MPI data from DPT for "stub" records

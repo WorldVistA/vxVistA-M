@@ -1,5 +1,6 @@
 PSOREJP3 ;ALB/SS - Third Party Reject Display Screen - Comments ;10/27/06
- ;;7.0;OUTPATIENT PHARMACY;**260,287,289,290,358**;DEC 1997;Build 35
+ ;;7.0;OUTPATIENT PHARMACY;**260,287,289,290,358,359,385,403,421**;DEC 1997;Build 15
+ ;Reference to GETDAT^BPSBUTL supported by IA 4719
  ;
 COM ; Builds the Comments section in the Reject Display Screen
  I +$O(^PSRX(RX,"REJ",REJ,"COM",0))=0 Q
@@ -101,67 +102,76 @@ INSITEM(PSSFILE,PSIEN0,PSIEN1,PSVAL01) ;*/
  Q
  ;
 PRINT(RX,RFL) ; Print Label for specific Rx/Fill
- N PPL,PSOSITE,PSOPAR,PSOSYS,PSOLAP,PSOBARS,PSOBAR0,PSOBAR1,PSOIOS,PSOBFLAG
- N POP,DFN,PDUZ,RXFL,REPRINT,REJLBL
+ I '$G(RX) Q
+ I $G(RFL)="" Q
+ ;
+ ; Some of these variables are used by LBL^PSOLSET but they are newed here
+ N PPL,PSOSITE,PSOPAR,PSOSYS,PSOBARS,PSOBAR0,PSOBAR1,PSOIOS,PSOBFLAG,PSOCLBL
+ N PSOQUIT,PSOPIOST,PSOLTEST,PSOTLBL,PSORXT
+ N DFN,PDUZ,RXFL,REPRINT,REJLBL,DIR,X,Y,DTOUT,DUOUT,DIRUT,DIROUT
+ N %ZIS,IOP,POP,ZTSK,ZTRTN,ZTIO,ZTDESC,ZTSAVE,ZTDTH,VAR
+ ;
+ ; Set the default label printer.  We need to new it so we don't change the value that was
+ ;   set by PSOLSET when the user first logged into OP so need to do a bit of work to new it and  
+ ;   reset it before the call to LBL^PSOLSET.
+ I $G(PSOLAP)]"" S PSOTLBL=PSOLAP N PSOLAP S PSOLAP=PSOTLBL,PSOCLBL=1
+ E  N PSOLAP S PSOCLBL=""
+ ;
+ ; Check if a label has already been printed and set REPRINT flag.
  S REJLBL=0 F  S REJLBL=$O(^PSRX(RX,"L",REJLBL)) Q:'REJLBL  I +$$GET1^DIQ(52.032,REJLBL_","_RX,1,"I")=RFL S REPRINT=1 Q
  ;
- S PSOSITE=$$RXSITE^PSOBPSUT(RX,RFL),PSOPAR=^PS(59,PSOSITE,1)
+ ; Define required variables
+ S PSOSITE=+$$RXSITE^PSOBPSUT(RX,RFL),PSOPAR=$G(^PS(59,PSOSITE,1))
  S DFN=$$GET1^DIQ(52,RX,2,"I"),PDUZ=DUZ,PSOSYS=$G(^PS(59.7,1,40.1))
  S PPL=RX I RFL S RXFL(RX)=RFL
- W ! S PSOBFLAG=1 D LBL^PSOLSET I $G(PSOQUIT) Q
  ;
- S IOP=PSOLAP D ^%ZIS,DQ^PSOLBL,^%ZISC
+ ; Get label print device and check alignment
+ W ! S PSOBFLAG=1 D LBL^PSOLSET I $G(PSOQUIT) Q
+ I $G(PSOLAP)="" W $C(7),!!,"No printer defined" K DIR S DIR(0)="E",DIR("A")="Enter RETURN to continue" D ^DIR Q
+ ;
+ ; Call %ZIS to get device characteristics w/o reopening the printer. 
+ ; We need to do this to check if queuing is forced for this device
+ ; Not checking the POP variable.  If we don't get the device here, we will fall through to the 
+ ;   foreground process and try again
+ S IOP=PSOLAP,%ZIS="QN" D ^%ZIS
+ ;
+ ; If background printer, queue the job
+ I $D(IO("Q")) D  Q
+ . S ZTRTN="DQ^PSOLBL",ZTDTH=$H,ZTIO=PSOLAP
+ . F VAR="PSOSYS","DFN","PSOPAR","PDUZ","PCOMX","PSOLAP","PPL","PSOSITE","RXY","PSOSUSPR","PSOBARS","PSOBAR1","PSOBAR0","PSODELE","PSOPULL","PSTAT","PSODBQ","PSOEXREP","PSOTREP","REPRINT" S:$D(@VAR) ZTSAVE(VAR)=""
+ . S ZTSAVE("PSORX(")="",ZTSAVE("RXRP(")="",ZTSAVE("RXPR(")="",ZTSAVE("RXRS(")="",ZTSAVE("RXFL(")="",ZTSAVE("PCOMH(")=""
+ . S ZTDESC="OUTPATIENT PHARMACY REJECT WORKLIST LABEL PRINT"
+ . D ^%ZISC,^%ZTLOAD
+ . W !!,"Label ",$S('$D(ZTSK):"NOT ",1:""),"queued to print",! I '$D(ZTSK) W $C(7) K DIR S DIR(0)="E",DIR("A")="Enter RETURN to continue" D ^DIR
+ ;
+ ; If we gotten this far, open the device and print the label in the foreground
+ ; We also need to preserve the PSORX array, which gets killed by DQ^PSOLBL
+ K %ZIS S IOP=PSOLAP D ^%ZIS
+ I POP D ^%ZISC W $C(7),!!,"Printer is busy - NO label printed" K DIR S DIR(0)="E",DIR("A")="Enter RETURN to continue" D ^DIR Q
+ K PSORXT M PSORXT=PSORX
+ D DQ^PSOLBL,^%ZISC
+ K PSORX M PSORX=PSORXT
  Q
  ;
 RXINFO(RX,FILL,LINE,REJ) ; Returns header displayable Rx Information
  N TXT,RXINFO,LBL,CMOP,DRG,PSOET
  I LINE=1 D
+ . N RXDOS D GETDAT^BPSBUTL(RX,FILL,,.RXDOS) ; Get Date of Service from BPS CLAIM field 401 - PSO*7*421
  . S RXINFO="Rx#      : "_$$GET1^DIQ(52,RX,.01)_"/"_FILL
- . ;cnf, PSO*7*358, add PSOET logic for Tricare non-billable
+ . ;cnf, PSO*7*358, add PSOET logic for TRICARE/CHAMPVA non-billable
  . S PSOET=$$PSOET(RX,FILL)
- . S $E(RXINFO,30)="ECME#: "_$S(PSOET:"",1:$E(10000000+RX,2,8))
- . S $E(RXINFO,55)="Fill Date: "_$$FMTE^XLFDT($$RXFLDT^PSOBPSUT(RX,FILL))
+ . S $E(RXINFO,27)="ECME#: "_$S(PSOET:"",1:$$ECMENUM^PSOBPSU2(RX,FILL))
+ . S $E(RXINFO,49)="Date of Service: "_$S(PSOET:"",1:$$FMTE^XLFDT(RXDOS)) ; Use DOS from BPS Claims field 401 - PSO*7*421
  I LINE=2 D
  . S DRG=$$GET1^DIQ(52,RX,6,"I"),CMOP=$S($D(^PSDRUG("AQ",DRG)):1,1:0)
  . S RXINFO=$S(CMOP:"CMOP ",1:"")_"Drug",$E(RXINFO,10)=": "_$E($$GET1^DIQ(52,RX,6),1,43)
  . S $E(RXINFO,56)="NDC Code: "_$$GETNDC^PSONDCUT(RX,FILL)
  Q $G(RXINFO)
  ;
-SEND(COD1,COD2,COD3,CLA,PA) ; - Sends Claim to ECME and closes Reject
- N DIR,OVRC,RESP,ALTXT,COM
- S DIR(0)="Y",DIR("A")="     Confirm",DIR("B")="YES"
- S DIR("A",1)="     When you confirm, a new claim will be submitted for"
- S DIR("A",2)="     the prescription and this REJECT will be marked"
- S DIR("A",3)="     resolved."
- S DIR("A",4)=" "
- W ! D ^DIR I $G(Y)=0!$D(DIRUT) S VALMBCK="R" Q
- I $G(COD1)'="" S OVRC=$G(COD2)_"^"_$G(COD1)_"^"_$G(COD3)
- S ALTXT="REJECT WORKLIST"
- S:$G(OVRC)'="" ALTXT=ALTXT_"-DUR OVERRIDE CODES("_$G(COD1)_"/"_$G(COD2)_"/"_$G(COD3)_")"
- S:$G(CLA) ALTXT=ALTXT_"(CLARIF. CODE="_$P(CLA,"^",2)_")"
- S:$G(PA) ALTXT=ALTXT_"(PRIOR AUTH.="_$TR(PA,"^","/")_")"
- D ECMESND^PSOBPSU1(RX,FILL,,"ED",$$GETNDC^PSONDCUT(RX,FILL),,,$G(OVRC),,.RESP,,ALTXT,$G(CLA),$G(PA),$$PSOCOB^PSOREJP3(RX,FILL,REJ))
- I $G(RESP) D  Q
- . W !!?10,"Claim could not be submitted. Please try again later!"
- . W !,?10,"Reason: ",$S($P(RESP,"^",2)="":"UNKNOWN",1:$P(RESP,"^",2)),$C(7) H 2
- ;
- I $$PTLBL^PSOREJP2(RX,FILL) D PRINT(RX,FILL)
- ;
- N PSOTRIC S PSOTRIC="",PSOTRIC=$$TRIC^PSOREJP1(RX,FILL,PSOTRIC)
- I $$GET1^DIQ(52,RX,100,"I")=5&(PSOTRIC) D
- . Q:$$STATUS^PSOBPSUT(RX,FILL)'["PAYABLE"
- . N XXX S XXX=""
- . W !,"This prescription can be pulled early from suspense or the label will print"
- . W !,"when PRINT FROM SUSPENSE occurs.",!
- . R !,"Press enter to continue... ",XXX:60
- ;
- I $D(PSOSTFLT),PSOSTFLT'="B" S CHANGE=1
- Q
- ;
-FILL ;Fill payable TRICARE Rx
+FILL ;Fill payable TRICARE or CHAMPVA Rx
  N COM,OPNREJ,OPNREJ2,OPNREJ3,DCSTAT,PSOREL
  S:'$G(PSOTRIC) PSOTRIC=$$TRIC^PSOREJP1(RX,FILL,PSOTRIC)  ;cnf, PSO*7*358, add line
- ;cnf, PSO*7*358, don't allow option if Tricare and released, PSOREL is set to the release date
+ ;cnf, PSO*7*358, don't allow option if TRICARE/CHAMPVA and released, PSOREL is set to the release date
  S PSOREL=0 I PSOTRIC D
  . I 'FILL S PSOREL=+$$GET1^DIQ(52,RX,31,"I")
  . I FILL S PSOREL=+$$GET1^DIQ(52.1,FILL_","_RX,17,"I")
@@ -187,7 +197,7 @@ FILL ;Fill payable TRICARE Rx
  F I=1:1 S OPNREJ2=$P(OPNREJ,",",I) Q:OPNREJ2=""  D
  . S OPNREJ3="",OPNREJ3=$$GET1^DIQ(52.25,OPNREJ2_","_RX,".01")
  . W !?25,OPNREJ3_" - "_$$GET1^DIQ(9002313.93,OPNREJ3,".02")_"..."
- . D CLOSE^PSOREJUT(RX,FILL,OPNREJ2,DUZ,6,COM) W "OK]",!,$C(7) H 1
+ . D CLOSE^PSOREJUT(RX,FILL,OPNREJ2,DUZ,6,COM,"","","","","",1) W "OK]",!,$C(7) H 1  ; pso*7*421 Use 12th param to ignore
  I $$PTLBL^PSOREJP2(RX,FILL) D PRINT(RX,FILL)
  S CHANGE=1   ;cnf, PSO*7*358, remove S VALMBCK="R" so user goes back to selection list
  Q
@@ -203,21 +213,21 @@ DC ;Discontinue TRICARE Rx
  N ACTION S ACTION="D"
  D FULL^VALM1
  S ACTION=$$DC^PSOREJU1(RX,ACTION)
- I ACTION="Q"!(ACTION="^")!($G(PSORX("DFLG"))) S VALMSG="NO ACTION TAKEN.",VALMBCK="R" Q
+ I ACTION="Q"!(ACTION="^") S VALMSG="NO ACTION TAKEN.",VALMBCK="R" Q
  S CHANGE=1
  Q
  ;
-FILLTR ;TRICARE specific logic  ;cnf, PSO*7*358
+FILLTR ;TRICARE/CHAMPVA specific logic  ;cnf, PSO*7*358
  ;COM is not new'd so the variable can be used in FILL tag
  N CONT,PSOET,PSQSTR
  ;
 FILLTR2 ;Use for looping if user enters ^ in required comment field  ;cnf, PSO*7*358
  ;
- ;if tricare, not payable, and no security key, quit
+ ;if TRICARE/CHAMPVA, not payable, and no security key, quit
  ;reference to ^XUSEC( supported by IA 10076
- I '$D(^XUSEC("PSO TRICARE",DUZ)) S VALMSG="Action Requires <PSO TRICARE> security key",VALMBCK="R" Q
+ I '$D(^XUSEC("PSO TRICARE/CHAMPVA",DUZ)) S VALMSG="Action Requires <PSO TRICARE/CHAMPVA> security key",VALMBCK="R" Q
  ;
- ;if tricare, not payable, and user has security key, prompt to continue or not
+ ;if TRICARE/CHAMPVA, not payable, and user has security key, prompt to continue or not
  S PSQSTR="You are bypassing claims processing. Do you wish to continue"
  S CONT=$$YESNO(PSQSTR,"No")
  I (CONT=-1)!('CONT) S VALMSG="NO ACTION TAKEN.",VALMBCK="R" Q
@@ -225,31 +235,61 @@ FILLTR2 ;Use for looping if user enters ^ in required comment field  ;cnf, PSO*7
  ;check for valid electronic signature
  I '$$SIG^PSOREJU1() S VALMBCK="R" Q                               ;quit if no valid electronic signature
  ;
- ;prompt user for required TRICARE Justification
- S COM=$$TCOM() G:COM="^" FILLTR2                    ;loop back to "continue?" question if ^ entry
+ ;prompt user for required TRICARE/CHAMPVA Justification
+ S COM=$$TCOM(RX,FILL) G:COM="^" FILLTR2                    ;loop back to "continue?" question if ^ entry
  ;
  ;audit log
  S PSOET=$$PSOET(RX,FILL)
- D AUDIT^PSOTRI(RX,FILL,,COM,$S(PSOET:"N",1:"R"))
+ D AUDIT^PSOTRI(RX,FILL,,COM,$S(PSOET:"N",1:"R"),$S($G(PSOTRIC)=1:"T",$G(PSOTRIC)=2:"C",1:""))
  Q
  ;
-TCOM() ; - Ask for TRICARE Justification   ;cnf, PSO*7*358
+TCOM(RX,RFL) ; - Ask for TRICARE or CHAMPVA Justification
  N COM,DIR,DIRUT,X
- W ! S DIR(0)="F^3:100" S DIR("A")="TRICARE Justification" D ^DIR
+ W ! S DIR(0)="F^3:100" S DIR("A")=$$ELIGDISP^PSOREJP1(RX,RFL)_" Justification" D ^DIR
  S COM=X I $D(DIRUT) S COM="^"
  Q COM
  ;
-PSOET(RX,FILL) ; Returns flag for TRICARE non-billable and no claim submitted - cnf 8/9/2010 PSO*7*358
- ; Return 1 if rejection code is eT (pseudo-reject code)
+PSOET(RX,FILL) ; Returns flag for TRICARE or CHAMPVA non-billable and no claim submitted
+ ; Return 1 if rejection code is eT or eC (pseudo-reject code)
  ;        0 otherwise
  ;
  I '$G(RX) Q 0
  N X,TRIREJCD
  S X=0
  S TRIREJCD=$T(TRIREJCD+1),TRIREJCD=$P(TRIREJCD,";;",2)
- S X=$$FIND^PSOREJUT(RX,$G(FILL),,TRIREJCD)
+ S X=$$FIND^PSOREJUT(RX,$G(FILL),,TRIREJCD,1) ; PSO*7*421 - Pass indicator to ignore ECME status
  Q X
  ;
-TRIREJCD ;TRICARE Reject Code, non-billable Rx   ;cnf, PSO*7*358
- ;;eT;;referenced in ^PSOREJP3, ^PSOREJ
+TRIREJCD ;TRICARE or CHAMPVA Reject Code, non-billable Rx   ;cnf, PSO*7*358
+ ;;eT,eC;;TRICARE or CHAMPVA pseudo reject codes referenced in ^PSOREJP3, ^PSOREJU4
+ Q
+ ;
+SEND(OVRCOD,CLA,PA) ; - Sends Claim to ECME and closes Reject
+ N DIR,RESP,ALTXT,COM,SMA
+ S DIR(0)="Y",DIR("A")="     Confirm",DIR("B")="YES"
+ S DIR("A",1)="     When you confirm, a new claim will be submitted for"
+ S DIR("A",2)="     the prescription and this REJECT will be marked"
+ S DIR("A",3)="     resolved."
+ S DIR("A",4)=" "
+ W ! D ^DIR I $G(Y)=0!$D(DIRUT) S VALMBCK="R" Q
+ S SMA=0 I $G(OVRCOD)]"",$G(CLA)]"",$G(PA)]"" S SMA=1
+ S ALTXT=""
+ I 'SMA D
+ . S ALTXT="REJECT WORKLIST"
+ . S:$G(OVRCOD)'="" ALTXT=ALTXT_"-DUR OVERRIDE CODES("_$TR(OVRCOD,"^","/")_")"
+ . S:$G(CLA)]"" ALTXT=ALTXT_"-(CLARIF. CODE="_CLA_")"
+ . S:$G(PA)]"" ALTXT=ALTXT_"-(PRIOR AUTH.="_$TR(PA,"^","/")_")"
+ D ECMESND^PSOBPSU1(RX,FILL,,"ED",$$GETNDC^PSONDCUT(RX,FILL),,,$G(OVRCOD),,.RESP,,ALTXT,$G(CLA),$G(PA),$$PSOCOB^PSOREJP3(RX,FILL,REJ))
+ I $G(RESP) D  Q
+ . W !!?10,"Claim could not be submitted. Please try again later!"
+ . W !,?10,"Reason: ",$S($P(RESP,"^",2)="":"UNKNOWN",1:$P(RESP,"^",2)),$C(7) H 2
+ I $$PTLBL^PSOREJP2(RX,FILL) D PRINT(RX,FILL)
+ N PSOTRIC S PSOTRIC="",PSOTRIC=$$TRIC^PSOREJP1(RX,FILL,PSOTRIC)
+ I $$GET1^DIQ(52,RX,100,"I")=5&(PSOTRIC) D
+ . Q:$$STATUS^PSOBPSUT(RX,FILL)'["PAYABLE"
+ . N XXX S XXX=""
+ . W !,"This prescription can be pulled early from suspense or the label will print"
+ . W !,"when PRINT FROM SUSPENSE occurs.",!
+ . R !,"Press enter to continue... ",XXX:60
+ I $D(PSOSTFLT),PSOSTFLT'="B" S CHANGE=1
  Q

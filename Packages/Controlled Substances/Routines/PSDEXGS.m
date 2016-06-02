@@ -1,11 +1,12 @@
 PSDEXGS ;BIR/BJW-Enter Existing Green Sheets at Startup ; 10 Feb 98
- ;;3.0; CONTROLLED SUBSTANCES ;**8,33**;13 Feb 97
+ ;;3.0; CONTROLLED SUBSTANCES ;**8,33,71**;13 Feb 97;Build 29
  ;**Y2K compliance**,added a "P" to date input string in ^DD(58.81,19)
  ;Reference to ^PSD(58.8 are covered by DBIA #2711
  ;Reference to ^PSD(58.81 are covered by DBIA #2808
  ;Reference to ^PSDRUG( are covered by DBIA #221
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- I '$D(^XUSEC("PSJ RPHARM",DUZ)) W !!,"Contact your Pharmacy Coordinator for access to enter existing Green Sheets",!,"into the Controlled Substances package.",!!,"PSJ RPHARM security key required.",! Q
+ I '$D(^XUSEC("PSJ RPHARM",DUZ))&('$D(^XUSEC("PSD TECH ADV",DUZ))) D  Q
+ .W !!,"Contact your Pharmacy Coordinator for access to enter existing Green Sheets",!,"into the Controlled Substances package.",!!,"PSJ RPHARM or PSD TECH ADV security key required.",!
  S PSDUZ=DUZ
  W !!,?5,"The Order Status of all Green Sheets entered as existing before",!,?5,"the Controlled Substances package initialization will be",!,?10,"  *** DELIVERED - ACTIVELY ON NAOU ***",!!
 ASKD ;ask disp site

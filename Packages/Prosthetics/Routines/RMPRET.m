@@ -1,7 +1,11 @@
 RMPRET ;Hines-OI/HNC - ITEM SERVER ;01/14/2005
- ;;3.0;PROSTHETICS;**103**;Feb 09, 1996
+ ;;3.0;PROSTHETICS;**103,172**;Feb 09, 1996;Build 2
  ;
  ;DBIA # 10072 - for routine REMSBMSG^XMA1C
+ ;
+ ;Patch RMPR*3.0*172 For description change to insure prior 
+ ;                   description entirely removed before updating
+ ;                   with new description lines.
  ;
 EN ;Entry Point
  ;HCPCS SERVER
@@ -36,6 +40,9 @@ EN ;Entry Point
  .S UPD(661.1,RMPRIEN_",",1.2)=XMFROM
  .I RMPRFLD="661.18" D
  . .;START DESCRIPTION
+ . .I RMPRIEN2=1 D  K DIK,DA,DA(1)      ;RMPR*3.0*172 Clear current description in file before new description lines entered
+ . . .F I=1:1:20 I $D(^RMPR(661.1,RMPRIEN,2,I,0)) S DA=I,DA(1)=RMPRIEN,DIK="^RMPR(661.1,"_DA(1)_",2," D ^DIK
+ . . .K DIK,DA,DA(1),I,^RMPR(661.1,RMPRIEN,2,"B")
  . .S ^RMPR(661.1,RMPRIEN,2,RMPRIEN2,0)=RMPRVL
  . .S CNTIEN=0,CNTIEN1=0
  . .F  S CNTIEN=$O(^RMPR(661.1,RMPRIEN,2,CNTIEN)) Q:CNTIEN'>0  D
@@ -51,7 +58,7 @@ EN ;Entry Point
  I $D(ERROR("DIERR")) S RMPRMSG(1.1)="******* ERROR ENCOUNTERED*******"
  S XMDUZ=.5
  S XMY("G.RMPR SERVER")=""
- S XMY("VHACOPSASPIPReport@med.va.gov")=""
+ S XMY("VHACOPSASPIPReport@domain.ext")=""
  S XMSUB="PSAS HCPCS Item Server Update "_$P($$SITE^VASITE,U,2)
  S RMPRMSG(1)="The National PSAS Item Server has been activated today by Prosthetics HQ."
  S RMPRMSG(2)="Please print your HCPCS Mapping File."
@@ -65,7 +72,7 @@ EN ;Entry Point
 NOGO ;message not valid
  S XMDUZ=.5
  S XMY("G.RMPR SERVER")=""
- S XMY("VHACOPSASPIPReport@med.va.gov")=""
+ S XMY("VHACOPSASPIPReport@domain.ext")=""
  S XMSUB="**ERROR** Not Authorized HCPCS Item Server Update From "_$P($$SITE^VASITE,U,2)
  S RMPRMSG(1)="The National PSAS Item Server was unsuccessful today."
  S RMPRMSG(2)="****ERROR**** Not Authorized!"

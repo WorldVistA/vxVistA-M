@@ -1,5 +1,5 @@
 LRSORD1A ;DALISC/DRH - LRSORC Continued ;07-22-93
- ;;5.2;LAB SERVICE;**201,344**;Sep 27, 1994;Build 25
+ ;;5.2;LAB SERVICE;**201,344**;Sep 27, 1994;Build 1
 INIT ;
  S U="^"
  D CONTROL
@@ -55,9 +55,9 @@ PRINT ;
  ....;S LRCHNG=LRSPEC D CHNCASE^LRSORA2 S LRSPEC=LRCHNG
  ....;DSS/RAF - BEGIN MOD for MRN label and DOB
  ....;W !,$E(PNM,1,23),?25,SSN W:LRDPF=2 " ",LRLOC,?50,$E(LRAN,1,14)
- ....I $G(VA("MRN"))]"" D
+ ....I $G(VA("MRN"))]"",$T(VFDDOB^LRSORA2)]"" D
  .....W !,$E(PNM,1,23),?25,$G(VA("MRN",0))_": ",SSN
- .....W !,?25,"DOB: ",$P($G(VADM(3)),U,2)
+ .....W !,?25,"DOB: ",$$VFDDOB^LRSORA2(SSN)  ;RAF 7/7/2015
  .....W:LRDPF=2 !,LRLOC,?25,$E(LRAN,1,14)
  ....E  W !,$E(PNM,1,23),?25,SSN W:LRDPF=2 " ",LRLOC,?50,$E(LRAN,1,14)
  ....;DSS/RAF - END MOD
@@ -74,8 +74,15 @@ PRNTST ;
  .I ($Y>(IOSL-7)) D
  ..D CONT D:$E(IOST,1,2)="C-" WAIT Q:LREND
  ..W @IOF D HDR
- ..W !,$E(PNM,1,23),?25,SSN W:LRDPF=2 " ",LRLOC,?50,$E(LRAN,1,14)
- ..W ?63,LRSPDAT
+ ..;DSS/RAF - BEGIN MOD for MRN label and DOB
+ ..I $G(VA("MRN"))]"",$T(VFDDOB^LRSORA2)]"" D
+ ...W !,$E(PNM,1,22),?23,$G(VA("MRN",0))_" : ",SSN
+ ...W !,?23,"DOB: ",$$VFDDOB^LRSORA2(SSN)
+ ...W:LRDPF=2 !,$E(LRLOC,1,12),?23,$E(LRAN,1,14),?63,LRSPDAT
+ ..E  D
+ ...W !,$E(PNM,1,23),?25,SSN W:LRDPF=2 " ",LRLOC,?50,$E(LRAN,1,14)
+ ...W ?63,LRSPDAT
+ ..;DSS/RAF - END MOD
  .Q:LREND
  .S LRTX=$P(LRTREC,U,5)
  .S LRFLAG=$P(LRTREC,U,6)
@@ -109,9 +116,9 @@ COM ;Print comments on specimen
  ..W @IOF D HDR
  ..;DSS/RAF - BEGIN MOD for MRN label and DOB
  ..;W !,$E(PNM,1,23),?25,SSN W:LRDPF=2 " ",LRLOC,?50,$E(LRAN,1,14)
- ..I $G(VA("MRN"))]"" D
+ ..I $G(VA("MRN"))]"",$T(VFDDOB^LRSORA2)]"" D
  ...W !,$E(PNM,1,23),?25,$G(VA("MRN",0))_": ",SSN
- ...W !,?25,"DOB: ",$P($G(VADM(3)),U,2)
+ ...W !,?25,"DOB: ",$$VFDDOB^LRSORA2(SSN)  ;RAF 7/8/2015
  ...W:LRDPF=2 " ",LRLOC,?25,$E(LRAN,1,14)
  ..E  W !,$E(PNM,1,23),?25,SSN W:LRDPF=2 " ",LRLOC,?50,$E(LRAN,1,14)
  ..;DSS/RAF - END MOD
@@ -140,3 +147,4 @@ WAIT ;
  S:($D(DTOUT))!($D(DUOUT)) LREND=1
  Q
 CONT W !?10,"CONTINUED NEXT PAGE",! Q
+ ;;2013.1;VENDOR - DOCUMENT STORAGE SYS;**60**;05 May 2014

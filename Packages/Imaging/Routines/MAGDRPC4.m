@@ -1,5 +1,6 @@
-MAGDRPC4 ;WOIFO/EdM - Imaging RPCs ; 13 Feb 2006  1:42 PM
- ;;3.0;IMAGING;**11,30,51,50**;26-May-2006
+MAGDRPC4 ;WOIFO/EdM - Imaging RPCs ; 02 Apr 2008 1:44 PM
+ ;;3.0;IMAGING;**11,30,51,50,54,49**;Mar 19, 2002;Build 2033;Apr 07, 2011
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGDRPC4 ;WOIFO/EdM - Imaging RPCs ; 13 Feb 2006  1:42 PM
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -28,12 +28,13 @@ LOOKUP(OUT,NUMBER) ; RPC = MAG DICOM LOOKUP STUDY
  N GMRCIEN ;-- Pointer for GMRC
  N PROCDESC ;- Procedure description
  N PROCIEN ;-- Radiology procedure IEN in ^RAMIS(71)
+ N RAA ;------ Radiology array (for $$ACCFIND)
  N RAIX ;----- cross reference subscript for case number lookup
  N RADFN ;---- first level subscript in ^RADPT
  N RADTI ;---- second level subscript in ^RADPT (after "DT")
  N RACNI ;---- third level subscript in ^RADPT (after "P")
  N RARPT ;---- Radiology Report pointer
- N I,LIST,NOUT,X,Z
+ N I,LIST,NOUT,X,Y,Z
  ;
  K OUT S NOUT=1
  I $G(NUMBER)="" S OUT(1)="-1,No Case or Consult Number Specified" Q
@@ -48,47 +49,17 @@ LOOKUP(OUT,NUMBER) ; RPC = MAG DICOM LOOKUP STUDY
  K DFN
  D  ; First try Radiology candidates
  . I EXAMTYP'="",EXAMTYP'="R" Q
- . D  ; Look for the patient/study in ^RADPT using the Radiology Case Number
- . . N RAIX ;----- cross reference subscript for case number lookup
- . . S RAIX=$S($D(^RADPT("C")):"C",1:"AE") ; for Radiology Patch RA*5*7
- . . S RAIX=$S(NUMBER["-":"ADC",1:RAIX) ; select the cross-reference
- . . S RADFN=$O(^RADPT(RAIX,NUMBER,"")) I 'RADFN D  Q:'RADFN
- . . . I NUMBER'["-" S OUT(1)="-2,No Study Date Specified" Q
- . . . S X=$P(NUMBER,"-",1)
- . . . I $L(X)'=6 S OUT(1)="-3,Invalid study date """_X_"""." Q
- . . . S SDATE=$S($E(X,5,6)<30:3,1:2)_$E(X,5,6)_$E(X,1,4)
- . . . D:SDATE
- . . . . ; Search 1-3 days prior the study date OR a day in advance but only
- . . . . ; if the study date is not equal to today or greater than today.
- . . . . ; Has to be long case number or must have an image study date
- . . . . N %,%I,II,RCASE,TODAY,X,Y
- . . . . S RCASE=$S(NUMBER["-":$P(NUMBER,"-",2),1:NUMBER) Q:'RCASE
- . . . . D NOW^%DTC S TODAY=X
- . . . . ;
- . . . . ;  1-3 days prior study date
- . . . . F II=1:1:3 S RADFN=$$FIND(SDATE,RCASE,-II) Q:RADFN
- . . . . Q:RADFN
- . . . . ;
- . . . . ; Wild goose chase but check for today's case
- . . . . S RADFN=$O(^RADPT("ADC",$$MMDDYY(TODAY)_"-"_RCASE,"")) Q:RADFN
- . . . . ;
- . . . . Q:SDATE'<TODAY
- . . . . S RADFN=$$FIND(SDATE,RCASE,1) Q:RADFN  ; Advance a day
- . . . . ;
- . . . . ; Finally just check the "C" or "AE" x-reference for the case number
- . . . . ; based on RA*5*7 patch
- . . . . S RADFN=$O(^RADPT($S($O(^RADPT("C","")):"C",1:"AE"),RCASE,""))
- . . . . Q
- . . . Q
- . . S RADTI=$O(^RADPT(RAIX,NUMBER,RADFN,"")) Q:'RADTI
- . . S RACNI=$O(^RADPT(RAIX,NUMBER,RADFN,RADTI,"")) Q:'RACNI
- . . Q:'$D(^RADPT(RADFN,0))  ; No patient demographics file pointer
- . . S DFN=$P(^RADPT(RADFN,0),"^",1)
- . . Q
+ . ; Look for the patient/study in ^RADPT using the Radiology Case Number
+ . S X=$$ACCFIND^RAAPI(NUMBER,.RAA)
+ . I X<0 Q
+ . S Y=RAA(1)
+ . S RADFN=$P(Y,"^",1),RADTI=$P(Y,"^",2),RACNI=$P(Y,"^",3)
+ . Q:'$D(^RADPT(RADFN,0))  ; No patient demographics file pointer
+ . S DFN=$P(^RADPT(RADFN,0),"^",1)
  . Q:'$G(DFN)
  . Q:'$D(^RADPT(DFN,"DT",RADTI,0))
+ . S ACCNUM=$$ACCNUM^RAAPI(RADFN,RADTI,RACNI)
  . S RARPT=$P($G(^RADPT(DFN,"DT",RADTI,"P",RACNI,0)),"^",17) Q:'RARPT
- . S ACCNUM=$P($G(^RARPT(RARPT,0)),"^",1)
  . S I=0 F  S I=$O(^RARPT(RARPT,2005,I)) Q:'I  D
  . . S X="74^"_RARPT_"^"_$P($G(^RARPT(RARPT,2005,I,0)),"^",1)_"^"_ACCNUM
  . . S NOUT=NOUT+1,OUT(NOUT)=X
@@ -130,29 +101,39 @@ LOOKUP(OUT,NUMBER) ; RPC = MAG DICOM LOOKUP STUDY
  S OUT(1)=NOUT-1
  Q
  ;
-NEXTIMG(OUT,FROM,SENT,CHECK) ; RPC = MAG DICOM GET NEXT QUEUE ENTRY
+NEXTIMG(OUT,FROMS,SENT,CHECK) ; RPC = MAG DICOM GET NEXT QUEUE ENTRY
  ; Get next file to be DICOM transmitted
- N H,F1,F2,F3,I,JBTOHD,LOC,N,PRI,S0,S1,STS,TYPE,X
- I $G(FROM)="" S OUT(1)="-1,No Origin Specified"
+ N H,F1,F2,F3,FROM,I,JBTOHD,LOC,N,PRI,S0,S1,STS,TYPE,X
+ S X=$G(FROMS) S:X FROM(X)=1
+ S I="" F  S I=$O(FROMS(I)) Q:I=""  S X=$G(FROMS(I)) S:X FROM(X)=1
+ I '$O(FROM("")) S OUT(1)="-1,No Origin Specified" Q
  ; First clean up transmitted queue entries
  S I="" F  S I=$O(SENT(I)) Q:I=""  D CLEAN^MAGDRPC9
  S H=$$SECOND($H)
  L +^MAGDOUTP(2006.574,"STS"):1E9 ; Background process MUST wait
  I '$G(CHECK) D  ; do only when called from a transmission process
- . S PRI="" F  S PRI=$O(^MAGDOUTP(2006.574,"STS",FROM,PRI)) Q:PRI=""  D
- . . S S0="" F  S S0=$O(^MAGDOUTP(2006.574,"STS",FROM,PRI,"XMIT",S0)) Q:S0=""  D
- . . . S S1="" F  S S1=$O(^MAGDOUTP(2006.574,"STS",FROM,PRI,"XMIT",S0,S1)) Q:S1=""  D
- . . . . S X=$$SECOND($P($G(^MAGDOUTP(2006.574,S0,1,S1,0),"^^"_$H),"^",3))
- . . . . Q:H-X<300
- . . . . S $P(^MAGDOUTP(2006.574,S0,1,S1,0),"^",2)="WAITING"
- . . . . K ^MAGDOUTP(2006.574,"STS",FROM,PRI,"XMIT",S0,S1)
- . . . . S ^MAGDOUTP(2006.574,"STS",FROM,PRI,"WAITING",S0,S1)=""
+ . S FROM="" F  S FROM=$O(FROM(FROM)) Q:FROM=""  D
+ . . S PRI="" F  S PRI=$O(^MAGDOUTP(2006.574,"STS",FROM,PRI)) Q:PRI=""  D
+ . . . S S0="" F  S S0=$O(^MAGDOUTP(2006.574,"STS",FROM,PRI,"XMIT",S0)) Q:S0=""  D
+ . . . . S S1="" F  S S1=$O(^MAGDOUTP(2006.574,"STS",FROM,PRI,"XMIT",S0,S1)) Q:S1=""  D
+ . . . . . S X=$$SECOND($P($G(^MAGDOUTP(2006.574,S0,1,S1,0),"^^"_$H),"^",3))
+ . . . . . Q:H-X<300
+ . . . . . S $P(^MAGDOUTP(2006.574,S0,1,S1,0),"^",2)="WAITING"
+ . . . . . K ^MAGDOUTP(2006.574,"STS",FROM,PRI,"XMIT",S0,S1)
+ . . . . . S ^MAGDOUTP(2006.574,"STS",FROM,PRI,"WAITING",S0,S1)=""
+ . . . . . Q
  . . . . Q
  . . . Q
  . . Q
  . Q
- S OUT(1)="",PRI=$O(^MAGDOUTP(2006.574,"STS",FROM,""),-1)
- D:PRI'=""
+ ; Find the highest priority among the selected FROM locations
+ S FROM="" F  S FROM=$O(FROM(FROM)) Q:FROM=""  D
+ . S PRI="" F  S PRI=$O(^MAGDOUTP(2006.574,"STS",FROM,PRI)) Q:PRI=""  D
+ . . S X=$O(^MAGDOUTP(2006.574,"STS",FROM,PRI,"WAITING","")) S:X PRI(PRI,FROM)=""
+ . . Q
+ . Q
+ S OUT(1)="",PRI=$O(PRI(""),-1) D:PRI'=""
+ . S FROM=$O(PRI(PRI,""))
  . S S0="" F  S S0=$O(^MAGDOUTP(2006.574,"STS",FROM,PRI,"WAITING",S0)) Q:S0=""  D  Q:OUT(1)'=""
  . . S S1="" F  S S1=$O(^MAGDOUTP(2006.574,"STS",FROM,PRI,"WAITING",S0,S1)) Q:S1=""  D  Q:OUT(1)'=""
  . . . I '$G(CHECK) D  ; do only when called from a transmission process
@@ -188,11 +169,9 @@ NEXTIMG(OUT,FROM,SENT,CHECK) ; RPC = MAG DICOM GET NEXT QUEUE ENTRY
  ;
 FIND(DATE,CASE,NUM) ;
  ; Use the ADC x-reference in the radiology patient file
- N NDATE,X,X1,X2,Y
- S X1=DATE,X2=NUM D C^%DTC S NDATE=X
- I NDATE<1 Q 0
- S NDATE=$$MMDDYY(NDATE)
- Q $O(^RADPT("ADC",NDATE_"-"_CASE,""))
+ N NDATE
+ S NDATE=$$FMADD^XLFDT(DATE,NUM) Q:NDATE<1 0
+ Q $O(^RADPT("ADC",$$MMDDYY(NDATE)_"-"_CASE,""))
  ;
 MMDDYY(DAY) ; Convert Fileman date to mmddyy
  I DAY'?7N Q 0

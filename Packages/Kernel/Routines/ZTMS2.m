@@ -1,5 +1,5 @@
 %ZTMS2 ;SEA/RDS-TaskMan: Submanager, Part 4 (Unload, Get Device) ;2/19/08  13:38
- ;;8.0;KERNEL;**2,18,23,36,67,118,127,163,167,175,199,275,446**;Jul 10, 1995;Build 7
+ ;;8.0;KERNEL;**2,18,23,36,67,118,127,163,167,175,199,275,446**;Jul 10, 1995;Build 6
  ;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  ;^%ZTSK(ZTSK),^%ZTSCH("DEV",IO) is locked on entry or return from GETNEXT
@@ -41,13 +41,13 @@ DEVICE ;PROCESS--prepare requested device; if can't, make task wait
  K %ZIS,IO,IOCPU,IOHG,IOPAR,IOUPAR,IOS
  ;If don't need a device, Setup minimum.
  S ZTIO=$P(ZTREC2,U),ZTIOT=$P(ZTREC2,U,3)
- ;DSS/SGM -BEGIN MODS - Conditionally initialize IO to $P
- I ZTIO="",$T(VX^VFDI0000)'="",$$VX^VFDI0000["VX" D  I 1
+ ;DSS/SGM - BEGIN MODS - initialize IO to $P
+ I ZTIO="",$G(^%ZOSF("ZVX"))["VX" D  Q
  . S (IOF,IOM,ION,IOS,IOSL,IOST,IOT)="",POP=0
- . K ^XUTL("XQ",$J),IO("ERROR") S (IO,IO(0))=$P
+ . S (IO,IO(0))=$P K ^XUTL("XQ",$J),IO("ERROR")
  . Q
- E  I ZTIO="" S (IO,IO(0),IOF,IOM,ION,IOS,IOSL,IOST,IOT)="",POP=0 Q
  ;DSS/SGM - END MODS
+ I ZTIO="" S (IO,IO(0),IOF,IOM,ION,IOS,IOSL,IOST,IOT)="",POP=0 Q
  ;
  ;setup call
  S %ZIS="LRS0"_$S($P(ZTREC2,U,5)="DIRECT":"D",1:"")

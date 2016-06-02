@@ -1,5 +1,6 @@
-YTSCL9R ;ALB/ASF-SCL90 R SCORING ;1/5/96  09:02
- ;;5.01;MENTAL HEALTH;**10**;Dec 30, 1994
+YTSCL9R ;ALB/ASF-SCL90 R SCORING ; 8/17/10 10:51am
+ ;;5.01;MENTAL HEALTH;**10,96**;Dec 30, 1994;Build 46
+ ;No external references
 MAIN ;
  D RD
  D VALIDITY Q:YSVFLAG
@@ -15,7 +16,7 @@ MAIN ;
  Q
 RD S X=^YTD(601.2,YSDFN,1,YSTEST,1,YSED,1)
  Q
-SS ;symtom scales
+SS ;symptom scales
  S (R,S,S(1),S(2),S(3),YSTOTAL)=""
  F YSI=1:1:10 D SS1
  Q
@@ -29,19 +30,21 @@ SS1 ;
  I YSMIS/(YSMIS+YSDIV)>.4 S $P(S(1),U,YSI)=0,$P(S(2),U,YSI)=0,$P(S(3),U,YSI)=0
  Q
 GSI ;global severity index
+ I YSTOTAL=0 S $P(R,U,11)=$J(0,0,2) Q  ;-->out ASF 8/17/2010
  S $P(R,U,11)=$J(YSTOTAL/(90-($L(X,"X")-1)),0,2)
  Q
 PST ;positive symptom total
  S $P(R,U,13)=($L(X,4)-1)+($L(X,3)-1)+($L(X,2)-1)+($L(X,1)-1)
  Q
 PSDI ;positive symptom distress index
+ I YSTOTAL=0 S $P(R,U,12)=$J(0,0,2) Q  ;-->out ASF 8/17/2010
  S $P(R,U,12)=$J(YSTOTAL/$P(R,U,13),0,2)
  Q
 VALIDITY ;
  S YSVFLAG=0
- I $L(X,"X")>19  W !!,"Administration invalid: More than 18 items were ommitted",!! S YSVFLAG=1 Q
+ I $L(X,"X")>19  W !!,"Administration invalid: More than 18 items were omitted",!! S YSVFLAG=1 Q
  I YSAGE<18 W !!,"Norms for this age group not available",!! S YSVFLAG=1 Q
- I $L(X,4)=91!($L(X,3)=91)!($L(X,2)=91)!($L(X,1)=91)!($L(X,0)=91) W !!,"Adminisration invalid: all questions were answered the same",!! S YSVFLAG=1 Q
+ I $L(X,4)=91!($L(X,3)=91)!($L(X,2)=91)!($L(X,1)=91)!($L(X,0)=91) W !!,"Administration invalid: all questions were answered the same",!! S YSVFLAG=1 Q
  Q
 TSCORE ; 1=outpatient, 2=nonpatients, 3= inpatients
  F YSNORM=1,2,3 D TS1,TPST,EXTREME
@@ -69,6 +72,7 @@ TRANS ;
  S $P(S(YSNORM),U,YSI)=$J(YST,0,0)
  Q
 TPST ; tscores for pst
+ Q:$P(R,U,13)=0  ;-->out ASF 8/17/10
  S YSROW=^YTT(601,YSTEST,YSSEX,4,1,$P(R,U,13),0)
  S $P(S(YSNORM),U,13)=$P(YSROW,U,YSNORM+1)
  Q
@@ -92,4 +96,12 @@ REPT1 ;
  W:YSI=9 !!
  Q
 END K L1,L2,N,R,S,X,S1,S2,S3,YSDIV,YSI,YSITEM,YSK,YSLKP,YSLV,YSMIS,YSNORM,YSNS,YSRAW,YSROW,YSROWP,YSRS,YST,YSTNOW,YSTOLD,YSTOTAL,YSVALUE,YSVFLAG,YSVOLD
+ Q
+MULT ;multiple scoring returns Outpt norms
+ D ENPT^YSUTL Q:YSAGE<18
+ D RD
+ D SS
+ D GSI,PST,PSDI
+ D TSCORE
+ S S=S(1) ;change to 2 or 3 for non and inPt
  Q

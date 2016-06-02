@@ -1,5 +1,5 @@
 ORCSIGN ;SLC/MKB-Sign/Release orders ; 2/15/12 8:59am
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**7,56,48,79,108,110,134,215**;Dec 17, 1997;Build 153
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**7,56,48,79,108,110,134,215**;Dec 17, 1997;Build 164
  ;
 EN ; -- start here
  I '$D(^XUSEC("ORES",DUZ)),'$D(^XUSEC("ORELSE",DUZ)),'$D(^XUSEC("OREMAS",DUZ)) W !,"Insufficient privilege!" H 1 Q

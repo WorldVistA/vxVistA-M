@@ -1,5 +1,5 @@
 ECMLMN ;ALB/ESD - Multiple patients processing ;26 AUG 1997 14:42
- ;;2.0; EVENT CAPTURE ;**5,10,15,13,17,18,23,42,47,54**;8 May 96
+ ;;2.0; EVENT CAPTURE ;**5,10,15,13,17,18,23,42,47,54,76**;8 May 96;Build 6
  ;
  ;
 EN ;- Entry point for multiple patients (part of Multiple Dates/Procs option)
@@ -16,7 +16,7 @@ EN ;- Entry point for multiple patients (part of Multiple Dates/Procs option)
  ;
 ENPAT(ECFL,ECONE) ;- Ask patient name, ordering section, inpat/outpat,
  ;                  dx, assoc clinic, and classification questions
- ;                  (AO, IR, EC, SC, MST, HNC, CV)
+ ;                  (AO, IR, EC, SC, MST, HNC, CV, SHAD)
  ;
 SEL K ECNXT,ECPAT,ECORD,ECPCE,ECPCEQ,ECS
  S ECFL=1,ECS=""
@@ -59,7 +59,7 @@ BLDPAT ;- Build ^TMP("ECPAT",$J) array with patient data
  S $P(^TMP("ECPAT",$J,$P(ECPAT,"^")),"^",12)=""
  S $P(^TMP("ECPAT",$J,$P(ECPAT,"^")),"^",1)=$P(ECPAT,"^",2)
  S $P(^TMP("ECPAT",$J,$P(ECPAT,"^")),"^",2)=+$P(ECORD,"^")
- F ECNODE="I/O","CLIN","CLINNM","DX","DXNM","AO","ENV","IR","SC","ELIG","MST","HNC","CV" D
+ F ECNODE="I/O","CLIN","CLINNM","DX","DXNM","AO","ENV","IR","SC","ELIG","MST","HNC","CV","SHAD" D
  . S ECNUM=ECNUM+1
  . S $P(^TMP("ECPAT",$J,$P(ECPAT,"^")),"^",ECNUM)=$S(ECNODE="CLINNM":$P($G(ECPCE("CLIN")),"^",2),ECNODE="DXNM":$P($G(ECPCE("DX")),"^",2),1:$P($G(ECPCE(ECNODE)),"^"))
  I $D(ECPCE("DXS")) M ^TMP("ECPAT",$J,$P(ECPAT,"^"),"DXS")=ECPCE("DXS")
@@ -113,7 +113,7 @@ BLDLM ;- Display patient data
  D SET(ECX)
  ;
  ;- Tmp array ECMPTIDX contains:
- ;  Cnt^DFN^Name^Ord Sect^In/Out^Clin^Clin Nam^DX^DX Nam^AO^EC^IR^SC^Elig^MST^HNC^CV
+ ;  Cnt^DFN^Name^Ord Sect^In/Out^Clin^Clin Nam^DX^DX Nam^AO^EC^IR^SC^Elig^MST^HNC^CV^SHAD
  ;
  S ^TMP("ECMPTIDX",$J,ECPTCNT)=VALMCNT_"^"_ECDFN_"^"_$G(^TMP("ECPAT",$J,ECDFN))
  ;- Set secondary diagnosis codes in array ECMPTIDX

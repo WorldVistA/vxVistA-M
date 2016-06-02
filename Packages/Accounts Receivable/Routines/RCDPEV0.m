@@ -1,6 +1,6 @@
 RCDPEV0 ;ALB/TMK - EDI LOCKBOX WORKLIST VERIFY PAYMENTS ;18-FEB-04
- ;;4.5;Accounts Receivable;**208**;Mar 20, 1995
- ;;Per VHA Directive 10-93-142, this routine should not be modified.
+ ;;4.5;Accounts Receivable;**208,261**;Mar 20, 1995;Build 2
+ ;;Per VHA Directive 2004-038, this routine should not be modified.
  Q
  ;
 RPT(RCSCR) ; Print/display discrepancy report
@@ -8,7 +8,7 @@ RPT(RCSCR) ; Print/display discrepancy report
  N %ZIS,ZTRTN,ZTSAVE,ZTDESC,POP
  S %ZIS="QM" D ^%ZIS G:POP RPTQ
  I $D(IO("Q")) D  G RPTQ
- . S ZTRTN="DISRPT^RCDPEV("_RCSCR_","_+$G(^TMP("RCBATCH_SELECTED",$J))_")",ZTDESC="AR - Print ERA Discrepancy Report From Worklist"
+ . S ZTRTN="DISRPT^RCDPEV0("_RCSCR_","_+$G(^TMP("RCBATCH_SELECTED",$J))_")",ZTDESC="AR - Print ERA Discrepancy Report From Worklist"
  . D ^%ZTLOAD
  . W !!,$S($D(ZTSK):"Your task number"_ZTSK_" has been queued.",1:"Unable to queue this job.")
  . K ZTSK,IO("Q") D HOME^%ZIS

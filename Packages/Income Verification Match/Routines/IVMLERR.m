@@ -1,5 +1,5 @@
-IVMLERR ;ALB/RMO - IVM Transmission Error Processing - List Manager Screen; 15-SEP-1997
- ;;2.0;INCOME VERIFICATION MATCH;**9**; 21-OCT-94
+IVMLERR ;ALB/RMO,ERC - IVM Transmission Error Processing - List Manager Screen; 15-SEP-1997 ; 5/25/07 11:09am
+ ;;2.0;INCOME VERIFICATION MATCH;**9,121**; 21-OCT-94;Build 45
  ;
 EN ;Main entry point for IVM transmission error processing option
  ; Input  -- None
@@ -12,7 +12,7 @@ EN ;Main entry point for IVM transmission error processing option
 HDR ;Header code
  ;
  ;Sort by
- S VALMHDR(1)="Sort By: "_$S(IVMSRTBY="P":"Patient Name",IVMSRTBY="D":"Date/Time ACK Received",1:"Unknown")
+ S VALMHDR(1)="Sort By: "_$S(IVMSRTBY="P":"Patient Name",IVMSRTBY="D":"Date/Time ACK Received",IVMSRTBY="E":"Error Message",IVMSRTBY="O":"Person Not Found",1:"Unknown")
  ;
  ;Date range
  S VALMHDR(1)=$$SETSTR^VALM1("Date Range: "_$$FDATE^VALM1(IVMBEG)_" thru "_$$FDATE^VALM1(IVMEND),VALMHDR(1),46,80)
@@ -38,12 +38,16 @@ INIT ;Init variables and list array
  I 'VALMBEG!('VALMEND) S VALMQUIT=1 G INITQ
  S IVMBEG=VALMBEG,IVMEND=VALMEND
  ;
- ;Set error processing status to new
- S IVMEPSTA="1"
- ;
- ;Set sort by to patient name
- S IVMSRTBY="P"
- ;
+ASK ;
+ ;ask user for sort criteria
+ N DIROUT,DUOUT
+ N IVMFLG ;flag indicating that the report has not yet run
+ N IVMY
+ S IVMFLG=1
+ S IVMEPSTA=1
+ W !!?5,"How would you like this display sorted?",!
+ D SL^IVMLERR2
+ I $D(DUOUT)!($D(DIROUT)) S VALMQUIT=1 G INITQ
  ;Build IVM transmission error screen
  D BLD
 INITQ Q

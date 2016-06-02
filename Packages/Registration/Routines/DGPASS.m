@@ -1,5 +1,5 @@
 DGPASS ;ALB/JDS - ABSENCE LIST ; 01 JAN 86 @0800
- ;;5.3;Registration;**162**;Aug 13, 1993
+ ;;5.3;Registration;**162**;Aug 13, 1993;Build 3
  ;
 EN D QUIT S %DT="AEPT",%DT("A")="Enter date of Absence: " D ^%DT G:Y'>0 QUIT G EN:+Y>(DT+1) S DGT=+Y,DG2=DGT,DGT=$S(DGT[".":DGT,1:DGT_".2400"),DG2=DGT
  S DGVAR="DGT^DG2",DGPGM="START^DGPASS" D ZIS^DGUTQ I 'POP U IO D START^DGPASS
@@ -25,7 +25,13 @@ CK ;check to see if xfr to absence
 SET S VAIP("D")=DGDAT D IN5^VADPT S:VAIP(1)']"" DGFL=1 Q:VAIP(1)']""  S DGADM=VAIP(1) I $D(^DGPM(DGADM,0)) S $P(DGX,"^",5)=$P(^DGPM(DGADM,0),"^",5),$P(DGX,"^",6)=$P(^DGPM(DGADM,0),"^",6),$P(DGX,"^",13)=$P(^DGPM(DGADM,0),"^",13)
  Q:$P(^DGPM(DGADM,0),"^",6)']""  S DGDV=$P(^DIC(42,+$P(^DGPM(DGADM,0),"^",6),0),"^",11) S DGDV=$S(DGDV]"":$P(^DG(40.8,DGDV,0),"^"),1:"ZUNKNOWN"),DGP=$P(^DPT(DFN,0),"^",1)
  D PID^VADPT6
- S DGTYP=$P(DGX,"^",18),DGTP=$S(DGTYP=1:"PASS",DGTYP=2!(DGTYP=26):"AA",DGTYP=3!(DGTYP=25):"UA",DGTYP=13!(DGTYP=43)!(DGTYP=44)!(DGTYP=45):"ASIH",1:""),DGCD=0,X=+DGX\1 D:X]"" DAT S:DGCD DGLV=DGCD
+ ;DSS/RAC - BEGIN MOD - User parameter to display verbage for PASS
+ N VFDPS
+ S VFDPS="PASS"
+ S:$G(^%ZOSF("ZVX"))["VX" VFDPS=$$GET^XPAR("ALL","VFD INPATIENT PASS")
+ ;S DGTYP=$P(DGX,"^",18),DGTP=$S(DGTYP=1:"PASS",DGTYP=2!(DGTYP=26):"AA",DGTYP=3!(DGTYP=25):"UA",DGTYP=13!(DGTYP=43)!(DGTYP=44)!(DGTYP=45):"ASIH",1:""),DGCD=0,X=+DGX\1 D:X]"" DAT S:DGCD DGLV=DGCD
+ S DGTYP=$P(DGX,"^",18),DGTP=$S(DGTYP=1:VFDPS,DGTYP=2!(DGTYP=26):"AA",DGTYP=3!(DGTYP=25):"UA",DGTYP=13!(DGTYP=43)!(DGTYP=44)!(DGTYP=45):"ASIH",1:""),DGCD=0,X=+DGX\1 D:X]"" DAT S:DGCD DGLV=DGCD
+ ;DSS/RAC - END MOD
  I "^25^26^"[("^"_+VAIP(4)_"^") S DGTP=$S(+VAIP(4)=25:"UA",1:"AA")
  S DGCD=0 S X=$S($P(DGX,"^",13):$P(DGX,"^",13),1:"") D:X]"" DAT S DGRT=$S(DGCD:DGCD,1:"")
  S DGW=$S($P(DGX,"^",5)]""&($P(DGX,"^",5)'?.N):$P(DGX,"^",5),$P(DGX,"^",5)]""&($P(DGX,"^",5)?.N):$P(^DIC(4,$P(DGX,"^",5),0),"^",1),1:$P(^DIC(42,$P(DGX,"^",6),0),"^"))

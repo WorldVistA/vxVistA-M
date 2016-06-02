@@ -1,8 +1,14 @@
-RAORD3 ;HISC/CAH - AISC/RMO-Detailed Request Display Cont. ;01/20/05  11:55
- ;;5.0;Radiology/Nuclear Medicine;**5,15,21,27,45,41,75**;Mar 16, 1998;Build 4
- I $P(RADPT0,U,2)="F" D  ;display pregnancy status for females ptch 45
- .W !,"Pregnancy Status: ",?22,$S($P(RAORD0,"^",13)="y":"Patient is Pregnant",$P(RAORD0,"^",13)="n":"Patient not pregnant at time of order",1:"Unknown")
- .Q
+RAORD3 ;HISC/CAH - AISC/RMO-Detailed Request Display Cont. ;05/05/09  10:31
+ ;;5.0;Radiology/Nuclear Medicine;**5,15,21,27,45,41,75,99**;Mar 16, 1998;Build 5
+ ;Supported IA #2056 reference to ^DIQ
+ ;Supported IA #10103 reference to ^XLFDT
+ I $$PTSEX^RAUTL8(RADFN)="F" D  ;display pregnancy status for females ptch 45, P#99 changed Pregnancy title.'Pregnancy Screen:' field. This field shall be a display-only field
+ .W !,"Pregnant at time of order entry: ",?22,$S($P(RAORD0,"^",13)="y":"YES",$P(RAORD0,"^",13)="n":"NO",1:"UNKNOWN")
+ .N RA700332,RA700380
+ .S RA700332=$$GET1^DIQ(70.03,$G(RACNI)_","_$G(RADTI)_","_$G(RADFN),32)
+ .S RA700380=$$GET1^DIQ(70.03,$G(RACNI)_","_$G(RADTI)_","_$G(RADFN),80)
+ .I RA700332'="" W !,"Pregnancy Screen: ",RA700332
+ .I RA700380'="" W !,"Pregnancy Screen Comment: ",RA700380
  W:$P(RAORD0,"^",24)="y" !?12,"*** Universal Isolation Precautions ***" W:$D(RA("VDT")) !?8,$C(7),"** Note:  Request Associated with Visit on ",RA("VDT")," **"
  W:$D(RA("RDT"))&($D(RAPKG)) !,"Desired Date:",?22,RA("RDT") W:$D(RA("PDT")) !,"Pre-op Scheduled:",?22,RA("PDT") S RAOSTS=$P(RAORD0,"^",5) I RAOSTS=8,$D(RA("SDT")) W !,"Exam Scheduled:",?22,RA("SDT")
  I RAOSTS=1 D USERCAN

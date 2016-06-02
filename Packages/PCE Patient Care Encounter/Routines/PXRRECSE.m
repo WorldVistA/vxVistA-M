@@ -1,11 +1,14 @@
 PXRRECSE ;ISL/PKR - Sort through encounters applying the selection criteria. ;6/27/97
- ;;1.0;PCE PATIENT CARE ENCOUNTER;**3,10,12,18,72**;Aug 12, 1996
+ ;;1.0;PCE PATIENT CARE ENCOUNTER;**3,10,12,18,72,189**;Aug 12, 1996;Build 13
+ ;;Reference to ^DIC(4 supported by DBIA 10090
+ ;;Reference to ^DIC(40.7 supported by DBIA 93-C
 SORT ;
  N BD,BUSY,CLASSNAM,CLINIC,CLINIEN,CSSCR
  N ED,IC,FAC,FACILITY,FOUND
  N HLOCIEN,HLOCNAM,HLOCMAX,HSSCR,NEWPIEN
  N PCLMAX,PCLASS,PNAME,PNMAX,PPNAME,PPONLY,PRVCNT,PRVIEN
  N TEMP,VACODE,VIEN,VISIT
+ N HOSLOC,INS
  ;
  S (HLOCMAX,PCLMAX,PNMAX)=0
  ;
@@ -50,7 +53,8 @@ VISIT S VIEN=$O(^AUPNVSIT("B",BD,VIEN))
  S VISIT=^AUPNVSIT(VIEN,0)
  ;
  ;Screen out inappropriate vists.
- I PXRRSCAT'[$P(VISIT,U,7) G VISIT
+ I $P(VISIT,U,7)'="" I PXRRSCAT'[$P(VISIT,U,7) G VISIT
+ I $P(VISIT,U,7)="" I PXRRSCAT'=$P(VISIT,U,7) G VISIT
  ;
  ;Make sure that the facility is on the list.
  S FOUND=0
@@ -63,6 +67,18 @@ VISIT S VIEN=$O(^AUPNVSIT("B",BD,VIEN))
  ;occurred at a non-VA site
  I PXRRSCAT["E"&($P(VISIT,U,7)="E")&(FAC="")&($D(NONVA)) D
  . I $D(^AUPNVSIT(VIEN,21)) S FACILITY="*",FOUND=1
+ ;
+ ;If Service Category = EVENT (HISTORICAL), get facility based on
+ ;the hospital location, encounter occurred at a VA site. - *189
+ I PXRRSCAT["E"&($P(VISIT,U,7)="E")&(FAC="") D
+ . S (INS,HOSLOC)=""
+ . I $P(VISIT,U,22)'="" S HOSLOC=$P(VISIT,U,22) D
+ . . S INS=$P(^SC(HOSLOC,0),U,15)
+ . . ;S:+INS INS=$P($G(^DG(40.8,INS,0)),U,7)
+ . . S:+INS INS=$$GET1^DIQ(40.8,INS_",",.07,"I")
+ . . S INS=$S(+INS&$D(^DIC(4,+INS,0)):INS,1:"")
+ . . I $D(INS) F IC=1:1:NFAC I $P(PXRRFAC(IC),U,1)=INS D  Q
+ . . . S FACILITY=INS,FOUND=1
  ;
  I 'FOUND G VISIT
  ;
@@ -162,7 +178,10 @@ PRV ;
  ... S CLINIEN=$P(VISIT,U,8)
  .. I PXRRSCAT["E"&($P(VISIT,U,7)="E")&(FAC="") D
  ...; If encounter occurred outside VA get location from node 21
- ...S HLOCNAM=$P(^AUPNVSIT(VIEN,21),U,1)
+ ...; Check if node 21 exists - *189
+ ...I $D(^AUPNVSIT(VIEN,21)) S HLOCNAM=$P(^AUPNVSIT(VIEN,21),U,1)
+ ...; If encounter occurred at VA site, get location from field .22 - *189
+ ...I '$D(^AUPNVSIT(VIEN,21)) S HLOCNAM=$P(^SC($P(VISIT,U,22),0),U,1)
  . E  D
  .. ;Get the clinic.
  .. S CLINIEN=$P(VISIT,U,8)

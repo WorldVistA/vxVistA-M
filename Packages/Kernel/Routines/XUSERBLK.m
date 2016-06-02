@@ -1,5 +1,5 @@
 XUSERBLK ;SF/RWF - Bulk user (new person) COMPUTER ACCESS  ;02/26/2008
- ;;8.0;KERNEL;**20,214,230,289,419,490**;Jul 10, 1995;Build 5
+ ;;8.0;KERNEL;**20,214,230,289,419,490**;Jul 10, 1995;Build 2
  ; Per VHA Directive 2004-038, this routine should not be modified.
  ; Option: XUSERBLK
  ; This routine allows the Cloning of one person to a group of others.
@@ -70,9 +70,15 @@ C2 ;
  I $P(^VA(200,DA,0),U,3)']"" S XUNEW=1 ;if no access code treat as new
  I $P($G(^VA(200,DA,.1)),U,2)']"" S XUNEW=1 ;If no verify code treat as new
  S (XUU,XUU2)="unchanged",$P(^VA(200,DA,0),U,11)=XUTERMDT
- I XUNEW D ACODE S @XFDA@(200,DA_",",2)=XUH D VCODE S @XFDA@(200,DA_",",11)=XUH2
+ ;DSS/RAC - BEGIN MODS - don't generate access or verify code - orginal code in do
+ I ^%ZOSF("ZVX")'["VX" D
+ . I XUNEW D ACODE S @XFDA@(200,DA_",",2)=XUH D VCODE S @XFDA@(200,DA_",",11)=XUH2
+ ;DSS/RAC - END MODS
  D UPDATE^DIE("",XFDA,XIEN,"XERR") K @XFDA
- I XUNEW,XUTEXT>0 D LET(DA,XUTEXT)
+ ;DSS/SGM - BEGIN MODS - called from VFDCDUZ
+ ;I XUNEW,XUTEXT>0 D LET(DA,XUTEXT)
+ I '$G(VFDCDUZ),XUNEW,XUTEXT>0 D LET(DA,XUTEXT)
+ ;DSS/SGM - END MODS
  I $D(^XMB(3.7,DA,0))[0 S Y=DA K XMZ D NEW^XM K XMDT,XMM,XMZ
  Q
  ;

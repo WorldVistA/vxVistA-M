@@ -1,7 +1,6 @@
-VFDCONT ;DSS/SGM - CONTINGENCY REPORT MAIN DRIVER;23 Nov 2010 10:04
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 153
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
- ;;Copyright 1995-2010,Document Storage Systems Inc.,All Rights Reserved
+VFDCONT ;DSS/SGM - CONTINGENCY REPORT MAIN DRIVER ; 06/04/15 14:15
+ ;;2013.1;DSS,INC VXVISTA OPEN SOURCE;**52**;04 Jun 2015;Build 2
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ;
  ;
  ;This is the main driver/entry point for all contingency reporting
@@ -25,6 +24,7 @@ VFDCONT ;DSS/SGM - CONTINGENCY REPORT MAIN DRIVER;23 Nov 2010 10:04
  ;invoked interactively, or by Taskman, or by a OS script which will
  ;call into this routine.
  ;
+ Q
  ;----------------------------------------------------------------------
  ;                       INPATIENT REPORTS
  ;----------------------------------------------------------------------

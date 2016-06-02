@@ -1,5 +1,5 @@
 LR7OGMC ;DALOI/STAFF- Interim report rpc memo chem ;11/19/09  17:59
- ;;5.2;LAB SERVICE;**187,230,312,286,356,372,395,350**;Sep 27, 1994;Build 230
+ ;;5.2;LAB SERVICE;**187,230,312,286,356,372,395,350**;Sep 27, 1994;Build 3
  ;
  ; sets lab data into ^TMP("LR7OG",$J,"TP"
  ; ^TMP("LR7OG",$J,"G")=dfn^pnm^lrdfn^age^sex^lrcw
@@ -39,6 +39,9 @@ CH(LRDFN,IDT,ALL,OUTCNT,FORMAT,DONE,SKIP) ; from LR7OGM
  I 'FORMAT D PRINT^LR7OGMP(.OUTCNT)
  ;
  K ^TMP("LR7OG",$J,"TP")
+ ;DSS/FHS - BEGIN MOD - Clean-up Multi-Normal Range ^XTMP( Global
+ K ^XTMP("LRNR","U",$J)
+ ;DSS/FHS - END MOD - Dec 10, 2014
  ;
  Q
  ;

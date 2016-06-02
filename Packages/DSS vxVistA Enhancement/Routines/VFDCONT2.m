@@ -1,7 +1,6 @@
-VFDCONT2 ;DSS/SGM - CONTINGENCY PHARMACY;23 Nov 2010 10:04
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 153
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
- ;;Copyright 1995-2010,Document Storage Systems Inc.,All Rights Reserved
+VFDCONT2 ;DSS/SGM - CONTINGENCY PHARMACY ; 06/04/15 14:15
+ ;;2013.1;DSS,INC VXVISTA OPEN SOURCE;**52**;04 Jun 2015;Build 2
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ;
  ;
  ;This routine should not be invoked except by VFDCONT* routines
@@ -16,6 +15,7 @@ VFDCONT2 ;DSS/SGM - CONTINGENCY PHARMACY;23 Nov 2010 10:04
  ;3889   RPC^PSBO - no ICR for calling NEW^PSBO1 or DQ^PSBO or to edit
  ;                  file 53.69
  ;
+ Q
  ;----------------------------------------------------------------------
  ;                         HEALTH SUMMARY REPORT
  ;----------------------------------------------------------------------

@@ -1,7 +1,10 @@
-RART3 ;HISC/GJC,SWM-Reporting Menu (Part 2) ;8/31/99  13:57
- ;;5.0;Radiology/Nuclear Medicine;**8,10,18,27,35,45,75**;Mar 16, 1998;Build 4
+RART3 ;HISC/GJC,SWM-Reporting Menu (Part 2) ;05/22/09  09:20
+ ;;5.0;Radiology/Nuclear Medicine;**8,10,18,27,35,45,75,99**;Mar 16, 1998;Build 5
  ; continue from RART1
  ; last modif by SS for P18
+ ; p99 changed the Staff Phys title to Staff Imaging Phys
+ ;Supported IA #10103 reference to ^XLFDT
+ ;
 QRPT ; Queue the report to run
  N X K IOP,%ZIS S %ZIS="Q",%ZIS("B")=""
  S %ZIS("S")="I $E($P($G(^%ZIS(2,+$P($G(^(""SUBTYPE"")),""^""),0)),""^""),1,2)=""P-"""
@@ -25,7 +28,7 @@ PHYS N RA2ND,R1,R2,RASTR
  S (R1,R2)=0 F  S R2=$O(^RADPT(RADFN,"DT",RADTI,"P",RACNI,"SRR",R2)) Q:'R2  S:+$G(^(R2,0)) R1=R1+1,RA2ND("SRR",R1)=+^(0),RA2ND("SRR",R1)=$E($P($G(^VA(200,RA2ND("SRR",R1),0)),"^"),1,20)
  S (R1,R2)=0 F  S R2=$O(^RADPT(RADFN,"DT",RADTI,"P",RACNI,"SSR",R2)) Q:'R2  S:+$G(^(R2,0)) R1=R1+1,RA2ND("SSR",R1)=+^(0),RA2ND("SSR",R1)=$E($P($G(^VA(200,RA2ND("SSR",R1),0)),"^"),1,20)
  S R1=$E($P($G(^VA(200,+$P(R3,"^",15),0)),"^"),1,15)
- S RASTR="Staff Phys: "_R1 S:R1]"" RASTR=RASTR_" (P)"
+ S RASTR="Staff Imaging Phys: "_R1 S:R1]"" RASTR=RASTR_" (P)"
 PHYS1 I '$O(RA2ND("SSR",0)) W !,RASTR G PHYS2
  S R1=0
 PHYS11 S R1=$O(RA2ND("SSR",R1)) G:R1="" PHYS19

@@ -1,5 +1,5 @@
 ECMLMF ;ALB/ESD - File Multiple Dates/Multiple Procedures  -  29 AUG 97 08:51
- ;;2.0; EVENT CAPTURE ;**5,10,15,13,17,18,23,42,54,72**;8 May 96
+ ;;2.0; EVENT CAPTURE ;**5,10,15,13,17,18,23,42,54,72,76**;8 May 96;Build 6
  ;
 EN ;- Entry point to file selected patients and procedures
  ;
@@ -102,7 +102,7 @@ SETARRY ;- Set local arrays with procedure and patient data for filing
  F I="PROCDT","PROC","REAS","VOL" S ECPRR(I)=$P(ECPRNOD,"^",+$P($T(@I),";;",2))
  I ECPRR("REAS")=0 S ECPRR("REAS")=""
  S I="PCEPR" S ECPRR(I)=$S($P($G(ECPRR("PROC")),";",2)="ICPT(":$P($G(ECPRR("PROC")),";"),1:$P($G(^EC(725,+$P($G(ECPRR("PROC")),";"),0)),"^",5))
- F I="DFN","ORDSEC","IO","CLIN","DX","AO","ENV","IR","SC","ELIG","MST","HNC","CV" S ECPTR(I)=$P(ECPTNOD,"^",+$P($T(@I),";;",2))
+ F I="DFN","ORDSEC","IO","CLIN","DX","AO","ENV","IR","SC","ELIG","MST","HNC","CV","SHAD" S ECPTR(I)=$P(ECPTNOD,"^",+$P($T(@I),";;",2))
  Q
  ;
  ;
@@ -118,7 +118,7 @@ BADFLDS(ECRS) ; - Validation checks on fields to be set in "PCE" node
  ;
 PCE ;- More validation checks on fields to be set in "PCE" node
  ;
- N ECDSS,I,ECAO,ECELIG,ECEV,ECIR,ECSC,ECNP,ECNPP,ECPCENOD,ECMST,ECHNC,ECCV
+ N ECDSS,I,ECAO,ECELIG,ECEV,ECIR,ECSC,ECNP,ECNPP,ECPCENOD,ECMST,ECHNC,ECCV,ECSHAD
  G PCEQ:$G(ECPRR("PROCDT"))'["."!('$G(ECPRR("PCEPR")))
  F I="DFN","CLIN","DX" G PCEQ:'$G(ECPTR(I))
  G PCEQ:'$G(ECPRR("VOL"))
@@ -153,8 +153,8 @@ PCE ;- More validation checks on fields to be set in "PCE" node
  S ECCV=$S(ECPTR("CV")="Y":1,ECPTR("CV")="N":0,1:"")
  ;
  ;JAM;06/01/05,Project 112/SHAD
- ;S ECPTR("SHAD")=$G(ECPTR("SHAD"))
- ;S ECSHAD=$S(ECPTR("SHAD")="Y":1,ECPTR("SHAD")="N":0,1:"")
+ S ECPTR("SHAD")=$G(ECPTR("SHAD"))
+ S ECSHAD=$S(ECPTR("SHAD")="Y":1,ECPTR("SHAD")="N":0,1:"")
  ;- File "PCE" and "PCE1" nodes
  ;
  S DR="[EC FILE PCE NODE]" D ^DIE K DR
@@ -187,3 +187,4 @@ ELIG ;;14
 MST ;;15
 HNC ;;16
 CV ;;17
+SHAD ;;18

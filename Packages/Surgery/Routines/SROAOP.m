@@ -1,5 +1,5 @@
-SROAOP ;BIR/MAM - ENTER OPERATION INFO ;11/27/07
- ;;3.0; Surgery ;**19,38,47,63,67,81,86,97,100,125,142,153,160,166**;24 Jun 93;Build 6
+SROAOP ;BIR/MAM - ENTER OPERATION INFO ;06/25/10
+ ;;3.0; Surgery ;**19,38,47,63,67,81,86,97,100,125,142,153,160,166,171,174**;24 Jun 93;Build 8
  I '$D(SRTN) W !!,"A Surgery Risk Assessment must be selected prior to using this option.",!!,"Press <RET> to continue  " R X:DTIME G END
  S SRSOUT=0,SRSUPCPT=1 D ^SROAUTL
 START G:SRSOUT END K SRAOTH,SRACON D ^SROAOP1
@@ -45,9 +45,12 @@ CONCUR ; concurrent case information
  N SRPROC,SRCSTAT S SRLINE="" F I=1:1:80 S SRLINE=SRLINE_"-"
  S CON=$P($G(^SRF(SRTN,"CON")),"^") I CON,($P($G(^SRF(CON,30)),"^")!($P($G(^SRF(CON,31)),"^",8))) S CON=""
  S SRPAGE="" D HDR^SROAUTL
- W !,"Concurrent case information cannot be updated using the Risk Assessment"
- W !,"Module. To update the CPT code of a concurrent case, please use an option"
- W !,"contained within the CPT/ICD9 Coding Menu."
+ W !,"Concurrent Procedure: An additional operative procedure performed by a"
+ W !,"different surgical team (i.e., a different specialty/service) under the"
+ W !,"same anesthetic which has a CPT code different from that of the Principal"
+ W !,"Operative Procedure (e.g., fixation of a femur fracture in a patient"
+ W !,"undergoing a laparotomy for trauma). This field should be verified and,"
+ W !,"if need be, report discrepancies to the official CPT coder for surgery."
  I CON D CC W !!,"Concurrent Procedure: ",?22,SROPS(1) I $D(SROPS(2)) W !,?22,SROPS(2) I $D(SROPS(3)) W !,?22,SROPS(3) I $D(SROPS(4)) W !,?22,SROPS(4)
  I $D(SRCSTAT) W !!,?22,SRCSTAT
  W !!,"Press ENTER to continue " R X:DTIME
@@ -67,7 +70,7 @@ LOOP ; break procedures
 ANES N SRANE,SRNEW
  I $P(SRAO(10),"^")="NOT ENTERED",'$O(^SRF(SRTN,6,0)) D  Q
  .K DIR S DIR("A")="Select ANESTHESIA TECHNIQUE: ",DIR(0)="130.06,.01OA" D ^DIR K DIR S SRANE=Y I $D(DTOUT)!$D(DUOUT)!(Y="") Q
- .K DD,DO S DIC="^SRF(SRTN,6,",X=SRANE,DIC(0)="L" D FILE^DICN K DIC,DD,DO I '+Y Q
+ .K DD,DO S DIC="^SRF(SRTN,6,",X=SRANE,DA(1)=SRTN,DIC(0)="L" D FILE^DICN K DIC,DD,DO I '+Y Q
  .S SRNEW=+Y
  .K DA,DIE,DR S DA=SRNEW,DA(1)=SRTN,DIE="^SRF(SRTN,6,",DR=".05T;42T" D ^DIE
  K DR,DIE,DA S DA=SRTN,DR=".37T",DR(2,130.06)=".01T;.05T;42T",DIE=130 D ^DIE K DR

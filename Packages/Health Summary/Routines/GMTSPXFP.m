@@ -1,5 +1,5 @@
 GMTSPXFP ; SLC/SBW,KER - PCE Health Factors Component ; 2/22/07 1:52pm
- ;;2.7;Health Summary;**8,10,28,56,58,62,69,82**;Oct 20, 1995;Build 7
+ ;;2.7;Health Summary;**8,10,28,56,58,62,69,82,110**;Oct 20, 1995;Build 29
  ;
  ; External References
  ;   DBIA   1243  HF^PXRHS07
@@ -58,13 +58,14 @@ BYDT ; Display Health Factors by Date
  . . D HFDSP Q:$D(GMTSQIT)
  Q
 HDR ; Display Header
+ ; KDM 1/28/2014 GMTS*2.7*110 
+ ;     Change header from "Visit Date" to "Event/Visit Date" to reduce ambiguity as it can be either date.
  N GMTSRN Q:$D(GMTSOBJ)  Q:$D(GMTSQIT)
  D CKP^GMTSUP Q:$D(GMTSQIT)  W "Category",!
- ;DSS/JG/RAC - BEGIN MOD - Add Health Factor 'Visit Time' to report
- ; Original statement in else
- I $T(VX^VFDI0000)'="",$$VX^VFDI0000["VX" D CKP^GMTSUP Q:$D(GMTSQIT)  W "  Health Factor ",?50,"Visit Date/Time",! W:GMTSFRST=1 !
- E  D CKP^GMTSUP Q:$D(GMTSQIT)  W "  Health Factor ",?50,"Visit Date",! W:GMTSFRST=1 !
- ;DSS/JG/RAC - End mods
+ ;DSS/SMP - BEGIN MODS - Add Health Factor 'Event/Visit Time'
+ N VFD S VFD="Event/Visit Date" I $G(^%ZOSF("ZVX"))["VX" S VFD=VFD_"/Time"
+ D CKP^GMTSUP Q:$D(GMTSQIT)  W "  Health Factor ",?50,VFD,! W:GMTSFRST=1 !
+ ;DSS/SMP- END MODS
  Q
 HFDSP ; Display Data
  N GMTSRN,GMTSIEN
@@ -74,11 +75,10 @@ HFDSP ; Display Data
  I GMTSFRST=0 D HDR S GMTSFRST=1
  S GMN0=$G(^TMP("PXF",$J,GMHFC,GMHF,GMDT,GMIFN,0))
  Q:GMN0']""
- ;DSS/JG/RAC - Begin mods - Add time to Health Factor 'Visit Date'
- ; Original statement in else
- I $T(VX^VFDI0000)'="",$$VX^VFDI0000["VX" S X=$P(GMN0,U,2) D REGDTM4^GMTSU S GMTSDAT=X
+ ;DSS/SMP - BEGIN MODS - Add time
+ I $G(^%ZOSF("ZVX"))["VX" S X=$P(GMN0,U,2) D REGDTM4^GMTSU S GMTSDAT=X I 1
  E  S X=$P(GMN0,U,2) D REGDT4^GMTSU S GMTSDAT=X
- ;DSS/JG/RAC - End mods
+ ;DSS/SMP - END MODS
  S HF=$P(GMN0,U),LEVEL=$P(GMN0,U,4)
  D CKP^GMTSUP Q:$D(GMTSQIT)  D:GMTSNPG HDR D
  . I GMHFC'=$G(PHFC)!GMTSNPG D

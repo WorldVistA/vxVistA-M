@@ -1,6 +1,6 @@
-MAGGTID ;WOIFO/SRR/RED/SAF/GEK - Deletion of Images and Pointers ; [ 06/20/2001 08:56 ]
- ;;3.0;IMAGING;**8,59**;Nov 27, 2007;Build 20
- ;;Per VHA Directive 2004-038, this routine should not be modified.
+MAGGTID ;WOIFO/SRR/RED/SAF/GEK/SG/JSL/NST - Deletion of Images and Pointers ; 14 Feb 2012 9:05 AM
+ ;;3.0;IMAGING;**8,59,93,118**;Mar 19, 2002;Build 4525;May 01, 2013
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -8,7 +8,6 @@ MAGGTID ;WOIFO/SRR/RED/SAF/GEK - Deletion of Images and Pointers ; [ 06/20/2001 
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -24,13 +23,13 @@ IMAGEDEL(MAGGRY,MAGIEN,MAGGRPDF,REASON) ;RPC [MAGG IMAGE DELETE]
  ; MAGGRPDF   group delete flag   1 = group delete allowed
  ; SYSDEL    Flag that forces delete, even if no KEY
  ; 
- N Y,RY
+ N IEN,Y,RY
  ; 1 in 3rd piece means : DELETE the Image File Also.
- S MAGGRPDF=+$G(MAGGRPDF),REASON=$G(REASON)
- L +^MAG(2005,MAGIEN):4
- E  S MAGGRY(0)="Image ID# "_MAGIEN_" is Locked. Delete is Canceled" Q
+ S MAGGRPDF=+$G(MAGGRPDF),REASON=$G(REASON),IEN=+MAGIEN
+ L +^MAG(2005,IEN):4
+ E  S MAGGRY(0)="Image ID# "_IEN_" is Locked. Delete is Canceled" Q
  D DELETE(.MAGGRY,MAGIEN,1,MAGGRPDF,REASON)
- L -^MAG(2005,MAGIEN)
+ L -^MAG(2005,IEN)
  Q
 DELETE(RY,MAGIEN,DF,GRPDF,REASON) ;RPC [MAGQ DIK] Entry point for silent call
  ;RY=Return Array RY(0)="1^SUCCESS" 
@@ -45,13 +44,16 @@ DELETE(RY,MAGIEN,DF,GRPDF,REASON) ;RPC [MAGQ DIK] Entry point for silent call
  ;
  S REASON=$G(REASON) I REASON="" S REASON="Unknown reason"
  S RY(0)="0^Image Delete Failed, reason unknown."
- S:'$D(MAGSYS) MAGSYS=^%ZOSF("VOL")
- N MAGERR,SYSDEL,Z
- S SYSDEL=+$P(MAGIEN,U,2)
+ I '$D(MAGSYS) D
+ . N Y
+ . D GETENV^%ZOSV  ; IA # 10097 
+ . S MAGSYS=$P(Y,"^",2)
+ . Q
+ N MAGERR,SYSDEL,Z,GRPDEL,MAGACN
+ S SYSDEL=+$P(MAGIEN,U,2),MAGIEN=+MAGIEN
  ; Check the business rules for deleting an image
  D DELETE^MAGSIMBR(.RY,MAGIEN,SYSDEL) I +RY(0)=0 Q
- S MAGIEN=+MAGIEN
- ;  a couple tests of privilage and valid IEN
+ ;  a couple tests of privilege and valid IEN
  I '$D(^MAG(2005,MAGIEN,0)) D  Q
  . S RY(0)="0^Image entry doesn't exist in image file"
  I +$O(^MAG(2005,MAGIEN,1,0)),+$G(GRPDF)=0 D  Q
@@ -59,6 +61,7 @@ DELETE(RY,MAGIEN,DF,GRPDF,REASON) ;RPC [MAGQ DIK] Entry point for silent call
  I +$O(^MAG(2005,MAGIEN,1,0)),+$G(GRPDF)'=0 D  Q
  . N MAGGRP S MAGGRP=MAGIEN N MAGIEN,MAGX,MAGOK,MAGFAIL
  . S MAGX=0,MAGOK=0,MAGFAIL=0
+ . S GRPDEL=1  ; we are deleting a group - used in DELGRP entry
  . F  S MAGX=$O(^MAG(2005,MAGGRP,1,MAGX)) Q:'MAGX  D
  . . S MAGIEN=$P($G(^MAG(2005,MAGGRP,1,MAGX,0)),"^") D DEL1IMG
  . . I +RY(0) S Z=+$O(RY(""),-1),RY(Z)=RY(Z)_"^"_RY(0),MAGOK=MAGOK+1
@@ -66,12 +69,17 @@ DELETE(RY,MAGIEN,DF,GRPDF,REASON) ;RPC [MAGQ DIK] Entry point for silent call
  . . Q
  . I +MAGFAIL=0 S RY(0)="1^Deletion of Group #"_MAGGRP_" was successful.^"_MAGOK_"^0"
  . E  S RY(0)="0^Error deleting child image(s). Group Not Deleted.^"_MAGOK_"^"_MAGFAIL
+ . I (+MAGFAIL=0),$G(MAGACN)'="" D  ; No errors and Accession number exists
+ . . N SSEP,OUT
+ . . S SSEP=$$STATSEP^MAGVRS41
+ . . D DELNEW^MAGVD008(.OUT,MAGACN,REASON)  ; Delete studies in P34 data structure by accession number
+ . . I OUT<0 S RY(0)="0^Deletion of Group #"_MAGGRP_" was successful but failed in New: "_$P(OUT,SSEP,2)
+ . . Q
  . Q
- ;
  ; Ok lets start
  ; lets delete the parent pointers first.
 DEL1IMG ;
- N DELMSG,Z
+ N DELMSG,Z,MAGDFN
  D DELPAR^MAGSDEL2
  I $G(MAGERR) S RY(0)="0^Error: Deleting Specialty Pointers. Image Not Deleted. "_DELMSG Q
  ;
@@ -104,7 +112,15 @@ DEL1IMG ;
  D ENTRY^MAGLOG("DELETE",$G(DUZ),$G(MAGIEN),"PARENT:"_$G(MAGSTORE),$G(MAGDFN),1)
  S X="DEL^"_$G(MAGDFN)_"^"_$G(MAGIEN)
  D ACTION^MAGGTAU(X,"1")
- S RY(0)="1^Deletion of Image was Successful."
+ ;
+ I '$G(GRPDEL),$G(MAGACN)'="" D  ; If we delete a single image in a group and ACN is defined
+ . N SSEP,OUT
+ . S SSEP=$$STATSEP^MAGVRS41
+ . D DELNEW^MAGVD008(.OUT,MAGACN,REASON)  ; Delete studies in P34 data structure by accession number
+ . I OUT<0 S RY(0)="0^Deletion of Image in Legacy was Successful but failed in New: "_$P(OUT,SSEP,2)
+ . E  S RY(0)="1^Deletion of Image was Successful."
+ . Q
+ E  S RY(0)="1^Deletion of Image was Successful."
  Q
 DELGRP ;del grp ptrs and check to see if this is the last image in the group
  N MAGGRP,MAGX,MAGQUIT,MAGIFNS,Z
@@ -123,6 +139,11 @@ DELGRP ;del grp ptrs and check to see if this is the last image in the group
  . . . D DELPAR^MAGSDEL2
  . . . S MAGIEN=MAGIFNS
  . . I '$D(MAGERR) D
+ . . . I $T(^MAGVD003)'="" D  ; This check needs to be removed after release of patch 118
+ . . . . N OUT
+ . . . . D GETACN^MAGVD003(.OUT,MAGGRP)  ; Get accession number for this group first
+ . . . . S MAGACN=$S($$ISOK^MAGVAF02(OUT):$$GETVAL^MAGVAF02(OUT),1:"")
+ . . . . Q
  . . . D SETDEL(MAGGRP,REASON),ARCHIVE(MAGGRP) S DIK="^MAG(2005,",DA=MAGGRP D ^DIK
  . . . ; Log the Deletion of The Group Header to  ^MAG(2006.95, and ^MAG(2006.82 
  . . . D ENTRY^MAGLOG("DELETE",$G(DUZ),$G(MAGGRP),"PARENT:"_$G(MAGSTORE),$G(MAGDFN),1,"Group Header deleted")
@@ -144,21 +165,33 @@ SETDEL(MAGIEN,REASON) ; set deletion fields
  Q
  ;
 ARCHIVE(MAGARCIE) ;save image data before deletion
- N MAGCNT,MAGLAST,%X,%Y
+ N DA,DIK,MAGCNT,MAGLAST,SUB,TMP,%X,%Y
  S MAGCNT=$P(^MAG(2005.1,0),U,4)+1
  S %X="^MAG(2005,"_MAGARCIE_",",%Y="^MAG(2005.1,"_MAGARCIE_","
  D %XY^%RCR
- ; GEK 9/29/00 Fix the 3rd piece to be last ien in file.
+ ;--- GEK 9/29/00 Fix the 3rd piece to be last IEN in file.
  S MAGLAST=$O(^MAG(2005.1,"A"),-1)
  S $P(^MAG(2005.1,0),U,4)=MAGCNT
  I '($P(^MAG(2005.1,0),U,3)=MAGLAST) S $P(^MAG(2005.1,0),U,3)=MAGLAST
+ ;
+ ;--- Fix subfile numbers in the headers of the multiples (MAG*3*93).
+ ;    IF DEFINITIONS OF MULTIPLES OF THE IMAGE AUDIT FILE (#2005.1)
+ ;    CHANGE OR NEW MULTIPLES ARE ADDED, THE FOLLOWING CODE MUST BE
+ ;--- CHECKED AND UPDATED IF NECESSARY!
+ ;
+ F SUB="1^2005.14P","4^2005.1106DA","5^2005.11PA","6^2005.1111A","99^2005.199D"  D
+ . S TMP=$P(SUB,U)  Q:'($D(^MAG(2005.1,MAGARCIE,TMP,0))#2)
+ . S $P(^MAG(2005.1,MAGARCIE,TMP,0),U,2)=$P(SUB,U,2)
+ . Q
+ ;
+ ;--- Create cross-reference entries for the entry
  S DA=MAGARCIE
  S DIK="^MAG(2005.1," D IX1^DIK
  Q
 DELFILE ;Delete image file on server if exists 
  ;gek 3/21/2003  Changed to stop using FullRes Path for Abs,Big
  ;   and only Delete .TXT and Alternates if Full is being deleted.
- N X0,X1,X2,ALTEXT,ALTPATH,MAGXX,XBIG
+ N X0,X1,X2,ALTEXT,ALTPATH,MAGXX,XBIG,MAGFILE2
  N MAGPLC ; DBI - SEB 9/20/2002
  ; MAGIEN IS ASSUMED TO BE DEFINED.
  ; MAGXX         - This is IEN in ^MAG(2005, MAGFILEB Expects this to be defined.
@@ -177,8 +210,8 @@ DELFILE ;Delete image file on server if exists
  . ;    We only attempt to delete them here  (If we have a path to FullRes on Magnetic)
  . S X2=0
  . F  S X2=$O(^MAG(2006.1,MAGPLC,2,X2)) Q:'X2  D
- . . S ALTEXT=^MAG(2006.1,MAGPLC,2,X2,0)
- . . S ALTPATH=$P(MAGFILE2,".")_"."_ALTEXT
+ . . S ALTEXT=$P(^MAG(2006.1,MAGPLC,2,X2,0),"^",1)             ;CR1023
+ . . S ALTPATH=MAGFILE2,$P(ALTPATH,".",$L(ALTPATH,"."))=ALTEXT ;CR1023 for FQDN issue
  . . S X=$$DELETE^MAGBAPI(ALTPATH,MAGPLC)
  . Q
  ;

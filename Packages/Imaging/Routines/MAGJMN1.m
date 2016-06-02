@@ -1,6 +1,6 @@
-MAGJMN1 ;WIRMFO/JHC VRad Maint functions ; 29 Jul 2003  4:02 PM
- ;;3.0;IMAGING;**16,9,22,18,65,76**;Jun 22, 2007;Build 19
- ;;Per VHA Directive 2004-038, this routine should not be modified.
+MAGJMN1 ;WIRMFO/JHC - VRad Maint functions ; 3 May 2013  12:14 PM
+ ;;3.0;IMAGING;**16,9,22,18,65,76,101,90,115,120,133**;Mar 19, 2002;Build 5393;Sep 09, 2013
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -8,7 +8,6 @@ MAGJMN1 ;WIRMFO/JHC VRad Maint functions ; 29 Jul 2003  4:02 PM
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -16,6 +15,10 @@ MAGJMN1 ;WIRMFO/JHC VRad Maint functions ; 29 Jul 2003  4:02 PM
  ;; | to be a violation of US Federal Statutes.                     |
  ;; +---------------------------------------------------------------+
  ;;
+ENVCHK ; "Environment Check" for KIDS Install
+ I 'XPDENV Q  ; Proceed only if in Install phase
+ N MAGJKIDS S MAGJKIDS=1
+ D BGCSTOP
  Q
  ;
 SVRLIST ;
@@ -93,13 +96,18 @@ ENSRCH ; Invoke Search for 2006.631 def'n
  Q
  ;
 BLDDEF(LSTID) ; build DEF nodes for Column/Sort defs
- N QX,SS,STR,LSTHDR,T,T0,T8,T6,HASCASE,XT,HASDATE
- S SS=0,HASCASE=0,HASDATE=0
+ N X,QX,SS,STR,LSTHDR,T,T0,T8,T6,HASCASE,XT,HASDATE,HASNIMG,HASPRIO,HASLOCK,LISTYPE
+ S SS=0,HASCASE=0,HASDATE=0,HASNIMG=0,HASPRIO=0,HASLOCK=0
+ S LISTYPE=$P($G(^MAG(2006.631,LSTID,0)),U,3)
  ; columns/hdrs: Order in T array by the Relative Column Order
  F  S SS=$O(^MAG(2006.631,LSTID,1,SS)) D  Q:'SS
  . I 'SS D  Q
- . . I 'HASCASE S X=1 D BLDDEF2(X)  ; FORCE CASE#
+ . . I 'HASCASE S X=1 D BLDDEF2(X)  ; Force CASE#
  . . I 'HASDATE S X=7 D BLDDEF2(X)  ; DATE/TIME
+ . . I 'HASNIMG S X=9 D BLDDEF2(X)  ; NUMBER IMAGES
+ . . Q:LISTYPE'="U"  ; force below only if for an Unread list
+ . . I 'HASLOCK S X=2 D BLDDEF2(X)  ; EXAM LOCK IND.
+ . . I 'HASPRIO S X=5 D BLDDEF2(X)  ; PRIORITY
  . E  S X=^MAG(2006.631,LSTID,1,SS,0)
  . D BLDDEF2(X)
  ; go thru T to build ordered field sequence for output columns
@@ -121,6 +129,9 @@ BLDDEF2(X) ;
  S X=+X_$S($P(X,U,2):";"_+$P(X,U,2),1:"")
  I 'HASCASE S HASCASE=(+X=1)
  I 'HASDATE S HASDATE=(+X=7)
+ I 'HASNIMG S HASNIMG=(+X=9)
+ I 'HASLOCK S HASLOCK=(+X=2)
+ I 'HASPRIO S HASPRIO=(+X=5)
  S T0=^MAG(2006.63,+X,0),T6=+$P(T0,U,6) S:'T6 T6=99
  S T8=$P(T0,U,8) I T8]"" S T8="~"_T8
  S XT=$S($P(T0,U,3)]"":$P(T0,U,3),1:$P(T0,U,2))_T8
@@ -128,13 +139,10 @@ BLDDEF2(X) ;
  S T(T6,+X)=X_U_XT
  Q
  ;
-PRE ; init 2006.63 prior to KIDS install
- N DIK,DA S DIK="^MAG(2006.63,",DA=0 F  S DA=$O(@(DIK_DA_")")) Q:'DA  D ^DIK
- Q
- ;
-P18 ; Patch 18 inits
- D BLDALL
- D POST
+POSTINST ; Patch installation inits, etc.
+ ; D BLDALL ; update list definitions  <*> Use any time fields are added
+ D BGCSTRT ; re-start background compile
+ D POST ; install message, etc.
  Q
  ;
 BLDALL ; Create "DEF" nodes, Button labels List Def'ns
@@ -187,7 +195,7 @@ VRSIT ;
  S DIC=2006.69,DIC(0)="ALMEQ"
  I '$D(^MAG(DIC,1)) S DLAYGO=DIC
  D ^DIC I Y=-1 K DIC,DA,DR,DIE,DLAYGO Q
- S DIE=2006.69,DA=+Y,DR=".01:3.99;4.1:20"
+ S DIE=2006.69,DA=+Y,DR=".01:20"
  D ^DIE
  K DIC,DA,DR,DIE,DLAYGO
  N PLACE S DA=""
@@ -199,6 +207,29 @@ VRSIT ;
  K DA,DR,DIE
  Q
  ;
+ ;+++++ OPTION: MAGJ E/E DEFAULT USER PROFILES
+ ;
+ ; FileMan ^DIE call to enter/edit IMAGING SITE PARAMETERS File (#2006.1),
+ ;   fields #202: DEFAULT VISTARAD USERPREF RAD and
+ ;          #203: DEFAULT VISTARAD USERPREF NON.
+ ; 
+ ; These fields point to entries in the MAGJ USER DATA File (#2006.68), and
+ ;   allow the VistARad client to initialize new VistARad users to the settings
+ ;   held by the appropriate default user type ("Radiologist", "Non-rad'ist").
+ ;
+EEPRO ;
+ ;
+ ;--- Get IEN of IMAGING SITE PARAMETERS File.
+ N FIELD,SITEPIEN S SITEPIEN=+$$IMGSIT^MAGJUTL1(DUZ(2),1)
+ F FIELD=202,203 D
+ . ;
+ . ;--- Report field being edited.
+ . N PROMPT S PROMPT=$S(FIELD=202:"RADIOLOGIST",FIELD=203:"NON-RADIOLOGIST")
+ . W !!,"Editing default "_PROMPT_" profile ...",!
+ . N DA,DIE,DR
+ . S DIE=2006.1,DR=FIELD,DA=SITEPIEN D ^DIE
+ . Q
+ Q
 EEPREF ;
  W @IOF,!!?10,"Enter/Edit VistARad Prefetch Logic",!!
  N MAGIEN
@@ -225,6 +256,38 @@ PRPREF ;Print VRad Prefetch
  W !! S DIC=2006.65,L=0,BY="[MAGJ PRIOR SORT]"
  D EN1^DIP
  R !,"Enter RETURN to continue: ",X:DTIME W !
+ Q
+ ;
+BGCSTOP ; Stop Background Compile program
+ N MAGCSTRT,GO,NTRY,RETRY,X
+ S MAGCSTRT=0,GO=1
+ S X=$G(^MAG(2006.69,1,0))
+ I X]"",+$P(X,U,8) D  ; Background compile switch; skip if already false
+ . S ^MAG(2006.69,"BGSTOP")=X ; save current settings for restore later
+ . S MAGCSTRT=1
+ . S $P(X,U,8)=0
+ . S ^MAG(2006.69,1,0)=X  ; disable compile
+ . W !!,*7,"Wait for Background Compile program to stop;"
+ . W !,"     this might take up to a few minutes."
+ . S NTRY=60
+ . F I=1:1:NTRY W "." L +^XTMP("MAGJ2","BKGND2","RUN"):3 I  Q  ; process maintains lock while running
+ . I  D
+ . . L -^XTMP("MAGJ2","BKGND2","RUN")
+ . . W !!,"Background Compile Stopped"
+ . . I +$G(MAGJKIDS) W "; proceeding with install.",! H 2
+ . E  D
+ . . S X=$$YN("Background Compile NOT Stopped -- Try again?","Y")
+ . . S RETRY=("Y"[X),GO=0
+ . . S ^MAG(2006.69,1,0)=^MAG(2006.69,"BGSTOP") K ^MAG(2006.69,"BGSTOP")
+ I 'GO G BGCSTOP:RETRY
+ I 'GO,+$G(MAGJKIDS) W !!,*7," * * * Exiting out of patch installation * * * ",! H 3 S XPDQUIT=1
+ Q
+BGCSTRT ; re-enable Background Compile
+ I $D(^MAG(2006.69,"BGSTOP")) S X=^("BGSTOP") W " ... Enabling background compile ."
+ E  Q
+ S ^MAG(2006.69,1,0)=X
+ K ^MAG(2006.69,"BGSTOP")
+ W !!,"Background Compile Enabled.",! H 3
  Q
  ;
 END ;

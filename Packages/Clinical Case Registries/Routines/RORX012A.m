@@ -1,6 +1,25 @@
-RORX012A ;HCIOFO/SG - COMBINED MEDS AND LABS (QUERY & STORE) ; 12/8/05 10:39am
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORX012A ;HOIFO/SG,VAC - COMBINED MEDS AND LABS (QUERY & STORE) ;4/7/09 2:09pm
+ ;;1.5;CLINICAL CASE REGISTRIES;**8,13,19,21**;Feb 17, 2006;Build 45
  ;
+ ; This routine uses the following IAs:
+ ;
+ ; #10103 FMADD^XLFDT (supported)
+ ;   
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                 --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*8    MAR  2010   V CARR       Modified to handle ICD9 filter for
+ ;                                      'include' or 'exclude'.
+ ;ROR*1.5*13   DEC  2010   A SAUNDERS   User can select specific patients,
+ ;                                      clinics, or divisions for the report.
+ ;ROR*1.5*19   FEB  2012   K GUPTA      Support for ICD-10 Coding System
+ ;ROR*1.5*21   SEP 2013    T KOPP       Add ICN column if Additional Identifier
+ ;                                       requested.
+ ;******************************************************************************
+ ;******************************************************************************
  Q
  ;
  ;***** LAB SEARCH CALLBACK
@@ -51,8 +70,13 @@ QUERY(FLAGS,NSPT) ;
  N RORLDST       ; Descriptor for Lab search API
  N RORPTN        ; Number of patients in the registry
  N RORXDST       ; Descriptor for pharmacy search API
+ N RORCDLIST     ; Flag to indicate whether a clinic or division list exists
+ N RORCDSTDT     ; Start date for clinic/division utilization search
+ N RORCDENDT     ; End date for clinic/division utilization search
+ N RORICN        ; National ICN
  ;
  N CNT,ECNT,IEN,IENS,LTEDT,LTSDT,PATIEN,RC,RXEDT,SKIP,SKIPEDT,SKIPSDT,TMP,UTEDT,UTIL,UTSDT,VA,VADM,XREFNODE
+ N RCC,FLAG
  S XREFNODE=$NA(^RORDATA(798,"AC",+RORREG))
  S (CNT,ECNT,NSPT,RC)=0,(SKIPEDT,SKIPSDT)=0
  ;--- Utilization date range
@@ -88,18 +112,32 @@ QUERY(FLAGS,NSPT) ;
  . S RXEDT=$$FMADD^XLFDT(RORXEDT\1,1)
  Q:'(RORLAB!RORPHARM) 0
  ;
+ ;=== Set up Clinic/Division list parameters
+ S RORCDLIST=$$CDPARMS^RORXU001(.RORTSK,.RORCDSTDT,.RORCDENDT,1)
+ ;
  ;--- Browse through the registry records
  S IEN=0
+ S FLAG=$G(RORTSK("PARAMS","ICDFILT","A","FILTER"))
  F  S IEN=$O(@XREFNODE@(IEN))  Q:IEN'>0  D  Q:RC<0
  . S TMP=$S(RORPTN>0:CNT/RORPTN,1:"")
  . S RC=$$LOOP^RORTSK01(TMP)  Q:RC<0
  . S IENS=IEN_",",CNT=CNT+1
+ . ;--- Get patient DFN
+ . S PATIEN=$$PTIEN^RORUTL01(IEN)  Q:PATIEN'>0
+ . ;check for patient list and quit if not on list
+ . I $D(RORTSK("PARAMS","PATIENTS","C")),'$D(RORTSK("PARAMS","PATIENTS","C",PATIEN)) Q
  . ;--- Check if the patient should be skipped
  . Q:$$SKIP^RORXU005(IEN,FLAGS,SKIPSDT,SKIPEDT)
  . S SKIP=1,UTIL=0
+ . ;--- Check if patient should be filtered because of ICD codes
+ . S RCC=0
+ . I FLAG'="ALL" D
+ . . S RCC=$$ICD^RORXU010(PATIEN)
+ . I (FLAG="INCLUDE")&(RCC=0) Q
+ . I (FLAG="EXCLUDE")&(RCC=1) Q
  . ;
- . ;--- Get the patient IEN (DFN)
- . S PATIEN=$$PTIEN^RORUTL01(IEN)  Q:PATIEN'>0
+ . ;--- Check for Clinic or Division list and quit if not in list
+ . I RORCDLIST,'$$CDUTIL^RORXU001(.RORTSK,PATIEN,RORCDSTDT,RORCDENDT) Q
  . ;
  . D  I RC<0  S ECNT=ECNT+1,RC=0  Q
  . . ;--- Search for pharmacy data
@@ -136,8 +174,9 @@ QUERY(FLAGS,NSPT) ;
  . ;
  . ;--- Get and store the patient's data
  . D VADEM^RORUTL05(PATIEN,1)
+ . S RORICN=$S($$PARAM^RORTSK01("PATIENTS","ICN"):$$ICN^RORUTL02(PATIEN),1:"")
  . S TMP=$$DATE^RORXU002(VADM(6)\1)
- . S ^TMP("RORX012",$J,"PAT",PATIEN)=VA("BID")_U_VADM(1)_U_TMP
+ . S ^TMP("RORX012",$J,"PAT",PATIEN)=VA("BID")_U_VADM(1)_U_TMP_U_RORICN
  . S NSPT=NSPT+1
  ;
  ;---
@@ -170,7 +209,7 @@ RXSCB(ROR8DST,ORDER,ORDFLG,DRUG,DATE) ;
  ;       >0  Number of non-fatal errors
  ;
 STORE(REPORT,NSPT) ;
- N CNT,DATE,DFN,DOD,ECNT,IEN,ITEM,LAST4,LTLST,NAME,NODE,PTCNT,PTLST,PTNAME,RC,RXLST,TMP,VAL
+ N CNT,DATE,DFN,DOD,ECNT,ICN,IEN,ITEM,LAST4,LTLST,NAME,NODE,PTCNT,PTLST,PTNAME,RC,RXLST,TMP,VAL
  S (ECNT,RC)=0,(LTLST,PTLST,RXLST)=-1
  ;--- Force the "patient data" note in the output
  D ADDVAL^RORTSK11(RORTSK,"PATIENT",,REPORT)
@@ -194,7 +233,7 @@ STORE(REPORT,NSPT) ;
  . S CNT=CNT+1,NODE=$NA(^TMP("RORX012",$J,"PAT",DFN))
  . ;--- Patient's data
  . S TMP=$G(@NODE)
- . S LAST4=$P(TMP,U),PTNAME=$P(TMP,U,2),DOD=$P(TMP,U,3)
+ . S LAST4=$P(TMP,U),PTNAME=$P(TMP,U,2),DOD=$P(TMP,U,3),ICN=$P(TMP,U,4)
  . ;--- Patient list
  . S TMP=$S(LTLST<0:1,1:$D(@NODE@("LR"))<10)
  . I TMP,$S(RXLST<0:1,1:$D(@NODE@("RX"))<10)  D  Q
@@ -202,6 +241,7 @@ STORE(REPORT,NSPT) ;
  . . D ADDVAL^RORTSK11(RORTSK,"NAME",PTNAME,ITEM,1)
  . . D ADDVAL^RORTSK11(RORTSK,"LAST4",LAST4,ITEM,2)
  . . D ADDVAL^RORTSK11(RORTSK,"DOD",DOD,ITEM,1)
+ . . I $$PARAM^RORTSK01("PATIENTS","ICN") D ADDVAL^RORTSK11(RORTSK,"ICN",ICN,ITEM,1)
  . . S PTCNT=PTCNT+1
  . ;--- List of Lab tests
  . S DATE=""
@@ -214,6 +254,7 @@ STORE(REPORT,NSPT) ;
  . . . . D ADDVAL^RORTSK11(RORTSK,"NAME",PTNAME,ITEM,1)
  . . . . D ADDVAL^RORTSK11(RORTSK,"LAST4",LAST4,ITEM,2)
  . . . . D ADDVAL^RORTSK11(RORTSK,"DOD",DOD,ITEM,1)
+ . . . . I $$PARAM^RORTSK01("PATIENTS","ICN") D ADDVAL^RORTSK11(RORTSK,"ICN",ICN,ITEM,1)
  . . . . D ADDVAL^RORTSK11(RORTSK,"DATE",DATE\1,ITEM,1)
  . . . . D ADDVAL^RORTSK11(RORTSK,"LTNAME",NAME,ITEM,1)
  . . . . S VAL=$G(@NODE@("LR",DATE,NAME,IEN))
@@ -226,6 +267,7 @@ STORE(REPORT,NSPT) ;
  . . D ADDVAL^RORTSK11(RORTSK,"NAME",PTNAME,ITEM,1)
  . . D ADDVAL^RORTSK11(RORTSK,"LAST4",LAST4,ITEM,2)
  . . D ADDVAL^RORTSK11(RORTSK,"DOD",DOD,ITEM,1)
+ . . I $$PARAM^RORTSK01("PATIENTS","ICN") D ADDVAL^RORTSK11(RORTSK,"ICN",ICN,ITEM,1)
  . . D ADDVAL^RORTSK11(RORTSK,"RXNAME",NAME,ITEM,1)
  ;--- Inactivate the patient list tag if the list is empty
  D:PTCNT'>0 UPDVAL^RORTSK11(RORTSK,PTLST,,,1)

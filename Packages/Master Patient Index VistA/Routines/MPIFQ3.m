@@ -1,5 +1,5 @@
 MPIFQ3 ;BIRM/CMC-QUERY LIST MANAGER FUNCTIONS ;APR 28, 2003
- ;;1.0; MASTER PATIENT INDEX VISTA ;**28,43**;30 Apr 99
+ ;;1.0; MASTER PATIENT INDEX VISTA ;**28,43,53**;30 Apr 99;Build 1
  ;
 MSG(LOCSSN,LOCNAME,MPISSN,MPINAME,MPIDOB,LOCDOB) ;
  W !!!,"Local SSN = "_LOCSSN,?40,"MPI SSN = "_MPISSN
@@ -76,10 +76,8 @@ HEREICN(ICN) ;
  N DFN S DFN=$$GETDFN^MPIF001(+ICN)
  Q:$G(DFN)'>0 0
  Q DFN
-LOC2(DFN) ;
- W:'$D(MPIFRPC) !!,"Potential Match Found Assigning Local ICN"
- D START^RGHLLOG(),EXC^RGHLLOG(218,"For Patient DFN="_DFN_" Use Single Patient Initialization to MPI option to manually process",DFN),STOP^RGHLLOG()
- D LOCAL(DFN)
- Q
- D LOCAL(DFN)
+LOC2(DFN) ;**53 MPIC_1853 The LOC2 module is obsolete and is no longer being called.
+ ;W:'$D(MPIFRPC) !!,"Potential Match Found Assigning Local ICN"
+ ;D START^RGHLLOG(),EXC^RGHLLOG(218,"For Patient DFN="_DFN_" Use Single Patient Initialization to MPI option to manually process",DFN),STOP^RGHLLOG()
+ ;D LOCAL(DFN)
  Q

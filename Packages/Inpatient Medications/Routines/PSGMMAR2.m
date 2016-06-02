@@ -1,5 +1,5 @@
 PSGMMAR2 ;BIR/CML3-MD MARS - PRINT C ORDERS(UD) ;09 Feb 99 / 12:50 PM
- ;;5.0; INPATIENT MEDICATIONS ;**8,20,111,131,145**;16 DEC 97;Build 17
+ ;;5.0; INPATIENT MEDICATIONS ;**8,20,111,131,145**;16 DEC 97;Build 7
  ; Reference to ^PS(55 is supported by DBIA# 2191
 S1 ;
  I PSGMARB'=1 S:PSGRBPPN="P" X=PN,Y=RB S:PSGRBPPN="R" X=RB,Y=PN D
@@ -99,7 +99,10 @@ ENB ;
  W !,LN1
  W !,"|",?11,"SIGNATURE/TITLE",?38,"| INIT |          INJECTION SITES           |",?87,"MED/DOSE OMITTED",?107,"|     REASON     | INIT |"
  F Q=1:1:10 W !,"|"_$E(LN1,1,37)_"|------|"_BLN(Q),?82,"|"_$E(LN1,1,24)_"|"_$E(LN1,1,16)_"|------|"
- W !,LN1,!?3,PPN,?45,PSSN,?58,"Room-Bed: "_$S(PWDN'["C!":PRB,1:""),?100,$S($D(PSGMPG):PSGMPGN,1:""),?116,"VA FORM 10-2970",*13
+ ;DSS/RAC - BEGIN MOD - deveteranization
+ I ^%ZOSF("ZVX")["VX" W !,LN1,!?3,PPN,?45,PSSN,?58,"Room-Bed: "_$S(PWDN'["C!":PRB,1:""),?100,$S($D(PSGMPG):PSGMPGN,1:""),?116,*13
+ E  W !,LN1,!?3,PPN,?45,PSSN,?58,"Room-Bed: "_$S(PWDN'["C!":PRB,1:""),?100,$S($D(PSGMPG):PSGMPGN,1:""),?116,"VA FORM 10-2970",*13
+ ;DSS/RAC - END MOD
  Q
 SITE(LEN) ;* Get the Institution name
  ;* Input : LEN = Report width (80 or 132 column)

@@ -1,5 +1,5 @@
-ORX8 ; slc/dcm,MKB - OE/RR Orders file extracts ; 08 May 2002  2:12 PM
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**13,21,48,68,92,141,163**;Dec 17, 1997
+ORX8 ; slc/dcm,MKB - OE/RR Orders file extracts ;12/16/10  11:18
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**13,21,48,68,92,141,163,272**;Dec 17, 1997;Build 53
  ;
 EN(ORIFN) ;Returns data from file 100 in the ORUPCHUK array [DBIA#871]
  Q:'$D(ORIFN)  Q:'$D(^OR(100,+ORIFN,0))  K ORUPCHUK
@@ -7,14 +7,15 @@ EN(ORIFN) ;Returns data from file 100 in the ORUPCHUK array [DBIA#871]
  K ORTX,X0,X3,%X,%Y,J,ORINDX,X
  Q
 A S X0=^OR(100,ORIFN,0),X3=^(3),ORUPCHUK("ORPK")=$S($D(^(4)):^(4),1:"")
- S ORUPCHUK("ORVP")=$P(X0,"^",2),ORUPCHUK("ORPCL")=$P(X0,"^",5),X=$P(X0,"^",6),ORUPCHUK("ORDUZ")=X_"^"_$S($D(^VA(200,+X,0)):$P(^(0),"^"),1:""),ORUPCHUK("ORODT")=$P(X0,"^",7),ORUPCHUK("ORSTOP")=$P(X0,"^",9),ORUPCHUK("ORL")=$P(X0,"^",10)
+ S ORUPCHUK("ORVP")=$P(X0,"^",2),ORUPCHUK("ORPCL")=$P(X0,"^",5),X=$P(X0,"^",6),ORUPCHUK("ORDUZ")=X_"^"_$$GET1^DIQ(200,+X,.01),ORUPCHUK("ORODT")=$P(X0,"^",7),ORUPCHUK("ORSTOP")=$P(X0,"^",9),ORUPCHUK("ORL")=$P(X0,"^",10)
  S X=$P(X0,"^",11),ORUPCHUK("ORTO")=X_"^"_$S($D(^ORD(100.98,+X,0)):$P(^(0),"^"),1:"")
- S X=$P(X3,"^",3),ORUPCHUK("ORSTS")=X_"^"_$P(^ORD(100.01,X,0),"^"),ORUPCHUK("ORSTRT")=$P(X0,"^",8),X=$P(X0,"^",4),(ORUPCHUK("ORNP"),ORUPCHUK("ORPV"))=X_"^"_$S(X:$S($D(^VA(200,+X,0)):$P(^(0),"^"),1:""),1:"")
+ S X=$P(X3,"^",3),ORUPCHUK("ORSTS")=X_"^"_$P(^ORD(100.01,X,0),"^"),ORUPCHUK("ORSTRT")=$P(X0,"^",8),X=$P(X0,"^",4),(ORUPCHUK("ORNP"),ORUPCHUK("ORPV"))=X_"^"_$S(X:$$GET1^DIQ(200,+X,.01),1:"")
  D TEXT^ORQ12(.ORTX,ORIFN,$G(ORLENGTH))
  I $O(ORTX(0)) S %X="ORTX(",%Y="ORUPCHUK(""ORTX""," D %XY^%RCR
  Q
  ;
 VALUE(IFN,ID,INST,FORMAT) ; -- Returns value of prompt by ID
+ N PRMT
  I '$G(IFN)!('$D(^OR(100,+$G(IFN),0)))!($G(ID)="") Q ""
  N I,Y S I=0,Y="" S:'$G(INST) INST=1
  F  S I=$O(^OR(100,+IFN,4.5,"ID",ID,I)) Q:I'>0  I $P($G(^OR(100,+IFN,4.5,+I,0)),U,3)=INST S PRMT=+$P(^(0),U,2),Y=$G(^(1)) Q
@@ -48,7 +49,7 @@ LATEST(ORPAT,ORIT,ORY) ; -- Return most recent orders for ORPAT,ORIT as
 DELAYED(ORY,ORDER) ; -- Return delayed order(s) with same OrdItem as ORDER
  ;    in ORY(ORIFN) = PatEventPtr ^ EventName
  ;
- N ORI,ORIT,ORIFN S (ORY,ORI)=0
+ N ORI,ORIT,ORIFN,EVT,PTEVT S (ORY,ORI)=0
  F  S ORI=$O(^OR(100,+ORDER,.1,ORI)) Q:ORI'>0  S ORIT=+$G(^(ORI,0)) D
  . S EVT=0 F  S EVT=$O(^ORE(100.2,"AE",+ORVP,EVT)) Q:EVT<1  S PTEVT=+$O(^(EVT,0)) D  ;pending events
  .. S ORIFN=0 F  S ORIFN=+$O(^OR(100,"AEVNT",ORVP,PTEVT,ORIFN)) Q:ORIFN<1  D  ;delayed orders
@@ -77,3 +78,6 @@ AND(DAD) ; -- Return 1 or 0, if all conjunctions are AND [DBIA#3632]
  N I,Y S I=0,Y=1
  F  S I=+$O(^OR(100,+$G(DAD),4.5,"ID","CONJ",I)) Q:I<1  I $E($G(^OR(100,+$G(DAD),4.5,I,1)))'="A" S Y=0 Q
  Q Y
+OITM(IEN,FILE) ; -- Return 101.43 ien for package IEN;FILE
+ ;    where FILE = "99xxx" as passed in HL7 messages
+ Q $O(^ORD(101.43,"ID",+$G(IEN)_";"_$G(FILE),0))

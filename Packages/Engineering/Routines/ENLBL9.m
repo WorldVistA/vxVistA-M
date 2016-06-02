@@ -1,5 +1,5 @@
 ENLBL9 ;(WASH ISC)/DH-Companion Listing for Equipment Labels ;11.27.96
- ;;7.0;ENGINEERING;**12,35,80**;Aug 17, 1993
+ ;;7.0;ENGINEERING;**12,35,80,90**;Aug 17, 1993;Build 25
  ;  Print companion list (if desired)
  ;  Also asks if previously printed labels should be reprinted
 EN S DIR(0)="Y",DIR("A")="New labels only",DIR("B")="YES"
@@ -19,6 +19,7 @@ EN1 K ENEQIO W !,"Would you like a companion listing for this set of labels" S %
  Q
  ;
 CPRNT ;I $D(^ENG(6914,DA,3)),$P(^(3),U,10)]"" Q  ;Suppress if already printed
+ ;I $F(ENEQIO,"/") S ENEQIO=$P(ENEQIO,"/",$L(ENEQIO,"/"))
  U ENEQIO I ENEQY=0!((ENEQIOSL-ENEQY)<8) D CHDR
  K EN S (ENMAN,ENMOD,ENSN,ENCAT,ENUSE,ENSER,ENLOC,ENPMN)="",ENMEN=$P(^ENG(6914,DA,0),U,2) S:$D(^ENG(6914,DA,1)) EN(1)=^(1) S:$D(^(3)) EN(3)=^(3)
  I $D(EN(1)) S ENMAN=$P(EN(1),U,4),ENMOD=$P(EN(1),U,2),ENSN=$P(EN(1),U,3),ENCAT=$P(EN(1),U,1)
@@ -41,6 +42,7 @@ HLP W !!,"A 'companion listing' is simply a printout on regular paper (must be a
  Q
 OPEN ;
  S IOP=ENEQION D ^%ZIS K IOP
+ S ENEQIO=IO  ;HD308658
  Q
 ERR W !,*7,"Device selection unsuccessful.",!
  Q

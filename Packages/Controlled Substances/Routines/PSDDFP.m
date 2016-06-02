@@ -1,12 +1,13 @@
 PSDDFP ;BIR/JPW-Dispense from Pharmacy w/o Green Sheet ; 8 Aug 94
- ;;3.0; CONTROLLED SUBSTANCES ;**16,66**;13 Feb 97;Build 3
+ ;;3.0; CONTROLLED SUBSTANCES ;**16,66,69**;13 Feb 97;Build 13
  ;
  ;References to ^PSD(58.8, supported by DBIA2711
+ ;References to ^PSD(58.81 supported by DBIA2808
  ;References to ^PSDRUG( supported by DBIA #221
  ;References to ^XUSEC("PSJ RPHARM" supported by DBIA #1095
  ;
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- I '$D(^XUSEC("PSJ RPHARM",DUZ)) W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to",!,?12,"dispense narcotic supplies.",!!,"PSJ RPHARM security key required.",! Q
+ I '$D(^XUSEC("PSJ RPHARM",DUZ)),'$D(^XUSEC("PSD TECH ADV",DUZ)) W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to",!,?12,"dispense narcotic supplies.",!!,"PSJ RPHARM or PSD TECH ADV security key required.",! Q
  S PSDUZ=DUZ,PSDUZN=$P($G(^VA(200,PSDUZ,0)),"^")
 ASKD ;ask disp loc
  S PSDS=$P(PSDSITE,U,3),PSDSN=$P(PSDSITE,U,4)

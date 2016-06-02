@@ -1,5 +1,5 @@
-TIUSRVP ; SLC/JER - RPCs for CREATE & UPDATE ;8/16/05
- ;;1.0;TEXT INTEGRATION UTILITIES;**1,7,19,28,47,89,104,100,115,109,167,113,112,175,157,184**;Jun 20, 1997
+TIUSRVP ; SLC/JER - RPCs for CREATE & UPDATE ; 8/31/12 12:41pm
+ ;;1.0;TEXT INTEGRATION UTILITIES;**1,7,19,28,47,89,104,100,115,109,167,113,112,175,157,184,239,271**;Jun 20, 1997;Build 12
 MAKE(SUCCESS,DFN,TITLE,VDT,VLOC,VSIT,TIUX,VSTR,SUPPRESS,NOASF) ; New Document
  ; SUCCESS = (by ref) TIU DOCUMENT # (PTR to 8925)
  ;         = 0^Explanatory message if no SUCCESS
@@ -70,7 +70,7 @@ MAKEADD(TIUDADD,TIUDA,TIUX,SUPPRESS) ; Create addendum
  D MAKEADD^TIUSRVP2(.TIUDADD,TIUDA,.TIUX,+$G(SUPPRESS))
  Q
 UPDATE(SUCCESS,TIUDA,TIUX,SUPPRESS) ; Update existing Document
- N TIU,TIUI,TIUC,TIUD0,TIUD12,TIUD15,TIUCPF,TITLE,PRFUNLNK
+ N TIU,TIUI,TIUC,TIUD0,TIUD12,TIUD14,TIUD15,TIUCPF,TITLE,PRFUNLNK,TIUY,TIUCC,TIUFLAG S TIUFLAG=0
  I $S(+$G(TIUDA)'>0:1,'$D(^TIU(8925,+TIUDA,0)):1,1:0) D  Q
  . S SUCCESS="0^ Cannot update a non-existent document..."
  I +$P($G(^TIU(8925,+TIUDA,0)),U,5)>6 D  Q
@@ -84,14 +84,19 @@ UPDATE(SUCCESS,TIUDA,TIUX,SUPPRESS) ; Update existing Document
  . I +TIUC>0 S ^TIU(8925,+TIUDA,"TEMP",0)="^^"_TIUC_U_TIUC_U_DT_"^^"
  . K TIUX("TEXT")
  I +$O(TIUX(""))'>0 S:+$G(SUPPRESS) SUCCESS=+TIUDA Q
- S TIUD0=$G(^TIU(8925,TIUDA,0)),TIUD12=$G(^(12)),TITLE=+TIUD0
+ S TIUD0=$G(^TIU(8925,TIUDA,0)),TIUD12=$G(^(12)),TIUD14=$G(^(14)),TITLE=+TIUD0
  ;Set a flag to indicate whether or not a Title is a member of the
  ;Clinical Procedures Class (1=Yes and 0=No)
  S TIUCPF=+$$ISA^TIULX(TITLE,+$$CLASS^TIUCP)
  D SETCOS^TIUSRVP2(TIUDA,.TIUX,TIUD0,TIUD12)
+ ; Consult association changed?  If so, rollback to Active status.    VM/RJT - *239
+ S TIUCC=$P($G(TIUD14),"^",5)
+ I +$G(TIUX("1405"))>0,+$G(TIUCC)>0,(+$G(TIUX("1405"))'=+TIUCC) D ROLLBACK^TIUCNSLT(TIUDA) S TIUFLAG=1
  ; Title changed? Refile DC
  I +$G(TIUX(.01))>0,(+$G(TIUX(.01))'=+TIUD0) D
  . S TIUX(.04)=$$DOCCLASS^TIULC1(+$G(TIUX(.01)))
+ . S TIUY=0 D ISCNSLT^TIUCNSLT(.TIUY,TITLE)
+ . I $G(TIUY),TIUFLAG=0 D ROLLBACK^TIUCNSLT(TIUDA) ;  if changed to Non-Consult title - VMP/RJT - *239
  . ; If change title from PRF to nonPRF, set flg to unlink note:
  . I $$ISPFTTL^TIUPRFL(TITLE),'$$ISPFTTL^TIUPRFL(+$G(TIUX(.01))) S PRFUNLNK=1
  D FILE(.SUCCESS,+TIUDA,.TIUX,+$G(SUPPRESS),TIUCPF)
@@ -147,6 +152,8 @@ FILE(SUCCESS,TIUDA,TIUX,SUPPRESS,TIUCPF) ; Call FM Filer & commit
  ;If the document is a member of the Clinical Procedures Class, set the
  ;Entered By field to the Author/Dictator field
  I $G(TIUCPF),+$G(TIUX(1202)) S TIUX(1302)=+$G(TIUX(1202))
+ ;*271 Prevent string date in 1301
+ S:$G(TIUX(1301)) TIUX(1301)=+TIUX(1301)
  M @FDARR=TIUX
  D FILE^DIE(FLAGS,"FDA","TIUMSG") ; File record
  I $D(TIUMSG)>9 S SUCCESS=0_U_$G(TIUMSG("DIERR",1,"TEXT",1)) Q

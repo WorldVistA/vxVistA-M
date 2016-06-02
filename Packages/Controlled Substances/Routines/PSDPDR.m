@@ -1,8 +1,10 @@
 PSDPDR ;BIR/BJW-Narc Disp/Rec Report (in lieu of VA FORM 10-2321) ; 09 FEB 95
- ;;3.0; CONTROLLED SUBSTANCES ;;13 Feb 97
+ ;;3.0; CONTROLLED SUBSTANCES ;**69**;13 Feb 97;Build 13
+ ;References to ^PSD(58.8, covered by DBIA2711
+ ;
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- S OK=$S($D(^XUSEC("PSJ RPHARM",DUZ)):1,$D(^XUSEC("PSJ PHARM TECH",DUZ)):1,1:0)
- I 'OK W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to",!,?12,"process/dispense narcotic supplies.",!!,"PSJ RPHARM or PSJ PHARM TECH security key required.",! K OK Q
+ S OK=$S($D(^XUSEC("PSJ RPHARM",DUZ)):1,$D(^XUSEC("PSJ PHARM TECH",DUZ)):1,$D(^XUSEC("PSD TECH ADV",DUZ)):1,1:0)
+ I 'OK W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to",!,?12,"process/dispense narcotic supplies.",!!,"PSJ RPHARM, PSJ PHARM TECH or PSD TECH ADV security key required.",! K OK Q
 COPY ;ask vault, nursing or both
  K DA,DIR,DIRUT S DIR(0)="SO^V:VAULT COPY ONLY;N:NURSING COPY ONLY;B:BOTH VAULT AND NURSING COPY"
  S DIR("A")="Select Disp/Receiving Report(s) to Print"

@@ -1,5 +1,5 @@
-MAGDIR9E ;WOIFO/PMK - Read a DICOM image file ; 15 Feb 2006  10:49 AM
- ;;3.0;IMAGING;**11,51,46**;16-February-2007;;Build 1023
+MAGDIR9E ;WOIFO/PMK - Read a DICOM image file ; 23 Apr 2009 9:07 AM
+ ;;3.0;IMAGING;**11,51,46,54,99**;Mar 19, 2002;Build 2057;Apr 19, 2011
  ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -15,7 +15,6 @@ MAGDIR9E ;WOIFO/PMK - Read a DICOM image file ; 15 Feb 2006  10:49 AM
  ;; | to be a violation of US Federal Statutes.                     |
  ;; +---------------------------------------------------------------+
  ;;
- ;
  ; M2MB server
  ;
  ; This routine creates the group entry in ^MAG(2005) and links it
@@ -28,7 +27,6 @@ MAGDIR9E ;WOIFO/PMK - Read a DICOM image file ; 15 Feb 2006  10:49 AM
  ;   XX    X   XX  XX   XX  XX  XXXXXXX  XX  XX      XX      XX
  ;    XX  XX   XX  XX   XX  XX       XX  XX  XX      XX      XX XX
  ;     XXXX     XXXX    XX  XX  XXXXXXX   XXX XX    XXXX      XXX
- ;
  ;
 GROUP() ; entry point from ^MAGDIR8 for consult/procedure groups
  N ACQDEVP ;-- pointer to acquisition device file (#2006.04)
@@ -47,10 +45,7 @@ GROUP() ; entry point from ^MAGDIR8 for consult/procedure groups
  I STUDYDAT,STUDYTIM D  ; get study date/time from image header
  . S DATETIME=(STUDYDAT_"."_STUDYTIM)-17000000 ; FileMan date.time fmt
  . Q
- E  D  ; use current date/time
- . N %,%H,%I,X
- . D NOW^%DTC S DATETIME=%
- . Q
+ E  S DATETIME=$$NOW^XLFDT() ; use current date/time
  ;
  ; initialize FILEDATA for GROUP and IMAGE
  ; get the acquisition device pointer (file 2005, field 107)
@@ -96,6 +91,8 @@ GROUP() ; entry point from ^MAGDIR8 for consult/procedure groups
  . . I $P($G(^MAG(2005,MAGGP,0)),"^",6)'=11 D  Q  ; 11=XRAY GROUP
  . . . S MAGGP="" ; wrong object type - skip this image group
  . . . Q
+ . . ; create a new group if this is for a different Study Instance UID
+ . . I STUDYUID'=$P($G(^MAG(2005,MAGGP,"PACS")),"^",1) S MAGGP="" Q
  . . S P=$P($G(^MAG(2005,MAGGP,"SOP")),"^",1)
  . . ; skip this image group if wrong SOP Class
  . . I '$$EQUIVGRP^MAGDFCNV(P,SOPCLASP) S MAGGP="" Q
@@ -199,7 +196,7 @@ GROUP() ; entry point from ^MAGDIR8 for consult/procedure groups
  . . S ERRCODE=$$TIUXLINK^MAGDIR9E()
  . . Q
  . E  I FILEDATA("PARENT FILE")=2006.5839 D  ; fix for ^GMR
- . . L +^MAG(2006.5839)
+ . . L +^MAG(2006.5839):1E9 ; Background job MUST wait
  . . I '$D(^MAG(2006.5839,0)) D
  . . . S ^MAG(2006.5839,0)="DICOM GMRC TEMP LIST^^0^0"
  . . . Q

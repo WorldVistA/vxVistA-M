@@ -1,5 +1,6 @@
 MAGGTRAI ;WOIFO/GEK - list images for Radiology report ; [ 11/08/2001 17:18 ]
- ;;3.0;IMAGING;**8**;Sep 15, 2004
+ ;;3.0;IMAGING;**8,93**;Dec 02, 2009;Build 163
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -86,7 +87,7 @@ GETLIST ; Private call. From other points in this routine, when RARPT is defined
  ;  sorts the images in Dicom Series, Dicom Image number order.
  ;
  K ^TMP("MAGGX",$J)
- N OI,IGCT,MAGIEN1,ORDCT,GCT,MAGQI,MAGX
+ N OI,IGCT,MAGIEN1,ORDCT,GCT,MAGQI,MAGX,SINGCT
  S (ORDCT,GCT,SINGCT)=0
  S IGCT=+$P($G(^RARPT(RARPT,2005,0)),U,4)
  ; Quit if no images for RARPT
@@ -136,7 +137,8 @@ ONELIST ;        Private Call from other parts of this routine.
  Q:'$D(^MAG(2005,MAGIEN1,0))
  ; if a single image just get record for that IEN
  I '$O(^MAG(2005,MAGIEN1,1,0)) D  Q
- . S MAGXX=MAGIEN1 D INFO^MAGGTII
+ . ;S MAGXX=MAGIEN1 D INFO^MAGGTII
+ . S MAGFILE=$$INFO^MAGGAII(MAGIEN1,"E")
  . S ORDCT=ORDCT+1,SINGCT=SINGCT+1
  . S ^TMP("MAGGX",$J,ORDCT,"S",SINGCT)="B2^"_MAGFILE
  D GROUP^MAGGTIG(.MAGTMP,MAGIEN1) I $P(@MAGTMP@(0),U,2)>0 D

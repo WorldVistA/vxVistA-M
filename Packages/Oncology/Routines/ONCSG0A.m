@@ -1,5 +1,5 @@
-ONCSG0A ;Hines OIFO/GWB - AUTOMATIC STAGING TABLES ;6/20/02
- ;;2.11;ONCOLOGY;**35,41,43**;Mar 07, 1995
+ONCSG0A ;Hines OIFO/GWB - AUTOMATIC STAGING TABLES ;10/28/10
+ ;;2.2;ONCOLOGY;**1**;Jul 31, 2013;Build 8
  ;
  ;HEAD AND NECK SITES (continued)
  ;
@@ -120,7 +120,7 @@ THYDM ;Thyroid - Medullary
 THYDPF ;Thyroid - Papillary or Follicular
  N OKMO
  S OKMO=("^80503^82603^82900^82903^83300^83303^83313^83323^83333^83340^83403^83503^80203^"[(U_MO_U))
- I 'OKMO W !!?12,"Histology code is incompatible." Q
+ I 'OKMO W:$G(RESTAGE)="" !!?12,"Histology code is incompatible." Q
  E  D
  .D AGE^ONCOCOM
  .I X<45 S SG=$S(M[1:2,M[0:1,1:"E")
@@ -137,14 +137,15 @@ THYDP45 ;THYROID - Papillary or Follicular - 45 years and older
  ..E  I T[4 S SG=3
  Q
  ;
-THY6 ;Thyroid Gland - 6th edition
+THY6 ;Thyroid Gland - 6th and 7th editions
  D AGE^ONCOCOM
  S MO=$$HIST^ONCFUNC(D0)
  S OKMO="80503^82603^82903^83303^83313^83323^83353^83403^83413^83423^83433^83443^83503" ;Papillary or Follicular
  I X<45,OKMO[MO S SG=$S(M=0:1,M=1:2,1:99) D  Q
+ .Q:$G(RESTAGE)="YES"
  .W !!,?12,"NOTE: Papillary or Follicular"
  .W !,?12,"      Under 45 years"
- S TNM=T_N_M D  K TNM Q
+ S TNM=$E(T,1)_N_M D  K TNM Q
  .I TNM=100 S SG=1 Q           ;I    T1    N0    M0
  .I TNM=200 S SG=2 Q           ;II   T2    N0    M0
  .I TNM=300 S SG=3 Q           ;III  T3    N0    M0
@@ -159,3 +160,6 @@ THY6 ;Thyroid Gland - 6th edition
  .I TNM="4A1B0" S SG="4A" Q    ;     T4a   N1b   M0
  .I T="4B",M=0 S SG="4B" Q     ;IVB  T4b   Any N M0
  .I M=1 S SG="4C" Q            ;IVC  Any T Any N M1
+ ;
+CLEANUP ;Cleanup
+ K D0,G,M,N,RESTAGE,T,X

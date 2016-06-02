@@ -1,13 +1,29 @@
 PXRRPCE5 ;HIN/MjK - Clinic Specific Caseload Demographics ;6/7/96
- ;;1.0;PCE PATIENT CARE ENCOUNTER;;Aug 12, 1996
+ ;;1.0;PCE PATIENT CARE ENCOUNTER;**189**;Aug 12, 1996;Build 13
+ ;;Reference to ^GMRD(120.51 supported by DBIA 1382
+ ;;Reference to ^PXRMINDX(120.5 supported by DBIA 4290
+ ;;Reference to EN^GMVPXRM supported by DBIA 3647
 BP ;_._._._._._._._._._._._._.Blood Pressure_._._._._._._._._._._._._._.
- S PXRRDFN=0 F  S PXRRDFN=$O(^TMP($J,PXRRCLIN,"CLINIC PATIENTS",PXRRDFN)) Q:'PXRRDFN  I $D(^GMR(120.5,"C",PXRRDFN)) S PXRRBIEN=0 F  S PXRRBIEN=$O(^GMR(120.5,"C",PXRRDFN,PXRRBIEN)) Q:'PXRRBIEN  D
- .  Q:$P(^GMR(120.5,PXRRBIEN,0),U)'>PXRRSXMO
- .  Q:$P(^GMR(120.5,PXRRBIEN,0),U)'<DT
- .  Q:$P(^GMR(120.5,PXRRBIEN,0),U,3)'=1  ;Blood pressures only
- .  I $P(^GMR(120.5,PXRRBIEN,0),U,8) S X=$P(^(0),U,8),Y=$P(X,"/"),Z=$P(X,"/",2) D
- .. ;X = blood pressure ;Y = systolic bp ;Z = diastolic bp
- .. I Y>159!(Z>90) S ^TMP($J,"HIBP",PXRRCLIN,PXRRDFN)=Y_"/"_Z_U_$G(^GMR(120.5,PXRRBIEN,0))
+ ;PX/189 removed direct global reads to get data from PXRMINDX
+ N PXRRNODE,PXRRSXDR,PXRRVT,PXRRSXDT
+ S PXRRDFN=0,PXRRVT=$O(^GMRD(120.51,"C","BP",0))
+ Q:PXRRVT'>0
+ F  S PXRRDFN=$O(^TMP($J,PXRRCLIN,"CLINIC PATIENTS",PXRRDFN)) Q:'PXRRDFN  D
+ .S PXRRSXDT=PXRRSXMO-.000001
+ .F  S PXRRSXDT=$O(^PXRMINDX(120.5,"PI",PXRRDFN,PXRRVT,PXRRSXDT)) Q:'PXRRSXDT!(PXRRSXDT>DT)  D
+ ..S PXRRBIEN=0
+ ..F  S PXRRBIEN=$O(^PXRMINDX(120.5,"PI",PXRRDFN,PXRRVT,PXRRSXDT,PXRRBIEN)) Q:$L(PXRRBIEN)'>0  D
+ ...D EN^GMVPXRM(.PXRRNODE,PXRRBIEN,"I")
+ ...I $P(PXRRNODE(1),U,1)=-1 Q
+ ...S X=$P(PXRRNODE(7),U,1),Y=$P(X,"/"),Z=$P(X,"/",2) D
+ ....;X = blood pressure ;y = systolic bp ;z = diastolic bp
+ ....I Y>159!(Z>90) D
+ .....S PXRRNODE=$P(PXRRNODE(1),U,1)_U_$P(PXRRNODE(2),U,1)_U_$P(PXRRNODE(3),U,1)_U_$P(PXRRNODE(4),U,1)_U_$P(PXRRNODE(5),U,1)_U_$P(PXRRNODE(6),U,1)_U_""_U_$P(PXRRNODE(7),U,1)
+ .....S ^TMP($J,"HIBP",PXRRCLIN,PXRRDFN)=Y_"/"_Z_U_$G(PXRRNODE)
+ ....Q
+ ...Q
+ ..Q
+ .Q
  S (PXRRBPT,PXRRDFN)=0 F  S PXRRDFN=$O(^TMP($J,"HIBP",PXRRCLIN,PXRRDFN)) Q:'PXRRDFN  S PXRRBPT=PXRRBPT+1
 PERCNT1 ;_._._._._._._._._._.Calculate % Pats by DXS_._._._._._._._._._.
  F PXRR="PXRRDM","PXRRHTN","PXRRCAD","PXRRHLIP","PXRRHTDM","PXRRHLIP" S Y=@PXRR S PXRR(PXRR)=$S('Y:0,1:(Y/PXRRVPAT)*100)

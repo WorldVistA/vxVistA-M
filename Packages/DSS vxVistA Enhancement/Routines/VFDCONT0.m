@@ -1,7 +1,6 @@
-VFDCONT0 ;DSS/SGM - CONTINGENCY COMMON UTILITIES; 02/02/2001 14:55
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 153
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
- ;;Copyright 1995-2010,Document Storage Systems Inc.,All Rights Reserved
+VFDCONT0 ;DSS/SGM - CONTINGENCY COMMON UTILITIES ;  06/04/15 14:15
+ ;;2013.1;DSS,INC VXVISTA OPEN SOURCE;**52**;04 Jun 2015;Build 2
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ;
  ;This routine is ONLY to be invoked from VFDCONT* routines.
  ;
@@ -22,6 +21,8 @@ VFDCONT0 ;DSS/SGM - CONTINGENCY COMMON UTILITIES; 02/02/2001 14:55
  ;10103  ^XLFDT: $$FMADD, $$FMTE, $$NOW
  ;10104  $$UP^XLFSTR
  ;10114  FM read of .01 field, file 3.5
+ ;
+ Q
  ;
 DEFDIR(P) ; use kernel utility to validate path
  ; if p="" then get default HFS directory from Kernel System Params
@@ -56,7 +57,7 @@ HS(CL) ; return the HS associated with this HOSPITAL LOCATION
  I 'CL!'$D(^SC(CL,0)) S X=+$G(@R@("SYS")) S:X @R@(44,CL)=X Q X
  S X=$G(@R@(44,CL)) I X>0 Q X
  S Z=^SC(CL,0),INST=$P(Z,U,4),MCD=$P(Z,U,15)
- I 'INST,MCD S INST=$P($G(^DG(40.8,Y,0)),U,7)
+ I 'INST,MCD S INST=$P($G(^DG(40.8,MCD,0)),U,7)
  S X=+$G(@R@("SYS")) I INST S Y=+$G(@R@(4,CL)) S:Y X=Y
  I X,CL,'$D(@R@(44,CL)) S ^(CL)=X
  Q X
@@ -154,6 +155,7 @@ ERR(N) ; error messages
 GETPARMS(NODE) ; get parameters for contingency report
  N I,J,X,Y,Z,RET
  S PATH=$$XPARGET1("SYS","VFD CONTING PATH",NODE)
+ I PATH="" S PATH="-1^Parameter VFD CONTING PATH not set for "_NODE
  I NODE="MAR" D
  .S MARTYPE=$$XPARGET1("SYS","VFD CONTING MAR DAYS")
  .S:MARTYPE<1 MARTYPE=7

@@ -1,6 +1,6 @@
-PRCFDE3 ;(WASH ISC)/LKG -RECHARGE AN INVOICE ;7/19/95  14:32
-V ;;5.1;IFCAP;;Oct 20, 2000
- ;Per VHA Directive 10-93-142, this routine should not be modified.
+PRCFDE3 ;(WASH ISC)/LKG -RECHARGE AN INVOICE ;12/2/10  16:12
+V ;;5.1;IFCAP;**154**;Oct 20, 2000;Build 5
+ ;Per VHA Directive 2004-038, this routine should not be modified.
 RECHARGE ;Send Invoice to Service for Certification
  S PRCF("X")="AS" D ^PRCFSITE G:'% RCHX
  S DIC=421.5,DIC(0)="AEMNZ"
@@ -36,6 +36,7 @@ LOGIN ;Check Certified Invoice into Fiscal
  S DIC("A")="Select/Barcode INVOICE TRACKING NUMBER: "
 NXT S DIC=421.5,DIC(0)="AEMNZ",DIC("S")="I $D(^(2)),+^(2)=5"
  D ^DIC K DIC G:Y<0 LOGINX S PRCF("CIDA")=+Y
+ I $$VIOLATE^PRCFDSOD(PRCF("CIDA"),DUZ) G NXTX
  L +^PRCF(421.5,PRCF("CIDA")):5 E  W *7,!,"Invoice is being edited by another user. - Please again try later!" G NXTX
  W:$$CLSD1358^PRCFDE2($P(Y(0),U,7),1) !
  I '$$CHARGE(PRCF("FISCAL"),10,PRCF("MC")) S X=" <Login Failed.>*" D MSG^PRCFQ G NXT1

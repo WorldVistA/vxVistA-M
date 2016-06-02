@@ -1,5 +1,5 @@
-PSONVARP ;BHM/MFR - Non-VA Med Usage Report - Input ;04/10/03
- ;;7.0;OUTPATIENT PHARMACY;**132,118,326**;13 Feb 97;Build 11
+PSONVARP ;BHM/MFR - Non-VA Med Usage Report - Input ; 5/3/10 5:57pm
+ ;;7.0;OUTPATIENT PHARMACY;**132,118,326,355**;13 Feb 97;Build 1
  ;External reference to ^%DT is supported by DBIA 10003
  ;External reference to ^%ZTLOAD is supported by DBIA 10063
  ;External reference to ^%ZIS is supported by DBIA 10086
@@ -24,6 +24,7 @@ ENDT ; - Ask for TO DATE DOCUMENTED
  ;
  ; - Reported called from a Hidden Action menu
  I $G(PSOHDFLG) D  G DEV
+ . S:'$G(DFN) DFN=PSODFN
  . S PSOPT(DFN)="",PSOAPT=0,PSOAOI=1,PSOST="B",PSOOC="B",PSOSRT="4,2"
  ;
 SORT ; - Ask for SORT BY

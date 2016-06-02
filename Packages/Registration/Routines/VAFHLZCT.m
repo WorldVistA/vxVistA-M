@@ -1,5 +1,5 @@
-VAFHLZCT ;ALB/ESD,TDM - Creation of ZCT segment ; 9/19/05 11:44am
- ;;5.3;Registration;**68,653**;Aug 13, 1993;Build 2
+VAFHLZCT ;ALB/ESD,TDM - Creation of ZCT segment ; 12/9/09 2:10pm
+ ;;5.3;Registration;**68,653,754**;Aug 13, 1993;Build 46
  ;
  ; This generic extrinsic function transfers information pertaining to
  ; a patient's next of kin through the Emergency Contact (ZCT) segment.
@@ -48,8 +48,9 @@ EN(DFN,VAFSTR,VAFNUM,VAFTYPE,VAFNAMFT) ;function returns ZCT segment containing 
  I VAFSTR[",8," S $P(VAFY,HLFS,8)=$S(VAFTYPE=1!(VAFTYPE=2):$$YN^VAFHLFNC(X),1:HLQ) ; Contact Address Same as NOK?
  I VAFSTR[",9," S $P(VAFY,HLFS,9)=$S(VAFTYPE=3!(VAFTYPE=5):$$YN^VAFHLFNC(X),1:HLQ) ; Contact Person Same as NOK?
  I VAFSTR[",10," D    ; Last Date/Time Updated
- . Q:((VAFTYPE'=1)&(VAFTYPE'=2))   ; Currently only available for type 1 & 2
- . S X=$P($G(^DPT(DFN,.212)),"^",VAFTYPE)
+ . ;Q:((VAFTYPE'=1)&(VAFTYPE'=2))   ; Currently only available for type 1 & 2
+ . I (VAFTYPE=1)!(VAFTYPE=2) S X=$P($G(^DPT(DFN,.212)),"^",VAFTYPE)
+ . I (VAFTYPE=3)!(VAFTYPE=4)!(VAFTYPE=5) S X=$P($G(^DPT(DFN,.332)),"^",(VAFTYPE-2))
  . S $P(VAFY,HLFS,10)=$S(X'="":$$HLDATE^HLFNC(X),1:HLQ)
 QUIT Q "ZCT"_HLFS_$G(VAFY)
 TYPE ; Corresponding nodes for emergency contact type and ZIP+4 field piece.

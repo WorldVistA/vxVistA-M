@@ -1,5 +1,5 @@
-PSDOPT ;BIR/JPW,LTL,BJW-Outpatient Rx Entry ; 2/5/04 12:15pm
- ;;3.0; CONTROLLED SUBSTANCES ;**10,11,15,21,30,39,48,62**;13 Feb 97;Build 3
+PSDOPT ;BIR/JPW,LTL,BJW - Outpatient Rx Entry ;2/5/04 12:15pm
+ ;;3.0;CONTROLLED SUBSTANCES;**10,11,15,21,30,39,48,62,69,71**;13 Feb 97;Build 29
  ;Reference to ^PSDRUG( supported by DBIA #221
  ;References to ^PSD(58.8 are covered by DBIA #2711
  ;References to file 58.81 are covered by DBIA #2808
@@ -16,7 +16,7 @@ PSDOPT ;BIR/JPW,LTL,BJW-Outpatient Rx Entry ; 2/5/04 12:15pm
  ;PSD*3*39 Kill all variables
  D PSDKLL^PSDOPT2
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- I '$D(^XUSEC("PSJ RPHARM",DUZ)) W !!,"Please contact your Pharmacy Coordinator for access",!,"to log Outpatient Prescriptions.  PSJ RPHARM security key required.",!! Q
+ I '$D(^XUSEC("PSJ RPHARM",DUZ)),'$D(^XUSEC("PSD TECH ADV",DUZ)) W !!,"Please contact your Pharmacy Coordinator for access",!,"to log Outpatient Prescriptions. Either the PSJ RPHARM",!,"or PSD TECH ADV security key required.",!! Q
  I $P($G(^VA(200,DUZ,20)),U,4)']"" N XQH S XQH="PSD ESIG" D EN^XQH G END
  N X,X1 D SIG^XUSESIG I X1="" G END
  N LN S (PSDOUT,NEW)=0,PSDUZ=DUZ,$P(LN,"-",80)="",Y=DT
@@ -47,7 +47,7 @@ ASKP ;ask rx #
  I X'["-",'$G(PSDRX)!('$D(^PSRX(+$G(PSDRX),0))) W !,"INVALID PRESCRIPTION NUMBER" G ASKP
  ;
  ;PSD*3*30 - lock the script
- I X'["-" L +^PSRX(PSDRX):5 I '$T W !!,"Sorry, someone else is editting this prescription. Please try again later." K PSDRX G ASKP
+ I X'["-" L +^PSRX(PSDRX):5 I '$T W !!,"Sorry, someone else is editing this prescription. Please try again later." K PSDRX G ASKP
  ;
  ;DAVE B (PSD*3*15) Show previous postings
  I X'["-" I $G(PSOVR)=1,$G(PSDSTA)=12!($G(PSDSTA)=13)!($G(PSDSTA)=14)!($G(PSDSTA)=15)!($G(PSDSTA)=11) S PSDXXX=X D CHKRF I $G(PSDNEXT)=1 G ASKP
@@ -61,7 +61,7 @@ ASKP ;ask rx #
  I X["-" I '$D(^PSRX(+$G(PSDRX),0))!($G(PSDRX)']"") W !?7,$C(7),"   NON-EXISTENT PRESCRIPTION" G ASKP
  ;
  I X["-",$D(^PSRX(PSDRX,0)) S PSDRXIN=+PSDRX D VER I PSOVR=1,$G(PSDSTA)=12!($G(PSDSTA)=13)!($G(PSDSTA)=14)!($G(PSDSTA)=15) D CHKRF I $G(PSDNEXT)=1 G ASKP
- I X["-" L +^PSRX(PSDRX):5 I '$T W !!,"Sorry, someone else is editting this prescription. Please try again later." K PSDRX G ASKP
+ I X["-" L +^PSRX(PSDRX):5 I '$T W !!,"Sorry, someone else is editing this prescription. Please try again later." K PSDRX G ASKP
  ;
  ; (PSD*3*21) Check for transmission status for barcode entry
  ;
@@ -106,12 +106,11 @@ PROCESS ;process selection
  S X=0 F  S X=$O(^PSRX(PSDRX,4,X)) Q:X'>0  S STATUS=$P($G(^PSRX(PSDRX,4,X,0)),"^",4),NUMBER=$P($G(^PSRX(PSDRX,4,X,0)),"^",3) I $G(STATUS)'=3 D
  .I NUMBER=0,$G(NEW)=1,$G(NEW(1))=0 D CMOPMSG
  .I NUMBER=$G(NEW(1)),$G(NEW)=0,PSDA'="P",'$D(PSDRET("RF",NUMBER)) D CMOPMSG
- .;I NUMBER=$G(NEW(2)),$G(NEW(1))=0,$G(NEW)=0 D CMOPMSG ;Partials cannot be CMOP
  I $G(PSDOUT)=1 G ASKP
  ;
  D:PSDA="O" PSDORIG^PSDOPT1 D:PSDA="R" PSDRFL^PSDOPT1 D:PSDA="P" PSDPRTL^PSDOPT1
  I $G(PSDOUT)=1 G ASKP
- I $G(PSDPOST)=1,$G(PSDREL)="" W !,"This fill has already been posted." D PSDREL^PSDOPT1 G ASKP
+ I $G(PSDPOST)=1,$G(PSDREL)="" W !,"This fill has already been posted." D CHKEY D:'$G(PSDOUT) PSDREL^PSDOPT1 G ASKP
  I $G(PSDREL)'="",$G(PSDPOST)'>0 W !,"This fill has already been released."
  I $G(PSDREL)'="",$G(PSDPOST)>0 W !,"This fill has already been posted & released, no further action required." G ASKP
  D DISPLAY G:PSDOUT END
@@ -123,6 +122,11 @@ END K %,%H,%I,BAL,C,CNT,DA,DAT,DD,DFN,DIC,DIE,DIK,DINUM,DIR,DIROUT,DIRUT,DLAYGO,
  I $G(PSDRX)'="" L -^PSRX(PSDRX)
  K PATN,PHARM,PHARMN,PRF,PSDA,PSDATE,PSDOUT,PSDR,PSDRN,PSDRPH,PSDRX,PSDS,PSDSN,PSDT,PSDUZ,PSOCSUB,QTY,RF,RPDT,RXNUM,X,Y
  D KVAR^VADPT K VA("PID"),VA("BID")
+ Q
+CHKEY ;check if user has access
+ I '$D(^XUSEC("PSJ RPHARM",DUZ)) D  S PSDOUT=1
+ .W !!?12,"** You have no access to release this prescription."
+ .W !?15,"The PSJ RPHARM security key is required. **",!
  Q
 CLLDIR2 S CNT=$G(CNT)+1,DIR(0)=$S($G(CNT)=1:"S^1:Refill #"_X1,1:DIR(0)_CNT_":Refill #"_X1)_";"
  Q

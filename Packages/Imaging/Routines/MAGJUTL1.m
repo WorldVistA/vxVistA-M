@@ -1,6 +1,6 @@
-MAGJUTL1 ;WIRMFO/JHC VistARad subroutines for RPC calls ; 29 Jul 2003  10:03 AM
- ;;3.0;IMAGING;**22,18,65,76**;Jun 22, 2007;Build 19
- ;;Per VHA Directive 2004-038, this routine should not be modified.
+MAGJUTL1 ;WIRMFO/JHC VistARad subroutines for RPC calls ; 3 Jul 2013  10:48 AM
+ ;;3.0;IMAGING;**22,18,65,76,101,133**;Mar 19, 2002;Build 5393;Sep 09, 2013
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -8,7 +8,6 @@ MAGJUTL1 ;WIRMFO/JHC VistARad subroutines for RPC calls ; 29 Jul 2003  10:03 AM
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -108,7 +107,8 @@ GETEXSET(RADFN,EXID,MAGRET) ;
  N RACN,RACNI,RADATA,RADATE,RADTE,RADTI,RADTPRT,RAELOC,RANME
  N RAPRC,RARPT,RASSN,RAST,RASTORD,RASTP,RASTNM,RACPT,IMTYPABB,PROCMOD
  N DAYCASE,REQLOC,REQLOCN,REQLOCA,REQLOCT,RIST,RIST1,RIST2,COMPLIC
- N RADIV,RISTISME,REQWARD,RASTCAT,CPTMOD,LRFLAG,MODTXT
+ N RADIV,RISTISME,REQWARD,RASTCAT,CPTMOD,LRFLAG,MODTXT,LONGACN,TECH
+ N MEDS,RDIOPHARM
  S MAGRET=0,RADTI=$P(EXID,"-"),RACNI=$P(EXID,"-",2)
  Q:'(RADTI&RACNI)
  S RADIV=""
@@ -116,9 +116,9 @@ GETEXSET(RADFN,EXID,MAGRET) ;
  Q:RADATA=""        ;  no exam for this EXID
  S RARPT=$P(RADATA,U,5)
  S X=$P(RADATA,U,6),RASTORD=$P(X,"~"),RASTNM=$P(X,"~",2)
- S X=^RADPT(RADFN,"DT",RADTI,"P",RACNI,0),COMPLIC=$D(^("COMP")),PROCMOD=$D(^("M")),CPTMOD=$D(^("CMOD"))
+ S X=^RADPT(RADFN,"DT",RADTI,"P",RACNI,0),COMPLIC=$D(^("COMP")),PROCMOD=$D(^("M")),CPTMOD=$D(^("CMOD")),TECH=$D(^("TC")),MEDS=$D(^("RX"))  ; ICR #1172 (Private)
  S RAST=$P(X,U,3),REQLOC=$P(X,U,22),RIST1=$P(X,U,12),RIST2=$P(X,U,15),COMPLIC=$P(X,U,16)_"~"_COMPLIC
- S REQWARD=$P(X,U,6)
+ S REQWARD=$P(X,U,6),LONGACN=$P(X,U,31),RDIOPHARM=$P(X,U,28)  ; ICR #1172 (Private)
  N CT,MODS,IEN,TT  ; Process Proc/CPT Modifier info
  S CT=0
  I PROCMOD D
@@ -144,6 +144,11 @@ GETEXSET(RADFN,EXID,MAGRET) ;
  . I 'LRFLAG S:T LRFLAG=T
  . E  I T  S:(LRFLAG'=T) LRFLAG=3 ; L&R or Bilat--ignore result
  S LRFLAG=$S(LRFLAG=1:"L",LRFLAG=2:"R",1:"") ; Left/Right indicator
+ I 'TECH S TECH=""
+ E  D
+ . S IEN=0,TECH="" N T
+ . F  S IEN=$O(^RADPT(RADFN,"DT",RADTI,"P",RACNI,"TC",IEN)) Q:'IEN  S X=$P($G(^(IEN,0)),U) I X S T(X)=""
+ . I $D(T) S T="" F  S T=$O(T(T)) Q:T=""  S X=$P($G(^VA(200,T,0)),U,2) I X]"" S TECH=TECH_$S(TECH="":"",1:"~")_X
  S RADIV=$P(^RADPT(RADFN,"DT",RADTI,0),U,3)
  K DIC,DR,DA,DIQ
  I 'REQLOC S (REQLOCN,REQLOCT,REQLOCA)=""
@@ -159,6 +164,7 @@ GETEXSET(RADFN,EXID,MAGRET) ;
  S RAPRC=$E($P(RADATA,U),1,40),RACN=$P(RADATA,U,2),RAELOC=$P(RADATA,U,7)
  S IMTYPABB=$P($P(RADATA,U,8),"~"),RACPT=$P(RADATA,U,10)
  S DAYCASE=$E(RADTE,4,7)_$E(RADTE,2,3)_"-"_RACN
+ I LONGACN]"" S DAYCASE=LONGACN
  S RASTP=RASTNM,RASTCAT=""
  I RAST S RASTCAT=$P($G(^RA(72,RAST,0)),U,9)
  S RANME=$P(^DPT(RADFN,0),U)
@@ -167,7 +173,7 @@ GETEXSET(RADFN,EXID,MAGRET) ;
  S MAGRACNT=$G(MAGRACNT)+1
  I MAGRACNT=1 K ^TMP($J,"MAGRAEX")
  S ^TMP($J,"MAGRAEX",MAGRACNT,1)=RADFN_U_RADTI_U_RACNI_U_$E(RANME,1,30)_U_RASSN_U_RADATE_U_RADTE_U_RACN_U_$E(RAPRC,1,35)_U_RARPT_U_RAST_U_DAYCASE_U_RAELOC_U_RASTP_U_RASTORD_U_RADTPRT_U_RACPT_U_IMTYPABB
- S ^TMP($J,"MAGRAEX",MAGRACNT,2)=REQLOCA_U_$E(REQLOCN,1,25)_U_RIST_U_COMPLIC_U_RADIV_U_$P($$IMGSIT(RADIV),U,2)_U_RISTISME_U_MODTXT_U_REQLOCT_U_REQWARD_U_RASTCAT_U_LRFLAG
+ S ^TMP($J,"MAGRAEX",MAGRACNT,2)=REQLOCA_U_$E(REQLOCN,1,25)_U_RIST_U_COMPLIC_U_RADIV_U_$P($$IMGSIT(RADIV),U,2)_U_RISTISME_U_MODTXT_U_REQLOCT_U_REQWARD_U_RASTCAT_U_LRFLAG_U_TECH_U_MEDS_U_RDIOPHARM
  S MAGRET=1
  Q
  ;
@@ -176,8 +182,8 @@ RIST(RIST1,RIST2) ; return Interp Radiologist info
  N RIST,RISTISME
  S (RIST,RISTISME)=""
  I RIST1!RIST2 D
- . I RIST1 S RISTISME=RIST1=DUZ S RIST=$$USERINF^MAGJUTL3(RIST1,1)
- . I RIST2 S:'RISTISME RISTISME=RIST2=DUZ S RIST2=$$USERINF^MAGJUTL3(RIST2,1)
+ . I RIST1 S RISTISME=RIST1 S RIST=$$USERINF^MAGJUTL3(RIST1,1)
+ . I RIST2 S RISTISME=$S('RISTISME:RIST2,1:RISTISME_"~"_RIST2) S RIST2=$$USERINF^MAGJUTL3(RIST2,1)
  . I RIST]"" S RIST=RIST_$S(RIST2]"":"/"_RIST2,1:"")
  . E  S RIST=RIST2
  Q RIST_U_RISTISME

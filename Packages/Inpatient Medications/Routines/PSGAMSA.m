@@ -1,10 +1,10 @@
-PSGAMSA ;BIR/CML3-ENTERS RETURNS, EXTRAS, & PRE-EX NEEDS INTO 57.6 ; 15 May 98 / 9:25 AM
- ;;5.0; INPATIENT MEDICATIONS ;**3,84,130**;16 DEC 97
+PSGAMSA ;BIR/CML3-ENTERS RETURNS, EXTRAS, & PRE-EX NEEDS INTO 57.6 ; 27OCT2014
+ ;;5.0; INPATIENT MEDICATIONS ;**3,84,130**;16 DEC 97;Build 11
  ;
  ; Reference to ^PS(55 is supported by DBIA# 2191.
  ; Reference to ^PSDRUG is supported by DBIA# 2192.
  ; Reference to ^ECXUD1 is supported by DBIA# 172.
- ; 
+ ;
 EN(DFN,PSGORD,PSGORD1,PSGLOG) ;
  ; PSGLOG: 2 - pre-exchange needs, 3 - extra units dispensed, 4 - returns
  N %,ECUD,LOG,ND,PSGAMSF,PSGDRG,PSGDRGC,PSGPRVR,PSGWARD,PSGX,VAIN,VAIP,PSGSTRT
@@ -43,6 +43,17 @@ ENLOG ;
  F LOG=$P(ND,"^",3)+1:1 I '$D(^PS(55,DFN,5,PSGORD,11,LOG)) L +^PS(55,DFN,5,PSGORD,11,LOG):0 I  S ^PS(55,DFN,5,PSGORD,11,LOG,0)=$S($D(PSGPLFDT):PSGPLFDT,1:%),^PS(55,DFN,5,PSGORD,11,"B",$S($D(PSGPLFDT):PSGPLFDT,1:%),LOG)="" Q
  S $P(ND,"^",3)=LOG,$P(ND,"^",4)=$P(ND,"^",4)+1,^PS(55,DFN,5,PSGORD,11,0)=ND L -^PS(55,DFN,5,PSGORD,11,0)
  S ^PS(55,DFN,5,PSGORD,11,LOG,0)=$S($D(PSGPLFDT):PSGPLFDT,1:%)_"^"_$S(PSGDRG=+PSGDRG:PSGDRG,1:"")_"^"_PSGX_"^"_PSGDRGC_"^"_PSGLOG_"^"_DUZ_"^"_$S(PSGWARD=+PSGWARD:PSGWARD,1:"")_"^"_$S(PSGPRVR=+PSGPRVR:PSGPRVR,1:"")
+ ;DSS/AMC/SMH - START MODS From Pick List or Pre-Exchange, Returns, Extra Units add NDC
+ I $G(ZTSK),$G(VFDNDC1)]"" S ^PS(55,DFN,5,PSGORD,11,LOG,21600)=VFDNDC1  ; Pick List (NDC^User Input)
+ I $D(VFDNDC(PSGORD)) S ^PS(55,DFN,5,PSGORD,11,LOG,21600)=VFDNDC(PSGORD) ; Extra, Returns, Pre-exchange (NDC^User Input)
+ N DA,DIK S DA=LOG,DA(1)=PSGORD,DA(2)=DFN,DIK=$$OREF^DILF($NA(^PS(55,DFN,5,PSGORD,11))) D IX1^DIK ; ix
+ ;
+ ; Custom logging to see what happened.
+ N % S:($T(^XTMLOG)]"") %=$$FILEINIT^XTMLOG("PSG")
+ D:($T(^XTMLOG)]"") SAVEARR^XTMLOG($NA(^PS(55,DFN,5,PSGORD)))
+ D:($T(^XTMLOG)]"") ENDLOG^XTMLOG("PSG")
+ ;
+ ;DSS/AMC/SMH - End Mod
  L -^PS(55,DFN,5,PSGORD,11,LOG)
  Q
 CLEANUP ; Clean up partial orders having no provider or status.

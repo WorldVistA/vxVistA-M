@@ -1,11 +1,13 @@
 RMPRPAT ;PHX/RFM/JLT-DISPLAY 2319 FIRST PAGE ;8/29/1994
- ;;3.0;PROSTHETICS;**29,62**;Feb 09, 1996
+ ;;3.0;PROSTHETICS;**29,62,162**;Feb 09, 1996;Build 5
  ;
  ; RVD - patch # 62 - sets RMPRNAM, RMPRSSN,RMPRDOB and RMPRSSNE
  ;
 ASK ;Set common variables
  Q:$G(RMPRDFN)<1
- D HOME^%ZIS S DFN=RMPRDFN,RMPRBACK=1
+ ;PATCH *162 => insure activity screen displays first time (RMPRFRST) in and Home Oxygen activity is NOT included (RCNT=7) for inside issue option
+ N RCNT
+ D HOME^%ZIS S DFN=RMPRDFN,RMPRBACK=1,RMPRFRST=1,RCNT=7 I $G(RSTCK)'=1 S RCNT=8,RFLG=1
  D ADD^VADPT,OAD^VADPT,DEM^VADPT,ELIG^VADPT
  ;next 2 lines added by patch #62
  S RMPRNAM=$P(VADM(1),U),RMPRSSN=$P(VADM(2),U)
@@ -21,11 +23,11 @@ ASK1 ;CALL ROUTINE TO DISPLAY SCREEN SELECTI0N
  I $D(^RMPR(665,RMPRDFN,8,0)) W !,"*Comments on file"
  I '$D(^RMPR(665,RMPRDFN,1,0)) W $C(7),!!,"*No Disability Code on File!"
  I $D(^RMPR(665,RMPRDFN,1,0)),'$O(^(0)) W $C(7),!!,"*No Disability Code on File!"
- D DISP^RMPRPAT5 K ANS
- K RMPRQ,RMPRQUES,DIR
- D ASK1^RMPRPAT1 K ANS
+ D DISP^RMPRPAT5 K ANS W !
+ K RMPRQ,RMPRQUES,DIR,RMPREND1,RMPRL
+ D ASK1^RMPRPAT1 K ANS I $G(RMPRFRST)=1,$G(RSTCK) D HELP^RMPRPAT1  ;insure activity list appears upon entry
  D ^DIR
- K DIR
+ K DIR,RMPRFRST
  I Y["^" G EXIT
  I Y="",'$D(RMPR1APN) G EXIT
  I Y>0 S ANS=Y G QUE
@@ -79,11 +81,11 @@ END D ELIG^VADPT
  I RO=0 F  W:'FG !,"Prosthetic Disability Code(s):" S RO=$O(^RMPR(665,RMPRDFN,1,RO)) Q:RO'>0  S RR=^(RO,0) S:$P(RR,U,10) FG=1 I '$P(RR,U,10) W " ",$P(^RMPR(662,+RR,0),U,1),"-",$S($P(RR,U,3)=1:"SC",$P(RR,U,3)=2:"NSC",1:"") S FG=1
  I $P($G(^DPT(DFN,.372,0)),U,4)>IOSL-2-$Y D QUEST2 G:$G(RMNOQUIT)=0 ASK1
  S RO=0 F I=0:0 S RO=$O(^DPT(DFN,.372,RO)) Q:RO'>0!$D(RMPREND1)  I +$P(^(RO,0),U,1),$D(^DIC(31,+$P(^(0),U,1))) W:'$D(RMPRL) !,"Patient Name: ",VADM(1),?40,"SSN: ",$P(VADM(2),U,2),!!,"MAS Disability Code(s):"  D WRI
- K RMNOQUIT G:$D(RMPREND1) EXIT
+ K RMNOQUIT G:$D(RMPREND1) ASK1
  D SVC^VADPT W !!,"*POW? ",$S(VASV(4)=1:"YES",1:"NO")
  G:$D(RMPRBACK) QUES
  W @IOF G ASK1
-WRI I $Y>(IOSL-7),'$D(RMPRQUES) D QUEST1 G:$D(RMPREND1) ASK1
+WRI I $Y>(IOSL-6),'$D(RMPRQUES) D QUEST1 Q:$D(RMPREND1)  ;patch *162, replace GOTO with Quit when within FOR loop
  W !,$E($P(^DIC(31,$P(^DPT(DFN,.372,RO,0),U,1),0),U,1),1,30),?40,"Disability% ",$P(^DPT(DFN,.372,RO,0),U,2),?56," Service Connected? " W:$P(^DPT(DFN,.372,RO,0),U,3)=1 "YES" W:$P(^DPT(DFN,.372,RO,0),U,3)=0 "NO" S RMPRL=1 Q
 QUES ;ASK WHAT PAGE OF A PATIENT'S 10-2319
  K RMPRFLG,RMPRL F I=0:0 Q:$Y>21  W !
@@ -114,7 +116,7 @@ EXIT ;EXIT FOR DISPLAY OF A PATIENT'S 10-2319
  Q
 QUEST1 S RMPRQUES=1
  N DIR S DIR(0)="E" W !! D ^DIR W @IOF
- I $D(DTOUT)!($D(DUOUT)) S RMPREND1=1 G ASK1
+ I $D(DTOUT)!($D(DUOUT)) S RMPREND1=1 Q  ;patch *162, set quit flag if user chooses to exit option
  W ! Q
 QUEST2 ;PUT MAS DISABILITY CODES ON NEXT PAGE IF THEY WILL NOT ALL FIT ON THIS
  ;PAGE

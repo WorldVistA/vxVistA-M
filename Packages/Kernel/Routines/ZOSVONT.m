@@ -1,5 +1,5 @@
 %ZOSV ;SFISC/AC - $View commands for Open M for NT.  ;09/15/08  12:12
- ;;8.0;KERNEL;**34,94,107,118,136,215,293,284,385,425,440,499**;Jul 10, 1995;Build 86
+ ;;8.0;KERNEL;**34,94,107,118,136,215,293,284,385,425,440,499**;Jul 10, 1995;Build 97
  ;Per VHA Directive 2004-038, this routine should not be modified
 ACTJ() ;# Active jobs
  N %,V,Y S V=$$VERSION()

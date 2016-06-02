@@ -1,12 +1,12 @@
-ONCPDI ;Hines OIFO/GWB - Patient information; 9/24/97
- ;;2.11;ONCOLOGY;**18,27,33,34,37,45**;Mar 07, 1995
+ONCPDI ;Hines OIFO/GWB - Patient information ;10/07/11
+ ;;2.2;ONCOLOGY;**1**;Jul 31, 2013;Build 8
  ;
 PRT N DI,DIC,DR,DA,DIQ
  K ONC
- S DIC="^ONCO(160,",DR="7;8;8.1;8.2;8.3;8.4;9;10;25;25.1;25.2;25.3;25.4;25.5;25.6;25.7;25.8;25.9;48;50;51;52;61;55;56"
+ S DIC="^ONCO(160,",DR="7;8;8.1;8.2;8.3;8.4;9;10;25;25.1;25.2;25.3;25.4;25.5;25.6;25.7;25.8;25.9;48;50;51;52;61;55;56;62;63;64;65;66;67;1006;25.91:25.9901"
  S DA=D0,DIQ="ONC"
  D EN^DIQ1
- F I=7,8,8.1,8.2,8.3,8.4,9,10,48,50,51,52,61,55,56 S X=ONC(160,D0,I) D UCASE^ONCPCI S ONC(160,D0,I)=X
+ F I=7,8,8.1,8.2,8.3,8.4,9,10,48,50,51,52,61,55,56,62,63,64,65,66,67 S X=ONC(160,D0,I) D UCASE^ONCPCI S ONC(160,D0,I)=X
  W !
  W !,"    Place of birth.............: ",ONC(160,D0,7)
  W !,"    Race 1.....................: ",ONC(160,D0,8)
@@ -20,9 +20,15 @@ PRT N DI,DIC,DR,DA,DIQ
  W !,"    Ionizing radiation exposure: ",ONC(160,D0,50)
  W !,"    Chemical exposure..........: ",ONC(160,D0,52)
  W !,"    Asbestos exposure..........: ",ONC(160,D0,61)
+ W !,"    Vietnam service............: ",ONC(160,D0,62)
+ W !,"    Lebanon service............: ",ONC(160,D0,55)
+ W !,"    Grenada service............: ",ONC(160,D0,63)
+ W !,"    Panama service.............: ",ONC(160,D0,64)
  W !,"    Persian Gulf service.......: ",ONC(160,D0,51)
- W !,"    Middle East service........: ",ONC(160,D0,55)
  W !,"    Somalia service............: ",ONC(160,D0,56)
+ W !,"    Yugoslavia service.........: ",ONC(160,D0,65)
+ W !,"    Afghanistan (OEF) service..: ",ONC(160,D0,67)
+ W !,"    Iraq (OIF) service.........: ",ONC(160,D0,66)
  Q
  ;
 PH ;Patient History
@@ -41,5 +47,8 @@ PH ;Patient History
  S SUB=0 F  S SUB=$O(ONC(160.044,SUB)) Q:SUB'>0  D
  .W !,"    Family Member with Cancer..: ",ONC(160.044,SUB,.01),?50,"(",ONC(160.044,SUB,1),")"
  W !
- K ONC,IEN,SUB
+ K I,IEN,ONC,SUB,X
  Q
+ ;
+CLEANUP ;Cleanup
+ K D0

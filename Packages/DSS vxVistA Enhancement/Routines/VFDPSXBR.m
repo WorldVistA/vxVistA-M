@@ -1,5 +1,5 @@
 VFDPSXBR ;DSS/WLM/SGM - Pharmacy Billing Reports ; 05/08/2013 17:06
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 7
+ ;;2013.0;DSS,INC VXVISTA OPEN SOURCE;**24**;11 Jun 2013;Build 1
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  ;  p1 = visit ID         p2 = charge date     p3 = charge code
@@ -398,7 +398,7 @@ ONERX(VDT,VIEN,VREF) ;
  ; Rx not released
  I '$S(VREF:VFDRX(VREF,17),1:VFDRX(0,31)) Q
  ; Refill returned to stock
- I VREF,VFDRX(0,14) Q
+ I VREF,$G(VFDRX(0,14)) Q
  ; Original Rx returned to stock and no label reprinted
  I 'VREF,VFDRX(0,32.1),'VFDRX(0,32.2) Q
  ; releasing pharmacist cannot be commercial pharmacy

@@ -1,5 +1,5 @@
-VFDI0003 ;DSS/SGM - VXVISTA 2010.1.1 ENV/PRE/POST ; 01/30/2013 18:50
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 153
+VFDI0003 ;DSS/SGM - VXVISTA 2010.1.1 ENV/PRE/POST ; 6/11/2013 17:53
+ ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 164
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  ;~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
@@ -37,7 +37,7 @@ VFDI0003 ;DSS/SGM - VXVISTA 2010.1.1 ENV/PRE/POST ; 01/30/2013 18:50
  ;       Delete of OPTIONs or OPTION Menu items
  ;---------------------------------------------------------------------
 MIN ;;2010.1
-MAX ;;2013.0
+MAX ;;2011.1.2
  ;---------------------------------------------------------------------
  ;   entry points for env,pre,post VFD VXVISTA UPDATE MULT 2011.1.x
 MULTENV ; environmental check
@@ -49,11 +49,12 @@ MULTENV ; environmental check
  Q
  ;
 MULTPR ; pre-install
- K VFDMUDUZ M VFDMUDUZ=DUZ S DUZ(0)="@" Q
+ K VFDMUDUZ,XUMF
+ S XUMF=1 I $G(DUZ(0))'="@" M VFDMUDUZ=DUZ S DUZ(0)="@"
+ Q
  ;
 MULTPO ; post-install
- I $D(VFDMUDUZ) K DUZ M DUZ=VFDMUDUZ K VFDMUDUZ
- E  S DUZ(0)=""
+ K XUMF I $D(VFDMUDUZ) K DUZ M DUZ=VFDMUDUZ K VFDMUDUZ
  Q
  ;---------------------------------------------------------------------
  ;   entry points for pre,post VFD VXVISTA UPDATE 2011.1.x
@@ -67,7 +68,7 @@ PRE ; pre-install entry point
  D PRE5
  D PRE6
  D PRE7
- D PRE8 ; 4/10/2012
+ D PRE8 ; 4/10/2012, 6/5/2013
  Q
  ;
  ;---------------------------------------------------------------------
@@ -79,9 +80,10 @@ POST ; post-install entry point
  D POST4
  D POST5
  D POST6
- D POST7 ; 1/27/2012
- D POST8 ; 6/26/2012
+ D POST7 ;          1/27/2012
+ D POST8 ;          6/26/2012
  D POST^VFDI00031 ; 9/21/2012
+ D POST9 ;          4/26/2013
  Q
  ;
  ;-----------------------  PRIVATE SUBROUTINES  -----------------------
@@ -193,14 +195,13 @@ PRE4 ; check to see if CPT MODIFIERS file needs cleaning up
  ;
  ;-----  ADD KIDS EXPORT FIELD (#21609.6) TO TOP LEVEL OF FILE  -----
 P5 ; DD# ^ DD# ^ ...
- ;;101.24^142.1
+ ;;101.24^101.41^120.51^142.1
  ;;
 PRE5 ; add KIDS EXPORT field to various files
  N I,J,X,Y,Z,VFDF
  F I=1:1 S X=$P($T(P5+I),";",3) Q:X=""  D
- . F J=1:1:$L(X,U) S Y=$P(X,U,J) S:Y>0 VFDF(Y)=""
+ . F J=1:1:$L(X,U) S Y=$P(X,U,J) I Y>0 S VFDF(+Y)=$$KEXPORT^VFDI000R(Y)
  . Q
- S I=0 F  S I=$O(VFDF(I)) Q:'I  S VFDF(I)=$$KEXPORT^VFDI0000(I)
  ; if messaging desired, do it here
  Q
  ;
@@ -234,8 +235,10 @@ PRE7 ; delete file 19650 if it exists ; 1/20/2012
  D DELFILE^VFDI0000(19650)
  Q
  ;
-PRE8 ; rename identifiers for files importing data
+PRE8 ; pre-install modification of existing identifiers
+ ; rename identifiers for files importing data
  N X,Y,Z,DIERR,VFD,VFDER,VFDF
+ ; file 101.24
  S Z(0)="Herbal/OTC/Non-VA Medication"
  S Z(1)="Meds/OTC from Elsewhere"
  S X=$G(^ORD(101.24,1555,0)),X(2)=$G(^(2))
@@ -243,17 +246,19 @@ PRE8 ; rename identifiers for files importing data
  I $P(X(2),U,3)'=Z(1) S VFD(101.24,"1555,",.23)=Z(1)
  I $P(X(2),U,4)'=Z(1) S VFD(101.24,"1555,",.24)=Z(1)
  I $D(VFD) D FILE^DIE(,"VFD","VFDER")
+ ; file 21611
+ F X=.02,.03 K ^DD(21611,0,"ID",X)
  Q
  ;
  ;---------------------------------------------------------------------
 POST1 ;
  ; check to see if all inpat admits have corresponding VISITs and that
  ; there is an entry in the V HOSPITALIZATION file - T20
- Q:'$$TEST("VFDDGPM0","EN2")
+ Q:'$$TEST("VFDDGPM","POST")
  N X S X=+$P($$SITE^VASITE,U,3)
- ; 2011.1.1 T17 - do not run at Idaho
- Q:$E(X,1,3)=104
- D EN2^VFDDGPM0
+ ; 2011.1.1 T17 - do not run at Idaho, 2011.1.2 T7 start running at IDA
+ ;I $E(X,1,3)'=104 D POST^VFDDGPM
+ D POST^VFDDGPM
  Q
  ;
 POST2 ;
@@ -278,9 +283,11 @@ POST5 ; clean up identifiers on the PATIENT file ; 5/20/2011
  ;
 POST6 ; update the vxVistA Version Number Parameter
  N X,DATA,VER
- S VER=$P($T(VFDI0003+1),";",3)
- S DATA("VFD VXVISTA VERSION","SYS",1,1)=U_VER_"^CHG"
- D EN^VFDXTPAR(,"CHG",.DATA)
+ S VER=$P($T(VFDI0003+1),";",3) D:VER>0
+ . S DATA("VFD VXVISTA VERSION","SYS",1,1)=U_VER_"^CHG"
+ . D EN^VFDXTPAR(,"CHG",.DATA)
+ . Q
+ I $G(^%ZOSF("ZVX"))="" S ^%ZOSF("ZVX")="VXOS"
  Q
  ;
 POST7 ; change HUMANITARIAN EMERGENCY to NOT APPLICABLE
@@ -299,6 +306,13 @@ POST8 ;
  S Y=$O(^DIC(11,21600),-1) I Y>0 S $P(^DIC(11,0),U,3)=Y
  Q
  ;
+POST9 ; fixed File 9000010 screen lookup logic
+ ;;N AG S AG=$G(DUZ("AG")) I '$P(^(0),U,11),$S($D(APCDOVRR)!$D(VSIT):1,AG?1"I".01"HS":1,$G(^%ZOSF("ZVX"))["VX":1,1:AG?1"V"0.1"A")
+ N I,J,X,Y,Z,GDD
+ S GDD=$NA(^DD(9000010,0,"SCR"))
+ S X=$P($T(POST9+1),";",3,99) S:$G(@GDD)'=X @GDD=X
+ Q
+ ; 
  ;---------------------------------------------------------------------
 FLDEXIST(FILE,FLD) Q $$DDFIELD^VFDI0000($G(FILE),$G(FLD))
  ;

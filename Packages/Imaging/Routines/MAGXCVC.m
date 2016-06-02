@@ -1,5 +1,6 @@
-MAGXCVC ;WOIFO/SEB,MLH - Image Index Conversion Commit ; 24 Mar 2005  9:56 AM
- ;;3.0;IMAGING;**17,25,31**;Mar 31, 2005
+MAGXCVC ;WOIFO/SEB,MLH - Image Index Conversion Commit ; 05/18/2007 11:23
+ ;;3.0;IMAGING;**17,25,31,54**;03-July-2009;;Build 1424
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGXCVC ;WOIFO/SEB,MLH - Image Index Conversion Commit ; 24 Mar 2005  9:56 AM
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -64,7 +64,7 @@ COM1(START,END,FLAG,QUEUED) N MAGIEN,CT,INDXDATA,INDX,STARTDT,ENDDT,SUMMARY,STOP
  ;
  L +MAGTMP("IMAGE INDEX COMMIT"):900 E  Q  ; don't let more than one commit run at once!
  K ^XTMP("MAG30P25","SUMMARY") S $P(^XTMP("MAG30P25","STATUS"),U,13,14)=4_U_ZTSK
- D NOW^%DTC S Y=% D DD^%DT S STARTDT=Y
+ S STARTDT=$$HTE^XLFDT($H,1)
  S START=+$G(START),END=+$G(END),STOP=0
  I END=0 S END=+$P($G(^MAG(2005,0)),U,3)
  S MAGIEN=START-1 I MAGIEN=-1 S MAGIEN=0
@@ -78,7 +78,7 @@ COM1(START,END,FLAG,QUEUED) N MAGIEN,CT,INDXDATA,INDX,STARTDT,ENDDT,SUMMARY,STOP
  . S $P(^XTMP("MAG30P25","STATUS"),U,12)=MAGIEN
  . I QUEUED,$$S^%ZTLOAD S STOP=1,$P(^XTMP("MAG30P25","STATUS"),U,13)=5
  . Q
- D NOW^%DTC S Y=% D DD^%DT S ENDDT=Y
+ S ENDDT=$$HTE^XLFDT($H,1)
  S $P(^XTMP("MAG30P25","STATUS"),U,10,11)=$S(STOP:MAGIEN,1:END)_U_ENDDT
  S ^XTMP("MAG30P25","SUMMARY")=$P(^XTMP("MAG30P25","STATUS"),U,8,11)
  S HISTORY=$G(^XTMP("MAG30P25","HISTORY"))+1,^XTMP("MAG30P25","HISTORY")=HISTORY
@@ -147,3 +147,4 @@ IMAGE N I,DIC,DIE,DA,DR,X,Y,MAGIEN,MAGDFN,MAGTMP,BEFORE,AFTER
  S AFTER="" F I=40:1:45 S:AFTER'="" AFTER=AFTER_"|" S AFTER=AFTER_MAGTMP(2005,MAGIEN_",",I,"I")
  D ENTRY^MAGLOG("INDXCHG",$G(DUZ),$G(MAGIEN),"BEFORE: "_BEFORE_" "_"AFTER: "_AFTER,$G(MAGDFN),1)
  G IMAGE
+ ;

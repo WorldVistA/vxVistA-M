@@ -1,9 +1,11 @@
 PSDPWK ;BIR/JPW,BJW-Print Pharm Disp. Worksheet ; 3 Aug 98
- ;;3.0; CONTROLLED SUBSTANCES ;**10**;13 Feb 97
+ ;;3.0; CONTROLLED SUBSTANCES ;**10,69**;13 Feb 97;Build 13
  ;refer to nois#:sdc-0597-60187
+ ;References to ^PSD(58.8, covered by DBIA2711
+ ;
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- S OK=$S($D(^XUSEC("PSJ RPHARM",DUZ)):1,$D(^XUSEC("PSJ PHARM TECH",DUZ)):1,1:0)
- I 'OK W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to",!,?12,"process/dispense narcotic supplies.",!!,"PSJ RPHARM or PSJ PHARM TECH security key required.",! K OK Q
+ S OK=$S($D(^XUSEC("PSJ RPHARM",DUZ)):1,$D(^XUSEC("PSJ PHARM TECH",DUZ)):1,$D(^XUSEC("PSD TECH ADV",DUZ)):1,1:0)
+ I 'OK W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to",!,?12,"process/dispense narcotic supplies.",!!,"PSJ RPHARM, PSJ PHARM TECH or PSD TECH ADV security key required.",! K OK Q
  W !!,"=>  This report lists all pending CS requests for a dispensing site.",!!
  I '$O(^PSD(58.85,0)) W $C(7),!!,"There are no pending request orders.",!! K OK Q
 SUM ;ask worksheet, summary or both

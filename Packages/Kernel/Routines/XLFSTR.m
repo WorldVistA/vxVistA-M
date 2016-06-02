@@ -1,9 +1,38 @@
-XLFSTR ;ISC-SF/STAFF - String Functions ;12/19/06  09:45
- ;;8.0;KERNEL;**112,120,400,437**;Jul 10, 1995;Build 2
+XLFSTR ;ISC-SF/STAFF - String Functions ;04/18/12
+ ;;8.0;KERNEL;**112,120,400,437,598**;Jul 10, 1995;Build 6
+ ;Per VHA Directive 2004-038, this routine should not be modified
  ;
-UP(X) Q $TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+UP(X) ;
+ ;DSS/SMP - Begin Mods - Support 8-bit Western European characters
+ N A,T,BEF,AFT,VFD
+ S T=$T,A=$$LGR^%ZOSV
+ I $G(^%ZOSF("ZVX"))["VX" D
+ .S BEF="àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿabcdefghijklmnopqrstuvwxyz"
+ .S AFT="ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßABCDEFGHIJKLMNOPQRSTUVWXYZ"
+ E  D
+ .S BEF="abcdefghijklmnopqrstuvwxyz"
+ .S AFT="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+ S VFD=$TR(X,BEF,AFT)
+ I $QS(A,$QL(A))'="" S A=$D(@A) ; reset last global ref
+ E  S A=$O(@A)
+ I T ;        reset $T to incoming $T
+ Q VFD
  ;
-LOW(X) Q $TR(X,"ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwxyz")
+LOW(X) ;
+ N A,T,BEF,AFT,VFD
+ S T=$T,A=$$LGR^%ZOSV
+ I $G(^%ZOSF("ZVX"))["VX" D
+ .S BEF="ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßABCDEFGHIJKLMNOPQRSTUVWXYZ"
+ .S AFT="àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿabcdefghijklmnopqrstuvwxyz"
+ E  D
+ .S BEF="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+ .S AFT="abcdefghijklmnopqrstuvwxyz"
+ S VFD=$TR(X,BEF,AFT)
+ I $QS(A,$QL(A))'="" S A=$D(@A) ; reset last global ref
+ E  S A=$O(@A)
+ I T ;        reset $T to incoming $T
+ Q VFD
+ ;DSS/SMP - End Mods
  ;
 STRIP(X,Y) Q $TR(X,$G(Y),"")
  ;
@@ -68,8 +97,10 @@ QUOTE(%) ;Add quotes to value for concatenation
 TRIM(%X,%F,%V) ;Trim spaces\char from front(left)/back(right) of string
  N %R,%L
  S %F=$$UP($G(%F,"LR")),%L=1,%R=$L(%X),%V=$G(%V," ")
- I %F["R" F %R=$L(%X):-1:1 Q:$E(%X,%R)'=%V
- I %F["L" F %L=1:1:$L(%X) Q:$E(%X,%L)'=%V
+ ;I %F["R" F %R=$L(%X):-1:1 Q:$E(%X,%R)'=%V  ;take out BT
+ I %F["R" F %R=$L(%X):-1:0 Q:$E(%X,%R)'=%V  ;598
+ ;I %F["L" F %L=1:1:$L(%X) Q:$E(%X,%L)'=%V  ;take out BT
+ I %F["L" F %L=1:1:$L(%X)+1 Q:$E(%X,%L)'=%V  ;598
  I (%L>%R)!(%X=%V) Q ""
  Q $E(%X,%L,%R)
  ;

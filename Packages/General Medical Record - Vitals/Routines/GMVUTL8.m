@@ -1,5 +1,5 @@
 GMVUTL8 ;HIOFO/DS,FT-RPC API TO RETURN ALL VITALS/CATEGORIES/QUALIFIERS ;3/31/05  13:34
- ;;5.0;GEN. MED. REC. - VITALS;**1,3**;Oct 31, 2002;Build 153
+ ;;5.0;GEN. MED. REC. - VITALS;**1,3**;Oct 31, 2002;Build 164
  ;
  ; This routine uses the following IAs:
  ;  #2263 - ^XPAR calls            (Supported)

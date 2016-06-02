@@ -1,5 +1,5 @@
-PSORXDL ;BIR/SAB - Deletes one prescription ;06/10/96
- ;;7.0;OUTPATIENT PHARMACY;**4,17,9,27,117,131,148,201,291**;DEC 1997;Build 2
+PSORXDL ;BIR/SAB - Deletes one prescription ; 11/15/10 4:24pm
+ ;;7.0;OUTPATIENT PHARMACY;**4,17,9,27,117,131,148,201,291,368,408**;DEC 1997;Build 100
  ;External reference to ^PS(55 supported by DBIA 2228
  ;External references L, UL, PSOL, and PSOUL^PSSLOCK supported by DBIA 2789
  ;External reference to ^PS(59.7 supported by DBIA 694
@@ -79,11 +79,17 @@ RESK ;
  I $G(^PSDRUG(QDRUG,660.1)),$G(PSOWHERE) D INVT W:$G(PSODEFLG) !!?5,"No Action Taken!",! Q:$G(PSODEFLG)  I $G(PSOINVTX) D INVINC
  I $G(^PSDRUG(QDRUG,660.1)),'$G(PSOWHERE) D INVINC
  I $G(PSOWHERE) K ^PSRX("AR",$G(PSOLOCRL),RXP,0)
+ ;
+ ; - Preserving Original Fill data on the Return To Stock Log multiple 
+ D LOGRTS^PSORTSUT(RXP,0)
+ ;
  D NOW^%DTC K DIE S DA=RXP,DIE="^PSRX(",DR="31///@;32.1///"_% D ^DIE K DIE
  ;D EN^PSOHLSN1(RXP,"ZD")
  D ACT^PSORESK1
  S DA=$O(^PS(52.5,"B",RXP,0)) I DA K DIK S DIK="^PS(52.5," D ^DIK K DIK
  D EN^PSOHLSN1(RXP,"ZD")
+ S:'$P($G(^XTMP("PSA",0)),U,2) $P(^(0),U,2)=DT  ;PSO*7*368
+ S ^XTMP("PSA",PSOSITE,+QDRUG,+DT)=$G(^XTMP("PSA",PSOSITE,+QDRUG,+DT))-QTY  ;PSO*7*368
  W !,"Rx # "_$P($G(^PSRX(RXP,0)),"^")_" Returned to Stock.",!
  ; - Sending Rx to ECME for claim REVERSAL (Return to Stock)
  D REVERSE^PSOBPSU1(RXP,0,"RS",4,,1)
@@ -103,10 +109,16 @@ REF ;
  I $G(^PSDRUG(QDRUG,660.1)),$G(PSOWHERE) D INVT W:$G(PSODEFLG) !!?5,"No Action Taken!",! Q:$G(PSODEFLG)  I $G(PSOINVTX) D INVINC
  I $G(^PSDRUG(QDRUG,660.1)),'$G(PSOWHERE) D INVINC
  I $G(PSOWHERE) K ^PSRX("AR",$G(PSOLOCRL),RXP,TYPE)
+ ;
+ ; - Preserving Refill data on the Return To Stock Log multiple (before it gets deleted)
+ D LOGRTS^PSORTSUT(RXP,TYPE)
+ ;
  D NOW^%DTC K DIE S DA(1)=RXP,DA=TYPE,DIE="^PSRX("_DA(1)_",1,",DR="17////@;.01///@" W ! D ^DIE K DIE
  ;D EN^PSOHLSN1(RXP,"ZD")
  D ACT^PSORESK1
  S DA=$O(^PS(52.5,"B",RXP,0)) I DA K DIK S DIK="^PS(52.5," D ^DIK K DIK
+ S:'$P($G(^XTMP("PSA",0)),U,2) $P(^(0),U,2)=DT  ;PSO*7*368
+ S ^XTMP("PSA",PSOSITE,+QDRUG,+DT)=$G(^XTMP("PSA",PSOSITE,+QDRUG,+DT))-QTY  ;PSO*7*368
  D EN^PSOHLSN1(RXP,"ZD") W !,"Rx # "_$P($G(^PSRX(RXP,0)),"^")_" Refill Returned to Stock.",!
  ; - Sending Rx refill to ECME for claim REVERSAL (Return to Stock)
  D REVERSE^PSOBPSU1(RXP,TYPE,"RS",4,,1)

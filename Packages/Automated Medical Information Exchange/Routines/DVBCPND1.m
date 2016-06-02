@@ -1,5 +1,5 @@
-DVBCPND1 ;ALB/GTS-557/THM-2507 PENDING REQUESTS, PART 2 ; 4/30/91  7:09 AM
- ;;2.7;AMIE;**17**;Apr 10, 1995
+DVBCPND1 ;ALB/GTS-557/THM,SBW-2507 PENDING REQUESTS, PART 2 ; 3/MAY/2011
+ ;;2.7;AMIE;**17,168**;Apr 10, 1995;Build 3
  ;
 NXT F DA(1)=0:0 S DA(1)=$O(^TMP($J,JX,PNAM,DFN,DA(1))) Q:DA(1)=""  D PRINT I $D(OUT) S DA(1)="",PNAM="ZZZZ",JX=$S($A(JX)>57:PNAM,1:999999)
  Q
@@ -35,7 +35,10 @@ PRINT S ADIV=$S($D(^DVB(396.3,DA(1),1)):$P(^(1),U,4),1:"") Q:ADIV'=ADIVNUM&(DVBC
  S OWNDOM=$P(^DVB(396.3,DA(1),0),U,22) I OWNDOM]"" W "Transferred in from ",$S($D(^DIC(4.2,+OWNDOM,0)):$P(^(0),U,1),1:"Unknown site"),!
  W !?5,"Exams requested:",!!
  ;
-ITEMS D TST^DVBCUTL2 S NODATA=1,REQSTR=+$P(^DVB(396.3,DA(1),0),U,4)
+ITEMS ;
+ N DVBPALL
+ S DVBPALL=1
+ D TST^DVBCUTL2 S NODATA=1,REQSTR=+$P(^DVB(396.3,DA(1),0),U,4)
  W !!,"Requested by: ",$S($D(^VA(200,+REQSTR,0)):$P(^(0),U,1),1:" (Not specified) ")," at "
  S RONAME=$P(^DVB(396.3,DA(1),0),U,3),RONAME=$S(RONAME]"":$P(^DIC(4,+RONAME,0),U,1),1:"") W $S(RONAME]"":RONAME,1:" (Not specified) "),! F L=1:1:79 W "-"
  S DVBCCNT=DVBCCNT+1 I IOST?1"C-".E K OUT W !!!,"Press RETURN to continue or ""^"" exit  " R ANS:DTIME S:'$T!(ANS=U) OUT=1 Q:$D(OUT)  D HEADER Q

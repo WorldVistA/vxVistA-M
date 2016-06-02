@@ -1,5 +1,5 @@
 EASPREC7 ;ALB/SEK,RTK,GN - ROUTINE TO PROCESS INCOMING (Z06 EVENT TYPE) HL7 MESSAGES ; 6/16/04 9:28am
- ;;1.0;ENROLLMENT APPLICATION SYSTEM;**23,30,35,52,42**;21-OCT-94
+ ;;1.0;ENROLLMENT APPLICATION SYSTEM;**23,30,35,52,42,86**;21-OCT-94;Build 4
  ;;Per VHA Directive 10-93-142, this routine should not be modified.
  ;
  ;** Warning **  currently only one ZMT seg per Z06 can be processed.
@@ -81,9 +81,10 @@ PROCESS N DIC,%,%H,%I,IVMDATE
  I '$D(ZMTSEG) S HLERR="ZMT Segment is Missing" Q
  S EASZ06=1,EXPIRED=0
  S:DGMTYPT=2 IVMCEB=$P($$RXST^IBARXEU(DFN),"^",2)    ;prev RX sts
- I $G(IVMMTIEN)="" D
- . S CURMT=$$LST^DGMTU(DFN,,DGMTYPT)    ;Retrieve current test on file
- . S IVMMTIEN=$P(CURMT,"^",1)           ;for appropriate income year
+ I $G(IVMMTIEN)="" D  ; Find any primary for the same year/test type
+ . S CURMT=$$LST^DGMTU(DFN,IVMMTDT,DGMTYPT)
+ . I $E($P(CURMT,U,2),1,3)'=$E(IVMMTDT,1,3) Q  ;TMK
+ . S IVMMTIEN=$P(CURMT,"^",1)
  . S IVMMTDT=$P(CURMT,"^",2)
  . S IVMMTSTS=$P(CURMT,"^",3)
  I $G(IVMMTIEN)]"" D                   ;dgmtp is event driver variable

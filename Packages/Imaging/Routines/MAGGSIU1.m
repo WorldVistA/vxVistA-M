@@ -1,5 +1,6 @@
-MAGGSIU1 ;WOIFO/GEK - Utilities for Image Add/Modify ; [ 12/27/2000 10:49 ]
- ;;3.0;IMAGING;**7,8**;Sep 15, 2004
+MAGGSIU1 ;WOIFO/GEK/NST - Utilities for Image Add/Modify ; 04 Mar 2010 4:04 PM
+ ;;3.0;IMAGING;**7,8,108**;Mar 19, 2002;Build 1738;May 20, 2010
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGGSIU1 ;WOIFO/GEK - Utilities for Image Add/Modify ; [ 12/27/2000 10:49 ]
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -85,7 +85,7 @@ MAKEPROC ; Patch 8: This call will attempt to compute PROCEDURE field  ^ (#6) PR
  Q
 MAKEORIG ; Patch 8: This call will default the Origin field #45 to "VA"
  ; We are here because TYPE exists in the Array but Origin doesn't
- S MAGGFDA(2005,"+1,",45)="VA"
+ S MAGGFDA(2005,"+1,",45)="V"       ; Patch 108: set to "V"
  Q
 KILLENT(MAGGDA) ; Delete the entry just created, because of Post processing Error
  D CLEAN^DILF

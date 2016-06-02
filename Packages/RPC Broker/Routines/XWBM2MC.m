@@ -1,18 +1,31 @@
-XWBM2MC ;OIFO-Oakland/REM - M2M Broker Client APIs  ;05/21/2002  17:55
- ;;1.1;RPC BROKER;**28,34**;Mar 28, 1997
+XWBM2MC ;OIFO-Oakland/REM - M2M Broker Client APIs ; 08/29/2013  9:33am
+ ;;1.1;RPC BROKER;**28,34**;Mar 28, 1997;Build 11
  ;
- QUIT
+ QUIT  ; routine XWBRPC is not callable at the top
  ;
- ;p34 -make sure RES is defined - CALLRPC.
- ;    -error exception if RPCNAM not defined - CALLRPC.
- ;    -kill XWBY before going to PARSE^XWBRPC - CALLRPC.
- ;    -return 0 when error occurs and XWBY=error msg - CALLRPC.
- ;    -new module to GET the division for a user - GETDIV.
- ;    -new module to SET the division for a user - SETDIV.
- ;    -kills entry for current context in ^TMP("XWBM2M",$J) - CLEAN.
- ;    -comment out line. Will do PRE in REQUEST^XWBRPCC - PARAM.
- ;    -send PORT;IP to ERROR so it's included in error msg - ERROR.
- ;    -add 2 more error msg for GETDIV and SETDIV - ERRMGS.
+ ;
+ ; Change History:
+ ;
+ ; 2002 08 10 OIFO/REM: XWB*1.1*28 SEQ #25, M2M Broker. Original routine
+ ; created. 
+ ;
+ ; 2005 10 26 OIFO/REM: XWB*1.1*34 SEQ #33, M2M Bug Fixes. Ensure RES
+ ; is defined. Error exception if RPCNAM not defined. Killed XWBY before
+ ; going to PARSE^XWBRPC. Returned 0 when error occurs and XWBY=error
+ ; msg. Added new module to GET the division for a user. Added new
+ ; module to SET the division for a user. Killed entry for current
+ ; context in ^TMP("XWBM2M",$J). Commented out line; will do PRE in
+ ; REQUEST^XWBRPCC. Sent PORT;IP to ERROR so it's included in error
+ ; msg. Added 2 more error msg for GETDIV and SETDIV.
+ ; in CALLRPC, GETDIV, SETDIV, CLEAN, PARAM, ERROR, ERRMSGS.
+ ;
+ ; 2013 08 29 VEN/TOAD: XWB*1.1*991 SEQ #46, M2M Security Fixes.
+ ; Fixed bug in recognizing error messages; it was too case sensitive;
+ ; replaced with $translate; combine near-duplicate error checks;
+ ; resolve inconsistency in where error message is returned by
+ ; returning it in both places for backward compatibility.
+ ; Change History added. in XWBM2MC, CALLRPC, EOR.
+ ;
  ;
 CONNECT(PORT,IP,AV) ;Establishes the connection to the server.
  ;CONNECT returns 1=successful, 0=failed
@@ -32,7 +45,7 @@ CONNECT(PORT,IP,AV) ;Establishes the connection to the server.
  ;
  ;XUS SIGNON SETUP RPC
  I '$$SIGNON() D ERROR(2) S X=$$CLOSE() Q 0
- ; Results from XUS Signon 
+ ; Results from XUS Signon
  ; 1=server name, 2=volume, 3=uci, 4=device, 5=# attempts
  ; 6=skip signon-screen
  ;M ^TMP("XWBM2M",$J,"XUS SIGNON")=^TMP("XWBM2MRPC",$J,"RESULTS") ;Remove after testing **REM
@@ -51,7 +64,7 @@ CONNECT(PORT,IP,AV) ;Establishes the connection to the server.
 ISCONT() ;Function to check connection status. 1=connect, 0=not connect
  Q $G(^TMP("XWBM2M",$J,"CONNECTED"),0)
  ;
-SETCONTX(CONTXNA) ;Set context and returns 1=successful or 0=failed  
+SETCONTX(CONTXNA) ;Set context and returns 1=successful or 0=failed
  N REQ,XWBPARMS,X
  S ^TMP("XWBM2M",$J,"CONTEXT")=""
  K ^TMP("XWBM2M",$J,"ERROR","SETCONTX")
@@ -80,6 +93,7 @@ PARAM(PARAMNUM,ROOT) ;Build the PARAM data structure
  ;D PRE ;*p34
  M XWBPARMS("PARAMS",PARAMNUM)=@ROOT
  Q 1
+ ;
  ;
 CALLRPC(RPCNAM,RES,CLRPARMS) ;Call to RPC and wraps RPC in XML
  ;RPCNAM -RPC name to run
@@ -115,22 +129,22 @@ CALLRPC(RPCNAM,RES,CLRPARMS) ;Call to RPC and wraps RPC in XML
  S XWBY="" I RES'="" S XWBY=RES K @($G(XWBY)) ;*p34-kill XWBY before PARSE
  D PARSE^XWBRPC(.XWBPARMS,XWBY)
  ;
- ;*p34-return 0 when error occurs and XWBY=error msg.
- I ($G(RES))'="",($G(@XWBY))="",($G(@(XWBY_"("_1_")")))="" D  Q ERX
- .S ER=$G(^TMP("XWBM2MVLC",$J,"XML",2))
- .S ERX=$S(ER["ERROR":0,ER["ERRORS":0,ER["error":0,ER["errors":0,1:1)
- .I 'ERX S @XWBY=ER
- .D USE^%ZISUTL("XWBM2M CLIENT") U IO
- ;When RES in not defined.
- I ($G(RES))="",($G(^TMP("XWBM2MRPC",$J,"RESULTS")))="",($G(^TMP("XWBM2MRPC",$J,"RESULTS",1)))="" D  Q ERX
- .S ER=$G(^TMP("XWBM2MVLC",$J,"XML",2))
- .S ERX=$S(ER["ERROR":0,ER["ERRORS":0,ER["error":0,ER["errors":0,1:1)
- .I 'ERX S ^TMP("XWBM2MRPC",$J,"RESULTS",1)=ER
- .D USE^%ZISUTL("XWBM2M CLIENT") U IO
+ ; handle errors - return 0 and @XWBY = error message
+ I $G(RES)="" N XWBY S XWBY=$NA(^TMP("XWBM2MRPC",$J,"RESULTS"))
+ I $G(@XWBY)="",$G(@XWBY@(1))="" D  Q ERX ; return error
+ . S ER=$G(^TMP("XWBM2MVLC",$J,"XML",2))
+ . ; if error, ER = "<vistalink type=""VA.RPC.Error"" >"
+ . S ERX=$$UP^XLFSTR(ER)'["ERROR" ; 1 if success, 0 if error
+ . Q:ERX  ; no error
+ . S @XWBY=ER ; error for RES'=""
+ . S @XWBY@(1)=ER ; for RES="" (keep for backward compatibility)
+ . D USE^%ZISUTL("XWBM2M CLIENT") U IO
  ;
  I $G(CLRPARMS)'=0 K XWBPARMS("PARAMS") ;Default is to clear
  D USE^%ZISUTL("XWBM2M CLIENT") U IO
- Q 1
+ ;
+ Q 1 ; return success ; end of $$CALLRPC
+ ;
  ;
 CLOSE() ;Close connection
  I '$$ISCONT() D ERROR(5) Q 0  ;Not connected
@@ -198,7 +212,7 @@ GETDIV(XWBDIVG) ;*p34-gets the division for a user.
  ; XWBDIVG(1)=number of divisions
  ; XWBDIVG(#)='ien;station name;station#' delimitated with ";"
  ; If a user has only 1 divison, then XWBDIVG(1)=0 because Kernel
- ; will automatically assign that division as a default.  Use IEN to 
+ ; will automatically assign that division as a default.  Use IEN to
  ; set division in $$SETDIV.
  N RPC,ROOT
  K XWBPARMS
@@ -209,7 +223,7 @@ GETDIV(XWBDIVG) ;*p34-gets the division for a user.
  ;
 SETDIV(XWBDIVS) ;*p34-sets the division for a user.
  ;Returns 1-success, 0=fail
- ;XWBDIVS - Division to set. Use IEN from $$GETDIV. 
+ ;XWBDIVS - Division to set. Use IEN from $$GETDIV.
  N REQ
  K XWBPARMS
  S REQ="RESULT"
@@ -245,3 +259,6 @@ ERRMSG ; Error messages
  ;;Could not obtain list of valid divisions for current user ;;GETDIV
  ;;Could not Set active Division for current user ;;SETDIV
  Q
+ ;
+ ;
+EOR ; end of routine XWBM2MC

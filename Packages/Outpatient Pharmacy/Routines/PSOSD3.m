@@ -1,5 +1,5 @@
 PSOSD3 ;BHAM ISC/RTR - Prints pending orders on action profile ;11/20/95
- ;;7.0;OUTPATIENT PHARMACY;**2,19,107,110,132,233,258,326**;DEC 1997;Build 7
+ ;;7.0;OUTPATIENT PHARMACY;**2,19,107,110,132,233,258,326**;DEC 1997;Build 8
  ;External reference ^PS(50.7 - 2223
  ;External reference ^PS(50.606 - 2174
  ;External reference ^PSDRUG( - 221
@@ -35,13 +35,14 @@ HD1 S FN=DFN
  W $S(PSTYPE:"Action",1:"Informational")_" Rx Profile",?47,"Run Date: " S Y=DT D DT^DIO2 W ?71,"Page: "_PAGE
  W !,"Sorted by drug classification for Rx's currently active"_$S('PSDAYS:" only.",1:"") W:PSDAYS !,"and for those Rx's that have been inactive less than "_PSDAYS_" days."
  S X=$$SITE^VASITE
- ;DSS/RAC - BEGIN MOD - Deveteranization - orig line arg of ELSE
- I $T(VX^VFDI0000)'="",$$VX^VFDI0000["VX" D VFD^PSOSD1("SD3")
+ ;DSS/RAC/SMP - BEGIN MOD - Deveteranization - orig line arg of ELSE
+ N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
+ I VFD D VFD^PSOSD1("SD3")
  E  W @$S(PSORM:"?70",1:"!"),"Site: VAMC "_$P(X,"^",2)_" ("_$P(X,"^",3)_")",!,$E(LINE,1,$S('PSORM:80,1:IOM)-1)
- ;DSS/SGM - END MODS
  I $P(VAIN(4),"^",2)]"",+$P($G(^PS(59.7,1,40.1)),"^") W !,"Outpatient prescriptions are discontinued 72 hours after admission.",!
  I $D(CLINICX) W !?1,"Clinic: "_$E(CLINICX,1,28),?45,"Date/Time: " S Y=CLDT D DT^DIO2
  W !?1,"Name  : ",PSNAME W:PSTYPE ?58,"Action Date: ________" W !?1,"DOB   : "_PSDOB
+ I VFD W !,?1,"MRN   : "_$G(VA("MRN"))
  W:ADDRFL]"" ?30,ADDRFL,! W ?30,"Address  :"
  I $G(ADDRFL)="" D CHECKBAI^PSOSD1
  W ?41,VAPA(1) W:VAPA(2)]"" !?41,VAPA(2) W:VAPA(3)]"" !?41,VAPA(3)
@@ -50,7 +51,13 @@ HD1 S FN=DFN
  W:$G(DOD(DFN))]"" ?1,"**** Date of Death: "_DOD(DFN)_" ****",!
  S (WT,HT)="",X="GMRVUTL" X ^%ZOSF("TEST") I $T D
  .F GMRVSTR="WT","HT" S VM=GMRVSTR D EN6^GMRVUTL S @VM=X,$P(@VM,"^")=$E($P(@VM,"^"),4,5)_"/"_$E($P(@VM,"^"),6,7)_"/"_($E($P(@VM,"^"),1,3)+1700)
- .S X=$P(WT,"^",8),Y=$J(X/2.2,0,2),WT=WT_"^"_Y,X=$P(HT,"^",8),Y=$J(2.54*X,0,2),HT=HT_"^"_Y
+ .I VFD D  I 1
+ ..S X=$P(WT,"^",8),Y=$$LB2KG^VFDXLF(X,2),$P(WT,"^",9)=Y
+ ..S X=$P(HT,"^",8),Y=$$IN2CM^VFDXLF(X,2),$P(HT,"^",9)=Y
+ .E  D
+ ..S X=$P(WT,"^",8),Y=$J(X/2.2,0,2),WT=WT_"^"_Y
+ ..S X=$P(HT,"^",8),Y=$J(2.54*X,0,2),HT=HT_"^"_Y
+ .;DSS/SMP - END MODS
  W !!,"WEIGHT(Kg): " W:+$P(WT,"^",8) $P(WT,"^",9)_" ("_$P(WT,"^")_")" W ?41,"HEIGHT(cm): " W:$P(HT,"^",8) $P(HT,"^",9)_" ("_$P(HT,"^")_")" K VM,WT,HT
  S PAGE=PAGE+1 W !,$E(LINE,1,$S('PSORM:80,1:IOM)-1)
  Q
@@ -59,7 +66,7 @@ NVA ;displays non-va meds
  Q:$D(DUOUT)!($D(DTOUT))!('$G(DFN))
  D HD1 S $P(PNDLINE,"-",IOM)="",PSODFN=DFN
  ;DSS/RAC - BEGIN MODS - Original code in else arg
- I $T(VX^VFDI0000)'="",$$VX^VFDI0000["VX" W !,PNDLINE,!?32,"OTC/Elsewhere Meds",!,PNDLINE,!
+ I $G(^%ZOSF("ZVX"))["VX" W !,PNDLINE,!?32,"OTC/Elsewhere Meds",!,PNDLINE,!
  E  W !,PNDLINE,!?25,"Non-VA Meds (Not dispensed by VA)",!,PNDLINE,!
  ;DSS/RAC - END MODS
  F NVA=0:0 S NVA=$O(^PS(55,DFN,"NVA",NVA)) Q:'NVA  D  Q:$G(PSQFLG)

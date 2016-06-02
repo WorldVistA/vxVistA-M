@@ -1,5 +1,5 @@
-DGLOCK ;ALB/MRL,ERC,BAJ,LBD - PATIENT FILE DATA EDIT CHECKS ; 1/4/07 2:40pm
- ;;5.3;Registration;**108,161,247,485,672,673,688**;Aug 13, 1993;Build 29
+DGLOCK ;ALB/MRL,ERC,BAJ,LBD - PATIENT FILE DATA EDIT CHECKS ; 2/14/11 4:36pm
+ ;;5.3;Registration;**108,161,247,485,672,673,688,754,797**;Aug 13, 1993;Build 24
 FFP ; DGFFP Access key required
  I '$D(^XUSEC("DGFFP ACCESS",DUZ)) D EN^DDIOL("Fugitive Felon Key required to edit this field.","","!!?4") K X
  Q
@@ -91,11 +91,108 @@ SVED ;Lebanon, Grenada, Panama, Persian Gulf & Yugoslavia svc edit
  K DGX
  Q
 PTDT  ;P&T Effective Date cannot be edited unless P&T is 'YES' - DG*5.3*688
- ;P&T Effective Date cannot be earlier than the DOB
+ ;P&T Effective Date cannot be earlier than the DOB or after DOD - DG*5.3*754
  I $S('$D(^DPT(DFN,.3)):1,$P(^(.3),U,4)'="Y":1,1:0) D EN^DDIOL("P&T not indicated...no editing","","!?4") K X Q
- I X<$P(^DPT(DFN,0),U,3) D EN^DDIOL("P&T Effective Date cannot be before Patient Date of Birth.","","!?4") K X
+ N DGFLD
+ S DGFLD=$P(^DD(2,.3013,0),U)
+ I $G(X)<$P(^DPT(DFN,0),U,3) D  Q
+ . D DOBDOD(DGFLD,1)
+ I $P($G(^DPT(DFN,.35)),U)]"" D
+ . I $G(X)>$P(^DPT(DFN,.35),U) D
+ . . D DOBDOD(DGFLD,2)
  Q
 POWV  ;POW Status cannot be edited once it has been verified by the HEC
  ;DG*5.3*688
  I $P($G(^DPT(DFN,.52)),U,9)'="" D EN^DDIOL("POW Status verified at the HEC...NO EDITING!!","","!?4") K X
+ Q
+INEL ;check ineligible date - cannot be before DOB
+ ;DG*5.3*754
+ N DGFLD
+ I $G(X)<$P(^DPT(DFN,0),U,3) D
+ . S DGFLD=$P(^DD(2,.152,0),U)
+ . D DOBDOD(DGFLD,1)
+ Q
+INCOM ;check date ruled incompetent (VA) - cannot be before DOB
+ ;or after DOD - DG*5.3*754)
+ N DGFLD
+ S DGFLD=$P(^DD(2,.291,0),U)
+ I $G(X)<$P(^DPT(DFN,0),U,3) D  Q
+ . D DOBDOD(DGFLD,1)
+ I $P($G(^DPT(DFN,.35)),U)]"" D
+ . I $G(X)>$P(^DPT(DFN,.35),U) D
+ . . D DOBDOD(DGFLD,2)
+ Q
+INCOM2 ;check date ruled incompetent (civil - cannot be before DOB
+ ;or after DOD - DG*5.3*754)
+ N DGFLD
+ S DGFLD=$P(^DD(2,.292,0),U)
+ I $G(X)<$P(^DPT(DFN,0),U,3) D  Q
+ . D DOBDOD(DGFLD,1)
+ I $P($G(^DPT(DFN,.35)),U)]"" D
+ . I $G(X)>$P(^DPT(DFN,.35),U) D
+ . . D DOBDOD(DGFLD,2)
+ Q
+DOBDOD(DGFLD,DGX) ;called from subroutines to check if 
+ ;date is before DOB or after DOD.  The subroutines 
+ ;are called from the field input transforms. DG*5.3*754
+ I $G(DGFLD)']"" Q
+ I "12"'[$G(DGX) Q
+ D EN^DDIOL(DGFLD_" cannot be "_$S(DGX=1:"prior to",1:"after")_" Date of "_$S(DGX=1:"Birth.",1:"Death."),"","!?4")
+ K X
+ Q
+DEATH ;new date constraints added with ESR 3.1 - DG*5.3*754
+ Q:$G(X)'>0
+ N DGFLD
+ S DGFLD=$P(^DD(2,.351,0),U)
+ ;check for DOD before DOB
+ I X<$P(^DPT(DFN,0),U,3) D DOBDOD(DGFLD,1) Q
+ ;check for DOD before P&T Effective Date
+ I X<$P($G(^DPT(DFN,.3)),U,13) D  Q
+ . D EN^DDIOL(DGFLD_" cannot be prior to the P&T Effective Date","","!?4")
+ . K X
+ ;check for DOD before Date Ruled Incompetent (VA)
+ I X<$P($G(^DPT(DFN,.29)),U) D  Q
+ . D EN^DDIOL(DGFLD_" cannot be prior to the Date Ruled Incompetent (VA)","","!?4")
+ . K X
+ ;check for DOD before Date Ruled Incompetent (Civil)
+ I X<$P($G(^DPT(DFN,.29)),U,2) D  Q
+ . D EN^DDIOL(DGFLD_" cannot be prior to the Date Ruled Incompetent (Civil)","","!?4")
+ . K X
+ ;check for DOD before Enrollment Application Date
+ ;I $P($G(^DPT(DFN,"ENR")),U)>0 D
+ ;. N DGENR
+ ;. S DGENR=$P(^DPT(DFN,"ENR"),U)
+ ;. Q:$G(DGENR)']""
+ ;. Q:$P($G(^DGEN(27.11,DGENR,0)),U,2)'=DFN
+ ;. I X<$P(^DGEN(27.11,DGENR,0),U) D
+ ;. . D EN^DDIOL(DGFLD_" cannot be prior to the Enrollment Application Date","","!?4")
+ ;. . K X
+ Q
+BIRTH ;checks for DOB added with DG*5.3*754
+ I (($G(EASAPP)'="")&($G(DGADDF)=1)) Q  ;Ignore New 1010EZ patients
+ Q:$G(X)'>0
+ Q:'$D(DA)
+ N DFN
+ S DFN=DA
+ N DGFLD
+ S DGFLD=$P(^DD(2,.03,0),U)
+ ;check for DOB after Ineligible Date
+ I $P($G(^DPT(DFN,.15)),U,2)]"" D  Q:'$G(X)
+ . I X>$P(^DPT(DFN,.15),U,2) D
+ . . D EN^DDIOL(DGFLD_" cannot be after the Ineligible Date","","!?4") K X
+ ;check for DOB after Enrollment Application Date
+ I $P($G(^DPT(DFN,"ENR")),U)>0 D
+ . N DGENR
+ . S DGENR=$P(^DPT(DFN,"ENR"),U)
+ . Q:$G(DGENR)']""
+ . Q:$P($G(^DGEN(27.11,DGENR,0)),U,2)'=DFN
+ . I X>$P(^DGEN(27.11,DGENR,0),U) D
+ . . D EN^DDIOL(DGFLD_" cannot be after the Enrollment Application Date","","!?4")
+ . . K X
+ Q
+MSE ;Military Service Episode data cannot be edited once it has been
+ ;verified by the HEC
+ ;DG*5.3*797
+ I "NU"'[$E(X) D VET Q:'$D(X)
+ I $P($G(^DPT(DFN,.3216,DA,0)),U,7)=1 D EN^DDIOL("MSE data verified at the HEC...NO EDITING!!","","!?4") K X
  Q

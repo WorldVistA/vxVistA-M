@@ -1,5 +1,5 @@
 XUVERIFY ;SF/MUS - Checks a users ACCESS and VERIFY CODES ;11/23/2004  14:43
- ;;8.0;KERNEL;**2,26,59,265**;Jul 10, 1995
+ ;;8.0;KERNEL;**2,26,59,265**;Jul 10, 1995;Build 6
  ; The variables % and %DUZ must be set before running this
  ; program   % - may equal "A","V" OR both "AV"
  ;        %DUZ - must equal the users DUZ
@@ -25,7 +25,14 @@ ACC ;Access code
  Q
  ;
 VER ;Verify code
- X ^%ZOSF("EOFF") W !,XUSTMP(52) S X=$$ACCEPT^XUS Q:X["^"!(X?1.4"?")  D LC^XUS:X?.E1L.E,^XUSHSH S %VC=X
+ ;DSS/SGM - BEGIN MODS - vxvista case sensitive
+ ; break original VA line into three lines
+ ;X ^%ZOSF("EOFF") W !,XUSTMP(52) S X=$$ACCEPT^XUS Q:X["^"!(X?1.4"?")  D LC^XUS:X?.E1L.E,^XUSHSH S %VC=X
+ X ^%ZOSF("EOFF") W !,XUSTMP(52) S X=$$ACCEPT^XUS Q:X["^"!(X?1.4"?")
+ I $G(^%ZOSF("ZVX"))["VX",$T(SYS^VFDXUS2B)'="",$$SYS^VFDXUS2B["c"
+ E  D LC^XUS:X?.E1L.E
+ D ^XUSHSH S %VC=X
+ ;DSS/SGM - END MODS
  I %VC'=$P(^VA(200,%DUZ,.1),"^",2) S %=2 Q
  S %=1
  Q

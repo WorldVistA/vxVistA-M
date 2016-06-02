@@ -1,16 +1,16 @@
 PSDRWK ;BIR/JPW-Reprint Pharm Disp. Worksheet ;12/14/99  16:40
- ;;3.0; CONTROLLED SUBSTANCES ;**20**;13 Feb 97
+ ;;3.0; CONTROLLED SUBSTANCES ;**20,69**;13 Feb 97;Build 13
  ;
  ; Reference to XUSEC( supported by DBIA # 10076
  ; Reference to DD(58.8 supported by DBIA # 10154
  ; Reference to DD("DD" supported by DBIA # 10017
- ; Reference to PSDRUG( supproted by DBIA # 10043
+ ; Reference to PSDRUG( supproted by DBIA # 221
  ; Reference to VA(200 supported by DBIA # 10060
  ; Reference to PSD(58.8 supported by DBIA # 2711
  ;
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- S OK=$S($D(^XUSEC("PSJ RPHARM",DUZ)):1,$D(^XUSEC("PSJ PHARM TECH",DUZ)):1,1:0)
- I 'OK W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to",!,?12,"process/dispense narcotic supplies.",!!,"PSJ RPHARM or PSJ PHARM TECH security key required.",! K OK Q
+ S OK=$S($D(^XUSEC("PSJ RPHARM",DUZ)):1,$D(^XUSEC("PSJ PHARM TECH",DUZ)):1,$D(^XUSEC("PSD TECH ADV",DUZ)):1,1:0)
+ I 'OK W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to",!,?12,"process/dispense narcotic supplies.",!!,"PSJ RPHARM, PSJ PHARM TECH or PSD TECH ADV security key required.",! K OK Q
  W !!,"=>  This report reprints a worksheet listing of all pending CS requests for a",!,"    dispensing site.",!!
  I '$O(^PSD(58.85,0)) W $C(7),!!,"There are no pending request orders.",!! K OK Q
 ASKD ;ask disp location

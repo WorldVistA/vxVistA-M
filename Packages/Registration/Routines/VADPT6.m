@@ -1,5 +1,5 @@
 VADPT6 ;ALB/MJK - PATIENT ID VARIABLES ; 12 AUG 89 @1200
- ;;5.3;Registration;;Aug 13, 1993;Build 153
+ ;;5.3;Registration;;Aug 13, 1993;Build 164
  ;
 PID ;
 13 ; -- Returns the patient id variables for DFN patient

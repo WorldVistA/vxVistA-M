@@ -1,5 +1,5 @@
 DGRPD1 ;BPFO/JRC/BAJ - PATIENT INQUIRY (NEW) ; 8/15/08 11:35am
- ;;5.3;Registration;**703,730,688**;Aug 13, 1993;Build 153
+ ;;5.3;Registration;**703,730,688,863**;Aug 13, 1993;Build 18
  ; DG*5.3*688 BAJ
  ; tags HDR & OKLINE moved as is from DGRPD for size considerations
  Q
@@ -54,13 +54,15 @@ CATDIS ;
  Q
 HDR I '$D(IOF) S IOP="HOME" D ^%ZIS K IOP
  ;MPI/PD CHANGE
- ;DSS/SGM - BEGIN MODS - no/ssn or CMOR
- ;W @IOF,!,$P(VADM(1),"^",1),?40,$P(VADM(2),"^",2),?65,$P(VADM(3),"^",2) S X="",$P(X,"=",78)="" W !,X,!?15,"COORDINATING MASTER OF RECORD: ",DGCMOR,! Q
- N VFD
- S VFD=$G(VA("MRN")) S:VFD="" VFD=VA("PID") S:VFD="" VFD=$P(VADM(2),"^",2)
+ ;DSS/SMP/TFF - BEGIN MODS - no SSN, Display Patient Characteristics
+ I $G(^%ZOSF("ZVX"))["VX" ; vxVistA
+ E  W @IOF,!,$P(VADM(1),"^",1),?40,$P(VADM(2),"^",2),?65,$P(VADM(3),"^",2) S X="",$P(X,"=",78)="" W !,X,! Q  ;**863 - MVI_2351 (ptd)
+ ; vxVistA context falls through here
+ N VFD S VFD=$G(VA("MRN")) S:VFD="" VFD=VA("PID") S:VFD="" VFD=$P(VADM(2),"^",2)
  W @IOF,!,$P(VADM(1),"^",1),?40,VFD,?65,$P(VADM(3),"^",2)
+ D HDR^VFDPTCHR ; VFD PATIENT CHARACTERISTICS
  S X="",$P(X,"=",78)="" W !,X,! Q
- ;DSS/SGM - END MODS
+ ;DSS/SMP/TFF - END MODS
  ;END MPI/PD CHANGE
 OKLINE(DGLINE) ;DOES PAUSE/HEADER IF $Y EXCEEDS DGLINE
  ;

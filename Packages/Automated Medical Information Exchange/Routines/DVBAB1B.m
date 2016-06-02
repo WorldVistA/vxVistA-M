@@ -1,5 +1,5 @@
-DVBAB1B ;ALB/SPH - CAPRI UTILITIES ;01/01/00
- ;;2.7;AMIE;**104**;Apr 10, 1995
+DVBAB1B ;ALB/SPH - CAPRI UTILITIES ;09/30/2009
+ ;;2.7;AMIE;**104,143**;Apr 10, 1995;Build 4
  ;
 DPA(LIST,DFN,CHOICE) ;Display Patient Appointments
  N DVBABCNT,CKCHOICE
@@ -55,4 +55,14 @@ DPA(LIST,DFN,CHOICE) ;Display Patient Appointments
  . I $D(REMARK) K REMARK
  .S LIST=$NA(^TMP("DVBAAPPT",$J,DUZ))
  K DFN,X,%DT,CLN,CHOICE,Y,SDT,EDT
+ Q
+ ;
+CHECK(DVBRSLTS,DVBPATCH) ; Checks for KIDS Patch install
+ ; RPC: DVBA CHECK PATCH
+ ; Input:  DVBPATCH - Patch Number (i.e. DVBA*2.7*142)
+ ; Output: Returns "1^Patch Is Installed" on success; 
+ ;         otherwise returns "0^Patch Is Not Installed" 
+ N DVBX
+ S DVBX=$$PATCH^XPDUTL(DVBPATCH)
+ S DVBRSLTS=$S(DVBX:"1^Patch Is Installed",1:"0^Patch Is Not Installed")
  Q

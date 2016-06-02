@@ -1,22 +1,25 @@
-ECRRPT1 ;ALB/JAM;Event Capture Report RPC Broker ;10 JUL 2008
- ;;2.0; EVENT CAPTURE ;**25,32,33,61,78,72,90,95**;8 May 96;Build 26
+ECRRPT1 ;ALB/JAM;Event Capture Report RPC Broker ;12/10/12  16:59
+ ;;2.0;EVENT CAPTURE;**25,32,33,61,78,72,90,95,100,107,112,119**;8 May 96;Build 12
  ;
+ ;119 Updated comments for reports to include (E)xport as a value for ECPTYP
 ECRPRSN ;Procedure Reason Report for RPC Call
  ;     Variables passed in
  ;       ECSD     - Start Date or Report
  ;       ECED     - End Date or Report
- ;       ECL      - Location to report (1 or ALL)
+ ;       ECL0..n  - Location to report (1,some or ALL)
  ;       ECD0..n  - DSS Unit to report (1,some or ALL)
  ;       ECRY0..n - Procedure reason (some or ALL)
+ ;       ECPTYP   - Where to send output (P)rinter, (D)evice or screen
+ ;                  or (E)xport
  ;
  ;     Variable return
  ;       ^TMP($J,"ECRPT",n)=report output or to print device.
  N ECV,ECI,ECLOC,ECDSSU,ECDN,ECDATE,ECUN,ECNT,ECKEY,ECX,ECLINK,ECZ
- N ECROU,ECSAVE,ECDESC,ECW,DIC,X,Y
- S ECV="ECL^ECD0^ECSD^ECED^ECRY0" D REQCHK^ECRRPT(ECV) I ECERR Q
+ N ECROU,ECSAVE,ECDESC,ECW,DIC,X,Y,I,LIEN,ECJ
+ S ECV="ECL0^ECD0^ECSD^ECED^ECRY0" D REQCHK^ECRRPT(ECV) I ECERR Q  ;112
  D  I '$D(ECLOC) S ^TMP("ECMSG",$J)="1^Invalid Location." Q
- . I ECL="ALL" D LOCARRY^ECRUTL Q
- . S DIC=4,DIC(0)="QNMZX",X=ECL D ^DIC Q:Y<0  S ECLOC(1)=+Y_"^"_$P(Y,U,2)
+ . D LOCARRY^ECRUTL I ECL0="ALL" Q  ;112
+ . K ECLOC F I=0:1 S LIEN=$G(@("ECL"_I)) Q:'+LIEN  I $D(ECLOC1(LIEN)) S ECLOC(I+1)=LIEN_"^"_ECLOC1(LIEN) ;112
  D  I '$D(ECDSSU) S ^TMP("ECMSG",$J)="1^Invalid DSS Unit." Q
  . I ECD0="ALL" D  Q
  . . I '$D(ECDUZ) Q
@@ -36,11 +39,11 @@ ECRPRSN ;Procedure Reason Report for RPC Call
  ...S ECLINK(ECW)=$P($G(^ECL(ECW,0)),U)
  D DATECHK^ECRRPT(.ECSD,.ECED) S ECSD=ECSD-.0001,ECED=ECED+.9999
  I ECPTYP="P" D  Q
- . S ECV="ECSD^ECED",ECROU="START^ECRPRSN"
+ . S ECV="ECSD^ECED^ECPTYP",ECROU="STRPT^ECRPRSN2"
  . S (ECSAVE("ECLOC("),ECSAVE("ECDSSU("),ECSAVE("ECLINK("))=""
  . S ECDESC="EC Procedure Reason Report"
  . D QUEUE^ECRRPT
- D START^ECRPRSN,EXIT^ECRPRSN
+ D STRPT^ECRPRSN2 ;112
  Q
 PXREAS ;Procedure reason link
  N ECZ,ECX,ECY,ECV
@@ -61,6 +64,8 @@ ECRPERS ;Inactive Person Class Report for RPC Call
  ;       ECSD   - Start Date or Report
  ;       ECED   - End Date or Report
  ;       ECSORT - Sort by Patient (P) or Provider (R)
+ ;       ECPTYP - Where to send output (P)rinter, (D)evice or screen
+ ;                or (E)xport
  ;
  ;     Variable return
  ;       ^TMP($J,"ECRPT",n)=report output or to print device.
@@ -77,6 +82,8 @@ ECRPERS ;Inactive Person Class Report for RPC Call
 ECDSS1 ;National/Local Procedure Reports for RPC Call
  ;     Variables passed in
  ;       ECRTN    - Procedure Report (A-active or I-inactive)
+ ;       ECPTYP   - Where to send output (P)rinter, (D)evice or screen
+ ;                  or (E)xport
  ;    If ECRTN=A, also
  ;       ECRN     - Preferred Report (N-ational, L-ocal or Both)
  ;       ECRD     - Sort Method (P-rocedure Name, N-ational Number)
@@ -87,6 +94,7 @@ ECDSS1 ;National/Local Procedure Reports for RPC Call
  S ECV=$S($G(ECRTN)="A":"ECRTN^ECRN^ECRD",1:"ECRTN")
  D REQCHK^ECRRPT(ECV) I ECERR Q
  S DQTIME=ECQDT
+ I $G(ECPTYP)="E" D @$S(ECRTN="I":"LISTI^ECDSS1",1:"PRT^ECDSS1") Q  ;119
  I ECPTYP="P" D  Q
  . S ECV="ECRTN^ECRN^ECRD",ECROU=$S(ECRTN="I":"LISTI",1:"PRT")_"^ECDSS1"
  . S ECDESC="Event Capture National Procedure Report",ECDIP=1
@@ -100,12 +108,15 @@ ECDSS3 ;Category Reports for RPC Call
  ;     Variables passed in
  ;       ECRTN    - Category Procedure Report 
  ;                  (A-active, I-inactive or B-oth)
+ ;       ECPTYP   - Where to send output (P)rinter, (D)evice or screen
+ ;                  or (E)xport
  ;
  ;     Variable return
  ;       ^TMP($J,"ECRPT",n)=report output or to print device.
  N ECV,ECDIP,DQTIME
  S ECV="ECRTN" D REQCHK^ECRRPT(ECV) I ECERR Q
  S DQTIME=ECQDT
+ I $G(ECPTYP)="E" D PRINT^ECDSS3 Q  ;119
  I ECPTYP="P" D  Q
  . S ECV="ECRTN",ECROU="PRINT^ECDSS3"
  . S ECDESC="Event Capture Category Reports"
@@ -127,6 +138,8 @@ ECSUM ;Print Category and Procedure Summary (Report) for RPC Call
  ;       ECD      - DSS Unit to report (1 or ALL), If ECD'="ALL" then ECC
  ;       ECC      - Category (1 or ALL) (optional)
  ;       ECRTN    - Event Code Screen (Active, Inactive or Both)
+ ;       ECPTYP   - Where to send output (P)rinter, (D)evice or screen
+ ;                  or (E)xport
  ;
  ;     Variable return
  ;       ^TMP($J,"ECRPT",n)=report output or to print device.
@@ -134,8 +147,8 @@ ECSUM ;Print Category and Procedure Summary (Report) for RPC Call
  N ECSCN
  S (ECJLP,ECALL)=0,ECV="ECL^ECD^ECRTN" D REQCHK^ECRRPT(ECV) I ECERR Q
  D  I '$D(ECLOC) S ^TMP("ECMSG",$J)="1^Invalid Location." Q
- . I ECL="ALL" D LOCARRY^ECRUTL Q
- . S DIC=4,DIC(0)="QNZX",X=ECL D ^DIC Q:Y<0  S ECLOC(1)=+Y_U_$P(Y,U,2)
+ . D LOCARRY^ECRUTL I ECL="ALL" Q
+ . K ECLOC I $D(ECLOC1(ECL)) S ECLOC(1)=ECL_"^"_ECLOC1(ECL)
  S ECSCN=ECRTN D  I ECERR S ^TMP("ECMSG",$J)="1^Invalid DSS Unit." Q
  . I ECD="ALL" S ECALL=1 Q
  . K DIC S DIC=724,DIC(0)="QNMZX",X=ECD D ^DIC I Y<0 S ECERR=1 Q
@@ -161,6 +174,8 @@ ECNTPCE ;ECS Records Failing Transmission to PCE
  ;     Variables passed in
  ;       ECSD   - Start Date or Report
  ;       ECED   - End Date or Report
+ ;       ECPTYP - Where to send output (P)rinter, (D)evice or screen
+ ;                or (E)xport
  ;
  ;     Variable return
  ;       ^TMP($J,"ECRPT",n)=report output or to print device.
@@ -180,6 +195,8 @@ ECSCPT ;Event Code Screens with CPT Codes
  ;       ECD      - DSS Unit to report (1 or ALL), If ECD'="ALL" then ECC
  ;       ECC      - Category (1 or ALL) (optional)
  ;       ECCPT    - CPT Codes to Display (Active, Inactive or Both)
+ ;       ECPTYP   - Where to send output (P)rinter, (D)evice or screen
+ ;                  or (E)xport
  ;
  ;     Variable return
  ;       ^TMP($J,"ECRPT",n)=report output or to print device.
@@ -210,7 +227,8 @@ CPTRUN I ECPTYP="P" D  Q
  Q
 ECINCPT ;National/Local Procedure Codes with Inactive CPT Reports for RPC Call
  ;     Variables passed in
- ;       NONE     - No input variables
+ ;       ECPTYP  - Where to send output (P)rinter, (D)evice or screen
+ ;                 or (E)xport
  ;
  ;     Variable return
  ;       ^TMP($J,"ECRPT",n)=report output or to print device.
@@ -222,3 +240,34 @@ ECINCPT ;National/Local Procedure Codes with Inactive CPT Reports for RPC Call
  . D QUEUE^ECRRPT
  U IO D START^ECINCPT
  Q
+ECGTP ;ECS Generic Table Printer
+ ;     Variables passed in
+ ;       ECOBHNDL   - Handle to generic table print obj
+ ;       ECPTYP     - Where to send output (P)rinter, (D)evice or screen
+ ;
+ ;     Variable return
+ ;       ^TMP($J,"ECRPT",n)=report output or to print device.
+ N ECV,ECROU,ECDESC
+ S ECV="ECOBHNDL" D REQCHK^ECRRPT(ECV) I ECERR Q
+ I ECPTYP="P" D  Q
+ . S ECV="ECOBHNDL",ECROU="START^ECGTP"
+ . S ECDESC="ECS Generic Table Printer"
+ . D QUEUE^ECRRPT
+ D START^ECGTP
+ Q
+ECSTPCD ;DSS Units with Associated Stop Code Error REPORT
+ ;  EC*2*107 - added to GUI reports
+ ;     Variables passed in
+ ;       ECPTYP  - Where to send output (P)rinter, (D)evice or screen
+ ;                 or (E)xport
+ ;
+ ;     Variable return
+ ;       ^TMP($J,"ECRPT",n)=report output or to print device.
+ N ECV,ECL,ECDESC,ECROU,DQTIME,ECPG
+ S ECPG=1
+ I ECPTYP="P" D  Q
+ . S ECROU="STRTGUI^ECUNTRPT",ECV="ECL",ECL=""
+ . S ECDESC="DSS Units with Associated Stop Code Error"
+ . D QUEUE^ECRRPT
+ U IO D STRTGUI^ECUNTRPT
+ Q 

@@ -1,16 +1,18 @@
 RCBEIB ;WISC/RFJ-integrated billing entry points ;1 Jun 00
- ;;4.5;Accounts Receivable;**157**;Mar 20, 1995
- ;;Per VHA Directive 10-93-142, this routine should not be modified.
+ ;;4.5;Accounts Receivable;**157,270**;Mar 20, 1995;Build 25
+ ;;Per VHA Directive 2004-038, this routine should not be modified.
  Q
  ;
- ;
-CANCEL(RCBILLDA,RCCANDAT,RCCANDUZ,RCCANAMT,RCCANCOM) ;  this entry point is
+ ; PRCA*4.5*270 add CRD flag
+ ; CANCEL(RCBILLDA,RCCANDAT,RCCANDUZ,RCCANAMT,RCCANCOM) ;  this entry point is
+CANCEL(RCBILLDA,RCCANDAT,RCCANDUZ,RCCANAMT,RCCANCOM,RCCRD) ;  this entry point is
  ;  called when a bill is cancelled in IB
  ;  input   rcbillda = ien of bill to cancel
  ;          rccandat = (optional) the date the bill was cancelled
  ;          rccanduz = (optional) the user cancelling the bill
  ;          rccanamt = (optional) amount being cancelled
  ;          rccancom = (optional) comments
+ ;          rccrd    = (optional) CRD flag, indicates corrected record which FMS must handle differently
  ;
  ;  if the optional fields are passed, they will be stored in the
  ;  comment field (98) of the bill.
@@ -64,7 +66,10 @@ CANCEL(RCBILLDA,RCCANDAT,RCCANDUZ,RCCANAMT,RCCANCOM) ;  this entry point is
  I $P(^PRCA(430,RCBILLDA,0),"^",8)=16!($P(^PRCA(430,RCBILLDA,0),"^",8)=42) D
  .   ;  if there is a principal balance, decrease it
  .   S COMMENT(1)="Bill cancelled in IB.  Automatic decrease adjustment created."
- .   I $P(RCBALANC,"^") S RCTRANDA=$$INCDEC^RCBEUTR1(RCBILLDA,-$P(RCBALANC,"^"),.COMMENT) I 'RCTRANDA Q
+ .   ;
+ .   ; PRCA*4.5*270 need to  let FMS know if this is a corrected record
+ .   ;I $P(RCBALANC,"^") S RCTRANDA=$$INCDEC^RCBEUTR1(RCBILLDA,-$P(RCBALANC,"^"),.COMMENT) I 'RCTRANDA Q
+ .   I $P(RCBALANC,"^") S RCTRANDA=$$INCDEC^RCBEUTR1(RCBILLDA,-$P(RCBALANC,"^"),.COMMENT,"","","",$G(RCCRD)) I 'RCTRANDA Q
  .   ;
  .   ;  create an int/adm charge (minus)
  .   ;  determine if there is an interest ^ admin ^ mf ^ cc charge

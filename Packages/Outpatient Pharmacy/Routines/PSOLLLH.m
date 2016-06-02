@@ -1,5 +1,5 @@
-PSOLLLH ;BIR/EJW - HIPAA/NCPDP LASER LABELS ;7/20/06 10:21am
- ;;7.0;OUTPATIENT PHARMACY;**161,148,244,200,326,321**;DEC 1997;Build 7
+PSOLLLH ;BIR/EJW - HIPAA/NCPDP LASER LABELS ; 4/8/14 10:56am
+ ;;7.0;OUTPATIENT PHARMACY;**161,148,244,200,326,321,350**;DEC 1997;Build 2
  ;
  ;Reference to DUR1^BPSNCPD3 supported by DBIA 4560
  ;
@@ -50,13 +50,13 @@ SIGN ;
 HDR ;
  I 'FIRST D SIGN W @IOF
  I $G(PSOIO("BLH"))]"" X PSOIO("BLH")
- ;DSS/SGM - BEGIN MODS to change VAMC, orig va code in ELSE statement
- I $G(VFDPSOLB) D VAMC^VFDPSOLB("LLLH") I 1
- D  E
- . S T="VAMC "_$P(PS,"^",7)_", "_STATE_" "_$G(PSOHZIP) D PRINT(T)
- . S T=$P(PS2,"^",2)_"  Ph: "_$P(PS,"^",3)_"-"_$P(PS,"^",4)_"       "_$G(PSONOW) D PRINT(T)
- . Q
- ;DSS/SGM - END MODS
+  ;DSS/SGM/RAC - BEGIN MODS to change VAMC, orig va code in ELSE statement
+  I $G(VFDPSOLB) D VAMC^VFDPSOLB("LLLH")
+  E  D
+  . S T="VAMC "_$P(PS,"^",7)_", "_STATE_" "_$G(PSOHZIP) D PRINT(T)
+  . S T=$P(PS2,"^",2)_"  Ph: "_$P(PS,"^",3)_"-"_$P(PS,"^",4)_"       "_$G(PSONOW) D PRINT(T)
+  . Q
+  ;DSS/SGM/RAC - END MODS
  I $G(PSOIO("BLB"))]"" X PSOIO("BLB")
  S XFONT=$E(PSOFONT,2,99)
  N REPMSG
@@ -101,7 +101,7 @@ Q1 W ! K POP,ZTSK S %ZIS("B")="",%ZIS="MNQ",%ZIS("A")="Select LABEL DEVICE: " D 
  I $G(IOST(0)),'$D(^%ZIS(2,IOST(0),55,"B","LL")) W !,"Must specify a laser labels printer for Signature Log Reprint" G Q1
  I '$G(IOST(0)) W !,"Nothing queued to print." H 1 Q
  D NOW^%DTC S Y=$P(%,"."),PSOFNOW=% X ^DD("DD") S PSONOW=Y
- F G="PPL","REPRINT","PNM","STATE","PS2","PSOHZIP","PSOPAR","PSOSITE","PS","PSONOW","PSOSYS","SSNP" S:$D(@G) ZTSAVE(G)=""
+ F G="PPL","REPRINT","PNM","STATE","PS2","PSOHZIP","PSOPAR","PSOSITE","PS","PSONOW","PSOSYS","SSNP","DFN" S:$D(@G) ZTSAVE(G)=""
  S ZTRTN="DQ^PSOLLLH",ZTIO=PSLION,ZTDESC="Outpatient Pharmacy Signature Log Reprint",ZTDTH=$H,PDUZ=DUZ
  D ^%ZISC,^%ZTLOAD W:$D(ZTSK) !!,"Signature Log Reprint queued",!! H 1 K G
  G QUEUE
@@ -118,10 +118,18 @@ PLANNM() ; Returns Insurance Name (3rd Party)
  .D DUR1^BPSNCPD3(RX,$$LSTRFL^PSOBPSU1(RX),.DUR) S PLANNM=$G(DUR(1,"INSURANCE NAME"))
  Q PLANNM
 BARC I '$G(FIRST) G BARCE ; PRINT BARCODE FOR 1 RX ON 1ST SIGLOG LABEL ONLY
- I $G(PSOIO("BLBC"))]"" X PSOIO("BLBC") I $G(NOBARC) G BARCE
- I '$D(PSOINST) D INST
- S X2=PSOINST_"-"_RX W X2
- I $G(PSOIO("EBLBC"))]"" X PSOIO("EBLBC")
+ ;
+ ;DSS/SMH - Begin mods. Orig in Else. Print software 128 BC.
+ I $G(VFDPSOLB) D
+ . I '$D(PSOINST) D INST
+ . D BC128^VFDPSBAR(PSOINST_"-"_RX,0,40,960,220,3)
+ E  D
+ . I $G(PSOIO("BLBC"))]"" X PSOIO("BLBC") I $G(NOBARC) G BARCE
+ . I '$D(PSOINST) D INST
+ . S X2=PSOINST_"-"_RX W X2
+ . I $G(PSOIO("EBLBC"))]"" X PSOIO("EBLBC")
+ ;DSS/SMH - End mods.
+ ;
 BARCE Q
  ;
 KILL ; CLEAN UP VARIABLES

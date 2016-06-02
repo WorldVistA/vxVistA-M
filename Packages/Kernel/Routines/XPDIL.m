@@ -1,5 +1,5 @@
 XPDIL ;SFISC/RSD - load Distribution Global ;05/05/2008
- ;;8.0;KERNEL;**15,44,58,68,108,422,525**;Jul 10, 1995;Build 7
+ ;;8.0;KERNEL;**15,44,58,68,108,422,525**;Jul 10, 1995;Build 6
  ;
 EN1 N POP,XPDA,XPDST,XPDIT,XPDT,XPDGP,XPDQUIT,XPDREQAB,XPDSKPE
  S:'$D(DT) DT=$$DT^XLFDT S:'$D(U) U="^"
@@ -34,10 +34,10 @@ ST ;global input
  G:'$D(^DD(3.5,0)) OPEN
  I '$D(^%ZIS(1,"B","HFS")) W !!,"You must have a device called 'HFS' in order to load a distribution!",*7 S XPDQUIT=1 Q
  D HOME^%ZIS
- ;DSS/LM - Begin Mods - Conditionally replaced 75 with 245 - The original line follows ELSE below.
+ ;DSS/SMP - BEGIN MODS - Conditionally replaced 75 with 245 - The original line follows ELSE below.
  I $G(^%ZOSF("ZVX"))["VX" S DIR(0)="F^3:245",DIR("A")="Enter a Host File",DIR("?")="Enter a filename and/or path to input Distribution."
  E  S DIR(0)="F^3:75",DIR("A")="Enter a Host File",DIR("?")="Enter a filename and/or path to input Distribution."
- ;DSS/LM - End Mods
+ ;DSS/SMP - END MODS
  D ^DIR I $D(DIRUT) S XPDQUIT=1 Q
  S %ZIS="",%ZIS("HFSNAME")=Y,%ZIS("HFSMODE")="R",IOP="HFS"
  D ^%ZIS I POP W !,"Couldn't open file or HFS device!!",*7 S XPDQUIT=1 Q

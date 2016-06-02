@@ -1,5 +1,5 @@
 PXRRPRSP ;ISL/PKR - Provider encounter summary print. ;6/03/97
- ;;1.0;PCE PATIENT CARE ENCOUNTER;**3,10,12,18**;Aug 12, 1996
+ ;;1.0;PCE PATIENT CARE ENCOUNTER;**3,10,12,18,189**;Aug 12, 1996;Build 13
  ;
  N BMARG,C1S,C3S,C1HS,C2HS,C3HS,C3HSMAX,DONE,HEAD
  N INDENT,MID,MEWPAGE,PAGE,PCLMAX,PNMAX
@@ -38,7 +38,8 @@ PXRRPRSP ;ISL/PKR - Provider encounter summary print. ;6/03/97
 SET ;Set up print fields
  S FACILITY=0
 FAC S FACILITY=$O(^XTMP(PXRRXTMP,FACILITY))
- I +FACILITY=0 G FINAL
+ ; Fix to include Non-VA facility - *189
+ I (+FACILITY=0)&(FACILITY'="*") G FINAL
  S FTOTAL=0
  ;Mark the facility as being found.
  F IC=1:1:NFAC I $P(PXRRFAC(IC),U,1)=FACILITY D  Q

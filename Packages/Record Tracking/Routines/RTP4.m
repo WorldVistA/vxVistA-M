@@ -1,6 +1,7 @@
-RTP4 ;MJK/TROY ISC;Charge Out Pull List; ;7/15/96  18:02
- ;;v 2.0;Record Tracking;**3**;10/22/91 
+RTP4 ;MJK/TROY ISC;Charge Out Pull List; ; 5/15/87  11:06 AM ;
+ ;;2.0;Record Tracking;**3,46**;10/22/91 ;Build 46
 6 ;Charge Out Pull List
+ I '$D(RTAPL) D MES Q
  S RTRD(1)="Yes^designate requests as 'not fillable'",RTRD(2)="No^not designate any requests as 'not fillable'",RTRD("B")=2,RTRD(0)="S",RTRD("A")="Do you wish to first designate some requests as 'not fillable'? "
  D SET^RTRD K RTRD Q:$E(X)="^"  I $E(X)="Y" D 5^RTP1
  D DIV G Q:'$D(RTDV) S RTMES="CHARGED OUT" D PULL^RTP6 K RTMES G Q:'$D(RTPULL)
@@ -51,7 +52,7 @@ DIV ;Entry point to determine if pull function is allowed
  K RTDV,RTDEV I $S('$D(RTDIV):1,'$D(RTFR):1,'$D(^DIC(4,+RTDIV,0)):1,'$D(^DIC(195.1,+RTAPL,"INST",+RTDIV)):1,1:0) D MES Q
  W !!,"Institution: ",$P(^DIC(4,+RTDIV,0),"^") S RTDV=RTDIV,RTDEV=$P(RTFR,"^",6) Q
  ;
-MES W !!?3,*7,"This function requires the user to be signed onto the",!?3,"system with INSTITUTION parameters defined." Q
+MES W !!?3,*7,"This function requires the user to be signed onto the",!?3,"system with INSTITUTION parameters defined.  Please use",!?3,"the Record Tracking Total System Menu to access this option." Q
  ;
 FILL S RTCOMR="Pull List: "_$P(RTP0,"^") F RTQ=0:0 S RTQ=$O(^RTV(190.1,"AP",RTPULL,RTQ)) Q:'RTQ  I $D(^RTV(190.1,RTQ,0)),$P(^(0),"^",6)="r" S RTQ0=^(0) D FILL1
  K RTQ,RTQ0,RTCOMR S RTSTAT="c" D STAT^RTP W !?3,"...'",$P(RTP0,"^"),"' pull list has been charged out." Q

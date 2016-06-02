@@ -1,5 +1,5 @@
-IBBFAPI ;OAK/ELZ - FOR OTHER PACKAGES TO QUERY INSURANCE INFO ;19-AUG-2004
- ;;2.0;INTEGRATED BILLING;**267,297,249,317,361,384**;21-MAR-94;Build 74
+IBBFAPI ;OAK/ELZ - FOR OTHER PACKAGES TO QUERY INSURANCE INFO ;2/18/10 3:42pm
+ ;;2.0;INTEGRATED BILLING;**267,297,249,317,361,384,404**;21-MAR-94;Build 15
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  ; -- see IBBDOC for API documentation
@@ -24,7 +24,7 @@ INSUR(DFN,IBDT,IBSTAT,IBR,IBFLDS) ; Return Patient Insurance Information
  I IBFLDS]"",IBFLDS'="*" N Y F X=1:1:$L(IBFLDS,",") D
  . S Y=$P(IBFLDS,",",X)
  . I Y'?1N.N S ERROR=103
- . I Y?1N.N,(Y<1)!(Y>21) S ERROR=103
+ . I Y?1N.N,(Y<1)!(Y>24) S ERROR=103
  I ERROR=103 D ERROR Q NOK
  K IBR
  ; set buffer file flag
@@ -47,11 +47,14 @@ INSUR(DFN,IBDT,IBSTAT,IBR,IBFLDS) ; Return Patient Insurance Information
  . . I $P(X1,U,5) S PASS1=1 Q  ; inactive insurance company
  . Q:PASS1
  . S ICNT=ICNT+1
- . S FCNT=$S(IBFLDS="*":22,1:$L(IBFLDS,",")) ; number of fields to pull
+ . S FCNT=$S(IBFLDS="*":24,1:$L(IBFLDS,",")) ; number of fields to pull
  . S IBR("IBBAPI","INSUR",ICNT)=""
  . I IBFLDS'="" F N1=1:1:FCNT D
  . . N RET,RETVAL
- . . S RET=$S(IBFLDS="*":N1,1:$P(IBFLDS,",",N1)),RETVAL="" I RET?1N.N,RET>0,RET<23 D @RET S IBR("IBBAPI","INSUR",ICNT,RET)=RETVAL
+ . . S RET=$S(IBFLDS="*":N1,1:$P(IBFLDS,",",N1)),RETVAL="" I RET?1N.N,RET>0,RET<25 D @RET S IBR("IBBAPI","INSUR",ICNT,RET)=RETVAL
+ . ;DSS/SMP - Begin Mods
+ . I $G(^%ZOSF("ZVX"))["VX"  N VFD,VFDVAL S VFD=21600 D @VFD S IBR("IBBAPI","INSUR",ICNT,VFD)=VFDVAL
+ . ;DSS/SMP - End Mods
  . I IBSTAT["P"!(IBSTAT["O")!(IBSTAT["I")!(IBSTAT["E") D  I PASS1=0 K IBR("IBBAPI","INSUR",ICNT) S ICNT=ICNT-1
  . . S PASS1=0 Q:IBPLN=""
  . . I IBSTAT["P",+$$PLCOV(IBPLN,IBDT,"PHARMACY")>0 S PASS1=1
@@ -169,6 +172,20 @@ ERROR ;
  I $E(RETVAL)="P" S RETVAL=$$GET1^DIQ(2,DFN_",",.02,"I") S:$L(RETVAL) RETVAL=RETVAL_U_$$GET1^DIQ(2,DFN_",",.02)
  E  S RETVAL=$$GET1^DIQ(2.312,N_","_DFN_",",3.12,"I") S:$L(RETVAL) RETVAL=RETVAL_U_$$GET1^DIQ(2.312,N_","_DFN_",",3.12)
  Q
+ ;
+23 ; Ins. Company Street Address Line 2
+ S RETVAL=$$GET1^DIQ(36,INSP_",",.112)
+ Q
+ ;
+24 ; Ins. Company Street Address Line 3
+ S RETVAL=$$GET1^DIQ(36,INSP_",",.113)
+ Q
+ ;
+ ;DSS/SMP - Begin Mods
+21600 ; Type of Coverage
+ S VFDVAL=$$GET1^DIQ(36,INSP_",",.13)
+ Q
+ ;DSS/SMP - End Mods
  ;
 PLCOV(IBPL,IBVDT,IBCAT) ; Determine if a specific plan covers a category of coverage as of a date
  ; IBPL - pointer to file 355.3 group insurance plan (req)

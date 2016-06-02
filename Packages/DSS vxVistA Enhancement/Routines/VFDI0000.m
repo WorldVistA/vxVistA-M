@@ -1,5 +1,5 @@
-VFDI0000 ;DSS/SGM - COMMON KIDS SUPPORT UTILITIES ; 5/13/2013 14:05
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 4
+VFDI0000 ;DSS/SGM - COMMON KIDS SUPPORT UTILITIES ; 04/02/2014 10:47
+ ;;2013.0;DSS,INC VXVISTA OPEN SOURCE;**9**;11 Jun 2013;Build 4
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  ; this routine first introduced in VFD VXVISTA UPDATE 2011.1.1 T4
@@ -148,9 +148,12 @@ RTNSAVE(ROU,ARR) ;
  ;
  ;--------------------- TEST EXISTENCE OF ROUTINE ---------------------
 RTNTEST(RTN,TAG) ; Boolean test if routine or tag^routine exists
- Q:$G(RTN)="" 0 N X,Y,Z
+ N X,Y,Z S RTN=$G(RTN),TAG=$G(TAG)
+ I RTN="" Q 0
+ S:$E(RTN)="^" RTN=$E(RTN,2,$L(RTN))
+ I TAG="",RTN["^" S TAG=$P(RTN,"^"),RTN=$P(RTN,"^",2)
  S X=RTN X ^%ZOSF("TEST") E  Q 0
- I $G(TAG)'="",$T(@(TAG_U_RTN))="" Q 0
+ I TAG'="",$T(@(TAG_"^"_RTN))="" Q 0
  Q 1
  ;
  ;=====================================================================

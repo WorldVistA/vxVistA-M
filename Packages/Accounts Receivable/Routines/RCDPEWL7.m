@@ -1,6 +1,6 @@
-RCDPEWL7 ;ALB/TMK - EDI LOCKBOX WORKLIST ERA DISPLAY SCREEN ;16-JAN-04
- ;;4.5;Accounts Receivable;**208,222**;Mar 20, 1995
- ;;Per VHA Directive 10-93-142, this routine should not be modified.
+RCDPEWL7 ;ALB/TMK/KML - EDI LOCKBOX WORKLIST ERA DISPLAY SCREEN ;16-JAN-04
+ ;;4.5;Accounts Receivable;**208,222,269,276**;Mar 20, 1995;Build 87
+ ;;Per VHA Directive 2004-038, this routine should not be modified.
  Q
  ;
 BLD(RCSORT) ; Build list with sort criteria
@@ -9,6 +9,8 @@ BLD(RCSORT) ; Build list with sort criteria
  ;  piece 2 = the codes for the second level sort
  ;     sort code is the type of data to sort by;- indicates reverse order
  N Z,Z1,RCT,RCZ
+ ; PRCA*4.5*276 - keep users informed
+ W !,"...Records found...now sorting...",!
  S (RCT,VALMCNT)=0
  I '$D(^TMP($J,"RCERA_LIST")) D
  . S Z=0 F  S Z=$O(^TMP("RCDPE-ERA_WLDX",$J,Z)) Q:'Z  S RCZ=$P($G(^(Z)),U,2) D
@@ -40,7 +42,10 @@ EXTRACT(RCSRT1,RCSRT2,RCT) ; Extract the data
  . S RCEFT=+$O(^RCY(344.31,"AERA",RCZ,0))
  . S RCSTAT=$S('RCEFT:U_$S($P(RC0,U,15)="CHK":"(CHECK PAYMENT EXPECTED)",$P(RC0,U,15)="NON":"(NO PAYMENT EXPECTED)",$P(RC0,U,9)=2:"(CHECK PAYMENT CHOSEN)",1:"N/A"),1:$$FMSSTAT^RCDPUREC(+$P($G(^RCY(344.31,RCEFT,0)),U,9)))
  . S RCPOST=$S(RCEFT:"EFT RECEIPT STATUS: ",1:"")_$P(RCSTAT,U,2)
- . S X=$E(RCT_$J("",4),1,4)_$S($D(^RCY(344.49,RCZ)):" ",1:"-")_$E($P(RC0,U)_$J("",5),1,5)_"  "_$E($P(RC0,U,2)_$J("",30),1,30)_"  "_$J($$FMTE^XLFDT($P(RC0,U,7),"2D"),8)_$J("",5)_$J(+$P(RC0,U,5),12,2)
+ . ; kl - epayments patch - display of ERA # needs to account for 10 digits;  TRACE # has been updated from 30 to 50 characters
+ . S X=$E(RCT_$J("",4),1,4)_$S($D(^RCY(344.49,RCZ)):" ",1:"-")_$E($P(RC0,U)_$J("",10),1,10)_"  "_$E($P(RC0,U,2)_$J("",50),1,50)
+ . D SET(X,RCT,RCZ)
+ . S X=$J("",40)_$J($$FMTE^XLFDT($P(RC0,U,7),"2D"),8)_$J("",5)_$J(+$P(RC0,U,5),12,2)
  . S $E(X,73,80)=$$FMTE^XLFDT($P(RC0,U,7),"2D")
  . D SET(X,RCT,RCZ)
  . S X=$J("",12)_$E($P(RC0,U,6)_$J("",30),1,30)_"  APPROX # EEOBs: "_+$$CTEEOB^RCDPEWLB(RCZ)
@@ -86,7 +91,7 @@ INIT ; Entry point for List template to build the display of ERAs
  ; Parameters for selecting ERAs to be included in the list are
  ; contained in the global ^TMP("RCERA_PARAMS",$J,parameter name)
  ;
- N RCZ,RC0,RCT,RCTT,RCQUIT,RCDTFR,RCDTTO,DTOUT,DUOUT,DIR,X,Y,Z,Z1,RCPOST,RCEFT,RCINDX
+ N RCZ,RC0,RCT,RCTT,RCQUIT,RCDTFR,RCDTTO,DTOUT,DUOUT,DIR,X,Y,Z,Z1,RCPOST,RCEFT,RCINDX,QFLG
  D CLEAN^VALM10
  K ^TMP("RCDPE-ERA_WL",$J),^TMP("RCDPE-ERA_WLDX",$J),^TMP($J,"RCERA_LIST")
  ;
@@ -95,13 +100,27 @@ INIT ; Entry point for List template to build the display of ERAs
  S RCDTFR=+$P($G(^TMP("RCERA_PARAMS",$J,"RCDT")),U),RCDTTO=$S($P($G(^TMP("RCERA_PARAMS",$J,"RCDT")),U,2):$P(^("RCDT"),U,2),1:DT)
  ;
  S RCINDX=$S(RCDTFR:RCDTFR-.00000001,1:0)
+ ;; *** Begin PRCA*4.5*276 - RBN ***
+ W !!,"SEARCHING, PLEASE STANDBY (PRESS '^' TO QUIT SEARCH)",!!
+ ;; *** End PRCA*4.5*276 ***
  F  S RCINDX=$O(^RCY(344.4,"AFD",RCINDX)) Q:'RCINDX!(RCINDX\1>RCDTTO)!RCQUIT  S RCZ=0 F  S RCZ=$O(^RCY(344.4,"AFD",RCINDX,RCZ)) Q:'RCZ  D  Q:RCQUIT
  . ;
- . S RCTT=RCTT+1 I '(RCTT#5000) D  Q:RCQUIT
- .. S DIR("A",1)=RCTT_" ERA RECORDS HAVE ALREADY BEEN SEARCHED USING YOUR CRITERIA",DIR("A",2)="LAST DATE SEARCHED WAS "_$$FMTE^XLFDT(RCINDX,"2D"),DIR("A")="DO YOU WANT TO CONTINUE THIS SEARCH?: "
- .. S DIR("B")="NO",DIR("?")="RESPOND NO HERE AND RESTART TO SELECT A DATE RANGE TO LIMIT THE SEARCH",DIR(0)="YA" W ! D ^DIR K DIR
- .. I Y=1!$D(DTOUT) W !,$S($D(DTOUT):"TIME OUT - ",1:""),"SEARCH CONTINUED",! Q
- .. I $D(DUOUT)!(Y=0) S RCQUIT=1 Q
+ . ;; *** Begin prca*4.5*276 - RBN ***
+ . ;S RCTT=RCTT+1 I '(RCTT#5000) D  Q:RCQUIT
+ . ;. S DIR("A",1)=RCTT_" ERA RECORDS HAVE ALREADY BEEN SEARCHED USING YOUR CRITERIA",DIR("A",2)="LAST DATE SEARCHED WAS "_$$FMTE^XLFDT(RCINDX,"2D"),DIR("A")="DO YOU WANT TO CONTINUE THIS SEARCH?: "
+ . ;. S DIR("B")="NO",DIR("?")="RESPOND NO HERE AND RESTART TO SELECT A DATE RANGE TO LIMIT THE SEARCH",DIR(0)="YA" W ! D ^DIR K DIR
+ . ;. I Y=1!$D(DTOUT) W !,$S($D(DTOUT):"TIME OUT - ",1:""),"SEARCH CONTINUED",! Q
+ . S RCTT=RCTT+1
+ . I (RCTT#10000=0) D  Q:RCQUIT=1
+ . . S RCTT=0
+ . . D WAIT^DICD
+ . . D INITKB^XGF ; supported by DBIA 3173
+ . . S QFLG=$$READ^XGF(1,1)
+ . . Q:$G(DTOUT)
+ . . S:QFLG="^" RCQUIT=1 Q
+ . . I $D(DUOUT)!(Y=0) S RCQUIT=1 Q
+ . . D RESETKB^XGF
+ . ;; *** End PRCA*4.5*276 ***
  . ;
  . S RC0=$G(^RCY(344.4,RCZ,0))
  . I $$FILTER^RCDPEWL0(RCZ) S ^TMP($J,"RCERA_LIST",$$SL(RCZ,"DR"),$$SL(RCZ,""),RCZ)=""
@@ -124,6 +143,8 @@ HDR ; Header for ERA list
  S VALMHDR(2)=$J("",11)_"DATE RANGE  : "_$S($P(X,U):$$FMTE^XLFDT($P(X,U),2)_$S($P(X,U,2):"-"_$$FMTE^XLFDT($P(X,U,2),2),1:""),1:"NONE SELECTED")
  S X=$G(^TMP("RCERA_PARAMS",$J,"RCPAYR"))
  S VALMHDR(3)=$J("",11)_$S($P(X,U)="A"!(X=""):"ALL PAYERS",1:"PAYERS: "_$P(X,U,2)_"-"_$P(X,U,3))
+ S X=$G(^TMP("RCERA_PARAMS",$J,"RCERA_TRACE#"))
+ S VALMHDR(4)="#   ERA #         TRACE#"
  Q
  ;
 FNL ; -- Clean up list

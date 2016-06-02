@@ -1,5 +1,5 @@
 PSIVORC1 ;BIR/MLM-PROCESS INCOMPLETE IV ORDER - CONT ;13 Jan 98 / 11:36 AM
- ;;5.0; INPATIENT MEDICATIONS ;**1,37,69,110,157,134**;16 DEC 97;Build 124
+ ;;5.0;INPATIENT MEDICATIONS ;**1,37,69,110,157,134,181,263,270,279**;16 DEC 97;Build 150
  ;
  ; Reference to ^DD("DD" is supported by DBIA 10017.
  ; Reference to ^DD( is supported by DBIA 2255.
@@ -8,6 +8,7 @@ PSIVORC1 ;BIR/MLM-PROCESS INCOMPLETE IV ORDER - CONT ;13 Jan 98 / 11:36 AM
  ; Reference to ^%DTC is supported by DBIA 10000.
  ; Reference to ^DID is supported by DBIA 2052.
  ; Reference to ^VALM is supported by DBIA 10118.
+ ; Reference to ^PS(51.1 supported by DBIA #2177.
  ; Reference to ^PS(55 is supported by DBIA# 2191.
  ;
 53 ; IV Type
@@ -27,6 +28,22 @@ PSIVORC1 ;BIR/MLM-PROCESS INCOMPLETE IV ORDER - CONT ;13 Jan 98 / 11:36 AM
  I $G(P("RES"))'="R",$G(PSGORD)["P" N IVCAT,IVTYPTMP S IVCAT=$P($G(^PS(53.1,+PSGORD,2.5)),"^",5) S IVTYPTMP=$S((P(9)]""):"P",$G(P(5)):"P",$G(P(23))="P":"P",1:"")
  S DIR("B")=$S($G(IVCAT)="C"!($G(IVTYPTMP)="A"):"ADMIXTURE",$G(IVCAT)="I"!($G(IVTYPTMP)="P"):"PIGGYBACK",1:"ADMIXTURE")
  D DIRQ,^DIR S:$D(DTOUT)!(X="^") DONE=1 Q:DONE  G:$E(X)="^" 53 S P(4)=Y D:"CS"[P(4) @P(4)
+ ;*PSJ*5*270 - Remove bottle from IVPB
+ N PSG53 I Y="P" D
+ .N ADCNT,PSGBTL F ADCNT=0:0 S ADCNT=$O(^PS(53.1,+PSGORD,"AD",ADCNT)) Q:('ADCNT)!$G(PSGBTL)  D
+ ..I $P(^PS(53.1,+PSGORD,"AD",ADCNT,0),U,3)]"" S PSGBTL=1
+ .I '$G(PSGBTL) Q
+ .W !!,"A bottle value is not allowed with a Piggyback IV order.  Do you wish to delete the bottle value(s)"
+ .S %=1 D YN^DICN I %'=1 S PSG53=1 Q
+ .N DIE,DA,DR
+ .F ADCNT=0:0 S ADCNT=$O(^PS(53.1,+PSGORD,"AD",ADCNT)) Q:'ADCNT  D
+ ..S $P(DRG("AD",ADCNT),U,4)=""
+ I $G(PSG53) G 53
+ ;*End PSJ*5*270
+ N PSGINFAT S PSGINFAT=0 I ((P(4)="P")!$G(P(5))!($G(P(23))="P")) I P(8)["@" D
+ .W !!,"Infusion Rate contains ""@"" (not allowed with an Intermittent IV order)",!
+ .D 59 S:'(P(8)["@") P("NUMLBL")="" I P(8)["@" S PSGINFAT=1
+ I $G(PSGINFAT) G 53
  I PSIVAC'="PN" D ENT^PSIVCAL K %DT S X=P(2),%DT="RTX" D ^%DT S P(2)=+Y D ENSTOP^PSIVCAL K %DT S X=P(3),%DT="RTX" D ^%DT S P(3)=+Y
 OTYP ; Get order type, display type.
  S P("DTYP")=$S(P(4)="":0,P(4)="P"!(P(23)="P")!(P(5)):1,P(4)="H":2,1:3) S:PSIVAC'="CF" P("OT")=$S(P(4)="A":"F",P(4)="H":"H",1:"I")
@@ -56,6 +73,7 @@ CKFLDS ; Find required fields missing data.
  .I '$D(DRG(PSIVASX)) S EDIT=EDIT_U_$S(PSIVASX="AD":57,1:58) Q
  .S DNE=0 F PSIVASY=0:0 S PSIVASY=$O(DRG(PSIVASX,PSIVASY)) Q:'PSIVASY!DNE  D
  .. I $P(DRG(PSIVASX,PSIVASY),U,3)="" S EDIT=EDIT_U_$S(PSIVASX="AD":57,1:58),DNE=1
+ .. I $P(DRG(PSIVASX,PSIVASY),U,4)="See Comments",(EDIT'["57") S EDIT=EDIT_U_$S(PSIVASX="AD":57,1:58),DNE=1
  S:'P("MR") EDIT=EDIT_U_3 F X=8,6,2,3 I P(X)="" S EDIT=EDIT_U_$S(X=8:59,X=6:1,X=2:10,X=3:25,1:"")
  I P("DTYP")=1 S:P(9)="" EDIT=EDIT_U_26 S:P(11)="" EDIT=EDIT_U_39
  S:$E(EDIT,1)=U EDIT=$E(EDIT,2,999)
@@ -68,7 +86,7 @@ DONE ; Kill variables and exit
  Q
 ENHLP ; order entry fields' help
  N PSJHP,PSJX,PSJD
- ; From within this routine, F1 and F2 will refer to file 53.1,field 56, file 55.01,field 106, or file 55.01,field .04
+ ;From within this routine, F1 and F2 will refer to file 53.1,field 56, file 55.01,field 106, or file 55.01,field .04
  D FIELD^DID(F1,F2,"","HELP-PROMPT","PSJHP")
  I X="?",$D(PSJHP("HELP-PROMPT")) S F=$G(PSJHP("HELP-PROMPT")) W !?5 F F0=1:1:$L(F," ") S F3=$P(F," ",F0) W:$L(F3)+$X>78 !?5 W F3_" "
  ;
@@ -81,10 +99,18 @@ SC ;
  I F2=5!(F2=6) W !,"CHOOSE FROM:",!?8,0,?16,"NO",!?8,1,?16,"YES" Q
  Q
 COMPLTE ;
+ NEW PSIVDSFG S PSIVDSFG=0
  S P16=0,PSIVEXAM=1,(PSIVNOL,PSIVCT)=1 D GTOT^PSIVUTL(P(4)) D ^PSIVCHK I $D(DUOUT) W $C(7),!,"Order Unchanged.",! Q
  G:'$D(PSIVFN1) EDIT1
  I ERR=1 S Y=0 G EDIT1
- D CKORD^PSIVORC2 I PSIVCHG D NOW^%DTC S P("LOG")=$E(%,1,12),P("CLRK")=DUZ_U_$P($G(^VA(200,DUZ,0)),U),P("INS")=""
+ D CKORD^PSIVORC2 I $G(PSJFNDS)!$S($G(PSIVDSFG):0,PSIVCHG:1,1:0)!$$INFRATE^PSJMISC(DFN,ON,P(8),P("DTYP")) D
+ . K PSJFNDS
+ . I $$SEECMENT^PSIVEDRG() S PSGORQF=1 W !!,"*** One or more Additives has an invalid value for the bottle number(s).",! D PAUSE^PSJMISC() Q
+ . D IN^PSJOCDS($G(ON),"IV","")
+ . Q:$G(PSGORQF)
+ . Q:'PSIVCHG
+ D NOW^%DTC S P("LOG")=$E(%,1,12),P("CLRK")=DUZ_U_$P($G(^VA(200,DUZ,0)),U),P("INS")=""
+ Q:$G(PSGORQF)
  W ! D ^PSIVORLB K PSIVEXAM S Y=P(2)
  W !,"Start date: " X ^DD("DD") W $P(Y,"@")," ",$P(Y,"@",2),?30," Stop date: " S Y=P(3) X ^DD("DD") W $P(Y,"@")," ",$P(Y,"@",2),!
 EDIT ;
@@ -109,9 +135,46 @@ EDIT ;
  . K PSGPTMP,PSGRRF,PSG0XT,PSGS0Y,PSGSCH,PSGSD,PSGSDN,PSGSI,PSGSM
  . K PSGST,PSGSTAT,PSGSTN,PSJACNWP,PSJACOK,PSJCOI
 EDIT1 ;
- NEW XFLG,PSIVY S PSIVY=Y
- NEW X S X=^TMP("PSJI",$J,0),VALMBG=$S((X<17):1,1:(X-(X#16)))
+ NEW XFLG,PSIVY S PSIVY=$G(Y)
+ NEW X S X=$G(^TMP("PSJI",$J,0)),VALMBG=$S((X<17):1,1:(X-(X#16)))
+ N PSINVON S PSINVON=ON I PSINVON["P" N PRVON S PRVON=$P($G(^PS(53.1,+ON,0)),"^",25) I PRVON["V" S PSINVON=PRVON
  I PSIVY=0!'$G(PSIVFN1) S PSIVFN1=1 D EN^VALM("PSJ LM IV AC/EDIT") Q
- S PSIVCHG=0 D EDCHK^PSIVORC2 K PSIVCHG
+ S PSIVCHG=0 D EDCHK^PSIVORC2 K PSIVCHG I $G(PSJCOM) S ^TMP("PSJCOM",$J,+ON,17)=$G(P("NUMLBL")) K P("NUMLBL")
  S VALMBCK="Q",PSIVACEP=1
+ Q
+59 ; Infusion Rate
+ N P8BADDEF S P8BADDEF=0
+ I $G(P("RES"))="R" I $G(ON)["P",$P($G(^PS(53.1,+ON,0)),"^",24)="R" D  Q
+ . Q:'$G(PSIVRENW)  W !!?5,"This is a Renewal Order. Infusion Rate may not be edited at this point." D PAUSE^VALM1
+ W !,"INFUSION RATE: ",$G(P(8))_"//" R X:DTIME S:'$T X=U S:X=U DONE=1 I $S($E(X)=U:1,X]"":0,1:'(P(8)["@")) D:'$G(DONE) EXPINF^PSIVEDT1(.X) G:$G(P8BADDEF) 59 Q
+ I (("C^P"[P(4))!(("C^S"[P(4))&(P(5)=1)))&((X["@")!((X="")&(P(8)["@"))) D  G 59
+ .W $C(7),!!?2,"'@' is not permitted for Intermittent IV's",!
+ I (X["^") D  G 59
+ .W $C(7),!!?2,"'^' is not permitted",!
+ I X=""&(("C^P"[P(4))!(("C^S"[P(4))&(P(5)=1))) Q
+ I X="@" D DEL^PSIVEDRG S:%=1 P(8)="" G 59
+ I X["???",($E(P("OT"))="I"),(PSIVAC["C") D ORFLDS^PSIVEDT1 G 59
+ I X["?" S F1=53.1,F2=59 D ENHLP^PSIVORC1 G 59
+ D EXPINF^PSIVEDT1(.X)
+ I ($L(X)>30!($L(X)=1)),(X'?1N) D  G 59
+ .W $C(7),!!?3,"Free text entries must contain a minimum of 2 characters",!?3,"and a maximum of 30 characters",!
+ I X]"" D ENI^PSIVSP W:'$D(X) $C(7)," ??" G:'$D(X) 59 S P(8)=X
+ I P(8)="" W $C(7),!!,"An infusion rate must be entered!" G 59
+ Q
+PSBPOIV ; Invalid IV bags based on BCMA IV parameters
+ Q:'$G(DFN)  Q:'$G(ON55)  Q:'($G(ON55)["V")  Q:'$D(^PS(55,DFN,"IV",+ON55,0))
+ I $P($G(^PS(55,DFN,"IV",+ON55,2)),"^",5)!($G(P("RES"))="R")!($G(P("FRES"))="R") D PSBPOIV^PSJIBAG(DFN,ON55)
+ Q
+ ;
+SETNML55 ; Set NUMBER OF LABELS into ^PS(55,DFN,"IV",+ON55,0
+ ;          Added to PROTOCOL PSJI LM VERIFY after call to VF^PSJLIACT
+ ;          Made necessary by 11th hour code conflicts caused by MOCHA 2.0
+ Q:'$D(P("NUMLBL"))  Q:'$G(DFN)  Q:'($G(ON55)["V")  Q:'$G(^PS(55,DFN,"IV",+ON55,0))
+ S $P(^PS(55,DFN,"IV",+ON55,11),"^",1)=$G(P("NUMLBL"))
+ Q
+SETNL531 ;  Set NUMBER OF LABELS into ^PS(53.1,+PSGORD,8
+ ;          Added to PROTOCOL PSJI LM VERIFY after call to VF^PSJLIACT
+ ;          Made necessary by 11th hour code conflicts caused by MOCHA 2.0
+ Q:'$D(P("NUMLBL"))  Q:'$G(DFN)  Q:'$G(PSGORD)  Q:'$G(PS(53.1,+PSGORD,0))  ; $D is intentional - may edit from something to nothing
+ S $P(^PS(53.1,+PSGORD,17),"^",1)=$G(P("NUMLBL"))
  Q

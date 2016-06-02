@@ -1,6 +1,6 @@
 PRCPEIL1 ;WISC/RFJ-edit inventory item (list manager) calls         ;01 Dec 93
-V ;;5.1;IFCAP;**1**;Oct 20, 2000
- ;Per VHA Directive 10-93-142, this routine should not be modified.
+V ;;5.1;IFCAP;**1,142**;Oct 20, 2000;Build 5
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  Q
  ;
  ;
@@ -44,13 +44,28 @@ LEVELS ;  edit levels
  ;
  ;
 QUANTITY ;  edit quantities
- D FULL^VALM1
+Q1 D FULL^VALM1
  D QTY^PRCPEIQT(PRCPINPT,ITEMDA)
  ;  rebuild array
  D DIQ^PRCPEILM("7;4.8;4.81")
+ N ERR S ERR=0
+ I $G(PRCPDATA("445.01",ITEMDA,"7","E"))>0,($G(PRCPDATA("445.01",ITEMDA,"4.8","E"))<".01"!($G(PRCPDATA("445.01",ITEMDA,"4.81","E"))<".01")) D  G:ERR=1 Q1
+ . W !!,"** Result ON-HAND greater than 0 CANNOT have an average cost of zero."
+ . W !,"   You MUST modify Inventory Value to something greater than zero. You cannot"
+ . W !,"   have on-hand with an inventory value of zero and no average cost. If you"
+ . W !,"   cannot enter an inventory value (not sure what to enter) then you must "
+ . W !,"   MINUS the quantity originally entered to exit the QT action.",!
+ . W !!,"=>> PLEASE OK IF THE ZERO INVENTORY VALUE IS DUE TO A ZERO VALUE INVENTORY ITEM",!
+ . W $C(7) S %A="Is this a zero value inventory item",%B="",%=2 D ^PRCFYN I %'=1 S ERR=1
+ I $G(PRCPDATA("445.01",ITEMDA,"4.81","E"))<0!($G(PRCPDATA("445.01",ITEMDA,"4.81","E"))<0) D  G Q1
+ . W !!,"** Resulting Inventory Value or Average Cost CANNOT be negative. If you are"
+ . W !,"   unsure what the inventory value should be then you MUST adjust the "
+ . W !,"   quantity and inventory value back to original (zero or greater) values to "
+ . W !,"   exit the QT action."
  D QUANTITY^PRCPEIL0
  D COSTS^PRCPEIL0
  S VALMBCK="R"
+ K ERR,%,%A,%B
  Q
  ;
  ;

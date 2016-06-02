@@ -1,5 +1,5 @@
 IBBDOC ;OAK/ELZ - APIS FOR OTHER PACKAGES FOR PFSS - DOCUMENT ;5-AUG-2004
- ;;2.0;INTEGRATED BILLING;**267,260,286,361,384**;21-MAR-94;Build 74
+ ;;2.0;INTEGRATED BILLING;**267,260,286,361,384,404**;21-MAR-94;Build 6
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  ; Documents the calls to the routine IBBAPI.
@@ -24,7 +24,7 @@ INSUR ;(DFN,IBDT,IBSTAT,IBR,IBFLDS)
  ;            is all coverages)
  ;
  ;   IBR    = Array to return insurance information - passed by reference
- ;   IBFLDS = List of fields to return (1-22) in a comma separated list or "*" for all
+ ;   IBFLDS = List of fields to return (1-24) in a comma separated list or "*" for all
  ;
  ; --Output:
  ;   -1     = error occurred (error message passed back in

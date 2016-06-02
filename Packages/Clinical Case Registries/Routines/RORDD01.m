@@ -1,7 +1,22 @@
-RORDD01 ;HCIOFO/SG - DATA DICTIONARY UTILITIES ; 6/14/06 2:07pm
- ;;1.5;CLINICAL CASE REGISTRIES;**1**;Feb 17, 2006;Build 24
+RORDD01 ;HCIOFO/SG - DATA DICTIONARY UTILITIES ;6/14/06 2:07pm
+ ;;1.5;CLINICAL CASE REGISTRIES;**1,14**;Feb 17, 2006;Build 24
+ ;
+ ; This routine uses the following IAs:
+ ;
+ ; #2762         ^DPT(D0,-9 (controlled)
  ;
  Q
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                       --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*14   APR  2011   A SAUNDERS   AIDSOI: Since clinical aids can be 9 
+ ;                                      'unknown', we can't just quit if field
+ ;                                      value is not zero.  Only quit if 'yes'.
+ ;******************************************************************************
+ ;******************************************************************************
  ;
  ;***** "AIDSOI" TRIGGER OF THE "AIDS INDICATOR DISEASE" MULTIPLE
  ;
@@ -13,7 +28,8 @@ AIDSOI(SDA,DATE) ;
  N IENS,TMP,RORFDA,RORMSG
  ;--- Do not do anything if the CLINICAL AIDS field is already set
  S IENS=+$G(SDA(1))  Q:IENS'>0  S IENS=IENS_","
- Q:$$GET1^DIQ(799.4,IENS,.02,"I",,"RORMSG")
+ ;Q:$$GET1^DIQ(799.4,IENS,.02,"I",,"RORMSG")
+ I $$GET1^DIQ(799.4,IENS,.02,"I",,"RORMSG")=1 Q
  ;---
  S DATE=$P(DATE,".")
  I DATE>0  D

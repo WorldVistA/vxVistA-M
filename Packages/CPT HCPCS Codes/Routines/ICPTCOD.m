@@ -1,5 +1,5 @@
 ICPTCOD ;ALB/DEK/KER - CPT CODE APIS ;11/29/2007
- ;;6.0;CPT/HCPCS;**6,12,13,14,16,19,40**;May 19, 1997;Build 6
+ ;;6.0;CPT/HCPCS;**6,12,13,14,16,19,40**;May 19, 1997;Build 1
  ;
  ; External References
  ;   DBIA  10103  $$DT^XLFDT

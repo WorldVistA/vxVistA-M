@@ -1,5 +1,5 @@
-VFDDGPM2 ;DSS/LM/SGM - Patient movement events for Billing ; 11/15/2013 12:03
- ;;2009.1;DSS,INC VXVISTA;**13**;06 Apr 2010;Build 1
+VFDDGPM2 ;DSS/LM/SGM/SMP - Patient movement events for Billing ; 12/09/2013 10:45
+ ;;15.0;DSS,INC VXVISTA;;06 Apr 2010;Build 29
  ;Copyright 1995-2010,Document Storage Systems Inc.,All Rights Reserved
  ;
  ; ICR#  Supported Reference
@@ -175,12 +175,12 @@ DQ ; Tasked from EN^VFDDGPM2
  I '$D(^DGPM(DGPMDA)) D 13 Q  ;Cancel discharge
  N I,X,Y,VFD,VFDA,VFDADA,VFDIEN,VFDIENR,VFDIENS,VFDMSG
  S VFDADA=$$CONFIRM(DGPMDA,"V03") I 'VFDADA D XCPT(,,$P(VFDADA,U,2)) Q
- K VFDA D GETS(.VFDA,405,DGPMDA,".01;.03;.04")
+ K VFDA D GETS(.VFDA,405,DGPMDA_",",".01;.03;.04")
  S VFD(.01)=$G(VFDA(.01)) ;   DATE [time] OF DISCHARGE
  S VFD(.02)=$G(VFDA(.03)) ;   9000001 is DINUM'ed
  S VFD(.06)=$G(VFDA(.04)) ;   DISCHARGE TYPE
  S VFD(.05)=$$DTS(DGPMDA) ;   Last Treating Specialty before discharge
- K VFDA D GETS(.VFDA,405,VFDADA,".04;.27")
+ K VFDA D GETS(.VFDA,405,VFDADA_",",".04;.27")
  S VFD(.03)=$G(VFDA(.27)) ;   Corresponding admission VISIT
  S VFD(.07)=$G(VFDA(.04)) ;   ADMISSION TYPE
  S VFD(.04)=$$ATS(VFDADA) ;   Admin Treating Specialty AKA ADMIT SERV
@@ -190,7 +190,7 @@ DQ ; Tasked from EN^VFDDGPM2
  E  S VFDIENS="+1,"
  K VFDA
  F I=.01:.01:.07 I $D(VFD(I)) S VFDA(9000010.02,VFDIENS,I)=VFD(I)
- I VFDIENS D FILE("VFDA") I 1 ;   Edit existing entry
+ I VFDIEN D FILE("VFDA") I 1 ;   Edit existing entry
  E  D UPDATE^DIE(,"VFDA","VFDIENR","VFDMSG")
  I '$G(VFDIENR(1)) D
  . S X="V03 V HOSPITALIZATION failed DGPMDA="_DGPMDA
@@ -231,7 +231,7 @@ DQ ; Tasked from EN^VFDDGPM2
  S PKG=$$LKPKG^XPDUTL("VFD")
  I 'PKG D XCPT(,,"VFD package lookup failed") Q  ;Required for DATA2PCE
  S VFDVIEN=$$GET1(405,DGPMCA,.27) ;Corresponding admission visit IEN
- S FLD=".01;.03;.08;.19" D GETS(.VFD,405,VFDTSDA,FLD)
+ S FLD=".01;.03;.08;.19" D GETS(.VFD,405,VFDTSDA_",",FLD)
  S VFDEVDT=$G(VFD(.01)) ;   Treating specialty transfer D/T
  S VFDDFN=$G(VFD(.03)) ;    Treating specialty transfer patient
  S VFDPPRV=$G(VFD(.08)) ;   Primary provider
@@ -275,7 +275,7 @@ DQ ; Tasked from EN^VFDDGPM2
  D XCPT(,,"V13 V HOSP IEN="_VFDIEN_" deleted",,3)
  Q
  ;
- 
+ ;
 ATS(VFDADA) ; Admission Treating Specialty
  ; VFDADA=[Required]Admission movement IEN
  ; Uses "CA" cross-reference to identify corresponding Treating

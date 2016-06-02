@@ -1,5 +1,5 @@
 PXCEAE ;ISL/dee,ISA/KWP - Main routine for the List Manager display of a visit and related v-files ;04/26/99
- ;;1.0;PCE PATIENT CARE ENCOUNTER;**37,67,99,147,156,172**;Aug 12, 1996
+ ;;1.0;PCE PATIENT CARE ENCOUNTER;**37,67,99,147,156,172,195**;Aug 12, 1996;Build 1
  ;; ;
  Q
 EN ;+ -- main entry point for PXCE DISPLAY VISIT
@@ -19,6 +19,8 @@ EN ;+ -- main entry point for PXCE DISPLAY VISIT
  S PXCECAT="AEP" D PATINFO^PXCEPAT(.PXCEPAT) K PXCECAT
  ;
  I '$D(PXCEHLOC) N PXCEHLOC S PXCEHLOC=$P($G(^AUPNVSIT(PXCEVIEN,0)),"^",22)
+ ;Get Visit date/time if exists - PX*195
+ I '$D(PXCEAPDT) N PXCEAPDT S PXCEAPDT=$P($G(^AUPNVSIT(PXCEVIEN,0)),"^")
  ;+If not called from encounter viewer lock ^PXLCKUSR
  ;+and create ^XTMP("PXLCKUSR",VISIEN)=DUZ
  I PXCEKEYS'["V" D

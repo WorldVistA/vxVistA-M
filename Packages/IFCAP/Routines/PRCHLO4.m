@@ -1,13 +1,16 @@
-PRCHLO4 ;WOIFO/RLL/DAP-EXTRACT ROUTINE CLO REPORT SERVER ;5/22/09  14:14
- ;;5.1;IFCAP;**83,98,130**;Oct 20, 2000;Build 25
+PRCHLO4 ;WOIFO/RLL/DAP-EXTRACT ROUTINE CLO REPORT SERVER ;12/30/10  15:01
+ ;;5.1;IFCAP;**83,98,130,154,172**;Oct 20, 2000;Build 2
  ;Per VHA Directive 2004-038, this routine should not be modified.
  ; Continuation of PRCHLO3
  ;
  ; PRCHLO3 routines are used to Write out the Header and data
- ; associated with each of the 23 tables created for the Clinical
+ ; associated with each of the 29 tables created for the Clinical
  ; logistics Report Server. The files are built from the extracts
  ; located in the ^TMP($J) global.
  ;
+ ;Patch PRC*5.1*172 are modifications to CLRS transmission processing 
+ ;to support those sites that have migrated to Full LINUX OS
+ ; 
  Q
 GETDIR ; Get directory from System parameter for CLRS
  S FILEDIR=$$GET^XPAR("SYS","PRCPLO EXTRACT DIRECTORY",1,"Q")
@@ -44,6 +47,10 @@ TSTFIL ; Test entry point
  D FIL410   ; FILE 410
  D FIL424   ; FILE 424
  D FIL4241  ; FILE 424.1
+ D INVHDR^PRCHLO7 ;File 421.5 header
+ D INVPAY^PRCHLO7 ;Subfile 421.531
+ D INVFMS^PRCHLO7 ;Subfile 421.541
+ D INVCERT^PRCHLO7 ;Subfile 421.51
 GIPBL1 ; GIP REPORTS
  D BLDGP1^PRCPLO3
  D BLDGP2^PRCPLO3
@@ -270,8 +277,8 @@ TSTF ; Test directory for file creation
  . W !,"$ ! This directory is used to store PO activity"
  . W !,"$ ! extracts and GIP Extracts which are transmitted"
  . W !,"$ ! to the Clinical Logistics Report Server on a monthly"
- . W !,"$ ! basis. There are 25 extract files IFCPXXXF1 through"
- . W !,"$ ! IFCPXXXF23, IFCPXXXG1 and IFCPXXXG2. In addition, there"
+ . W !,"$ ! basis. There are 29 extract files IFCPXXXF1 through"
+ . W !,"$ ! IFCPXXXF27, IFCPXXXG1 and IFCPXXXG2. In addition, there"
  . W !,"$ ! are 2 working files used for the FTP Transfer:"
  . W !,"$ ! CLRSxxx.DAT and CLRS1xxx.COM. CLRSREADMExxx.TXT is also present"
  . W !,"$ EXIT"
@@ -346,6 +353,83 @@ FTPCOM ; Issue the FTP command after CLRS1.TXT file is built
  ;
  ; Error flag logic
  I PV=-1  D  ; This error is generated if failure during xfer occurs
+ . S CLRSERR=1
+ . Q
+ Q
+CRTUNX1 ;PRC*5.1*172 added logic for Full Linux
+ ; Run CLRS_STID_UNX.sh as shell script file for exception handling
+ ;
+ ;*98 Modified code to work with PRC CLRS ADDRESS parameter
+ ;
+ N FILEDIR,STID,OUTFLL2,ADDR,CMD,FILES,HOST,PASSWD,USER
+ S STID=$$GET1^DIQ(4,$$KSP^XUPARAM("INST")_",",99)
+ S FILEDIR=$$GET^XPAR("SYS","PRCPLO EXTRACT DIRECTORY",1,"Q")
+ S ADDR=$$GET^XPAR("SYS","PRC CLRS ADDRESS",1,"Q")
+ I ADDR="" S PRCPMSG(1)="There is no address identified in the CLRS Address Parameter.",PRCPMSG(2)="Please correct and retry." D MAILFTP^PRCHLO4A S CLRSERR=1 Q
+ S OUTFLL2="CLRS"_STID_"UNX.SH"
+ ; add linux variables here
+  ; 
+ S HOST=ADDR
+ ; 
+ S PRCHUSN=$$GET^XPAR("SYS","PRCPLO USER NAME",1,"Q")
+ I PRCHUSN="" S PRCPMSG(1)="There is no user name identified in the CLRS USER NAME Parameter.",PRCPMSG(2)="Please correct and retry." D MAILFTP^PRCHLO4A S CLRSERR=1 Q
+ S PRCHUSN=$$DECRYP^XUSRB1(PRCHUSN)
+ S PRCHPSW=$$GET^XPAR("SYS","PRCPLO PASSWORD",1,"Q")
+ I PRCHPSW="" S PRCPMSG(1)="There is no password identified in the CLRS PASSWORD Parameter.",PRCPMSG(2)="Please correct and retry." D MAILFTP^PRCHLO4A S CLRSERR=1 Q
+ S PRCHPSW=$$DECRYP^XUSRB1(PRCHPSW)
+ S USER=PRCHUSN
+ S PASSWD=PRCHPSW
+ S FILES="IFCP*TXT"
+ ; end adding LINUX variables
+ ; PRC*5.1*130 end
+ ;
+ D OPEN^%ZISH("FILE1",FILEDIR,OUTFLL2,"W")
+ D USE^%ZISUTL("FILE1")
+ ;
+ ; add Linux code below
+ W "#!/bin/bash",!
+ W !
+ W "HOST='"_HOST_"'",!
+ W "USER='"_USER_"'",!
+ W "PASSWD='"_PASSWD_"'",!
+ W "FILES='"_FILES_"'",!
+ W !
+ W "cd ",FILEDIR,!
+ W !
+ W "ftp -n $HOST <<END_SCRIPT",!
+ W "quote USER $USER",!
+ W "quote PASS $PASSWD",!
+ W "prompt",!
+ W "mput $FILES",!
+ W "quit",!
+ W "END_SCRIPT",!
+ W "exit 0",!
+ ; W "$ EXIT 3",!
+ D CLOSE^%ZISH("FILE1")
+ ; delete the test file before LINUX FTP transmission
+ S CMD="rm -f "
+ S XPV1="S PV=$ZF(-1,"""_CMD_FILEDIR_"IFCP"_STID_"TST.TXT"")"
+ X XPV1
+ Q
+UNXFTP ;PRC*5.1*172 added logic for Full Linux
+ ; Issue the FTP command after CLRS1.TXT file is built
+ ; remain in CACHE during FTP Process using
+ ; $ZF(-1) call
+ ; ; SACC Exception received for usage of $ZF(-1) in PRC*5.1*83
+ ; See IFCAP technical manual
+ ;
+ ; commented out for testing
+ ; add hook to mailman messaging for ftp, check variable PV
+ N PV,XPV1,FILEDIR,STID
+ ;
+ ;
+ S FILEDIR=$$GET^XPAR("SYS","PRCPLO EXTRACT DIRECTORY",1,"Q")
+ S STID=$$GET1^DIQ(4,$$KSP^XUPARAM("INST")_",",99)
+ S XPV1="S PV=$ZF(-1,"""_FILEDIR_"CLRS"_STID_"UNX.SH >"_FILEDIR_"UNIXFTP.LOG"")"
+ X XPV1  ; Run the .SH file to transfer files
+ ;
+ ; Error flag logic
+ I XPV1=-1  D  ; This error is generated if failure during xfer occurs
  . S CLRSERR=1
  . Q
  Q

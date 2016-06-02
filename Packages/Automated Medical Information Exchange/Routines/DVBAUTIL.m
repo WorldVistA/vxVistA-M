@@ -1,5 +1,5 @@
-DVBAUTIL ;ALB ISC/THM-AMIE UTILITIES ; 1/16/91  2:58 PM
- ;;2.7;AMIE;**17,32**;Apr 10, 1995
+DVBAUTIL ;ALB ISC/THM,SBW-AMIE UTILITIES ; 3/MAY/2011
+ ;;2.7;AMIE;**17,32,168**;Apr 10, 1995;Build 3
  ;
 SORT W !!,"Sort by Regional Office number" S %=1 D YN^DICN I $D(DTOUT)!(%<0) K DTOUT S Y=-1 Q
  I $D(%Y) I %Y["?" W !!,*7,"Enter Y to sort by the Regional Office number you",!,"select or enter N to get ALL Regional Offices reported." G SORT
@@ -8,7 +8,7 @@ SORT W !!,"Sort by Regional Office number" S %=1 D YN^DICN I $D(DTOUT)!(%<0) K D
  W !,*7,"Invalid response.",!! G SORT
  ;
 RONUM W !,"Regional Office number: " R RONUM:DTIME G:RONUM["^" SORT I '$T!(RONUM="") W *7 S Y=-1 Q
- I RONUM'?1.3N W *7,"     Must be 1-3 numbers.",!! G RONUM
+ I RONUM'?3N.4AN W *7,"     Must be 3 numbers plus optional 1 to 4 alphanumeric modifier",!! G RONUM
  Q
  ;
 KILL ;kill all variables and exit selected program

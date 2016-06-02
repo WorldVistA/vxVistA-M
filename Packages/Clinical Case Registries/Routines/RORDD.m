@@ -1,5 +1,17 @@
-RORDD ;HCIOFO/SG - DATA DICTIONARY UTILITIES ; 9/2/05 10:58am
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORDD ;HCIOFO/SG - DATA DICTIONARY UTILITIES ;9/2/05 10:58am
+ ;;1.5;CLINICAL CASE REGISTRIES;**10**;Feb 17, 2006;Build 32
+ ;
+ ; This routine uses the following IAs:
+ ;
+ ; #10076  ^XUSEC(KEY,DUZ (supported)
+ ; #10142  EN^DDIOL (supported)
+ ; #10008  DQ^DICQ (supported)
+ ; #2052   $$GET1^DID (supported)
+ ; #2055   $$ROOT^DILFD (supported)
+ ; #2056   $$GET1^DIQ (supported)
+ ; #10044  H^XUS (supported)
+ ; #2198   $$BROKER^XWBLIB (supported)
+ ; #10096  ^%ZOSF("TEST" (supported)
  ;
  Q
  ;
@@ -81,7 +93,13 @@ ACLSET ;
  . S:RORREG'="" ^ROR(798.1,"ACL",RORDUZ,RORREG,X,DA)=""
  Q
  ;
- ;***** CHECKS IF THE REGISTRY RECORD IS ACTIVE
+ ;***** CHECKS IF THE REGISTRY RECORD IS 'ACTIVE'
+ ;NOTE: With patch 10, pending patients are included in the extractions
+ ;(nightly and historical), so this API is not called anymore to
+ ;determine whether to include the patient in the extracts.  The DEL API
+ ;is called instead.  But this 'ACTIVE' API is still used in the CCR application
+ ;for other things.
+ ;
  ;
  ; IEN           IEN of the registry record
  ;
@@ -92,12 +110,12 @@ ACLSET ;
  ; [.STATUS]     Status code is returned via this parameter.
  ;               It explains the reason for inactivity:
  ;                 ""  Status unknown or no record
- ;                  4  Pending patient
+ ;                  4  Patient is pending
  ;                  5  Patient is marked for deletion
  ;
  ; Return Values:
- ;        0  The record is inactive
- ;        1  The record is active
+ ;        0  The record is not confirmed
+ ;        1  The record is confirmed
  ;
 ACTIVE(IEN,CHKDT,STATUS) ;
  N NODE0
@@ -106,7 +124,24 @@ ACTIVE(IEN,CHKDT,STATUS) ;
  S STATUS=+$P(NODE0,U,5)
  Q:STATUS=4 0  ; Pending
  Q:STATUS=5 0  ; Marked for deletion
- Q 1           ; Active
+ Q 1           ; Confirmed/Active
+ ;
+ ;***** CHECKS IF THE REGISTRY RECORD IS MARKED FOR DELETION
+ ;NOTE: these records are excluded from the historical extract
+ ;
+ ; IEN           IEN of the registry record
+ ;
+ ; Return Values:
+ ;        1       The record is marked for deletion
+ ;        0       The record is not marked for deletion
+ ;
+DEL(IEN) ;
+ N NODE0,STATUS
+ S NODE0=$G(^RORDATA(798,+IEN,0))
+ I NODE0=""  Q 0
+ S STATUS=+$P(NODE0,U,5)
+ Q:STATUS=5 1  ; Marked for deletion
+ Q 0           ; Not marked for deletion
  ;
  ;***** DISPLAYS A LIST OF APIs DEFINED IN THE SUBFILE #799.23
  ;
@@ -118,7 +153,7 @@ APILST(IEN) ;
  S D=$$GET1^DID(799.23,.01,,"FIELD LENGTH",,"RORMSG")
  D EN^DDIOL($J(1,D),,"?2"),EN^DDIOL("GETS^DIQ",,"?10")
  S DIC(0)="",D="B",DZ="??"
- S DIC("W")="D EN^DDIOL($P(^(0),U,3)_""^""_$P(^(0),U,2),,""?10"")"
+ S DIC("W")="D EN^DDIOL($P(^(0),U,3)_""^""_$P(^(0),U,2),,""?10"")" ;Naked Ref: ^ROR(799.2,IEN
  D DQ^DICQ
  Q
  ;

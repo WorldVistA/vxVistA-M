@@ -1,7 +1,6 @@
-XOBSCAV1 ;; kec/oak - VistaLink Access/Verify Security ; [6/28/06 2:26pm]
- ;;1.5;VistALink Security;**1**;Sep 09, 2005;Build 3
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.1.001]
- ;;
+XOBSCAV1 ;; kec/oak - VistaLink Access/Verify Security ; 12/09/2002  17:00
+ ;;1.6;VistALink Security;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
  QUIT
  ; 
  ; Access/Verify Security: Security Message Request Handler
@@ -11,7 +10,14 @@ XOBSCAV1 ;; kec/oak - VistaLink Access/Verify Security ; [6/28/06 2:26pm]
  ; 
  ; ::AV.SetupAndIntroText.Request message processing
 SENDITXT ; Do Setup and send Intro Text
- NEW XOBSTINF,XOBITINF,XOBMSG,XOBTMP,XOBTMP1,XOBCCMSK,XOBI,XOBPROD
+ NEW XOBSTINF,XOBMSG,XOBTMP,XOBTMP1,XOBCCMSK,XOBI,XOBPROD
+ ;
+ ; define XWBTIP early so present in any error logs
+ ; NOTE: $$GETPEER^%ZOSV fails for TCP_SERVICES listeners if COM file doesn't set up VISTA$IP logical
+ ; 
+ SET XWBTIP=$$GETPEER^%ZOSV ; XWBTIP needed by SETUP^XUSRB. Use of GETPEER^%ZOSV: DBIA #4056
+ ; set ip from msg if not provided by OS
+ SET:'$LENGTH(XWBTIP) XWBTIP=XOBDATA("CLIENTIP")
  ;
  IF $$PRODMISM() DO  QUIT
  . NEW XOBSPAR SET XOBSPAR(1)=$GET(XOBDATA("CLIENTISPRODUCTION")),XOBSPAR(2)=$SELECT($$PROD^XUPROD(0):"true",1:"false")
@@ -21,12 +27,10 @@ SENDITXT ; Do Setup and send Intro Text
  . NEW XOBSPAR SET XOBSPAR(1)=$GET(XOBDATA("CLIENTPRIMARYSTATION")),XOBSPAR(2)=XOBSYS("PRIMARY STATION#")
  . DO ERROR^XOBSCAV(.XOBR,$PIECE($TEXT(FSERVER^XOBSCAV),";;",2),"Primary Station Mismatch",183010,$$CHARCHK^XOBVLIB($$EZBLD^DIALOG(183010,.XOBSPAR)))
  ;
- ; Do SETUP^XUSRB to setup, then INTRO^XUSRB to get intro text
- ; NOTE: $$GETPEER^%ZOSV fails for TCP_SERVICES listeners if COM file doesn't set up VISTA$IP logical
- SET XWBTIP=$$GETPEER^%ZOSV ; XWBTIP needed by SETUP^XUSRB. Use of GETPEER^%ZOSV: DBIA #4056
- ;
+ ; seq: SETUP^XUSRB, then INTRO^XUSRB
+ ; 
  USE XOBNULL ; protect against direct writes to socket
- ; note: SETUP/INTRO^XUSRB set current IO to null device
+ ; note: SETUP^XUSRB sets current IO to null device
  ; 
  IF XOBSYS("ENV")="j2ee" DO
  . DO SETUP^XUSRB(.XOBSTINF,"") ; use of SETUP^XUSRB: DBIA #4054
@@ -43,9 +47,8 @@ SENDITXT ; Do Setup and send Intro Text
  . .QUIT
  . KILL XWBVER ; once auto-signon fails, don't need to contact client agent
  . ; end of autosignon support
- ; 
+ ;
  ;if failed autosignon, continue w/intro text
- DO INTRO^XUSRB(.XOBITINF) ; use of INTRO^XUSRB: DBIA #4054
  ; ** use of USE command covered by blanket SAC Kernel exemption for Foundations
  USE XOBPORT ; restore current IO (the TCP port)
  ;
@@ -70,13 +73,14 @@ LOGON ; process login request
  USE XOBNULL ; protect against direct writes to socket
  ; try to logon w/avcodes
  DO VALIDAV^XUSRB(.XOBRET,XOBDATA("XOB SECAV","AVCODE")) ; use of VALIDAV^XUSRB: DBIA#4054
+ KILL XOBDATA("XOB SECAV","AVCODE")
  USE XOBPORT ; restore current IO (the TCP port)
  ;
  ; if bad a/v code credentials
  IF '+XOBRET(0),'+XOBRET(1),'+XOBRET(2) DO  QUIT
- . IF XOBSYS("ENV")="j2ee" DO ERROR^XOBSCAV(.XOBR,$PIECE($TEXT(FSERVER^XOBSCAV),";;",2),"Connector Proxy User Error",183008,$$CHARCHK^XOBVLIB($$EZBLD^DIALOG(183008,$GET(XOBRET(3)))))
  . ; look for particular error string which means IP is locked
  . IF $GET(XOBRET(3))["Device/IP address is locked due" DO ERROR^XOBSCAV(.XOBR,$PIECE($TEXT(FSERVER^XOBSCAV),";;",2),"Logon Failed",182306,$$CHARCHK^XOBVLIB($$EZBLD^DIALOG(182306,$GET(XOBRET(3))))) QUIT
+ . IF XOBSYS("ENV")="j2ee" DO ERROR^XOBSCAV(.XOBR,$PIECE($TEXT(FSERVER^XOBSCAV),";;",2),"Connector Proxy User Error",183008,$$CHARCHK^XOBVLIB($$EZBLD^DIALOG(183008,$GET(XOBRET(3))))) QUIT
  . ELSE  DO LOGBADCD
  ;
  ; if Kernel says user needs to change verify code
@@ -146,6 +150,7 @@ CLEAN ; logout
  ; ::AV.SelectDivision.Request message processing
 DIVSLCT ; select division
  NEW XOBRET
+ ;
  IF '+DUZ DO DIVSLCT0("User did not complete the access/verify code login process.") QUIT  ; need DUZ
  DO DIVSET^XUSRB2(.XOBRET,"`"_XOBDATA("XOB SECAV","SELECTEDDIVISION")) ; use of DIVSET^XUSRB2: DBIA #4055
  IF +XOBRET DO  QUIT
@@ -181,7 +186,7 @@ STATMISM() ; return 1 if primary station mismatch, 0 if not
  QUIT 0
  ;
 STRPSUFF(XOBSTAT) ; strip alpha suffix from sta# e.g. AAC "200M"
- SET XOBSTAT=+XOBSTAT
+ SET XOBSTAT=$$TRUNCCH^XOBVSYSI(XOBSTAT)
  ; nursing home, treat 9 as suffix
  IF $LENGTH(XOBSTAT)=4,$E(XOBSTAT,4)=9 SET XOBSTAT=$E(XOBSTAT,1,3)
  QUIT XOBSTAT

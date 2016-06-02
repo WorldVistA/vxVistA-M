@@ -1,6 +1,6 @@
-VFDDFN ;DSS/LM,JG - Utilities supporting PATIENT lookup ; 4/9/2012 14:45
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 7
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
+VFDDFN ;DSS/LM,SMP - PATIENT Lookup Utilities ; 04/25/2014 16:40
+ ;;2013.0;DSS,INC VXVISTA OPEN SOURCE;**10**;11 Jun 2013;Build 3
+ ;Copyright 1995-2014,Document Storage Systems Inc. All Rights Reserved
  ;
  ; See also routine ^VFDWDPT, ^VFDPT
  ;ICR #  SUPOORTED DESCRIPTION
@@ -70,6 +70,39 @@ DFN(AID,LOC,TYPE,XDT) ; Return PATIENT IEN
  ;     If only one DFN with AID marked as default, return DFN
  G DFN^VFDDFN01
  ;
+DFNCHK(VAR) ; EXTRINSIC CHECK DFN
+ ; This utility checks the values passed in against the DFN entry in
+ ; the patient file. It returns the same DFN if all items match.
+ ; It returns "-1^... NE" if there is a mismatch.
+ ;
+ ; INPUT:
+ ;   VAR("DFN") = DFN
+ ;   VAR("FN")  = FirstName
+ ;   VAR("LN")  = LastName
+ ;   VAR("DOB") = DateOfBirth FM
+ ;   VAR("SEX") = Sex (1 character)
+ ;
+ ; OUTPUT:
+ ;   If match is found, return DFN
+ ;   Else, return -1^error message
+ ;
+ G DFNCHK^VFDDFN01
+ ;
+ ;
+GENID(DFN,LOC,TYPE,XDT,NOERR) ; Return alternate ID ***NON-MRN***
+ ; DFN - req - Patient IEN
+ ; LOC - opt - File 9999999.06 IEN (or File 4 IEN) or if "*" then look
+ ;             for any location.  Default to +$$SITE^VASITE()
+ ;TYPE - req - #.05 subfield value to match.  NON-MRN!!
+ ; XDT - opt - Fileman Date.Time.  Defaults to TODAY. Screen out based
+ ;             upon EXPIRATION DATE in ALTERNATE ID field #.03
+ ;NOERR - opt - Boolean, default to 0 - if NOERR then return null
+ ;              instead of -1^msg - this is for M-to-M only, not RPC
+ ;
+ ; TYPE or LOC must be defined
+ ;
+ G GENID^VFDDFN01
+ ;
  ;-----------------------   REMOTE PROCEDURES   -----------------------
 RPCID(VFDAT,DFN,LOC,TYPE,XDT,CASE) ; RPC: VFD PATIENT ID
  N X,Y,Z
@@ -79,4 +112,23 @@ RPCID(VFDAT,DFN,LOC,TYPE,XDT,CASE) ; RPC: VFD PATIENT ID
  ;
 RPCIDL(VFDAT) ; RPC: VFD PATIENT ID LABEL
  N PARM D PARM^VFDDFN01 S VFDAT=PARM_U_PARM("LABEL")
+ Q
+ ;
+RPCDFN(VFDAT,AID,LOC,TYPE,XDT) ; RPC: VFD PATIENT DFN
+ ; AID - req - Aternate ID value to match
+ ; LOC - opt - File 9999999.06 IEN (or File 4 IEN) or if "*" then look
+ ;             for any location.  Default to +$$SITE^VASITE()
+ ;TYPE - opt - #.05 subfield value to match.  Default to either the
+ ;             DEFAULT (active) entry or the "MRN" Type Alternate ID
+ ; XDT - opt - Fileman Date.Time.  Defaults to TODAY. Screen out based
+ ;             upon EXPIRATION DATE in ALTERNATE ID field #.03
+ ; Extrinsic function returns DFN or -1^Text
+ ; OSEHRA compliance not considered since Alt ID not VA
+ ; LOC,TYPE,XDT filters same as in ID (see ID1)
+ ; Logic:
+ ;   Only 1 patient with AID value, return DFN
+ ;   Check alternate IDs marked as default
+ ;     If only one DFN with AID marked as default, return DFN
+ N X,Y,Z
+ S X=$$DFN($G(AID),$G(LOC),$G(TYPE),$G(XDT)) S VFDAT=X
  Q

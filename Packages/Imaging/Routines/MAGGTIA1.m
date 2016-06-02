@@ -1,5 +1,5 @@
-MAGGTIA1 ;WOIFO/GEK - RPC Call to Add Image File entry ; [ 06/20/2001 08:56 ]
- ;;3.0;IMAGING;**21,8,59**;Nov 27, 2007;Build 20
+MAGGTIA1 ;WOIFO/GEK/SG - RPC Call to Add Image File entry ; 1/22/09 1:42pm
+ ;;3.0;IMAGING;**21,8,59,93**;Dec 02, 2009;Build 163
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -18,10 +18,12 @@ MAGGTIA1 ;WOIFO/GEK - RPC Call to Add Image File entry ; [ 06/20/2001 08:56 ]
  ;;
  Q
 ADD ;Now call Fileman to file the data
- N GIEN,DIEN,NEWIEN,MAGGDA,X,Y
- ;Because we delete the Image node on image deletion, we have to 
- ; check the last entry in Audit File, to see if it is greater than 
- ; last image in Image File.
+ N NEWIEN,MAGGDA,X,Y
+ ;~~~ Delete this comment and the following line of code when
+ ;    the IMAGE AUDIT file (#2005.1) is completely eliminated.
+ ;    Because we delete the Image node on image deletion, we have to 
+ ;    check the last entry in Audit File, to see if it is greater
+ ;~~~ than the last image in the Image File.
  I ($O(^MAG(2005,"A"),-1)<$O(^MAG(2005.1,"A"),-1)) S $P(^MAG(2005,0),U,3)=$O(^MAG(2005.1,"A"),-1)
  ;   we know that MAGGIEN WILL contain the internal number.
  ;    after the call.
@@ -32,14 +34,7 @@ ADD ;Now call Fileman to file the data
  . ; Now, after UPDATE^DIE, we aren't getting the MAGGIEN array., We'll use MAGMOD
  . D ACTION^MAGGTAU("MOD^"_$P(^MAG(2005,+MAGMOD,0),U,7)_"^"_+$G(MAGMOD)) ; This is the Image IEN
  ;
- ; There are incidents of using an IEN from a deleted image
- ;  these next lines are to stop the problem.
- S GIEN=$O(^MAG(2005," "),-1)+1
- S DIEN=$O(^MAG(2005.1," "),-1)+1
- S NEWIEN=$S(GIEN>DIEN:GIEN,1:DIEN)
-LOCK L +^MAG(2005,NEWIEN):0 E  S NEWIEN=NEWIEN+1 G LOCK
- I $D(^MAG(2005,NEWIEN)) L -^MAG(2005,NEWIEN) S NEWIEN=NEWIEN+1 G LOCK
- S MAGGIEN(1)=NEWIEN
+ S (MAGGIEN(1),NEWIEN)=$$NEWIEN^MAGGI12()  ; SG - MAG*3*93
  D UPDATE^DIE("S","MAGGFDA","MAGGIEN","MAGGXE")
  ;
  I '$G(MAGGIEN(1)) D  S MAGRY=MAGERR Q
@@ -108,7 +103,7 @@ C1 ; we jump here if we already had a Filename sent
  . Q
  ;P59 If TYPE INDEX is missing we Auto-Generate Index Type and other missing Index Term values.
  I '$P(^MAG(2005,MAGGDA,40),"^",3) D
- . N INDXD,OLD40,N40
+ . N INDXD,J,OLD40,N40
  . S (N40,OLD40)=^MAG(2005,MAGGDA,40)
  . D GENIEN^MAGXCVI(MAGGDA,.INDXD)
  . ; If Origin doesn't exist in existing, this will put V in. 

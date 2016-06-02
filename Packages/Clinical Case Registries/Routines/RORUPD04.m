@@ -1,8 +1,18 @@
-RORUPD04 ;HCIOFO/SG - PROCESSING OF THE LAB DATA  ; 12/8/05 8:20am
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORUPD04 ;HCIOFO/SG - PROCESSING OF THE LAB DATA ;12/8/05 8:20am
+ ;;1.5;CLINICAL CASE REGISTRIES;**14**;Feb 17, 2006;Build 24
  ;
  Q
  ;
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                       --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*14   APR  2011   A SAUNDERS   LAB: added call to new tag HCV to look
+ ;                                      for HCV results.
+ ;******************************************************************************
+ ;******************************************************************************
  ;***** CHECKS AN INDICATOR CONDITION
  ;
  ; LSI           Indicator (internal value)
@@ -69,6 +79,7 @@ LAB(UPDSTART,PATIEN) ;
  ;
  S RORLAB=$$ALLOC^RORTMP()  D  D FREE^RORTMP(RORLAB)
  . ;--- Load the Lab results
+ . I $G(RORLRC)="" S RORLRC="CH,MI"
  . S RC=$$LABRSLTS^RORUTL02(PATIEN,UPDSTART_DM,DSEND_DM,RORLAB)
  . I RC<0  D INCEC^RORUPDUT(.RC)  Q
  . ;--- Process the results
@@ -82,6 +93,8 @@ LAB(UPDSTART,PATIEN) ;
  . ;--- Apply "after" rules
  . S RC=$$APLRULES^RORUPDUT(RORFILE,LABIENS,"A")
  . I RC  D INCEC^RORUPDUT(.RC)  Q
+ . ;check if patient has positive HCV LOINC test result
+ . D HCV(PATIEN,RORLAB)
  ;
  D CLRDES^RORUPDUT(RORFILE)
  Q RC
@@ -194,3 +207,37 @@ RULE(LSIEN) ;
  . I DATE=SRDT  D:$$GETVAL^RORUPDUT("ROR SRLOC")=""  Q
  . . S RORVALS("SV","ROR SRLOC")=LOC
  Q 1
+ ;
+ ;***** ADD PATIENT TO ARRAY IF THEY HAVE A POSITIVE HCV TEST RESULT
+ ;Patients will be automatically confirmed into the registry during the
+ ;nightly job in ADD^RORUPD50 if they have a positive HCV test result
+ ;Note: all other registry 'update' criteria must be met as well
+ ;
+ ;Input
+ ;  DFN      Patient DFN
+ ;  RORLAB   Array with patient's lab test results.  In HL7 format,
+ ;           returned from GCPR^LA7QRY
+ ;
+ ;Output
+ ;  ^TMP("ROR HCV CONFIRM",$J,DFN)=""  patient is added to this array if they
+ ;  have positive HCV test result.  Array is used in ADD^RORUPD50.
+ ;
+HCV(DFN,RORLAB) ;
+ N RORI,RORSEG,RORTYPE,RORVAL,HLFS,HLCS,RORLOINC,RORDONE
+ S HLFS="|",HLCS="^" ;HL7 field and component separator in the Lab data array
+ ;loop through lab output and see if the test result value is for an HCV LOINC
+ ;Array is used in ADD^RORUPD50
+ S RORI=0,RORDONE=0
+ F  S RORI=$O(@RORLAB@(RORI)) Q:'RORI  Q:RORDONE  D
+ . S RORSEG=$G(@RORLAB@(RORI)) ;entire HL7 segment data
+ . S SEGTYPE=$P(RORSEG,HLFS,1) ;segment type (PID,OBR,OBX,etc.)
+ . Q:SEGTYPE'="OBX"  ;we only want OBX segments
+ . S RORLOINC=$P($P($G(RORSEG),HLFS,4),HLCS,1)
+ . I $G(RORLOINC)'="",'$D(^TMP("ROR HCV LIST",$J,RORLOINC)) Q  ;quit if not HCV LOINC
+ . S RORVAL=$P(RORSEG,HLFS,6) ; HCV test result value
+ . I $L($G(RORVAL))>0 S RORVAL=$TR(RORVAL,"""","") ;get rid of any double quotes
+ . I $E($G(RORVAL),1,1)=">" D  ;if positive test result
+ .. S ^TMP("ROR HCV CONFIRM",$J,DFN)="" ;add patient to HCV auto-confirm list
+ .. S RORDONE=1 ;end of HCV processing for this patient
+ ;
+ Q

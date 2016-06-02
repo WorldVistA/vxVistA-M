@@ -1,6 +1,6 @@
-FBAACO3 ;AISC/GRR-ENTER PAYMENT CONTINUED ;7/7/2003
- ;;3.5;FEE BASIS;**4,38,55,61,116,122,133**;JAN 30, 1995;Build 5
- ;;Per VHA Directive 10-93-142, this routine should not be modified.
+FBAACO3 ;AISC/GRR - ENTER PAYMENT CONTINUED ;10/31/12 2:56pm
+ ;;3.5;FEE BASIS;**4,38,55,61,116,122,133,108,124,143,139**;JAN 30, 1995;Build 127
+ ;;Per VA Directive 6402, this routine should not be modified.
 DOEDIT ;
  N FB1725,FBFPPSC
  W ! S FBAACP(0)=FBAACP
@@ -12,6 +12,7 @@ DOEDIT ;
  ; set FB1725 true (1) if payment is for a Mill Bill claim
  S FB1725=$S($P(Y(0),U,13)["FB583":+$P($G(^FB583(+$P(Y(0),U,13),0)),U,28),1:0)
  S FBAAMM1=$P($G(^FBAAC(DFN,1,FBV,1,FBSDI,1,FBAACPI,2)),U,2)
+ S FBCNTRP=$P($G(^FBAAC(DFN,1,FBV,1,FBSDI,1,FBAACPI,3)),U,8)
  S FBFSAMT(0)=$P($G(^FBAAC(DFN,1,FBV,1,FBSDI,1,FBAACPI,2)),U,12)
  ; determine lesser of original fee schedule amount and amount claimed
  S FBAMTPD(0)=$S(FBFSAMT(0)="":J(0),FBFSAMT(0)>J(0):J(0),1:FBFSAMT(0))
@@ -40,15 +41,20 @@ DOEDIT ;
  I FBMODL'=$$MODL^FBAAUTL4("FBMODA") D REPMOD^FBAAUTL4(DFN,FBV,FBSDI,FBAACPI)
  ; now edit remaining fields
  D SETO K DR
+ ;JAS - 09/13/13 - PATCH 139 - Added FBDXCHK1 and FBDXCHK2
+ N FBDXCHK1 S FBDXCHK1=";S:FBAADT<$$IMPDATE^FBCSV1(""10D"") Y=""@20"";@15;S XX1=-1 S XX1=$$ASKICD10^FBAACO2(FBAADT) S:XX1<0 Y=""@15"";28///^S X=XX1;S Y=""@21"";"
+ S FBDXCHK1=FBDXCHK1_"@20;S XX1=$$ASKICD9^FBAACO2(FBAADT) S:+XX1<0 Y=""@20"";28////^S X=+XX1;@21;31;32R;S Y=""@7"";"
+ N FBDXCHK2 S FBDXCHK2=";S:FBAADT<$$IMPDATE^FBCSV1(""10D"") Y=""@26"";@25;S XX1=-1 S XX1=$$ASKICD10^FBAACO2(FBAADT) S:XX1<0 Y=""@25"";28///^S X=XX1;S Y=""@30"";@26;"
  S DR="48;47;S FBUNITS=X;42R;S FBZIP=X;S:$$ANES^FBAAFS($$CPT^FBAAUTL4(FBAACP)) Y=""@2"";43///@;S FBTIME=X;S Y=""@3"";@2;43R;S FBTIME=X;@3"
  ; fb*3.5*116 remove edit of interest indicator (162.03,34) to prevent different interest indicator values at line item level; interest indicator set at invoice level only
- ;S DR(1,162.03,1)="S FBAAMM=$S(FBAAPTC=""R"":"""",1:1);D PPT^FBAACO1(FBAAMM1);34///@;34////^S X=FBAAMM1;30R;S FBHCFA(30)=X;1;S J=X;Q"
- S DR(1,162.03,1)="30R;S FBHCFA(30)=X;1;S J=X;Q"
+ S DR(1,162.03,1)="S FBAAMM=$S(FBAAPTC=""R"":"""",1:1);D PPT^FBAACO1(FBAAMM1,FBCNTRP,1);34///@;34////^S X=FBAAMM1;54///@;54////^S X=FBCNTRP;30R;S FBHCFA(30)=X;1;S J=X;Q"
+ ;S DR(1,162.03,1)="30R;S FBHCFA(30)=X;1;S J=X;Q"
  S DR(1,162.03,2)="D FEEDT^FBAACO3;44///@;44///^S X=FBFSAMT;45///@;45///^S X=FBFSUSD;S:FBAMTPD'>0!(FBAMTPD=FBAMTPD(0)) Y=""@4"";2///^S X=FBAMTPD;@4;2//^S X=FBAMTPD;D CHKIT^FBAACO3;S K=X"
  ;S DR(1,162.03,3)="3//^S X=$S(J-K:J-K,1:"""");4;S:X'=4 Y=6;22;6////^S X=DUZ;13;33"
  S DR(1,162.03,3)="K FBADJD;M FBADJD=FBADJ;S FBX=$$ADJ^FBUTL2(J-K,.FBADJ,2,,.FBADJD,1)"
- S DR(1,162.03,4)="S:FBFPPSC="""" Y=13;W !,""FPPS CLAIM ID: ""_FBFPPSC;S FBX=$$FPPSL^FBUTL5(FBFPPSL,,1);51///^S X=FBX;S FBFPPSL=X;13;33"
- S DR(1,162.03,5)="S:$$EXTPV^FBAAUTL5(FBPOV)=""01"" Y=""@1"";S Y=$S('$D(FB7078):28,FB7078]"""":31,1:28);@5;28R;S:$$INPICD9^FBCSV1(X,"""",$G(FBAADT)) Y=""@5"";31;32R;S Y=""@7"";@1;28;I X]"""" S:$$INPICD9^FBCSV1(X,"""",$G(FBAADT)) Y=""@1"";31"
+ S DR(1,162.03,4)="S:FBFPPSC="""" Y=13;W !,""FPPS CLAIM ID: ""_FBFPPSC;S FBX=$$FPPSL^FBUTL5(FBFPPSL,,1);51///^S X=FBX;S FBFPPSL=X;@13;13;I $$BADDATE^FBAACO3(FBAADT,X) S Y=""@13"";33"
+ ;JAS - 09/13/13 - PATCH 139 - Updated line below for ICD-10
+ S DR(1,162.03,5)="S:$$EXTPV^FBAAUTL5(FBPOV)=""01"" Y=""@1"";S Y=$S('$D(FB7078):""@5"",FB7078]"""":""@21"",1:""@5"");@5"_FBDXCHK1_"@1"_FBDXCHK2_"S XX1=$$ASKICD9^FBAACO2(FBAADT) S:+XX1<0 Y=""@26"";28////^S X=+XX1;@30;31"
  S DR(1,162.03,6)="@7;K FBRRMKD;M FBRRMKD=FBRRMK;S FBX=$$RR^FBUTL4(.FBRRMK,2,,.FBRRMKD)"
  S DR(1,162.03,7)="73;74;75;58;59;60;61;62;63;64;65;66;67;76;77;78;79;68;69"
  S DIE="^FBAAC("_DFN_",1,"_FBV_",1,"_FBSDI_",1,",DIE("NO^")="",FBOT=1
@@ -62,6 +68,13 @@ DOEDIT ;
  Q:$D(FBDL)
  I $G(FBAAIN) S FBINTOT=0 D CALC
  Q
+ ;
+BADDATE(FBDOS,INVRCVDT) ;Reject entry if InvRcvDt is Prior to the Date of Service on the Invoice
+ I INVRCVDT<FBDOS D  Q 1 ;Reject entry
+ .N SHOWDOS  S SHOWDOS=$E(FBDOS,4,5)_"/"_$E(FBDOS,6,7)_"/"_$E(FBDOS,2,3) ;Convert FBDOS into display format for error message
+ .W *7,!!?5,"*** Invoice Received Date cannot be prior to the",!?8," Date of Service ("_SHOWDOS_") !!!"
+ Q 0 ;Accept entry
+ ;
 SETO S FY=$E(FBAADT,1,3)+1700+$S($E(FBAADT,4,5)>9:1,1:0)
  Q
 OUT ;
@@ -85,11 +98,13 @@ CALC ;Calculate Current Invoice Total
 CALC1 S FZNODE=^FBAAC(J,1,K,1,L,1,M,0),A2=$P(FZNODE,"^",3),FBINTOT=FBINTOT+A2,FBAAID=$P(FZNODE,"^",15),FBAAVID=$P($G(^FBAAC(J,1,K,1,L,1,M,2)),"^")
  Q
 FEEDT ;
- ; input FB1725 - true (=1) when edited payment is for a Mill Bill claim
+ ;FB*3.5*143 Adding FB1725 as a parameter to prevent incorrect
+ ; reductions in local fee schedule pricing.
+ ; input FB1725 - true (=1) when edited payment is for a Mill BilL claim.
  N FBX
  D SETO:'$G(FY) S FBFY=FY-1
  S (FBFSAMT,FBFSUSD)="",FBAMTPD=$G(FBAMTPD)
- S FBX=$$GET^FBAAFS($$CPT^FBAAUTL4(FBAACP),$$MODL^FBAAUTL4("FBMODA","E"),FBAADT,$G(FBZIP),$$FAC^FBAAFS($G(FBHCFA(30))),$G(FBTIME))
+ S FBX=$$GET^FBAAFS($$CPT^FBAAUTL4(FBAACP),$$MODL^FBAAUTL4("FBMODA","E"),FBAADT,$G(FBZIP),$$FAC^FBAAFS($G(FBHCFA(30))),$G(FBTIME),$G(FB1725))
  I '$G(FBAAMM1) D
  . S FBFSAMT=$P(FBX,U),FBFSUSD=$P(FBX,U,2)
  E  D
@@ -111,7 +126,7 @@ FEEDT ;
  . W !!?2,"Units Paid = ",FBUNITS
  . Q:FBFSAMT'>0
  . N FBFSUNIT
- . ; determine if fee schedule can be multipled by units
+ . ; determine if fee schedule can be multiplied by units
  . S FBFSUNIT=$S(FBFSUSD="R":1,FBFSUSD="F"&(FBAADT>3040930):1,1:0)
  . I FBFSUNIT D
  . . S FBFSAMT=$J(FBFSAMT*FBUNITS,0,2)

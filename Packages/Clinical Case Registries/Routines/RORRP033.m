@@ -1,8 +1,19 @@
-RORRP033 ;HCIOFO/SG - RPC: HIV PATIENT LOAD ; 10/27/05 2:12pm
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORRP033 ;HCIOFO/SG - RPC: HIV PATIENT LOAD ;10/27/05 2:12pm
+ ;;1.5;CLINICAL CASE REGISTRIES;**14**;Feb 17, 2006;Build 24
  ;
  Q
  ;
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                 --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*14   APR  2011   A SAUNDERS   LOAD: Added AIDS DX - FIRST DIAGNOSED
+ ;                                      (#12.08) from file 799.4 to the ICR
+ ;                                      segment in the returned array
+ ;******************************************************************************
+ ;******************************************************************************
  ;***** PROCESSES THE ERROR(S) AND UNLOCKS THE RECORDS
 ERROR(RESULTS,RC) ;
  D RPCSTK^RORERR(.RESULTS,RC)
@@ -82,9 +93,10 @@ ERROR(RESULTS,RC) ;
  ; @RESULTS@(i)          Registry data
  ;                         ^01: "ICR"
  ;                         ^02: ""
- ;                         ^03: Clinical AIDS (0/1)
+ ;                         ^03: Clinical AIDS (null/0/1/9)
  ;                         ^04: Date of Clinical AIDS (FileMan)
  ;                         ^05: reserved
+ ;                         ^06: HIV first DX at this facility (null,0/1/9)
  ;
 LOAD(RESULTS,REGIEN,PATIEN,LOCK) ;
  N I,ICRBUF,IENS,LOCKRC,RC,RESPTR,RORBUF,RORERRDL,RORLOCK,RORMSG,TMP
@@ -133,11 +145,12 @@ LOAD(RESULTS,REGIEN,PATIEN,LOCK) ;
  . S RC=$$LOAD^RORRP026(IENS,"PH^RORRP026",.RORBUF)  Q:RC<0
  . S RESPTR=RESPTR+1,@RESULTS@(RESPTR)=RORBUF
  . ;--- Other registry data
- . D GETS^DIQ(799.4,IENS,".02;.03;","I","RORBUF","RORMSG")
+ . D GETS^DIQ(799.4,IENS,".02;.03;12.08","I","RORBUF","RORMSG")
  . I $G(DIERR)  D  Q
  . . S RC=$$DBS^RORERR("RORMSG",-9,,PATIEN,799.4,IENS)
- . S $P(ICRBUF,U,3)=+$G(RORBUF(799.4,IENS,.02,"I"))
+ . S $P(ICRBUF,U,3)=$G(RORBUF(799.4,IENS,.02,"I")) ;send actual value
  . S $P(ICRBUF,U,4)=$G(RORBUF(799.4,IENS,.03,"I"))
+ . S $P(ICRBUF,U,6)=$G(RORBUF(799.4,IENS,12.08,"I")) ;HIV first Diagnosed at this Facility?
  ;
  ;===
  S RESPTR=RESPTR+1,@RESULTS@(RESPTR)=ICRBUF

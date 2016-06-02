@@ -1,7 +1,6 @@
 XOBSCAV2 ;; kec/oak - VistaLink Access/Verify Security ; 12/09/2002  17:00
- ;;1.5;VistALink Security;;Sep 09, 2005
- ;;Foundations Toolbox Release v1.5 [Build: 1.5.0.026]
- ;;
+ ;;1.6;VistALink Security;;May 08, 2009;Build 15
+ ;Per VHA directive 2004-038, this routine should not be modified.
  QUIT
  ;
  ; --------------------------------------------------------------------
@@ -63,6 +62,9 @@ ELEST(ELE,ATR) ; -- element start event handler
  ;
  IF ELE="Request" DO  QUIT
  . SET XOBDATA("XOB SECAV","SECURITYACTION")=$GET(ATR("type"),"unknown")
+ . ; get ip from msg if provided
+ . IF "AV.SetupAndIntroText"=XOBDATA("XOB SECAV","SECURITYACTION") DO
+ . . SET XOBDATA("CLIENTIP")=$GET(ATR("clientIp"))
  ;
  IF XOBDATA("XOB SECAV","SECURITYTYPE")'=$$MSGTYP^XOBSCAV("request") DO  QUIT
  .;if not a security request, shouldn't be here
@@ -123,6 +125,7 @@ SENDNVC ; respond to "change verify code" request. Use of CVC^XUSRB per DBIA #40
  NEW XOBRET,XOBRETDV,XOBSDUZ
  SET XOBSDUZ=DUZ ; save DUZ in case of failure - we need to restore
  DO CVC^XUSRB(.XOBRET,XOBDATA("XOB SECAV","OLDVC")_U_XOBDATA("XOB SECAV","NEWVC")_U_XOBDATA("XOB SECAV","NEWVCCHECK"))
+ KILL XOBDATA("XOB SECAV","OLDVC"),XOBDATA("XOB SECAV","NEWVC"),XOBDATA("XOB SECAV","NEWVCCHECK")
  IF +$GET(DUZ) DO  QUIT  ; success changing verify code
  .; check the divisions now
  .DO DIVGET^XUSRB2(.XOBRETDV,DUZ) ; use of DIVGET^XUSRB2: DBIA #4055

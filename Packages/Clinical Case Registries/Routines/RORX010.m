@@ -1,10 +1,26 @@
-RORX010 ;HCIOFO/SG - LAB TESTS BY RANGE REPORT ; 12/8/05 10:39am
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORX010 ;HOIFO/SG,VAC - LAB TESTS BY RANGE REPORT ;4/7/09 2:08pm
+ ;;1.5;CLINICAL CASE REGISTRIES;**8,13,19,21**;Feb 17, 2006;Build 45
  ;
  ; This routine uses the following IAs:
  ;
- ; #10061        DEM^VADPT (supported)
+ ; #2056  GETS^DIQ (supported)
+ ; #10103 FMADD^XLFDT (supported)
  ;
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                 --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*8    MAR  2010   V CARR       Modified to handle ICD9 filter for
+ ;                                      'include' or 'exclude'.
+ ;ROR*1.5*13   DEC  2010   A SAUNDERS   User can select specific patients,
+ ;                                      clinics, or divisions for the report.
+ ;ROR*1.5*19   FEB  2012   K GUPTA      Support for ICD-10 Coding System
+ ;ROR*1.5*21   SEP 2013    T KOPP       Added ICN as last report column if
+ ;                                      additional identifier option selected
+ ;******************************************************************************
+ ;******************************************************************************
  Q
  ;
  ;***** OUTPUTS THE REPORT HEADER
@@ -16,8 +32,7 @@ RORX010 ;HCIOFO/SG - LAB TESTS BY RANGE REPORT ; 12/8/05 10:39am
  ;        0  Ok
  ;
 HEADER(PARTAG) ;
- ;;PATIENTS(#,NAME,LAST4,DOD,PTLRL(GROUP,DATE,NAME,RESULT))
- ;
+ ;;PATIENTS(#,NAME,LAST4,DOD,ICN,PTLRL(GROUP,DATE,NAME,RESULT))
  N COLUMNS,HEADER,LT,NAME,TMP
  S HEADER=$$HEADER^RORXU002(.RORTSK,PARTAG)
  Q:HEADER<0 HEADER
@@ -42,8 +57,12 @@ LRGRANGE(RORTSK) ;
  N RORLTL        ; Closed root of the list of lab tests to search for
  N RORREG        ; Registry IEN
  N RORSDT        ; Start date
+ N RORCDLIST     ; Flag to indicate whether a clinic or division list exists
+ N RORCDSTDT     ; Start date for clinic/division utilization search
+ N RORCDENDT     ; End date for clinic/division utilization search
  ;
  N BODY,CNT,ECNT,IEN,IENS,LRGLST,RC,REPORT,RORPTN,SFLAGS,TMP
+ N DFN,RCC,FLAG
  ;--- Root node of the report
  S REPORT=$$ADDVAL^RORTSK11(RORTSK,"REPORT")
  Q:REPORT<0 REPORT
@@ -69,14 +88,31 @@ LRGRANGE(RORTSK) ;
  I BODY<0  S RC=+BODY  G ERROR
  D ADDATTR^RORTSK11(RORTSK,BODY,"TABLE","PATIENTS")
  ;
+ ;=== Set up Clinic/Division list parameters
+ S RORCDLIST=$$CDPARMS^RORXU001(.RORTSK,.RORCDSTDT,.RORCDENDT)
+ ;
  ;--- Browse through the registry records
  S (CNT,IEN,RC)=0
+ S FLAG=$G(RORTSK("PARAMS","ICDFILT","A","FILTER"))
  F  S IEN=$O(^RORDATA(798,"AC",RORREG,IEN))  Q:IEN'>0  D  Q:RC<0
  . S TMP=$S(RORPTN>0:CNT/RORPTN,1:"")
  . S RC=$$LOOP^RORTSK01(TMP)  Q:RC<0
  . S IENS=IEN_",",CNT=CNT+1
+ . ;--- Get patient DFN
+ . S DFN=$$PTIEN^RORUTL01(IEN) Q:DFN'>0
+ . ;--- Check for patient list and quit if not on list
+ . I $D(RORTSK("PARAMS","PATIENTS","C")),'$D(RORTSK("PARAMS","PATIENTS","C",DFN)) Q
  . ;--- Check if the patient should be skipped
  . Q:$$SKIP^RORXU005(IEN,SFLAGS,RORSDT,ROREDT)
+ . ;--- Check pateint against ICD Filter
+ . S RCC=0
+ . I FLAG'="ALL" D
+ . . S RCC=$$ICD^RORXU010(DFN)
+ . I (FLAG="INCLUDE")&(RCC=0) Q
+ . I (FLAG="EXCLUDE")&(RCC=1) Q
+ . ;--- End of ICD Check
+ . ;--- Check for Clinic or Division list and quit if not in list
+ . I RORCDLIST,'$$CDUTIL^RORXU001(.RORTSK,DFN,RORCDSTDT,RORCDENDT) Q
  . ;--- Process the registry record
  . I $$PATIENT(IENS,BODY)<0  S ECNT=ECNT+1  Q
  ;
@@ -156,10 +192,11 @@ PARAMS(PARTAG,FLAGS,LRGLST) ;
  ;        0  Ok
  ;
 PATIENT(IENS,PARTAG) ;
- N DFN,I,LABTESTS,LT,NAME,RC,RORBUF,RORMSG,TMP,VA,VADM
+ N DFN,I,LABTESTS,LT,NAME,PTAG,RC,RORBUF,RORMSG,TMP,VA,VADM
  ;--- Get the data from the ROR REGISTRY RECORD file
- D GETS^DIQ(798,IENS,".01","I","RORBUF","RORMSG")
- Q:$G(DIERR) $$DBS^RORERR("RORMSG",-9,,,798,IENS)
+ K RORMSG D GETS^DIQ(798,IENS,".01","I","RORBUF","RORMSG")
+ ;Q:$G(DIERR) $$DBS^RORERR("RORMSG",-9,,,798,IENS)
+ Q:$G(RORMSG("DIERR")) $$DBS^RORERR("RORMSG",-9,,,798,IENS)
  S DFN=$G(RORBUF(798,IENS,.01,"I"))
  ;--- Search for the lab results
  K @RORDST,RORDST("RORPTR")
@@ -180,6 +217,9 @@ PATIENT(IENS,PARTAG) ;
  ;--- Date of death
  S TMP=$$DATE^RORXU002($P(VADM(6),U)\1)
  D ADDVAL^RORTSK11(RORTSK,"DOD",TMP,PTAG,1)
+ I $$PARAM^RORTSK01("PATIENTS","ICN") D
+ . S TMP=$$ICN^RORUTL02(DFN)
+ . D ADDVAL^RORTSK11(RORTSK,"ICN",TMP,PTAG,1)
  ;--- Lab results
  S LABTESTS=$$ADDVAL^RORTSK11(RORTSK,"PTLRL",,PTAG)
  S I=""

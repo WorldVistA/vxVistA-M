@@ -1,5 +1,6 @@
-MAGDIR8 ;WOIFO/PMK - Read a DICOM image file ; 05/16/2005  09:23
- ;;3.0;IMAGING;**11,51**;26-August-2005
+MAGDIR8 ;WOIFO/PMK - Read a DICOM image file ; 08 Feb 2008 11:27 AM
+ ;;3.0;IMAGING;**11,51,54**;03-July-2009;;Build 1424
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGDIR8 ;WOIFO/PMK - Read a DICOM image file ; 05/16/2005  09:23
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -30,6 +30,7 @@ ENTRY(RESULT,REQUEST) ; RPC = MAG DICOM IMAGE PROCESSING
  N DFN ;------ VistA's internal patient identifier
  N ERRCODE ;-- code for an error, if encountered
  N IREQUEST ;- pointer to item in REQUEST array
+ N MSG ; ----- error message array
  N OPCODE ;--- operation code of the REQUEST item
  N RETURN ;--- intermediate return code
  ;
@@ -37,49 +38,36 @@ ENTRY(RESULT,REQUEST) ; RPC = MAG DICOM IMAGE PROCESSING
  F IREQUEST=2:1:$G(REQUEST(1)) D
  . S OPCODE=$P(REQUEST(IREQUEST),"|")
  . S ARGS=$P(REQUEST(IREQUEST),"|",2,999)
- . I OPCODE="STORE1" D
- . . D ENTRY^MAGDIR81
- . . Q
- . E  I OPCODE="ACQUIRED" D
- . . D ACQUIRED^MAGDIR82
- . . Q
- . E  I OPCODE="PROCESSED" D
- . . D POSTPROC^MAGDIR82
- . . Q
- . E  I OPCODE="CORRECT" D
- . . D ENTRY^MAGDIR83
- . . Q
- . E  I OPCODE="PATIENT SAFETY" D
- . . D ENTRY^MAGDIR84
- . . Q
- . E  I OPCODE="ROLLBACK" D
- . . D ENTRY^MAGDIR85
- . . Q
- . E  I OPCODE="CRASH" D
+ . I OPCODE="STORE1"          D ENTRY^MAGDIR81     Q
+ . I OPCODE="ACQUIRED"        D ACQUIRED^MAGDIR82  Q
+ . I OPCODE="PROCESSED"       D POSTPROC^MAGDIR82  Q
+ . I OPCODE="CORRECT"         D ENTRY^MAGDIR83     Q
+ . I OPCODE="PATIENT SAFETY"  D ENTRY^MAGDIR84     Q
+ . I OPCODE="ROLLBACK"        D ENTRY^MAGDIR85     Q
+ . I OPCODE="CRASH"           D                    Q
  . . S I=1/0 ; generate an error on the server to test error trapping
  . . Q
- . E  W !,"#",IREQUEST," -- Ignored: ",REQUEST(IREQUEST)
  . Q
  Q
  ;
 ERROR(OPCODE,ERRCODE,MSG,ROUTINE) ; build the RESULT array for the error
  ; this must be called after ^MAGDIRVE is invoked to put the message
  ; into the RESULT array - otherwise the message will be lost
- N I,X
+ N I,OK,X
  S X=ERRCODE_"|"_$G(MSG("TITLE"))_"|"_ROUTINE_"|"_$G(MSG("CRITICAL"))
  D RESULT^MAGDIR8(OPCODE,X)
- S I="" F  S I=$O(MSG(I)) Q:'I  D
+ S OK=0,I="" F  S I=$O(MSG(I)) Q:'I  D
  . I MSG(I)?1"Problem detected by routine".E  D
  . . ; add error code to the message
  . . S MSG(I)=MSG(I)_"  Error Code: "_ERRCODE
  . . Q
- . D RESULT^MAGDIR8("MSG","|"_MSG(I))
+ . S OK=1 D RESULT^MAGDIR8("MSG","|"_MSG(I))
  . Q
+ D:'OK RESULT^MAGDIR8("MSG","|--no details specified--")
  S $P(RESULT(RESULT(1)),"|",2)="END"
  Q
  ;
 RESULT(OPCODE,ARGS) ; add an item to the RESULT list
- N LAST
- S LAST=$G(RESULT(1),1) ; first element in array is counter
- S LAST=LAST+1,RESULT(LAST)=OPCODE_"|"_ARGS,RESULT(1)=LAST
+ S RESULT(1)=$G(RESULT(1),1)+1 ; first element in array is counter
+ S RESULT(RESULT(1))=OPCODE_"|"_ARGS
  Q

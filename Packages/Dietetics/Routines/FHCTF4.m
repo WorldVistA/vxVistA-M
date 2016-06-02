@@ -1,7 +1,10 @@
 FHCTF4 ; HISC/REL/NCA - Check Ward Patients for a Clinician ;3/8/01  13:13
- ;;5.5;DIETETICS;;Jan 28, 2005
+ ;;5.5;DIETETICS;**20**;Jan 28, 2005;Build 7
+ ;FH*5.5*20 adds support for CLINICIAN(S) field (#112)
  D NOW^%DTC S NOW=% D CLN
- F WRD=0:0 S WRD=$O(^FH(119.6,WRD)) Q:WRD<1  I $P(^(WRD,0),"^",2)=FHDUZ!('FHDUZ) D CHK
+ F WRD=0:0 S WRD=$O(^FH(119.6,WRD)) Q:WRD<1  D
+ . F FHCLN=0:0 S FHCLN=$O(^FH(119.6,WRD,2,FHCLN)) Q:FHCLN<1  D
+ . . I ^FH(119.6,WRD,2,FHCLN,0)=FHDUZ!('FHDUZ) D CHK
  Q
 CHK D DAT F FHDFN=0:0 S FHDFN=$O(^FHPT("AW",WRD,FHDFN)) Q:FHDFN<1  S ADM=$G(^FHPT("AW",WRD,FHDFN)) D PAT
  Q
@@ -13,8 +16,13 @@ C0 ;
  G:'DFN C1 S ADM=$P(X,"^",5) G:'ADM C1
  S W1=$P($G(^FHPT(FHDFN,"A",ADM,0)),"^",8) I W1="" G KIL
  S Y=$G(^FHPT("AW",W1,FHDFN)) I ADM'=Y G KIL
- S Y=$P($G(^FH(119.6,+W1,0)),"^",2)
- I Y'="",Y'=FHDUZ G KIL
+ S (Y,Y1)=0
+ F Y=0:0 S Y=$O(^FH(119.6,+W1,2,Y)) Q:Y<1  D
+ . I ^FH(119.6,+W1,2,Y,0)="" S Y1=0 Q
+ . I ^FH(119.6,+W1,2,Y,0)=FHDUZ S Y=-1,Y1=0 Q
+ . S Y1=1
+ I Y1 K Y1 G KIL
+ K Y1
  S A0=$G(^FHPT(FHDFN,"A",ADM,0))
 C1 S TYP=$P(X,"^",2) G C2:TYP="C",C3:TYP="S",C4:TYP="D",C5:TYP="X",C6:TYP="T",C7:TYP="N" Q
 C2 S FHDR=$P(X,"^",6),Y=^FHPT(FHDFN,"A",ADM,"DR",FHDR,0) I $P(Y,"^",8)'="A"!($P(Y,"^",5)'=FHDUZ) D KIL

@@ -1,12 +1,32 @@
-RORX015A ;HCIOFO/SG - OUTPATIENT PROCEDURES (QUERY & SORT) ; 6/21/06 4:36pm
- ;;1.5;CLINICAL CASE REGISTRIES;**1**;Feb 17, 2006;Build 24
+RORX015A ;HOIFO/SG,VAC - OUTPATIENT PROCEDURES (QUERY & SORT) ;4/7/09 2:10pm
+ ;;1.5;CLINICAL CASE REGISTRIES;**1,8,13,19,21**;Feb 17, 2006;Build 45
  ;
  ; This routine uses the following IAs:
  ;
  ; #1995         $$CODEN^ICPTCOD and $$CPT^ICPTCOD (supported)
- ; #2548         SDQ routine (supported)
- ; #3990         $$CODEN^ICDCODE and $$ICDOP^ICDCODE (supported)
+ ; #2055         ROOT^DILFD
+ ; #2056         GETS^DIQ
+ ; #2546         GETCPT^SDOE
+ ; #2548         Multiple APIs in SDQ routine (supported)
+ ; #10103        FMADD^XLFDT (supported)
+ ; #5747         $$CODEC^ICDEX, $$CODEN^ICDEX, $$VSTP^ICDEX (controlled)
  ;
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                 --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*8    MAR 2010   V CARR        Modified to handle ICD9 filter for
+ ;                                      'include' or 'exclude'.
+ ;ROR*1.5*13   DEC 2010   A SAUNDERS    User can select specific patients,
+ ;                                      clinics, or divisions for the report.
+ ;ROR*1.5*19   FEB 2012   J SCOTT       Support for ICD-10 Coding System.
+ ;ROR*1.5*21   SEP 2013   T KOPP        Added ICN as report column if
+ ;                                      additional identifier option selected
+ ;                                      
+ ;******************************************************************************
+ ;******************************************************************************
  Q
  ;
  ;***** SEARCHES FOR INPATIENT PROCEDURES
@@ -38,8 +58,9 @@ INPAT(PTIEN) ;
  . . S IENS=IEN_","_IEN45_","  K RORBUF
  . . S FLDLST="8;9;10;11;12"
  . . ;--- Load the data
- . . D GETS^DIQ(45.01,IENS,".01;"_FLDLST,"I","RORBUF","RORMSG")
- . . I $G(DIERR)  D  S ERRCNT=ERRCNT+1
+ . . K RORMSG D GETS^DIQ(45.01,IENS,".01;"_FLDLST,"I","RORBUF","RORMSG")
+ . . ;I $G(DIERR)  D  S ERRCNT=ERRCNT+1
+ . . I $G(RORMSG("DIERR"))  D  S ERRCNT=ERRCNT+1
  . . . D DBS^RORERR("RORMSG",-99,,PTIEN,45.01,IENS)
  . . S DATE=$G(RORBUF(45.01,IENS,.01,"I"))
  . . Q:(DATE<RORSDT)!(DATE'<ROREDT1)
@@ -52,8 +73,9 @@ INPAT(PTIEN) ;
  . . S IENS=IEN_","_IEN45_","  K RORBUF
  . . S FLDLST="4;5;6;7;8"
  . . ;--- Load the data
- . . D GETS^DIQ(45.05,IENS,".01;"_FLDLST,"I","RORBUF","RORMSG")
- . . I $G(DIERR)  D  S ERRCNT=ERRCNT+1
+ . . K RORMSG D GETS^DIQ(45.05,IENS,".01;"_FLDLST,"I","RORBUF","RORMSG")
+ . . ;I $G(DIERR)  D  S ERRCNT=ERRCNT+1
+ . . I $G(RORMSG("DIERR"))  D  S ERRCNT=ERRCNT+1
  . . . D DBS^RORERR("RORMSG",-99,,PTIEN,45.05,IENS)
  . . S DATE=$G(RORBUF(45.05,IENS,.01,"I"))
  . . Q:(DATE<RORSDT)!(DATE'<ROREDT1)
@@ -64,10 +86,10 @@ INPAT(PTIEN) ;
  ;
  ;****
 INP(PTIEN,ROR8BUF,FLDLST,DATE) ;
- N I,ICD9IEN,FLD
+ N I,ICDIEN,FLD
  F I=1:1  S FLD=$P(FLDLST,";",I)  Q:FLD=""  D
- . S ICD9IEN=+$G(@ROR8BUF@(FLD,"I"))
- . D:ICD9IEN>0 PROCSET(PTIEN,"I",ICD9IEN,DATE)
+ . S ICDIEN=+$G(@ROR8BUF@(FLD,"I"))
+ . D:ICDIEN>0 PROCSET(PTIEN,"I",ICDIEN,DATE)
  Q
  ;
  ;***** CALL-BACK PROCEDURE FOR THE OUTPATIENT SEARCH
@@ -123,8 +145,8 @@ PROCSET(PTIEN,SOURCE,IEN,DATE,CODE) ;
  S IEN=+$G(IEN)
  ;---
  I IEN'>0  Q:$G(CODE)=""  D  Q:IEN'>0
- . I SOURCE="O"  S IEN=+$$CODEN^ICPTCOD(CODE)       Q
- . I SOURCE="I"  S IEN=+$$CODEN^ICDCODE(CODE,80.1)  Q
+ . I SOURCE="O"  S IEN=+$$CODEN^ICPTCOD(CODE) Q
+ . I SOURCE="I"  S IEN=+$$CODEN^ICDEX(CODE,80.1) Q
  ;---
  I SOURCE="O",'$$PARAM^RORTSK01("CPTLST","ALL")  D  Q:'TMP
  . S TMP=$D(RORTSK("PARAMS","CPTLST","C",IEN))
@@ -132,7 +154,7 @@ PROCSET(PTIEN,SOURCE,IEN,DATE,CODE) ;
  ;---
  S TMP=+$G(@RORTMP@("PAT",PTIEN,SOURCE,IEN))
  S:'TMP!(DATE<TMP) @RORTMP@("PAT",PTIEN,SOURCE,IEN)=DATE
- S ^("C")=$G(@RORTMP@("PAT",PTIEN,SOURCE,IEN,"C"))+1
+ S ^("C")=$G(@RORTMP@("PAT",PTIEN,SOURCE,IEN,"C"))+1 ;naked reference: ^TMP($J,"RORTMP-n") from RORX015
  Q
  ;
  ;***** QUERIES THE REGISTRY
@@ -146,10 +168,14 @@ PROCSET(PTIEN,SOURCE,IEN,DATE,CODE) ;
  ;
 QUERY(FLAGS) ;
  N ROREDT1       ; Day after the end date
- N RORPTGRP      ; Temporary list of ICD-9 groups
+ N RORPTGRP      ; Temporary list of ICD groups
  N RORPTN        ; Number of patients in the registry
+ N RORCDLIST     ; Flag to indicate whether a clinic or division list exists
+ N RORCDSTDT     ; Start date for clinic/division utilization search
+ N RORCDENDT     ; End date for clinic/division utilization search
  ;
  N CNT,ECNT,IEN,IENS,MODE,PTIEN,RC,SKIP,SKIPEDT,SKIPSDT,TMP,UTEDT,UTSDT,XREFNODE
+ N RCC,FLAG,UTIL
  S XREFNODE=$NA(^RORDATA(798,"AC",+RORREG))
  S ROREDT1=$$FMADD^XLFDT(ROREDT\1,1)
  S (CNT,ECNT,RC)=0,SKIPEDT=ROREDT,SKIPSDT=RORSDT
@@ -165,27 +191,42 @@ QUERY(FLAGS) ;
  ;--- Number of patients in the registry
  S RORPTN=$$REGSIZE^RORUTL02(+RORREG)  S:RORPTN<0 RORPTN=0
  ;
+ ;=== Set up Clinic/Division list parameters
+ S RORCDLIST=$$CDPARMS^RORXU001(.RORTSK,.RORCDSTDT,.RORCDENDT,1)
+ ;
  ;=== Browse through the registry records
  S IEN=0
+ S FLAG=$G(RORTSK("PARAMS","ICDFILT","A","FILTER"))
  F  S IEN=$O(@XREFNODE@(IEN))  Q:IEN'>0  D  Q:RC<0
  . S TMP=$S(RORPTN>0:CNT/RORPTN,1:"")
  . S RC=$$LOOP^RORTSK01(TMP)  Q:RC<0
  . S IENS=IEN_",",CNT=CNT+1
+ . ;--- Get patient DFN
+ . S PTIEN=$$PTIEN^RORUTL01(IEN)  Q:PTIEN'>0
+ . ;--- Check for patient list and quit if not on list
+ . I $D(RORTSK("PARAMS","PATIENTS","C")),'$D(RORTSK("PARAMS","PATIENTS","C",PTIEN)) Q
  . ;--- Check if the patient should be skipped
  . Q:$$SKIP^RORXU005(IEN,FLAGS,SKIPSDT,SKIPEDT)
- . ;
- . ;--- Get the patient IEN (DFN)
- . S PTIEN=$$PTIEN^RORUTL01(IEN)  Q:PTIEN'>0
+ . ;--- Check if patient has passed the ICD Filter
+ . S RCC=0
+ . I FLAG'="ALL" D
+ . . S RCC=$$ICD^RORXU010(PTIEN)
+ . I (FLAG="INCLUDE")&(RCC=0) Q
+ . I (FLAG="EXCLUDE")&(RCC=1) Q
+ . ;--- End of ICD check
  . M RORPTGRP=RORIGRP("C")
  . ;
- . ;--- Inpatient codes (ICD-9)
+ . ;--- Check for Clinic or Division list and quit if not in list
+ . I RORCDLIST,'$$CDUTIL^RORXU001(.RORTSK,PTIEN,RORCDSTDT,RORCDENDT) Q
+ . ;
+ . ;--- Inpatient codes (ICD)
  . I $G(MODE("I"))   D  I RC  Q:RC<0  S ECNT=ECNT+RC
  . . S RC=$$INPAT(PTIEN)
  . ;--- Outpatient codes (CPT)
  . I $G(MODE("O"))  D  I RC  Q:RC<0  S ECNT=ECNT+RC
  . . S RC=$$OUTPAT(PTIEN)
  . ;
- . ;--- If ICD-9 codes from some groups have not been found,
+ . ;--- If ICD codes from some groups have not been found,
  . ;--- then do not consider inpatient procedures at all
  . K:$D(RORPTGRP)>1 @RORTMP@("PAT",PTIEN,"I")
  . ;---
@@ -243,8 +284,9 @@ TOTALS(PTIEN) ;
  S PNODE=$NA(@RORTMP@("PAT",PTIEN))
  ;--- Get and store the patient's data
  D VADEM^RORUTL05(PTIEN,1)
- S @PNODE=VA("BID")_U_VADM(1)_U_$$DATE^RORXU002(VADM(6)\1)
- S ^("PAT")=$G(@RORTMP@("PAT"))+1
+ S TMP=$S($$PARAM^RORTSK01("PATIENTS","ICN"):$$ICN^RORUTL02(PTIEN),1:"")
+ S @PNODE=VA("BID")_U_VADM(1)_U_$$DATE^RORXU002(VADM(6)\1)_U_TMP
+ S ^("PAT")=$G(@RORTMP@("PAT"))+1 ;naked reference: ^TMP($J,"RORTMP-n") from RORX015
  ;
  F SRC="I","O"  D
  . S IEN=0
@@ -255,13 +297,15 @@ TOTALS(PTIEN) ;
  . . . . S TMP=$$CPT^ICPTCOD(IEN)
  . . . . S:TMP'<0 CODE=$P(TMP,U,2),NAME=$P(TMP,U,3)
  . . . E  D
- . . . . S TMP=$$ICDOP^ICDCODE(IEN)
- . . . . S:TMP'<0 CODE=$P(TMP,U,2),NAME=$P(TMP,U,5)
+ . . . . ;S TMP=$$ICDOP^ICDCODE(IEN)
+ . . . . ;S:TMP'<0 CODE=$P(TMP,U,2),NAME=$P(TMP,U,5)
+ . . . . S CODE=$$CODEC^ICDEX(80.1,IEN)
+ . . . . S NAME=$$VSTP^ICDEX(IEN)
  . . . S:CODE="" CODE="UNKN"
  . . . S:NAME="" NAME="Unknown ("_IEN_")"
  . . . S @RORTMP@("PROC",SRC,IEN)=CODE_U_NAME
  . . ;---
  . . S CNT=+$G(@PNODE@(SRC,IEN,"C"))
- . . S ^("C")=$G(@RORTMP@("PROC",SRC,IEN,"C"))+CNT
- . . S ^("P")=$G(@RORTMP@("PROC",SRC,IEN,"P"))+1
+ . . S ^("C")=$G(@RORTMP@("PROC",SRC,IEN,"C"))+CNT ;naked reference: ^TMP($J,"RORTMP-n") from RORX015
+ . . S ^("P")=$G(@RORTMP@("PROC",SRC,IEN,"P"))+1 ;naked reference: ^TMP($J,"RORTMP-n") from RORX015
  Q 0

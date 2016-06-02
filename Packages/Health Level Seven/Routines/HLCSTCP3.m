@@ -1,9 +1,17 @@
-HLCSTCP3 ;SFIRMFO/RSD - BI-DIRECTIONAL TCP ; 09/13/2006  15:36
- ;;1.6;HEALTH LEVEL SEVEN;**76,77,133,122**;OCT 13, 1995;Build 14
+HLCSTCP3 ;SFIRMFO/RSD - BI-DIRECTIONAL TCP ;08/03/2011
+ ;;1.6;HEALTH LEVEL SEVEN;**76,77,133,122,153,157**;OCT 13, 1995;Build 8
  ;Per VHA Directive 2004-038, this routine should not be modified.
  ;
 OPENA ;
  ; called from $$OPEN^HLCSTCP2 and this sub-routine OPENA
+ ;
+ ; **P153 START CJM
+ ; Reset the TCP Address incase DNS changed it without a successful connection
+ K HLDOM
+ S HLTCPADD=$P(^HLCS(870,HLDP,400),U)
+ ;
+RETRY ;
+ ; **P153 END CJM
  ;
  I $G(HLMSG),$D(^HLMA(HLMSG,"P")) S HLPORTA=+$P(^("P"),U,6)
  S POP=1
@@ -56,7 +64,9 @@ OPENA ;
  . ;if address came from DNS, set back into LL
  . I $D(HLIP) S $P(^HLCS(870,HLDP,400),U)=HLTCPADD
  . ; write and read to check if still open
- . Q:HLOS'["OpenM"  X "U IO:(::""-M"")" ; must be Cache/NT + use packet mode
+ . ; patch HL*1.6*157: HLOS is from calling $$OS^%ZOSV
+ . ; Q:HLOS'["OpenM"  X "U IO:(::""-M"")" ; must be Cache/NT + use packet mode
+ . Q:(HLOS'["VMS")&(HLOS'["UNIX")  X "U IO:(::""-M"")" ; must be Cache + packet mode
  . Q:$P(^HLCS(870,HLDP,400),U,7)'="Y"  ; must want to SAY HELO
  . U IO W "HELO "_$$KSP^XUPARAM("WHERE"),! R X:1
  ;openfail-try DNS lookup
@@ -70,7 +80,12 @@ OPENA ;
  ;
  Q:$$STOP^HLCSTCP 0
  ;HLIP=ip add. from DNS call, get first one and try open again
- I $D(HLIP) S HLTCPADD=$P(HLIP,","),HLIP=$P(HLIP,",",2,99) G:HLTCPADD OPENA
+ ;
+ ; **P153 START CJM
+ ;I $D(HLIP) S HLTCPADD=$P(HLIP,","),HLIP=$P(HLIP,",",2,99) G:HLTCPADD OPENA
+ I $D(HLIP) S HLTCPADD=$P(HLIP,","),HLIP=$P(HLIP,",",2,99) G:HLTCPADD RETRY
+ ; **P153 END CJM
+ ;
  ; open error
  ;cleanup and close
  ; patch 133

@@ -1,5 +1,5 @@
 PSNACT ;BIR/DMA&WRT-inquiries by VAPN, CMOP ID, or NDC ; 07/02/03 14:01
- ;;4.0; NATIONAL DRUG FILE;**22,35,47,62,65,70,160,169**; 30 Oct 98;Build 8
+ ;;4.0;NATIONAL DRUG FILE;**22,35,47,62,65,70,160,169,262,296**; 30 Oct 98;Build 13
  ;
  ;Reference to ^PS(50.606 supported by DBIA #2174
  ;
@@ -27,6 +27,8 @@ ENTER K QQQ N PSNELIEN,PSNELXY S (DA,PSNELIEN)=+Y,Y1=^PSNDF(50.68,DA,1),Y3=^(3),
  .D:($Y+5)>IOSL HANG Q:$G(QUIT)  W !,"National Formulary Restriction: ",! D NFIP(PSNELIEN) Q:$G(QUIT)
  .D:($Y+5)>IOSL HANG Q:$G(QUIT)  I $G(^PSNDF(50.68,PSNELIEN,8)) W !,"Exclude Drg-Drg Interaction Ck: Yes (No check for Drug-Drug Interactions)"
  .D:($Y+5)>IOSL HANG Q:$G(QUIT)  D OVEX(PSNELIEN)
+ .D:($Y+5)>IOSL HANG Q:$G(QUIT)  D POSDOS(PSNELIEN)
+ .D:($Y+5)>IOSL HANG Q:$G(QUIT)  D REDCOP(PSNELIEN)
  .W ! D HANG
  Q
  K DA,DIE,DIE,DIRUT,DR,ING,K,OLDDA,X,Y,Y1,Y3,Y7 Q
@@ -100,6 +102,8 @@ ENTER1 K QQQ N PSNELXEN,PSNELXA S PSNELXEN=ZA S Z0=^PSNDF(50.68,ZA,0),Z1=^PSNDF(
  .D:($Y+5)>IOSL HANG Q:$G(QUIT)  W !,"National Formulary Restriction: ",! D NFIP(PSNELXEN) Q:$G(QUIT)
  .D:($Y+5)>IOSL HANG Q:$G(QUIT)  I $G(^PSNDF(50.68,PSNELXEN,8)) W !,"Exclude Drg-Drg Interaction Ck: Yes (No check for Drug-Drug Interactions)"
  .D:($Y+5)>IOSL HANG Q:$G(QUIT)  D OVEX(PSNELXEN)
+ .D:($Y+5)>IOSL HANG Q:$G(QUIT)  D POSDOS(PSNELXEN)
+ .D:($Y+5)>IOSL HANG Q:$G(QUIT)  D REDCOP(PSNELXEN)
  .W ! D HANG
  Q
 CMOP K DIC S DIC="^PSNDF(50.68,",DIC(0)="QEAZ",D="C",DIC("A")="CMOP ID: " D MIX^DIC1 Q:Y<0  S IEN=+Y D ENTER F SIE=0:0 S SIE=$O(^PSNDF(50.68,"ANDC",IEN,SIE)) Q:'SIE  D PRNT
@@ -151,6 +155,14 @@ OVEX(PSNELORX) ;New Override Dose Form display added with patch PSN*4*169
  .I $P($G(^PS(50.606,PSNELDFF,1)),"^")=1 W " (Dosage Checks shall be performed)" Q
  .I $P($G(^PS(50.606,PSNELDFF,1)),"^")=0 W " (No dosage checks performed)"
  Q
+REDCOP(VAPRD) ;
+ ; Input: VAPRD - VA PRODUCT (#50.68) entry IEN
+ N II,III,PSNRED,Y1,Y2
+ I '$O(^PSNDF(50.68,VAPRD,10,0)) W !,"Reduced Co-pay: None" Q
+ W !,"Reduced Co-pay:"
+ S (II,III)=0 F  S II=$O(^PSNDF(50.68,VAPRD,10,II)) Q:'II  S PSNRED=$G(^(II,0)) S Y1=$P(PSNRED,"^"),Y2=$P(PSNRED,"^",2),III=III+1 D
+ .W:III>1 ! W ?17,"Start Date: " W:Y1 $$FMTE^XLFDT(Y1,5),?47,"Stop Date: " W:Y2 $$FMTE^XLFDT(Y2,5)
+ Q
 EXPAN(PSNELFZA) ;
  N PSNELFZB,PSNELFZC
  I $P($G(^PSNDF(50.68,PSNELFZA,7)),"^")="" Q
@@ -166,4 +178,16 @@ NFIP(PSNELFJ) ;
  .S PSNELFJC=1
  .D:($Y+5)>IOSL HANG
  I '$G(QUIT),$G(PSNELFJC) W !
+ Q
+ ;
+POSDOS(VAPRD) ; Dispaly Possible Dosage Auto-Create Setting fields
+ ; Input: VAPRD - VA PRODUCT (#50.68) entry IEN
+ ;
+ N POSDOS Q:'$G(VAPRD)
+ S POSDOS=$$POSDOS^PSNAPIS(VAPRD)
+ W !!,"Auto-Create Default Possible Dosage? ",$S($P(POSDOS,"^")="Y":"Yes",1:"No")
+ I $P(POSDOS,"^")="N" D
+ . W !,"    Possible Dosages To Auto-Create: ",$S($P(POSDOS,"^",2)="N":"No Possible Dosages",$P(POSDOS,"^",2)="O":"1x Possible Dosage",$P(POSDOS,"^",2)="B":"1x and 2x Possible Dosages",1:"")
+ . I ($P(POSDOS,"^",2)'="N") D
+ . . W !,"                            Package: ",$S($P(POSDOS,"^",3)="O":"Outpatient",$P(POSDOS,"^",3)="I":"Inpatient",$P(POSDOS,"^",3)="IO":"Both Inpatient and Outpatient",1:"")
  Q

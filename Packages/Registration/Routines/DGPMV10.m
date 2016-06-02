@@ -1,12 +1,19 @@
 DGPMV10 ;ALB/MRL/MIR - PATIENT MOVEMENT, CONT.; 11 APR 89 ; 4/15/03 5:48pm
- ;;5.3;Registration;**84,498,509,683,719**;Aug 13, 1993
+ ;;5.3;Registration;**84,498,509,683,719**;Aug 13, 1993;Build 3
 CS ;Current Status
  ;first print primary care team/practitioner/attending
  D PCMM^SCRPU4(DFN,DT)
  S X=$S('DGPMT:1,DGPMT<4:2,DGPMT>5:2,1:3) ;DGPMT=0 if from pt inq (DGRPD)
  I '$D(^DGPM("C",DFN)) W !!,"Status      : PATIENT HAS NO INPATIENT OR LODGER ACTIVITY IN THE COMPUTER",*7 D CS2 Q
  S A=$S("^3^5^"[("^"_+DGPMVI(2)_"^"):0,1:+DGPMVI(2)) W !!,"Status      : ",$S('A:"IN",1:""),"ACTIVE ",$S("^4^5^"[("^"_+DGPMVI(2)_"^"):"LODGER",1:"INPATIENT")
- G CS1:'A W "-" S X=+DGPMVI(4) I X=1 W "on PASS" G CS1
+ ;DSS/RAC - BEGIN MOD - User parameter to display verbage for PASS
+ N VFDPS
+ S VFDPS=""
+ S:$G(^%ZOSF("ZVX"))["VX" VFDPS=$$GET^XPAR("ALL","VFD INPATIENT PASS")
+ ;G CS1:'A W "-" S X=+DGPMVI(4) I X=1 W "on PASS" G CS1
+ S:VFDPS="" VFDPS="on PASS"
+ G CS1:'A W "-" S X=+DGPMVI(4) I X=1 W VFDPS G CS1
+ ;DSS/RAC END MODS
  I "^2^3^25^26^"[("^"_X_"^") W "on ",$S("^2^26^"[X:"A",1:"U"),"A" G CS1
  I "^13^43^44^45^"[("^"_X_"^") W "ASIH" G CS1
  I X=6 W "OTHER FAC" G CS1
@@ -19,7 +26,11 @@ CS1 I +DGPMVI(2)=3,$D(^DGPM(+DGPMVI(17),0)) W ?39,"Discharge Type : ",$S($D(^DG(
  W !,"Ward        : ",$E($P(DGPMVI(5),"^",2),1,24),?39,"Room-Bed       : ",$E($P(DGPMVI(6),"^",2),1,21) I "^4^5^"'[("^"_+DGPMVI(2)_"^") W !,"Provider    : ",$E($P(DGPMVI(7),"^",2),1,26),?39,"Specialty      : ",$E($P(DGPMVI(8),"^",2),1,21)
  W !,"Attending   : ",$E($P(DGPMVI(18),"^",2),1,26)
  D CS2
- S DGPMIFN=DGPMVI(13) I +DGPMVI(2)'=4&(+DGPMVI(2)'=5) D ^DGPMLOS W !!,"Admission LOS: ",+$P(X,"^",5),"  Absence days: ",+$P(X,"^",2),"  Pass Days: ",+$P(X,"^",3),"  ASIH days: ",+$P(X,"^",4)
+ ;DSS/RAC - BEGIN MOD - Bypass the display of census data when VFD CENSUS DISPlay is populated orginal line commented out
+ ;S DGPMIFN=DGPMVI(13) I +DGPMVI(2)'=4&(+DGPMVI(2)'=5) D ^DGPMLOS W !!,"Admission LOS: ",+$P(X,"^",5),"  Absence days: ",+$P(X,"^",2),"  Pass Days: ",+$P(X,"^",3),"  ASIH days: ",+$P(X,"^",4)
+ S DGPMIFN=DGPMVI(13) 
+ I +DGPMVI(2)'=4&(+DGPMVI(2)'=5)&('$$VFD) D ^DGPMLOS W !!,"Admission LOS: ",+$P(X,"^",5),"  Absence days: ",+$P(X,"^",2),"  Pass Days: ",+$P(X,"^",3),"  ASIH days: ",+$P(X,"^",4)
+ ;DSS/RAC - END MOD
  K A,C,I,J,X
  Q
  ;
@@ -86,3 +97,7 @@ SETWD ;set ward and room-bed variables for discharge/check-out mvts
  I $D(^DIC(42,+$P(X,"^",6),0)) S DGPMVI(5)=$P(X,"^",6)_"^"_$P(^(0),"^",1)
  I $D(^DG(405.4,+$P(X,"^",7),0)) S DGPMVI(6)=$P(X,"^",7)_"^"_$P(^(0),"^",1)
  Q
+ ;
+VFD() ;if parameter set don't displ census data on patient inquiry display.
+ I $G(^%ZOSF("ZVX"))["VX" Q +$$GET^XPAR("ALL","VFD CENSUS DISPLAY")
+ Q 0

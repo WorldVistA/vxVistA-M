@@ -1,6 +1,6 @@
-MAGGSIV ;WOIFO/GEK - Imaging RPC Broker calls. Validate Image data array ; [ 12/27/2000 10:49 ]
- ;;3.0;IMAGING;**7,8,20,59**;Nov 27, 2007;Build 20
- ;;Per VHA Directive 2004-038, this routine should not be modified.
+MAGGSIV ;WOIFO/GEK/NST - Imaging RPC Broker calls. Validate Image data array ; [ 12/27/2000 10:49 ]
+ ;;3.0;IMAGING;**7,8,20,59,108,121**;Mar 19, 2002;Build 2340;Oct 20, 2011
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -8,7 +8,6 @@ MAGGSIV ;WOIFO/GEK - Imaging RPC Broker calls. Validate Image data array ; [ 12/
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -71,6 +70,8 @@ VAL(MAGRY,MAGARRAY,ALL) ;RPC [MAG4 VALIDATE DATA]
  . . I $P(^MAG(2005,MAGGDAT,0),U,10) S MAGERR="0^The Image to be added to the Group, already has a Group Parent"_" Item: "_MAGARRAY(AITEM)
  . ; if we are getting a WP line of text for Long Desc Field.  Can't validate it.
  . I MAGGFLD=11 Q  ; this is a line of the WP Long Desc field.
+ . I (MAGGFLD=17),(MAGGDAT=0) Q  ; Patch 108 BP work around don't check -  a new TIU stub will be created 
+ . I MAGGFLD="ACTION" Q  ; Patch 121  new ACTION Field, we skip.
  . ; NEW CALL TO VALIDATE FILE,FIELD,DATA 
  . S DAT1=MAGGDAT
  . I '$$VALID^MAGGSIV1(2005,MAGGFLD,.MAGGDAT,.MAGRES) S MAGERR="0^"_MAGRES Q
@@ -93,18 +94,42 @@ ACTCODE(CODE) ;Function that returns True (1) if this code is a valid Import API
  ; Patch 8.  We're adding 107 as an action code, so it will pass validation even if the entry
  ;   in the Acquisition Device File doesn't exist;
  ;   it will be validated in PRE^MAGGSIA1 and a new Acquisition Device entry made if needed.
- I ",107,ACQD,IEN,EXT,ABS,JB,WRITE,BIG,DICOMSN,DICOMIN,ACQS,ACQL,STATUSCB,CALLMTH,USERNAME,PASSWORD,DELFLAG,TRNSTYP,"[(","_CODE_",") Q 1
+ I $E(CODE,1,8)="PXTIUTXT" Q 1 ; P108
+ I ",107,PXSGNTYP,PXTIUTCNT,PXNEW,PXTIUTTL,ACQD,IEN,EXT,ABS,JB,WRITE,BIG,"[(","_CODE_",") Q 1
+ I ",DICOMSN,DICOMIN,ACQS,ACQL,STATUSCB,CALLMTH,USERNAME,PASSWORD,DELFLAG,TRNSTYP,"[(","_CODE_",") Q 1
+ I ",ACTION,"[(","_CODE_",") Q 1
  Q 0
 VALCODE(CODE,VALUE) ; We validate the values for the possible action codes
  N MAGY
  I VALUE="" Q "0^NO VALUE in Action Code string: """_X_""
  ; Patch 8, added 107 
  I ",ACQL,CALLMTH,USERNAME,PASSWORD,"[(","_CODE_",") Q 1 ; NO VALIDATION FOR THESE CODES
+ I ($E(CODE,1,8)="PXTIUTXT")!(CODE="PXTIUTCNT") Q 1  ; NO VALIDATION FOR TIU TEXT 
  D @CODE
  Q MAGY
  ;  Each Tag is a valid Action code
 IEN I $D(^MAG(2005,VALUE)) S MAGY=1
  E  S MAGY="0^INVALID IMAGE IEN."
+ Q
+ACTION ; Patch 121 ACTION = "RESCIND"
+ I VALUE="RESCIND" S MAGY=1 Q
+ S MAGY="0^Invalid ACTION: "_VALUE
+ Q
+PXNEW ; New Package (TIU note)
+ I (PXNEW'=0),(PXNEW'=1),(PXNEW'="") D
+ . S MAGY="0^Invalid New Package Value."
+ . S CT=CT+1,MAGRY(CT)="Invalid PXNEW value - 0, 1, or blank only!"
+ E  S MAGY=1
+ Q
+PXSGNTYP ; Signature type
+ I (PXSGNTYP'=0),(PXSGNTYP'=1),(PXSGNTYP'="") D
+ . S MAGY="0^Invalid Signature type Value."
+ . S CT=CT+1,MAGRY(CT)="Invalid PXSGNTYP value - 0, 1, or blank only!"
+ E  S MAGY=1
+ Q
+PXTIUTTL ; Check for valid TIU title
+ N VALIEN
+ I $$GETTIUDA^MAGGSIV(.MAGY,VALUE,.VALIEN) S VALUE=VALIEN
  Q
 EXT ; code will go here to validate the extension type.  i.e. we won't let types .exe .bat .com .zip ... etc.
  ;  Maybe a modification to Object Type file, to have allowable extensions in the file, and a 
@@ -172,3 +197,34 @@ ERR ; ERROR TRAP FOR Import API
  S MAGRY(0)="0^ETRAP: "_ERR
  D @^%ZOSF("ERRTN")
  Q
+ ;
+ ;***** Verify and return TIU Title IEN
+ ;
+ ; Input Parameters
+ ; ================
+ ; TITLE - an Integer (the IEN of file 8925.1)  or Text value of the entry in 8925.1 
+ ;  
+ ; Return Values
+ ; =============
+ ; Returns 0 if TITLE is valid
+ ; Returns 1 if TITLE is not valid
+ ;
+ ; if TITLE is not valid then MAGY = "0^error message"
+ ; if TITLE is valid then MAGY = 1 and TIEN = TIU Title IEN
+ ;
+GETTIUDA(MAGY,TITLE,TIEN) ;
+ I TITLE="" S MAGY="0^Invalid data: Note TITLE is blank!" Q 0
+ ; Is TITLE integer (IEN)
+ I TITLE?1.N D  Q +MAGY
+ . I $D(^TIU(8925.1,"AT","DOC",TITLE)) S MAGY=1 S TIEN=TITLE Q
+ . S MAGY="0^Invalid data: Note TITLE ("_TITLE_") is invalid"
+ . Q
+ N DONE
+ S (DONE,TIEN)=""
+ S TITLE=$$UP^XLFSTR(TITLE) ; IA #10104
+ F  Q:DONE  S TIEN=$O(^TIU(8925.1,"B",TITLE,TIEN)) Q:TIEN=""  D
+ . I $D(^TIU(8925.1,"AT","DOC",TIEN)) S DONE=1
+ . Q
+ I DONE S MAGY=1 ; TIEN is already set
+ E  S MAGY="0^Invalid data: TITLE IEN ("_TITLE_") is invalid"
+ Q +MAGY

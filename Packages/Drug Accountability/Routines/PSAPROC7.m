@@ -1,5 +1,5 @@
 PSAPROC7 ;BIR/JMB-Process Uploaded Prime Vendor Invoice Data - CONT'D ;9/6/97
- ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**3,12,27,21,42,61,64,67,68**; 10/24/97;Build 7
+ ;;3.0;DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**3,12,27,21,42,61,64,67,68,71,73**; 10/24/97;Build 3
  ;This routine takes the data in XTMP and moves it to DA ORDERS file.
  ;It deletes the data in XTMP after it is copies.
  ;
@@ -49,7 +49,7 @@ LINE ;Files line items.
  ;
  ;DAVE B (PSA*3*12) Assignment of order unit didn't take into 
  ;account the adjusted order unit.
- S PSAUNIT=$S($D(PSAUNIT):PSAUNIT,$P(PSADATA,"^",12)'="":$P(PSADATA,"^",12),+$P($P(PSADATA,"^",2),"~",2):+$P($P(PSADATA,"^",2),"~",2),1:0)
+ S PSAUNIT=$S($G(PSAUNIT):PSAUNIT,$P(PSADATA,"^",12)'="":$P(PSADATA,"^",12),+$P($P(PSADATA,"^",2),"~",2):+$P($P(PSADATA,"^",2),"~",2),1:0)  ;;*71
  S PSACS=$S($P(PSADATA,"^",19)="CS":1,1:0),PSANDC=$P($P(PSADATA,"^",4),"~"),PSAVSN=$P($P(PSADATA,"^",5),"~"),PSAUPC=$P($P(PSADATA,"^",26),"~")
  I PSANDC="",$P($P(PSADATA,"^",26),"~")'="" S PSANDC="S"_$P($P(PSADATA,"^",26),"~")
  S DA(2)=PSAIEN,DA(1)=PSAIEN1,DA=$S($D(PSAIEN2):PSAIEN2,1:PSALINE),DIE="^PSD(58.811,"_DA(2)_",1,"_DA(1)_",1,"
@@ -81,7 +81,7 @@ LINE ;Files line items.
  I +$P(PSADATA,"^",7)!(+$P(PSADATA,"^",20))!(+$P(PSADATA,"^",21))!(+$P(PSADATA,"^",27)) D
  .S ^PSD(58.811,PSAIEN,1,PSAIEN1,1,PSAIEN2,2)=$P(PSADATA,"^",20)_"^"_$P(PSADATA,"^",21)_"^"_$S(+$P(PSADATA,"^",7):+$P(PSADATA,"^",7),1:0)_"^"_+$P(PSADATA,"^",27)
  ;Bgn 67
- I $P(PSADATA,"^",5)'="" S ^XTMP("PSAVSN",$P(PSADATA,"^",5))=$P(PSADATA,"^",28)_"^"_$P(PSADATA,"^",29)_"^"_$P(PSADATA,"^",30)_"^"_$P(PSADATA,"^",31)
+ I $P($P(PSADATA,"^",5),"~")'="" S ^XTMP("PSAVSN",$P($P(PSADATA,"^",5),"~"))=$P(PSADATA,"^",28)_"^"_$P(PSADATA,"^",29)_"^"_$P(PSADATA,"^",30)_"^"_$P(PSADATA,"^",31)
  ;End 67
  K ^XTMP("PSAPV",PSACTRL,"IT",PSALINE)
  Q
@@ -118,7 +118,6 @@ RECORD ;Adds adjusted data to DA ORDERS file
  S $P(^PSD(58.811,DA(3),1,DA(2),1,DA(1),1,DA,0),"^",4)=DT
  S $P(^PSD(58.811,DA(3),1,DA(2),1,DA(1),1,DA,0),"^",5)=DUZ
  ;
- ;S DIE=DIC,DA=PSAIEN3,DR="1///"_PSADJ_$S(PSAREA'="":";2////^S X=PSAREA",1:"")_";3///^S X="_PSADT_";4///^S X="_PSADUZ K DIC D ^DIE
  S DIK=DIE,DA=PSAIEN3 D IX1^DIK K DA,DIE,DIK,PSAFLD
  Q
  ;*42 CHANGES
@@ -139,13 +138,13 @@ CHECK ;Check line item for differences to drug file *42
  S ITM("OU")=ITM(3),ITM("DUOU")=ITM(10),ITM("NDC")=ITM(13),ITM("PPOU")=ITM(4),ITM("PPDU")=$J(ITM("PPOU")/ITM("DUOU"),1,4)
  I ITMI(1)'?1.N S DRIEN=ITMI(1)
  I ITMI(1)?1.N S DRIEN=+ITMI(1)
- ;S DRIEN=+ITMI(1)
+ Q:'$D(^PSDRUG(DRIEN))
  S DRG("OU")=$$GET1^DIQ(50,DRIEN,12),DRG("DUOU")=$$GET1^DIQ(50,DRIEN,15),DRG("NDC")=$$GET1^DIQ(50,DRIEN,31),DRG("PPDU")=$$GET1^DIQ(50,DRIEN,16)
  K DIF
- F XX="OU","DUOU","NDC" I $G(DRG(XX)),ITM(XX)'=DRG(XX) S DIF(XX)=""
- ;F XX="OU","DUOU","NDC" I ITM(XX)'=DRG(XX) S DIF(XX)=""
+ F XX="OU","DUOU","NDC" I $D(DRG(XX)),ITM(XX)'=DRG(XX) S DIF(XX)=""
  I $G(DRG("PPDU")),ITM("PPDU")'=DRG("PPDU") S PCNT=.05*DRG("PPDU"),PDIF=DRG("PPDU")-ITM("PPDU") S:PDIF<0 PDIF=-1*PDIF S:PDIF>PCNT DIF("PPDU")=""
- ;I ITM("PPDU")'=DRG("PPDU") S PCNT=.05*DRG("PPDU"),PDIF=DRG("PPDU")-ITM("PPDU") S:PDIF<0 PDIF=-1*PDIF S:PDIF>PCNT DIF("PPDU")=""
+ S:ITM("OU")=""!(ITM("OU")=0) ITM("OU")="Blank",DIF("OU")=""  ;;*71
+ S:DRG("OU")=""!(DRG("OU")=0) DRG("OU")="Blank",DIF("OU")=""  ;;*71
  I $D(DIF) D
  . F ZZ=" ",$J(ITM(.01),3)_"   "_ITM(1) D SET
  . S XXX="" F  S XXX=$O(DIF(XXX)) Q:XXX=""  D

@@ -1,5 +1,5 @@
 ORWCV ; SLC/KCM - Background Cover Sheet Load; ; 06/10/09
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**10,85,109,132,209,214,195,215,260,243,282,302,280**;Dec 17, 1997;Build 7
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**10,85,109,132,209,214,195,215,260,243,282,302,280**;Dec 17, 1997;Build 1
  ;
  ;
  ; DBIA 1096    Reference to ^DGPM("ATID1"
@@ -137,9 +137,6 @@ TEST ;D VST(.ZZZ,76,2950101,3050401,777,1,1)
  Q
 VST(ORVISIT,DFN,BEG,END,SKIP,ERR,ERRMSG) ; return appts/admissions for patient
  N CHECKERR,VAERR,VASD,BDT,COUNT,DTM,EDT,LOC,NOW,ORQUERY,ORLST,STI,STS,TODAY,I,J,K,XI,XE,X
- ;DSS/CRL - BEGIN MODS - set vxVistA flag for use below
- N VFD I $T(VX^VFDI0000)'="",$$VX^VFDI0000["VX" S VFD=1
- ;DSS/CRL - END MODS
  S CHECKERR=($G(ERR)=0) ; kludge to check for errors
  S NOW=$$NOW^XLFDT(),TODAY=$P(NOW,".",1)
  I '$G(BEG) S BEG=$$X2FM($$RNGVBEG)
@@ -251,8 +248,8 @@ RANGES(REC,DFN) ; return ranges given a patient
  S REC=$$RNGLAB(DFN)_U_$$RNGVBEG_U_$$RNGVEND
  Q
  ;DSS/SGM - BEGIN MODS - lines add at end of routine
-VFD() N A S A=0 S:$T(VX^VFDI0000) A=$$VX^VFDI0000
- Q $S('A:0,A="VXS":2,1:A["VX")
+VFD() N A S A=$G(^%ZOSF("ZVX"))
+ Q $S(A="":0,A="VXS":2,1:A["VX")
  ;
 VFD1() ; called from VST module
  ;I DTM<TODAY,(STI=""!(STI["I")!(STI="NT")) Q  ; no prior kept appts

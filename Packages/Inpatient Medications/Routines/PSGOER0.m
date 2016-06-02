@@ -1,5 +1,5 @@
 PSGOER0 ;BIR/CML3-EDIT FIELDS FOR RENEWAL ;05 May 98 / 10:58 AM
- ;;5.0; INPATIENT MEDICATIONS ;**11,45,47,50,63,64,70,69,58,80,110,127,136**;16 DEC 97
+ ;;5.0; INPATIENT MEDICATIONS ;**11,45,47,50,63,64,70,69,58,80,110,127,136,181**;16 DEC 97;Build 190
  ;
  ; Reference to ^PS(55 is supported by DBIA 2191.
  ; Reference to ^VA(200 is supported by DBIA 10060.
@@ -50,11 +50,16 @@ W25 I PSGFD<PSGDT W $C(7),!!?13,"*** WARNING! THE STOP DATE ENTERED IS IN THE PA
 A1 ;
  W !,"PROVIDER: ",$S(PSGPR:PSGPRN_"// ",1:"") R X:DTIME I X="^"!'$T W:'$T $C(7) S:'$T X="^" S PSGRO=1,COMQUIT=1 G DONE
  I $S(X="":'PSGPR,1:X="@") W $C(7),"  (Required)" S X="?" D ENHLP^PSGOEM(55.06,1) G A1
- I X="",PSGPR S X=PSGPRN I PSGPR'=PSGPRN,$D(^VA(200,PSGPR,"PS")) W "    "_$P(^("PS"),"^",2)_"    "_$P(^("PS"),"^",3) S PSGFOK(1)="" G CHKDD
+ I X="",PSGPR S X=PSGPRN I PSGPR'=PSGPRN,$D(^VA(200,PSGPR,"PS")) W "    "_$P(^("PS"),"^",2)_"    "_$P(^("PS"),"^",3) S PSGFOK(1)="" G OC55
  I X?1."?" D ENHLP^PSGOEM(55.06,1)
  I $E(X)="^" D FF G:Y>0 @Y G A1
  K DIC S DIC="^VA(200,",DIC(0)="EMQZ",DIC("S")="S X(1)=$G(^(""PS"")) I X(1),$S('$P((X(1)),""^"",4):1,1:DT<$P((X(1)),""^"",4))" D ^DIC K DIC I Y'>0 G A1
  S PSGPR=+Y,PSGPRN=$P(Y(0,0),"^"),PSGFOK(1)=""
+OC55 ;
+ ;Order check for Speed finish is triggered from OC531^PSGOESF
+ I $G(PSGORD)]"P",$G(PSJSPEED) Q
+ D NEWOC55^PSGOER
+ I $G(PSGORQF) S COMQUIT=1 G DONE
 CHKDD ;
  G:$G(PSGRENEW) 106
  I PSGORD["P"!$$DDOK^PSGOE2("^PS(55,"_PSGP_",5,"_+PSGORD_",1,",PSGPDRG) G 106

@@ -1,5 +1,5 @@
-VAFCQRY1 ;BIR/DLR-Query for patient demographics ;10/30/02  13:58
- ;;5.3;Registration;**428,474,477,575,627,648,698,711,707**;Aug 13, 1993;Build 14
+VAFCQRY1 ;BIR/DLR-Query for patient demographics ;22 Dec 2011  12:11 PM
+ ;;5.3;Registration;**428,474,477,575,627,648,698,711,707,837,874**;Aug 13, 1993;Build 2
  ;
  ;Reference to $$GETDFNS^MPIF002 supported by IA #3634.
  ;
@@ -39,7 +39,7 @@ BLDPID(DFN,CNT,SEQ,PID,HL,ERR) ;build PID from File #2
  S APID(2)=CNT
  ;list of fields used for backwards compatibility with HDR
  I $D(SARY(2))!(SEQ="ALL") I VAFCMN'="" S APID(3)=$P(VAFCMN,"^")_"V"_$P(VAFCMN,"^",2)  ;Patient ID
- ;repeat patient ID list including ICN (NI),SSN (SS),CLAIM# (PN) AND DFN (PI)
+ ;repeat patient ID list including ICN (NI),SSN (SS),CLAIM# (PN) and DFN (PI)
  I $D(SARY(3))!(SEQ="ALL") D
  .S APID(4)=""
  .;National Identifier (ICN)
@@ -50,10 +50,16 @@ BLDPID(DFN,CNT,SEQ,PID,HL,ERR) ;build PID from File #2
  ..;Assumption that if this is a local ICN at this point send the message with an expiration date of today, so that it will be treated as a deprecated ID and stored on the MPI as such
  ..I $E($P(VAFCMN,"^"),1,3)=$P($$SITE^VASITE,"^",3) S APID(4)=APID(4)_COMP_COMP_$$HLDATE^HLFNC(DT,"DT") ;**707 TO ONLY SEND DATE NO TIME
  .I $G(SSN)'="" S APID(4)=APID(4)_$S(APID(4)'="":REP,1:"")_SSN_COMP_COMP_COMP_"USSSA"_SUBCOMP_SUBCOMP_"0363"_COMP_"SS"_COMP_"VA FACILITY ID"_SUBCOMP_$$STA^XUAF4(+SITE)_SUBCOMP_"L"
- .I $G(DFN)'="" S APID(4)=APID(4)_$S(APID(4)'="":REP,1:"")_DFN_COMP_COMP_COMP_"USVHA"_SUBCOMP_SUBCOMP_"0363"_COMP_"PI"_COMP_"VA FACILITY ID"_SUBCOMP_$$STA^XUAF4(+SITE)_SUBCOMP_"L" D
+ .S NXTC=0,LVL=0 ;**837,MVI_879: Move here, so that LVL gets set before pulling in TIN and FIN
+ .;**837,MVI_879: Get TIN and FIN from Patient file and put in PID-3
+ .N TIN,FIN,REF
+ .S TIN=$P(VAFCMN,"^",8),FIN=$P(VAFCMN,"^",9),REF=$NA(APID(4))
+ .D ADDLINE($S(TIN="":HLQ,1:TIN)_COMP_COMP_COMP_"USDOD"_SUBCOMP_SUBCOMP_"0363"_COMP_"TIN"_COMP_"VA FACILITY ID"_SUBCOMP_$$STA^XUAF4(+SITE)_SUBCOMP_"L",.LVL,REF,REP)
+ .D ADDLINE($S(FIN="":HLQ,1:FIN)_COMP_COMP_COMP_"USDOD"_SUBCOMP_SUBCOMP_"0363"_COMP_"FIN"_COMP_"VA FACILITY ID"_SUBCOMP_$$STA^XUAF4(+SITE)_SUBCOMP_"L",.LVL,REF,REP)
+ .I $G(DFN)'="" D
+ ..D ADDLINE(DFN_COMP_COMP_COMP_"USVHA"_SUBCOMP_SUBCOMP_"0363"_COMP_"PI"_COMP_"VA FACILITY ID"_SUBCOMP_$$STA^XUAF4(+SITE)_SUBCOMP_"L",.LVL,REF,REP)
  ..;CLAIM# **707 moved dfn and claim number up here since Alias SSN could be many
- ..I $D(^DPT(DFN,.31)) S CLAIM=$P(^DPT(DFN,.31),"^",3) I +CLAIM>0 S APID(4)=APID(4)_REP_CLAIM_COMP_COMP_COMP_"USVBA"_SUBCOMP_SUBCOMP_"0363"_COMP_"PN"_COMP_"VA FACILITY ID"_SUBCOMP_$$STA^XUAF4(+SITE)_SUBCOMP_"L"
- .S NXTC=0,LVL=0
+ ..I $D(^DPT(DFN,.31)) S CLAIM=$P(^DPT(DFN,.31),"^",3) I +CLAIM>0 D ADDLINE(CLAIM_COMP_COMP_COMP_"USVBA"_SUBCOMP_SUBCOMP_"0363"_COMP_"PN"_COMP_"VA FACILITY ID"_SUBCOMP_$$STA^XUAF4(+SITE)_SUBCOMP_"L",.LVL,REF,REP)
  .I $D(VAFCA1) D
  ..;Have Alias SSNs
  ..S CT=0 F  S CT=$O(VAFCA1(CT)) Q:+CT<1  D
@@ -83,6 +89,19 @@ BLDPID(DFN,CNT,SEQ,PID,HL,ERR) ;build PID from File #2
  ...I $E($P(VAFCHMN,"^"),1,3)=STN S SITA=STN
  ...I $E($P(VAFCHMN,"^"),1,3)'=STN S SITA="200M"
  ...S APID(4)=$P(VAFCHMN,"^")_COMP_COMP_COMP_"USVHA"_SUBCOMP_SUBCOMP_"0363"_COMP_"NI"_COMP_"VA FACILITY ID"_SUBCOMP_SITA_SUBCOMP_"L"_COMP_COMP_$$HLDATE^HLFNC(HISTDT,"DT") ;**707 ONLY DATE NOT TIME
+ ;
+ALTID ;**874 MVI_3035 (elz) alternate ID
+ I $D(SARY(4))!(SEQ="ALL") D
+ . S REF=$NA(APID(5)),@REF="",LVL=0
+ . I $G(DFN) D
+ .. ;VIC card number, station 742V1
+ .. N VAVICF,VAVICX,VAVIC,X
+ .. S VAVICF=+$$LKUP^XUAF4("742V1")
+ .. S VAVICX=0 F  S VAVICX=$O(^DGCN(391.91,"APAT",DFN,VAVICF,VAVICX)) Q:'VAVICX  D
+ ... F X=0,2 S VAVIC(X)=$G(^DGCN(391.91,VAVICX,X))
+ ... I $P(VAVIC(2),"^",2),$P(VAVIC(2),"^",3)'="H",$L($P(VAVIC(2),"^")),$L($P(VAVIC(0),"^",9)) D
+ .... D ADDLINE($P(VAVIC(2),"^",2)_COMP_COMP_COMP_$P(VAVIC(2),"^")_SUBCOMP_SUBCOMP_"0363"_COMP_$P(VAVIC(0),"^",9)_COMP_"VA FACILITY ID"_SUBCOMP_"742V1"_SUBCOMP_"L",.LVL,REF,REP)
+ ;
 NAMEPID ;patient name (last^first^middle^suffix^prefix^^"L" for legal)
  I $D(SARY(5))!(SEQ="ALL") D
  .;**711 code REMOVED PREFIX due to issues with existing PATIENT Name Standardization functionality
@@ -140,4 +159,21 @@ HL7TXT(HL7STRG,HL,HLES) ; Replace occurrences of embedded HL7 delimiters with
  . S OCHR=$E(HLES2,RCHRI),RCHR=$E("EFSRT",RCHRI) Q:'$F(HL7STRG,OCHR)
  . F I=1:1 Q:$E(HL7STRG,I)=""  I $E(HL7STRG,I)=OCHR S HL7STRG=$E(HL7STRG,1,I-1)_HLES_RCHR_HLES_$E(HL7STRG,I+1,999),I=I+2
  Q
+ ;
+ADDLINE(NXT,LVL,REF,REP) ; Prepend REP to NXT and add it to the @REF
+ ; array, starting at subscript LVL. If appending NXT causes the node
+ ; to exceed 245 chars in length, add as much of NXT as possible to the
+ ; current level, and the remaining at the next level.
+ ; In:
+ ;   NXT = string to add to the @REF array
+ ;  .LVL = current subscript level (passed by referenced)
+ ;   REF = array reference string
+ ;   REP = repetition character (e.g., |)
+ ; **837,MVI_879: Created this subroutine to aid in adding TIN and FIN to PID-3.
+ N LNGTH,CURREF
+ S:$G(LVL)<1 LVL=0
+ S CURREF=$S(LVL=0:REF,1:$NA(@REF@(LVL)))
+ I LVL>0!($G(@CURREF)]"") S NXT=REP_NXT
+ I $L($G(@CURREF))+$L(NXT)'>245 S @CURREF=$G(@CURREF)_NXT
+ E  S LNGTH=245-$L(@CURREF),@CURREF=@CURREF_$E(NXT,1,LNGTH),LVL=LVL+1,@REF@(LVL)=$E(NXT,LNGTH+1,$L(NXT))
  Q

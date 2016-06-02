@@ -1,5 +1,5 @@
 PSOLLL2 ;BIR/JLC-LASER LABEL ;11/19/02
- ;;7.0;OUTPATIENT PHARMACY;**120,138,141,161,200**;DEC 1997;Build 153
+ ;;7.0;OUTPATIENT PHARMACY;**120,138,141,161,200,391**;DEC 1997;Build 2
  ;
  ;Reference to $$ECMEON^BPSUTIL supported by DBIA 4410
 L1 I $G(PSOIO("PFDI"))]"" X PSOIO("PFDI")
@@ -10,7 +10,8 @@ L1 I $G(PSOIO("PFDI"))]"" X PSOIO("PFDI")
  S PFM=0,T=$S($D(REPRINT)&($G(PSOBLALL)):"(GROUP REPRINT)",$D(REPRINT):"(REPRINT)",1:"")
  S T=T_$S($G(RXP):"(PARTIAL)",1:"")_$S($D(REPRINT):" ",$G(RXP):" ",1:"")_$P(PS2,"^",2)_"  "_TECH_"  "_$P(PSONOWT,":",1,2) D PRINT(T)
  S T="Rx# "_RXN_"  "_DATE_"  "_$S('PFF:"Fill "_(RXF+1)_" of "_(1+$P(RXY,"^",9)),1:"(fill document continued)") D PRINT(T)
- S T=PNM_"  "_$G(SSNPN) D PRINT(T,1)
+ I $D(^PSRX(RX,"PKI")) S SSNPN=^PSRX(RX,"PKI"),SSNPN=$S(SSNPN:"(DSIG)",$P(SSNPN,"^",2):"(NOT DSIG)",1:"")
+ S T=PNM_" "_$G(SSNPN) D PRINT(T,1) S SSNPN=""
  S LENGTH=0,PTEXT="",PFF=0,XFONT=$E(PSOFONT,2,99)
  N DP,TEXTP,TEXTL,MORE
  S DR=PFF("DR")
@@ -35,7 +36,21 @@ L1 I $G(PSOIO("PFDI"))]"" X PSOIO("PFDI")
 L11 ;
  N NDCTEXT
  S NDCTEXT="NDC/MFR_______________"
- I $$ECMEON^BPSUTIL($$RXSITE^PSOBPSUT(RX,RXF)) S NDCTEXT="NDC "_$$GETNDC^PSONDCUT(RX,RXF)
+ ;DSS/AMC/SMH/SMP - Start of mod for partial NDC to display on label
+ I $G(VFDPSOLB),$$GET^XPAR("ALL","VFD PSO NDC CAPTURE") D  I 1
+ . I $D(RXP) D  ; if partial
+ .. I '$G(RXPI) S RXPI=$$GETRXPI^VFDPSOLB(RX,RXP) ; get partial IEN
+ .. N NDC S NDC=$$GETNDC^VFDPSOLB(RX,RXPI) ; get partial NDC
+ .. N MANUF S MANUF=$$MANUF1^VFDPSOLB(NDC) ; get partial manuf
+ .. N MANUF16 S MANUF16=$E(MANUF,1,6) ; 1-6
+ .. S NDCTEXT="NDC "_NDC_"/"_MANUF16
+ . E  D  ; not partial
+ .. N NDC S NDC=$$GETNDC^PSONDCUT(RX) ; ditto
+ .. N MANUF S MANUF=$$MANUF^VFDPSOLB(RX)
+ .. N MANUF16 S MANUF16=$E(MANUF,1,6)
+ .. S NDCTEXT="NDC "_NDC_"/"_MANUF16
+ E  I $$ECMEON^BPSUTIL($$RXSITE^PSOBPSUT(RX,RXF)) S NDCTEXT="NDC "_$$GETNDC^PSONDCUT(RX,RXF)
+ ; DSS/AMC/SMH/SMP - END MODS
  S OPSOX=PSOX,T=NDCTEXT D PRINT(T)
  S T="Lot# ___________________" D STRT^PSOLLU1("SIG2",T,.L)
  S PSOY=PSOY-PSOYI,PSOX=L(XFONT+2)*300+OPSOX,T="Lot# _____________________" D PRINT(T)
@@ -47,10 +62,17 @@ L12 S PSOX=OPSOX,T="Tech___________________    RPh _____________________" D PRIN
  .S OPSOX=PSOX,T="NON-SAFETY",PSOX=LENGTH*300+OPSOX,PSOY=PSOY-PSOYI D PRINT(T,1) S PSOX=OPSOX
  S T="Isd: "_ISD_"    Exp: "_EXPDT_"    Last Fill: "_$G(PSOFLAST) D PRINT(T)
  S PSOYI=PSOBYI,PSOY=PSOBY
- I $G(PSOIO("SBT"))]"" X PSOIO("SBT")
- S X2=PSOINST_"-"_RX
- W X2
- I $G(PSOIO("EBT"))]"" X PSOIO("EBT")
+ ;
+ ; DSS/SMH - Begin Mods. Orig in Else.
+ I $G(VFDPSOLB) D
+ . D BC128^VFDPSBAR(PSOINST_"-"_RX,1,60,(PSOX+1),PSOY,3) ; new line
+ E  D
+ . I $G(PSOIO("SBT"))]"" X PSOIO("SBT")
+ . S X2=PSOINST_"-"_RX
+ . W X2
+ . I $G(PSOIO("EBT"))]"" X PSOIO("EBT")
+ ; DSS/SMH - End Mods
+ ;
  I $G(PSOIO("PFDW"))]"" X PSOIO("PFDW")
  S XFONT=$E(PSOFONT,2,99)
  I $G(WARN)'="" S PTEXT="DRUG WARNING " D STRT^PSOLLU1("SIG2",PTEXT,.L) S LENGTH=L(XFONT) D
@@ -61,10 +83,10 @@ L12 S PSOX=OPSOX,T="Tech___________________    RPh _____________________" D PRIN
  .. S T=$P(PTEXT,",",1,$L(PTEXT,",")-1) D PRINT(T) S PTEXT=""
  .. I PSOY>PSOYM W "*"
  . I PTEXT]"" S T=$P(PTEXT,",",1,$L(PTEXT,",")-1) D PRINT(T)
- ;DSS/SGM - BEGIN MODS - orig code is now argument of ELSE
+ ;DSS/SGM/BG - BEGIN MODS - orig code is now argument of ELSE
  I $G(VFDPSOLB) D PSTAT^VFDPSOLB("LLL2")
  E  S PTEXT="Pat. Stat "_PATST_" Clinic: "_PSCLN D STRT^PSOLLU1("SIG2",PTEXT,.L) S T=PTEXT D PRINT(T)
- ;DSS/SGM - END MODS
+ ;DSS/SGM/BG - END MODS
  Q
  ;
 PRINT(T,B) ;

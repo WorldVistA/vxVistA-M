@@ -1,5 +1,5 @@
 PSADAI ;BIR/LTL/,JMB/PDW-Drug Balances by Location ;7/23/97
- ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**15,53**; 10/24/97
+ ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**15,53**; 10/24/97;Build 1
  ;
  ;Reference to ^PS(59.4 are covered by IA #2505
  ;References to ^PSDRUG( are covered by IA #2095
@@ -14,6 +14,9 @@ LOC S (PSACNT,PSAOUT)=0 D ^PSAUTL3 G:PSAOUT EXIT1
 DEVICE W ! K IO("Q") S %ZIS="Q" D ^%ZIS I POP S DTOUT=1,Y=-1 W !,"No Device was selected or output printed." G EXIT1
  I $D(IO("Q")) S ZTRTN="START^PSADAI",ZTDESC="Drug Accountability - Drug Location Report",ZTSAVE("PSALOC(")="" D ^%ZTLOAD,HOME^%ZIS S Y=1 G EXIT1
 START S PSAOUT=0,PSALOCN="",$P(PSASLN,"-",80)=""
+ ;DSS/SMP - BEGIN MOD
+ N VFD S VFD=$$VFD
+ ;DSS/SMP - END MOD
  S PSARPDT=$E($$HTFM^XLFDT($H),1,12),PSADT=$P(PSARPDT,".")
  S PSARPDT=$E(PSADT,4,5)_"/"_$E(PSADT,6,7)_"/"_$E(PSADT,2,3)_"@"_$P(PSARPDT,".",2)
  F  S PSALOCN=$O(PSALOC(PSALOCN)) Q:PSALOCN=""  D  Q:PSAOUT
@@ -34,6 +37,12 @@ COMPILE ;Creates ^TMP(Drug Name)= current balance ^ dispense unit ^ total invent
  .Q:'$D(^PSDRUG(PSADRG,0))
  .I $P($G(^PSD(58.8,PSAIEN,1,PSADRG,0)),"^",4)=0,$P($G(^PSD(58.8,PSAIEN,1,PSADRG,0)),"^",14)<DT Q  ;*53 0 QT & inactive
  .S ^TMP($J,"PSADRG",$P(^PSDRUG(PSADRG,0),"^"))=$P($G(^PSD(58.8,PSAIEN,1,PSADRG,0)),"^",4)_"^"_$P($G(^PSDRUG(PSADRG,660)),"^",8)_"^"_$P($G(^PSDRUG(PSADRG,660.1)),"^")
+ .;DSS/SMP - BEGIN MOD
+ .I VFD D
+ ..N BAL,FSN S FSN=$P(^PSDRUG(PSADRG,0),U,6)
+ ..S BAL=$P(^TMP($J,"PSADRG",$P(^PSDRUG(PSADRG,0),U)),U)
+ ..S $P(^TMP($J,"PSADRG",$P(^PSDRUG(PSADRG,0),U)),U,3)=$$VFDUOU(BAL,FSN)
+ .;DSS/SMP - END MOD
 PRINT ;Prints body of report
  ;Finds longest length of inventory link(s).
  S (PSALNK,PSALEN)=0 F  S PSALNK=+$O(^PSD(58.8,PSAIEN,4,PSALNK)) Q:'PSALNK  D
@@ -50,7 +59,10 @@ PRINT ;Prints body of report
  .S PSALEN=$L($P($P(^TMP($J,"PSADRG",PSADRG),"^"),".",2))
  .W ?(44+PSALEN),$J($FN($P(^TMP($J,"PSADRG",PSADRG),"^"),",",PSALEN),(10+PSALEN))
  .W:$P(^TMP($J,"PSADRG",PSADRG),"^",2)'="" ?61,$P(^TMP($J,"PSADRG",PSADRG),"^",2)
- .W ?69,$J($FN($P(^TMP($J,"PSADRG",PSADRG),"^",3),",",0),9)
+ .;DSS/SMP - BEGIN MOD
+ .I VFD W ?71,$J($P(^TMP($J,"PSADRG",PSADRG),"^",3),6)
+ .E  W ?69,$J($FN($P(^TMP($J,"PSADRG",PSADRG),"^",3),",",0),9)
+ .;DSS/SMP - END MOD
  Q
 DONE ;Holds screen or ejects paper if sent to printer
  I $E(IOST,1,2)="C-" D
@@ -72,6 +84,24 @@ HDR ;Print header
  S PSALNK=0 F  S PSALNK=$O(PSALINK(PSALNK)) Q:'PSALNK  D
  .S PSAINV="INVENTORY LINK: "_$S($P($G(^PRCP(445,PSALNK,0)),"^")'="":$P($G(^PRCP(445,PSALNK,0)),"^"),1:"NONE")
  .W !?((80-$L(PSAINV))/2),PSAINV
- W !!?47,"CURRENT",?58,"DISPENSE",?72,"TOTAL"
- W !,"DRUG NAME",?47,"BALANCE",?60,"UNIT",?70,"INVENTORY",!,PSASLN
+ ;DSS/SMP - BEGIN MOD
+ I VFD D
+ .W !!?47,"CURRENT",?58,"DISPENSE",?73,"UNIT"
+ .W !,"DRUG NAME",?47,"BALANCE",?60,"UNIT",?72,"OF USE",!,PSASLN
+ E  D
+ .W !!?47,"CURRENT",?58,"DISPENSE",?72,"TOTAL"
+ .W !,"DRUG NAME",?47,"BALANCE",?60,"UNIT",?70,"INVENTORY",!,PSASLN
+ ;DSS/SMP - END MOD
  Q
+ ;
+ ;DSS/SMP - BEGIN MOD
+VFD() ; vxVistA check and parameter check
+ N RET S RET=$G(^%ZOSF("ZVX"))["VX"
+ I 'RET Q 0
+ Q $$GET1^VFDCXPR(,"ALL~VFD PSA UNIT OF USE~1",1)=1
+ ;
+VFDUOU(BAL,FSN) ; Unit Of Use
+ N RET
+ I 'FSN Q "***"
+ S RET=BAL/FSN I RET["." S RET=$FN(RET,"",2)
+ Q RET

@@ -1,24 +1,25 @@
-RAORDU1 ;HISC/CAH - AISC/SAW-Utility for Rad/NM Orders Module ;10/27/97  12:56
- ;;5.0;Radiology/Nuclear Medicine;**10,41,75**;Mar 16, 1998;Build 4
+RAORDU1 ;HISC/CAH - AISC/SAW-Utility for Rad/NM Orders Module ;05/15/09  12:56
+ ;;5.0;Radiology/Nuclear Medicine;**10,41,75,99**;Mar 16, 1998;Build 5
+ ;P#99 - changed Pregnant title to Pregnant at time of order entry.
 CP ;Create protocols for Rad/Nuc Med in OE/RR Protocol file (#100)
  ;based upon entries in the Rad/Nuc Med Common Procedure file (#71.3)
  ;
  I $$ORVR^RAORDU()>2.5 W !!,"In order to use this option, your site must be running version 2.5 of the",!,"Order Entry/Results Reporting package." G Q
  ;
  ;Check/set package and default protocol values
- S ORPKG=$O(^DIC(9.4,"C","RA",0)) I 'ORPKG W !,*7,"There is no entry for the Radiology/Nuclear Medicine package in your Package",!,"file (#9.4), unable to proceed.  Contact your site manager." G Q
- S ORDEF=$O(^ORD(101,"B","RA OERR DEFAULT PROTOCOL",0)) I 'ORDEF W !,*7,"You do not have a default Radiology/Nuclear Medicine protocol in your",!,"Protocol file (#101), unable to continue.  Contact your site manager." G Q
+ S ORPKG=$O(^DIC(9.4,"C","RA",0)) I 'ORPKG W !,$C(7),"There is no entry for the Radiology/Nuclear Medicine package in your Package",!,"file (#9.4), unable to proceed.  Contact your site manager." G Q
+ S ORDEF=$O(^ORD(101,"B","RA OERR DEFAULT PROTOCOL",0)) I 'ORDEF W !,$C(7),"You do not have a default Radiology/Nuclear Medicine protocol in your",!,"Protocol file (#101), unable to continue.  Contact your site manager." G Q
  S (I,RACNT,RAF1,X)=0 K ^TMP($J,"RAEX") W !!?10,"Create an OE/RR Protocol from a Radiology/Nuclear Medicine",!?10,"Common Procedure",!
  F  S I=$O(^RAMIS(71.3,I)) Q:I'>0  I $D(^(I,0)) S Y=I_"^"_^(0) I $P(Y,"^",6)']"",$D(^RAMIS(71,+$P(Y,"^",2),0)) S RACNT=RACNT+1,^TMP($J,"RAEX",RACNT)=Y W !,RACNT,?6,$P(^RAMIS(71,+$P(Y,"^",2),0),"^") D:'(RACNT#15) ASK^RAUTL4 Q:X="^"!(X>0)
- G Q:X="^" I 'RACNT W !,*7,"The Common Procedures file does not have any entries from which to choose." G Q
+ G Q:X="^" I 'RACNT W !,$C(7),"The Common Procedures file does not have any entries from which to choose." G Q
  I RACNT=1 S RADUP(1)="" W !!,"There is only one Common Procedure to choose from." S DIR(0)="YA",DIR("A")="Okay to continue? " D ^DIR G Q:Y'=1,CP1
  I X'>0,RACNT#15 D ASK^RAUTL4 G Q:'$D(RADUP)
 CP1 S RAI=0 F  S RAI=$O(RADUP(RAI)) Q:RAI'>0  S Y=^TMP($J,"RAEX",RAI),DA=+Y,Y=$P(Y,"^",2,99) W !!,"Processing the ",$P(^RAMIS(71,+Y,0),"^")," procedure.",! D CP2
 Q K %1,D,D0,DA,DIC,DIE,DIR,DR,I,J,K,ORDEF,OREA,ORFL,ORPKG,ORTXT,RACNT,RADUP,RAERR,RAF1,RAI,RAILOC,RAPAR,RASEL,X,Y,Z,^TMP($J,"RAEX")
  K DI,DIG,DIH,DIU,DIV,DQ
  Q
-CP2 S RAERR=0 S RAILOC=$P(Y,"^",8) I 'RAILOC S RAILOC=$O(^RA(79.1,0)) I RAILOC,$O(^(RAILOC)) K RAILOC W !,*7,"You must enter an 'Imaging Location' before this procedure can be processed",!,"as an orderable item in OE/RR." S RAERR=1
- S ORTXT=$P(Y,"^",13) I ORTXT']"" W !,*7,"You must enter a 'Name of Ordeable Item' before this procedure can be processed",!,"as an orderable item in OE/RR." S RAERR=1
+CP2 S RAERR=0 S RAILOC=$P(Y,"^",8) I 'RAILOC S RAILOC=$O(^RA(79.1,0)) I RAILOC,$O(^(RAILOC)) K RAILOC W !,$C(7),"You must enter an 'Imaging Location' before this procedure can be processed",!,"as an orderable item in OE/RR." S RAERR=1
+ S ORTXT=$P(Y,"^",13) I ORTXT']"" W !,$C(7),"You must enter a 'Name of Ordeable Item' before this procedure can be processed",!,"as an orderable item in OE/RR." S RAERR=1
  I RAERR K RAILOC,ORTXT Q
  S ORFL=+Y_";RAMIS(71,",OREA="S RADR1=1,RAPRI="_+Y_",RAILOC="_RAILOC_$S($P(Y,"^",11):",RARU="_$P(Y,"^",11),1:"")
  S Z="^^^^^RACAT^RAREQDT^^RAMT^RAIP" F X=6,9,10 S OREA=OREA_$S($P(Y,"^",X)]"":","_$P(Z,"^",X)_"="_""""_$P(Y,"^",X)_"""",1:"")
@@ -32,7 +33,7 @@ DISP ;Display request with defaults
  S:'$D(RAMOD)#2 RAMOD=""
  S J="",$P(J,"-",80)="" W !!,J
  I $D(RAMOD)>9 S RAMOD="" F I=1:1 Q:'$D(RAMOD(I))  S RAMOD=RAMOD_$S(I'=1:", ",1:"")_RAMOD(I) S RAI=0 S RAI=+$O(^RAMIS(71.2,"B",RAMOD(I),RAI)) I $P($G(^RAMIS(71.2,RAI,0)),U,2)="p" S RAACI="p"
- W !?10,"Patient: ",RANME I RASEX'="M" S:'$D(RAPREG) RAPREG="" W ?58,"Pregnant: ",$S(RAPREG="y":"YES",RAPREG="u":"UNKNOWN",RAPREG="n":"NO",1:"")
+ W !?10,"Patient: ",RANME I RASEX'="M" S:'$D(RAPREG) RAPREG="" W "   Pregnant at time of order entry: ",$S(RAPREG="y":"YES",RAPREG="u":"UNKNOWN",RAPREG="n":"NO",1:"")
  W !?8,"Procedure: ",$S($D(^RAMIS(71,RAPRI,0)):$P(^(0),"^"),1:"UNKNOWN"),!?2,"Proc. Modifiers: ",RAMOD
  S:'$D(RAMT) RAMT=$S($G(RAACI)="p":"p",$E(RACAT)="I":"w",1:"a") S RAMT=RAMT_"^"_$P($P(^DD(75.1,19,0),RAMT_":",2),";") W !?9,"Category: ",RACAT,?49,"Mode of Transport: ",$P(RAMT,"^",2)
  S:'$D(RAIP) RAIP="n" W !,"     Desired Date: ",RAWHEN,?46,"Isolation Procedures: ",$S(RAIP="y":"YES",1:"NO")

@@ -1,5 +1,5 @@
-SROESNR0 ;BIR/ADM - NURSE REPORT E-SIG UTILITY ;02/27/04
- ;;3.0; Surgery ;**100,129,147,153**;24 Jun 93;Build 11
+SROESNR0 ;BIR/ADM - NURSE REPORT E-SIG UTILITY ;11/01/2011
+ ;;3.0;Surgery;**100,129,147,153,175,176**;24 Jun 93;Build 8
  ;** NOTICE: This routine is part of an implementation of a nationally
  ;**         controlled procedure. Local modifications to this routine
  ;**         are prohibited.
@@ -59,14 +59,21 @@ KPAI ;;^Preoperative Mood-130,.19^.1;9
 KPAIF ;;^Preoperative Consciousness-130,.196^.1;15
 KPJG ;;^Preoperative Skin Integrity-130,.07^0;7
 KPAIE ;;^Preoperative Conversation-130,.195^.1;14
-KPFI ;;^Person Confirming ID Band and Valid Consent-130,.69^.6;9
-KGA ;;^Time Out Verification Completed (Y/N)-130,71^VER;3
-KGB ;;^Preoperative Imaging Confirmed-130,72^VER;4
-KGC ;;^Mark on Surgical Site Confirmed-130,73^VER;5
-KGD ;;^Correct Surgery Comments-130,74;W^74;0
-KHB ;;^Time Out Verified Comments-130,82;W^82;0
-KHC ;;^Imaging Confirmed Comments-130,83;W^83;0
-KHD ;;^Marked Site Comments-130,84;W^84;0
+KPFI ;;^Checklist Confirmed By-130,.69^.6;9
+KFJJ ;;^Confirm Correct Patient Identity-130,600^VER;7
+KFJA ;;^Confirm Procedure To Be Performed-130,601^VER;8
+KFJB ;;^Confirm Site of Procedure, Including Laterality-130,602^VER;9
+KFJC ;;^Confirm Valid Consent Form-130,603^VER;10
+KFJD ;;^Confirm Patient Position-130,604^VER;11
+KFJE ;;^Confirm Proc. Site has been Marked Appropriately and the Site of the Mark is Visible After Prep-130,605^VER;12
+KFJF ;;^Pertinent Medical Images Have Been Confirmed-130,606^VER;13
+KFJG ;;^Correct Medical Implant(s) is Available-130,607^VER;14
+KFJH ;;^Appropriate Antibiotic Prophylaxis-130,608^VER;15
+KFJI ;;^Appropriate Deep Vein Thrombosis Prophylaxis-130,609^VER;16
+KFAJ ;;^Blood Availability-130,610^VER;17
+KFAA ;;^Availability of Special Equipment-130,611^VER;18
+KHE ;;^Checklist Comment-130,85;W^51;0
+PFI ;;^Checklist Confirmed By-130,.69^.6;9
 KPAH ;;^Skin Prepped By-130,.18^.1;8
 KPAGE ;;^Skin Preparation Agent-130,.175^.1;7
 KD ;;^Skin Prepped By (2)-130,4^.1;12
@@ -106,3 +113,9 @@ KACA ;;^Device(s)-130,131^46;1
 KDI ;;^Specimens-130,49;W^9;0
 KFD ;;^Cultures-130,64;W^41;0
 KPBI ;;^Nursing Care Comments-130,.29;W^7;0
+KFAI ;;^Flash Steril Contamination-130,619^52;1
+KFBJ ;;^Flash Steril SPD Processing/OR Management Issues-130,620^52;2
+KFBA ;;^Flash Steril Emergency Case-130,621^52;3
+KFBB ;;^Flash Steril No Better Option-130,622^52;4
+KFBC ;;^Flash Steril Loaner or Short Notice Instrument-130,623^52;5
+KFBD ;;^Flash Steril Decontamination of Instruments Not for Use In Patient-130,624^52;6

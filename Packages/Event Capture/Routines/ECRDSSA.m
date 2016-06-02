@@ -1,9 +1,9 @@
-ECRDSSA ;ALB/RPM - DSS Unit Activity Report ; 2 Sep 2008
- ;;2.0; EVENT CAPTURE ;**95**;8 May 96;Build 26
+ECRDSSA ;ALB/RPM - DSS Unit Activity Report ;11/7/12  17:32
+ ;;2.0;EVENT CAPTURE;**95,104,112,119**;8 May 96;Build 12
  ;
 EN ;Get location(s), DSS Unit(s), sort type, start & end dates, device
  ;
- N ECLOC,ECDSSU,ECSRT,ECSTDT,ECENDDT
+ N ECLOC,ECDSSU,ECSORT,ECSTDT,ECENDDT ;112
  I '$$ASKLOC^ECRUTL G ENQ
  I '$$ASKDSS^ECRUTL G ENQ
  I '$$ASKSRT(.ECSORT) G ENQ
@@ -17,11 +17,11 @@ STRPT ;Main entry point
  N ECPAGE  ;page cnt
  S ECPAGE=0
  S ECCRT=$S($E(IOST,1,2)="C-":1,1:0)
- U IO
+ I $G(ECPTYP)'="E" U IO ;119 open device if not exporting
  K ^TMP("ECRPT",$J)
  D FNDREC(ECSORT)
  D PRINT(ECSORT)
- K ^TMP("ECRPT",$J)
+ K ^TMP("ECRPT",$J) D ^ECKILL ;119
  Q
  ;
 FNDREC(ECSRT) ;Loop through "ADT" xref of EVENT CAPTURE PATIENT (#721) file
@@ -38,6 +38,7 @@ FNDREC(ECSRT) ;Loop through "ADT" xref of EVENT CAPTURE PATIENT (#721) file
  N ECDSSF  ;DSS unit IEN
  N ECDT    ;date index
  N ECREC   ;"0" node
+ N ECIEN   ;IEN of file 721 ;patch 119
  S ECNT=0
  ;
  S ECL=0
@@ -72,6 +73,7 @@ BLDTMP(ECIEN,ECSRT,ECCNT) ;add record to list
  N ECKEY  ;sort key array
  N ECREC  ;record string
  N ECERR  ;FM error
+ N ECDT  ;date
  I +$G(ECIEN)>0,$$GETKEYS(ECSRT,ECIEN,.ECKEY) D
  . S ECCNT=+$G(ECCNT)+1
  . S ECIENS=ECIEN_","
@@ -83,8 +85,9 @@ BLDTMP(ECIEN,ECSRT,ECCNT) ;add record to list
  . S ECREC=ECREC_$E($$GETSSN(ECIEN),1,10)_"^"              ;ssn
  . S ECREC=ECREC_$E($G(ECREC(721,ECIENS,29,"I")),1)_"^"    ;in/out
  . S ECREC=ECREC_$E($G(ECREC(721,ECIENS,2,"I")),1,13)_"^"  ;dt/tm
+ . S ECDT=$P($G(ECREC(721,ECIENS,2,"I")),".",1)
  . S ECREC=ECREC_$E($$GETPROC($G(ECREC(721,ECIENS,8,"I"))),1,5)_"^"   ;proc code
- . S ECREC=ECREC_$E($$GETPRNM($G(ECREC(721,ECIENS,8,"I"))),1,10)_"^"  ;proc name
+ . S ECREC=ECREC_$E($$GETPRNM($G(ECREC(721,ECIENS,8,"I")),ECDT),1,10)_"^"  ;proc name
  . S ECREC=ECREC_$E($G(ECREC(721,ECIENS,9,"I")),1,2)_"^"   ;vol
  . S ECREC=ECREC_$E($$GETPROV(ECIEN),1,30)_"^"  ;provider
  . S ECREC=ECREC_$E($G(ECREC(721,ECIENS,20,"E")),1,7)      ;dx
@@ -115,6 +118,8 @@ PRINT(ECSRT) ;loop results array and format output
  N ECSRTBY  ;sort type text
  N ECQUIT  ;user quit indicator
  N ECREC   ;tmp record data
+ N CNT,PIECE ;119 array count for data, record piece
+ I $G(ECPTYP)="E" S ^TMP($J,"ECRPT",1)="LOCATION^DSS UNIT (IEN #)^PATIENT^SSN^I/O^DATE/TIME^PROCEDURE CODE^PROCEDURE NAME^VOLUME^PRIMARY PROVIDER^DIAGNOSIS",CNT=1 ;119 Export header
  I '$D(^TMP("ECRPT",$J)) G PRINTQ
  S ECRDT=$$FMTE^XLFDT($$NOW^XLFDT,"5DZ")
  S ECFDT=$$FMTE^XLFDT($P(ECSTDT+.0001,"."),"5DZ")
@@ -125,17 +130,17 @@ PRINT(ECSRT) ;loop results array and format output
  . I ECCLOC'=ECPLOC D  ;location changed
  . . S ECPLOC=ECCLOC
  . . S ECLOCNM=$$GETLOCN(ECCLOC,.ECLOC)
- . . I $O(^TMP("ECRPT",$J,ECCLOC,0))>0 D:ECPAGE>0 PAUSE Q:ECQUIT  D HDR(ECLOCNM,ECRDT,ECFDT,ECTDT,ECSRTBY)
- . I $G(^TMP("ECRPT",$J,ECCLOC))=0 D  Q
+ . . I $G(ECPTYP)'="E" I $O(^TMP("ECRPT",$J,ECCLOC,0))>0 D:ECPAGE>0 PAUSE Q:ECQUIT  D HDR(ECLOCNM,ECRDT,ECFDT,ECTDT,ECSRTBY) ;119
+ . I $G(ECPTYP)'="E" I $G(^TMP("ECRPT",$J,ECCLOC))=0 D  Q  ;119
  . . W !!,"    ** No records found on Location that match selection criteria"
  . S (ECCDSS,ECPDSS)=0
  . F  S ECCDSS=$O(^TMP("ECRPT",$J,ECCLOC,ECCDSS)) Q:'ECCDSS!(ECQUIT)  D
  . . I ECCDSS'=ECPDSS D  Q:ECQUIT  ;dss unit changed
  . . . S ECPDSS=ECCDSS
  . . . S ECDSSNM=$$GETDSSN(ECCDSS,.ECDSSU)
- . . . I $Y>(IOSL-10) D PAUSE Q:ECQUIT  D HDR(ECLOCNM,ECRDT,ECFDT,ECTDT,ECSRTBY)
- . . . D DSSHDR(ECCDSS,ECDSSNM)
- . . I $G(^TMP("ECRPT",$J,ECCLOC,ECCDSS))=0 D  Q
+ . . . I $G(ECPTYP)'="E" I $Y>(IOSL-10) D PAUSE Q:ECQUIT  D HDR(ECLOCNM,ECRDT,ECFDT,ECTDT,ECSRTBY) ;119
+ . . . I $G(ECPTYP)'="E" D DSSHDR(ECCDSS,ECDSSNM) ;119
+ . . I $G(ECPTYP)'="E" I $G(^TMP("ECRPT",$J,ECCLOC,ECCDSS))=0 D  Q  ;119
  . . . W !,"** No records found on DSS Unit that match selection criteria"
  . . S ECKEY1=""
  . . F  S ECKEY1=$O(^TMP("ECRPT",$J,ECCLOC,ECCDSS,ECKEY1)) Q:ECKEY1=""!(ECQUIT)  D
@@ -143,8 +148,10 @@ PRINT(ECSRT) ;loop results array and format output
  . . . F  S ECKEY2=$O(^TMP("ECRPT",$J,ECCLOC,ECCDSS,ECKEY1,ECKEY2)) Q:ECKEY2=""!(ECQUIT)  D
  . . . . S ECCNT=0
  . . . . F  S ECCNT=$O(^TMP("ECRPT",$J,ECCLOC,ECCDSS,ECKEY1,ECKEY2,ECCNT)) Q:'ECCNT!(ECQUIT)  D
- . . . . . I $Y>(IOSL-7) D PAUSE Q:ECQUIT  D HDR(ECLOCNM,ECRDT,ECFDT,ECTDT,ECSRTBY),DSSHDR(ECCDSS,ECDSSNM) W " (cont'd)"
+ . . . . . I $G(ECPTYP)'="E" I $Y>(IOSL-7) D PAUSE Q:ECQUIT  D HDR(ECLOCNM,ECRDT,ECFDT,ECTDT,ECSRTBY),DSSHDR(ECCDSS,ECDSSNM) W " (cont'd)" ;119
  . . . . . S ECREC=^TMP("ECRPT",$J,ECCLOC,ECCDSS,ECKEY1,ECKEY2,ECCNT)
+ . . . . . I $G(ECPTYP)="E" S CNT=CNT+1 S ^TMP($J,"ECRPT",CNT)=ECLOCNM_U_ECDSSNM_"(IEN #"_ECCDSS_")" D  Q  ;119
+ . . . . . . F PIECE=1:1:9 S ^TMP($J,"ECRPT",CNT)=^TMP($J,"ECRPT",CNT)_U_$S(PIECE'=4:$P(ECREC,U,PIECE),1:$$FMTE^XLFDT($P(ECREC,U,PIECE),"2MZ")) ;119
  . . . . . W !,$P(ECREC,U,1)  ;name
  . . . . . W ?31,$P(ECREC,U,2)  ;ssn
  . . . . . W ?42,$P(ECREC,U,3)  ;inpt/outpt
@@ -152,10 +159,10 @@ PRINT(ECSRT) ;loop results array and format output
  . . . . . W ?44,$P(ECDAT,":")_$P(ECDAT,":",2)  ;dt/tm
  . . . . . W ?58,$P(ECREC,U,5)  ;proc code
  . . . . . W ?64,$P(ECREC,U,6)  ;proc name
- . . .  .. W ?75,$P(ECREC,U,7)  ;vol
+ . . . . . W ?75,$P(ECREC,U,7)  ;vol 119 fixed dot structure
  . . . . . W ?78,$P(ECREC,U,8)  ;provider
  . . . . . W ?109,$P(ECREC,U,9)  ;dx
- I 'ECQUIT D PAUSE
+ I $G(ECPTYP)'="E" I 'ECQUIT D PAUSE ;119
 PRINTQ Q
  ;
 HDR(ECLOCN,ECRDT,ECFDT,ECTDT,ECSRT) ;Report header
@@ -277,7 +284,8 @@ GETSSN(ECIEN) ;get patient SSN
  I +$G(ECIEN)>0 D
  . S DFN=$$GET1^DIQ(721,ECIEN_",",1,"I")
  . D DEM^VADPT
- Q $P($G(VADM(2)),U)
+ I $G(ECPTYP)="E" Q $P($G(VADM(2)),U)  ;119 full SSN on export
+ Q $E($P($G(VADM(2)),U),6,9)  ;112, only get last 4 SSN
  ;
 GETPROV(ECIEN) ;get primary provider
  ;This function retrieves the primary provider for a given Event
@@ -299,7 +307,7 @@ GETPROV(ECIEN) ;get primary provider
  . . S ECPROV=$$GET1^DIQ(721,ECIEN_",",10)
  Q ECPROV
  ;
-GETPRNM(ECVIEN) ;get procedure name
+GETPRNM(ECVIEN,ECDT) ;get procedure name
  ;  Input:
  ;    ECVIEN - variable pointer to CPT (#81) file or EC PROC file
  ;    
@@ -310,11 +318,11 @@ GETPRNM(ECVIEN) ;get procedure name
  N ECFILE  ;file part of variable pointer
  S ECIEN=$P(ECVIEN,";",1)
  S ECFILE=$P(ECVIEN,";",2)
- Q $S(ECFILE["ICPT(":$$GET1^DIQ(81,ECIEN_",",2),ECFILE["EC(725":$$GET1^DIQ(725,ECIEN_",",.01),1:"")
+ Q $S(ECFILE["ICPT(":$P($$CPT^ICPTCOD(ECIEN,ECDT),U,3),ECFILE["EC(725":$$GET1^DIQ(725,ECIEN_",",.01),1:"")
  ;
 GETPROC(ECVIEN) ;get procedure code
  ;  Input:
- ;    ECVIEN - varialbe pointer to CPT (#81) file or EC PROC file
+ ;    ECVIEN - variable pointer to CPT (#81) file or EC PROC file
  ;
  ;  Output:
  ;   Function value - returns procedure code on success; "" on failure

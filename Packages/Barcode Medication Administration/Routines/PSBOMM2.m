@@ -1,5 +1,5 @@
 PSBOMM2 ;BIRMINGHAM/EFC-MISSED MEDS ;Mar 2004
- ;;3.0;BAR CODE MED ADMIN;**26,32**;Mar 2004;Build 32
+ ;;3.0;BAR CODE MED ADMIN;**26,32,51,62,74**;Mar 2004;Build 5
  ;Per VHA Directive 2004-038 (or future revisions regarding same), this routine should not be modified.
  ;
 MISSED(PSBADMN,PSBEDIT,PSBXDT) ;
@@ -7,10 +7,11 @@ MISSED(PSBADMN,PSBEDIT,PSBXDT) ;
  S PSBSTRT2=(PSBXDT\1) F  D  Q:PSBODD  S PSBSTRT2=$$FMADD^XLFDT(PSBSTRT2,1) Q:PSBSTRT2>PSBSTOP
  .F Y=1:1:$L(PSBADMN,"-") S PSBDT=+("."_$P(PSBADMN,"-",Y))+(PSBSTRT2) D
  ..S PSBMISD=$$CHECK(PSBDT)
- ..;CHECK AUDITED ADMIN TIMES FOR MISSED MED
+ ..;Check Audited Admin Times for Missed Med
  ..I PSBMISD F I=1:1:$P(PSBOACTL(0),U,4) I $P($G(PSBOACTL(I,1)),U,3)["ADMIN TIMES" D  Q:'PSBMISD
  ...Q:$P(PSBOACTL(I,1),U)<PSBSTRT2
- ...Q:$P(PSBOACTL(I,1),U)>PSBSTOP
+ ...Q:$P(PSBOACTL(I,1),U)>((PSBSTOP\1)+.2400)  ;Check Audits for the entire day - PSB*3*62
+ ...Q:$P(PSBOACTL(I,1),U)<PSBDT
  ...S PSBAUDT=+("."_$P(PSBOACTL(I,2),"-",Y))+(PSBSTRT2\1)
  ...S PSBMISD=$$CHECK(PSBAUDT),PSBEDIT=1
  ..I PSBMISD D
@@ -101,7 +102,7 @@ LN1 ;
 DEFLT ;
  S PSBFUTR=$TR(PSBRPT(1),"~","^")
  Q:PSBRPT(1)]""
- S PSBFUTR="^^^^1^^1^1^^^^^^^^1"  ;default MM Report settings Per GUI MM report...
+ S PSBFUTR="^^^^1^^1^1^^^^^^^^1^1^1"  ;default MM Report settings Per GUI MM report...
  S X01=""
  D RPC^PSBPAR(.X01,"GETPAR","ALL","PSB RPT INCL COMMENTS")
  S $P(PSBRPT(.2),U,8)=+X01(0)

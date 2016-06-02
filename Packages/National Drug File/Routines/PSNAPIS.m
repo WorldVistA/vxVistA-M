@@ -1,5 +1,5 @@
 PSNAPIS ;BIR/DMA-APIs for NDF ; 27 Jan 2010  7:44 AM
- ;;4.0; NATIONAL DRUG FILE;**2,3,47,70,169,108**; 30 Oct 98;Build 22
+ ;;4.0;NATIONAL DRUG FILE;**2,3,47,70,169,108,262,296**; 30 Oct 98;Build 13
  ;
  ;Reference to ^PSDRUG supported by DBIA #2192
  ;Reference to ^PS(50.606 supported by DBIA #2174
@@ -190,3 +190,23 @@ OVRIDE(PSNPOV1,PSNPOV3) ;Return Override Dose Form Exclusion
 FDAMG(IEN) ;RETURN URL FOR MED GUIDE OR NULL
  Q $P($G(^PSNDF(50.68,IEN,"MG")),"^")
  ;
+POSDOS(IEN) ; Return Possible Dosage Auto-Creation Related fields
+ ; Input: IEN - VA Product (#50.68) IEN
+ ;Output: Possible Dosage Creation field (separated by "^")
+ ;           1. CREATE DEFAULT POSSIBLE DOSAGE (Y/N) - Field #40
+ ;           2. POSSIBLE DOSAGES TO CREATE (N/O/B) - Field #41
+ ;           3. PACKAGE (I/O/IO) - Field #42
+ ;
+ Q $G(^PSNDF(50.68,IEN,"DOS"))
+ ;
+REDCOP(IEN,DATE) ; RETURN REDUCED COPAY FLAG (1/0)
+ ;Input: IEN  - VA Product (#50.68) IEN
+ ;       DATE - Date to be verified for Reduced co-pay
+ ;Output: 1 - Reduced co-pay
+ ;        0 - Regular co-pay
+ N FLG,II,PSNRED,Y1,Y2
+ I '$O(^PSNDF(50.68,IEN,10,0)) Q 0
+ S (FLG,II)=0 F  S II=$O(^PSNDF(50.68,IEN,10,II)) Q:'II  S PSNRED=$G(^(II,0)),Y1=$P(PSNRED,"^"),Y2=$P(PSNRED,"^",2) D
+ .I Y1,Y2 I DATE'<Y1&(DATE'>Y2) S FLG=1
+ .I Y1,'Y2 I DATE'<Y1 S FLG=1
+ Q FLG

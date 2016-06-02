@@ -1,5 +1,5 @@
-IVMLERR1 ;ALB/RMO - IVM Transmission Error Processing - Build List area; 15-SEP-1997
- ;;2.0;INCOME VERIFICATION MATCH;**9**; 21-OCT-94
+IVMLERR1 ;ALB/RMO,ERC - IVM Transmission Error Processing - Build List area; 15-SEP-1997 ; 2/20/08 11:10am
+ ;;2.0;INCOME VERIFICATION MATCH;**9,121**; 21-OCT-94;Build 45
  ;
 EN(IVMARY,IVMBEG,IVMEND,IVMEPSTA,IVMSRTBY,IVMCNT) ;Entry point to build list area for IVM transmission errors
  ;The following variables are 'system wide variables' in the
@@ -14,6 +14,8 @@ EN(IVMARY,IVMBEG,IVMEND,IVMEPSTA,IVMSRTBY,IVMCNT) ;Entry point to build list are
  ;           IVMSRTBY Sort by criteria
  ;                    P - patient name
  ;                    D - date/time ack received
+ ;                    E - error message
+ ;                    O - error message of 'Person Not Found' only
  ; Output -- IVMCNT   Number of lines in the list
  D WAIT^DICD
  ;
@@ -39,6 +41,8 @@ GET(IVMARY,IVMBEG,IVMEND,IVMEPSTA,IVMSRTBY) ;Get IVM transmission log errors
  ;           ^TMP("IVMERRSRT",$J,<sort by>,<patient name>,<trans log IEN>)
  ;                            or date/time ack received
  ;           ^TMP("IVMERRSRT",$J,<sort by>,<date/time ack received>,<trans log IEN>)
+ ;                            or by error message (added with IVM*2*121)
+ ;           ^TMP("IVMERRSRT",$J,<sort by>,<error message>,<trans log IEN>)
  N IVMDFN,IVMDTR,IVMTLIEN,PCE,STA
  ;
  ;Loop through IVM transmission log for selected date range
@@ -60,17 +64,28 @@ SORT(IVMSRTBY,IVMDTR,IVMDFN,IVMTLIEN) ;Set array based on sort criteria for IVM 
  ;           IVMTLIEN IVM transmission log IEN
  ; Output -- None
  N IVMTLOG
+ I $G(IVMSRTBY)']"" S IVMSRTBY="P"
  I IVMSRTBY="P" D  ;patient name
  . I $$GET^IVMTLOG(IVMTLIEN,.IVMTLOG) D
  . . S ^TMP("IVMERRSRT",$J,IVMSRTBY,$S($P($G(^DPT(+IVMTLOG("DFN"),0)),U)'="":$P(^(0),U),1:"UNKNOWN"),IVMTLIEN)=""
- ELSE  D  ;default date/time ack received
+ I IVMSRTBY="D" D  ;default date/time ack received
  . S ^TMP("IVMERRSRT",$J,IVMSRTBY,IVMDTR,IVMTLIEN)=""
+ I IVMSRTBY="E"!(IVMSRTBY="O") D  ;added with IVM*2*121
+ . N IVMQ
+ . S IVMQ=0
+ . I $$GET^IVMTLOG(IVMTLIEN,.IVMTLOG) D
+ . . I IVMSRTBY="O" D
+ . . . I $$UPPER^DGUTL($G(IVMTLOG("ERROR")))'["PERSON NOT FOUND" S IVMQ=1
+ . . Q:IVMQ=1
+ . . S ^TMP("IVMERRSRT",$J,IVMSRTBY,$S($G(IVMTLOG("ERROR"))]"":IVMTLOG("ERROR"),1:"UNKNOWN"),IVMTLIEN)=""
  Q
  ;
 BLD(IVMSRTBY,IVMCNT) ;Build list area for for IVM transmission log errors
  ; Input  -- IVMSRTBY Sort by criteria
  ;                    P - patient name
  ;                    D - date/time ack received
+ ;                    E - error message
+ ;                    O - error message of 'Person Not Found' only
  ; Output -- IVMCNT   Number of lines in the list
  N DFN,IVMCOL,IVMSUB,IVMTEXT,IVMTLIEN,IVMTLOG,IVMWID,X,VA
  ;
@@ -83,8 +98,8 @@ BLD(IVMSRTBY,IVMCNT) ;Build list area for for IVM transmission log errors
  S X=VALMDDF("DATE/TIME"),IVMCOL("DTR")=$P(X,U,2),IVMWID("DTR")=$P(X,U,3)
  S X=VALMDDF("STATUS"),IVMCOL("STA")=$P(X,U,2),IVMWID("STA")=$P(X,U,3)
  ;
- ;Loop through by patient name or date/time ack received
- S IVMSUB=$S(IVMSRTBY="P":"",1:0)
+ ;Loop through by patient name,error message or date/time ack received
+ S IVMSUB=$S(IVMSRTBY="D":0,1:"")
  F  S IVMSUB=$O(^TMP("IVMERRSRT",$J,IVMSRTBY,IVMSUB)) Q:IVMSUB=""  D
  . ;Loop through IVM transmission log IEN(s)
  . S IVMTLIEN=0

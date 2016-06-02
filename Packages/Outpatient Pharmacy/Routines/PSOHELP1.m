@@ -1,5 +1,5 @@
 PSOHELP1 ;BIR/SAB-OUTPATIENT HELP TEXT/UTILITY ROUTINE 2 ;11/09/92
- ;;7.0;OUTPATIENT PHARMACY;**23,36,88,146,227,222**;DEC 1997;Build 12
+ ;;7.0;OUTPATIENT PHARMACY;**23,36,88,146,227,222,408**;DEC 1997;Build 8
  ;External reference ^DIC(19.2 supported by DBIA 1472
  ;External reference ^PSDRUG( supported by DBIA 221
  ;External reference ^PS(55 supported by DBIA 2228
@@ -9,7 +9,15 @@ PSOHELP1 ;BIR/SAB-OUTPATIENT HELP TEXT/UTILITY ROUTINE 2 ;11/09/92
  S PSOHLP(2)="If this is the first time you are entering this field,"
  S PSOHLP(3,"F")="!"
  S PSOHLP(3)="you should pick a number LARGER than the last prescription number used."
- S PSOHLP(4,"F")="!!"
+ ; DSS/JCH - BEGIN MODS - Allow increase to max RX# by adding hex chars to leading digit
+ I $G(^%ZOSF("ZVX"))["VX" D
+ .N BASE S BASE=$$GET^XPAR("ALL","VFD PSO RX NUMBERING",,"E")
+ .Q:BASE=""
+ .S PSOHLP(4,"F")="!!"
+ .S PSOHLP(4)="Prescription numbers must be in "_BASE_" format."
+ .S PSOHLP(5,"F")="!!"
+ I '($G(^%ZOSF("ZVX"))["VX")!($$GET^XPAR("SYS","VFD PSO RX NUMBERING")="") S PSOHLP(4,"F")="!!"
+ ; DSS/JCH - END MODS
  D WRITE
  Q
  ;
@@ -23,7 +31,15 @@ PSOHELP1 ;BIR/SAB-OUTPATIENT HELP TEXT/UTILITY ROUTINE 2 ;11/09/92
  S PSOHLP(4)="larger than the one you choose. It will give a warning message"
  S PSOHLP(5,"F")="!"
  S PSOHLP(5)="and not allow entry of any more prescriptions."
- S PSOHLP(6,"F")="!!"
+ ; DSS/JCH - BEGIN MODS - Allow increase to max RX# by adding hex chars to leading digit
+ I $G(^%ZOSF("ZVX"))["VX" D
+ .N BASE S BASE=$$GET^XPAR("SYS","VFD PSO RX NUMBERING",,"E")
+ .Q:BASE=""
+ .S PSOHLP(5,"F")="!!"
+ .S PSOHLP(5)="Prescription numbers must be in "_BASE_" format."
+ .S PSOHLP(6,"F")="!!"
+ I '($G(^%ZOSF("ZVX"))["VX")!($$GET^XPAR("SYS","VFD PSO RX NUMBERING")="") S PSOHLP(6,"F")="!!"
+ ; DSS/JCH - END MODS
  D WRITE
  Q
  ;
@@ -39,7 +55,15 @@ PSOHELP1 ;BIR/SAB-OUTPATIENT HELP TEXT/UTILITY ROUTINE 2 ;11/09/92
  S PSOHLP(5)="until it finds a number that has not been used, and then"
  S PSOHLP(6,"F")="!"
  S PSOHLP(6)="use that number for the next prescription."
- S PSOHLP(7,"F")="!!"
+ ; DSS/JCH - BEGIN MODS - Allow increase to max RX# by adding hex chars to leading digit
+ I $G(^%ZOSF("ZVX"))["VX" D
+ .N BASE S BASE=$$GET^XPAR("SYS","VFD PSO RX NUMBERING",,"E")
+ .Q:BASE=""
+ .S PSOHLP(7,"F")="!!"
+ .S PSOHLP(7)="Prescription numbers must be in "_BASE_" format."
+ .S PSOHLP(8,"F")="!!"
+ I '($G(^%ZOSF("ZVX"))["VX")!($$GET^XPAR("SYS","VFD PSO RX NUMBERING")="") S PSOHLP(7,"F")="!!"
+ ; DSS/JCH - END MODS
  D WRITE
  Q
 WRITE ;EN^DDIOL call
@@ -53,6 +77,7 @@ AUTOQ ;entry point to queue all background jobs
  D QUP,CLO ;ques amis compile
  D SETUP^PSOHLEXP ;ques exipration status update
  D AUTO^PSOSUDEL ;ques job to deleted rxs printed from 52.5
+ D AUTO^PSOSPML0 ;ques job to transmit CS Rx's to the states
 CLO K Y,C,D,D0,DI,DQ,DA,DIE,DR,DIC,Y,X,PSOTM,PSOOPTN,%DT,PSOPTN
  Q
 QUP K %DT,DIC,DTOUT S DIC(0)="XZM",DIC="^DIC(19.2,",X="PSO AMIS COMPILE" D ^DIC

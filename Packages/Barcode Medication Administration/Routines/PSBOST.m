@@ -1,5 +1,5 @@
 PSBOST ;BIRMINGHAM/TEJ-UNABLE TO SCAN SUMMARY REPORT;Mar 2004 ; 29 Aug 2008  3:29 PM
- ;;3.0;BAR CODE MED ADMIN;**28**;Mar 2004;Build 9
+ ;;3.0;BAR CODE MED ADMIN;**28**;Mar 2004;Build 2
  ;Per VHA Directive 2004-038 (or future revisions regarding same), this routine should not be modified.
  ;
  ; Reference/IA
@@ -128,14 +128,21 @@ BLDRPT ;Assemble report body from accumilated totals
  .S PSBPGNUM=1
  .S PSBOUTP(0,14)="W !!,""<<<< NO BCMA SCANNING ACTIVITY FOUND FOR THIS DATE RANGE >>>>"",!!"
  S NEWPAGE=1
- S PSBOUTP($$PGTOT,PSBLNTOT)="W !,?5,""Wristband Totals -"",?50,""     Count"",?82,""% total events"""
+ ;DSS/SMP - BEGIN MODS
+ N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
+ I VFD D  I 1
+ .S PSBOUTP($$PGTOT,PSBLNTOT)="W !,?5,""Pt Barcode ID Totals -"",?50,""     Count"",?82,""% total events"""
+ E  S PSBOUTP($$PGTOT,PSBLNTOT)="W !,?5,""Wristband Totals -"",?50,""     Count"",?82,""% total events"""
  S PSBOUTP($$PGTOT,PSBLNTOT)="W !,?50,"""_$TR($J(" ",21)," ","-")_$TR($J(" ",4)," "," ")_$TR($J(" ",21)," ","-")_""""
  S PSBOUTP($$PGTOT,PSBLNTOT)="W !,?7,""Processed via SCANNER "",$TR($J("""",(49-$X)),"" "","".""),"":"",?50,"""_$J($FN(PSBTW,","),10)_$TR($J(" ",25)," "," ")_$J($S(PSBTW>0:((PSBTW/PSBTWEVT)*100),1:0),5,1)_""""
  S PSBOUTP($$PGTOT(2),PSBLNTOT)="W !!,?7,""Processed via SCANNER BY-PASS"",$TR($J("""",(49-$X)),"" "","".""),"":"","""_$J($FN(PSBWBYPS,","),10)_$TR($J(" ",25)," "," ")_$J($S(PSBWBYPS>0:((PSBWBYPS/PSBTWEVT)*100),1:0),5,1)_""""
  S PSBOUTP($$PGTOT,PSBLNTOT)="W !,?15,""KEYED ENTRY"",$TR($J("""",(49-$X)),"" "","".""),"":"","""_$TR($J(" ",11)," "," ")_$J($FN(PSBTWKEY,","),10)_$TR($J(" ",20)," "," ")_$J($S(PSBTWKEY>0:((PSBTWKEY/PSBTWEVT)*100),1:0),5,1)_""""
  S PSBOUTP($$PGTOT,PSBLNTOT)="W !,?15,""BCMA UNABLE TO SCAN Option "",$TR($J("""",(49-$X)),"" "","".""),"":"","""_$TR($J(" ",11)," "," ")_$J($FN(PSBTWUAS,","),10)_$TR($J(" ",20)," "," ")_$J($S(PSBTWUAS>0:((PSBTWUAS/PSBTWEVT)*100),1:0),5,1)_""""
  S PSBOUTP($$PGTOT,PSBLNTOT)="W !,?50,"""_$TR($J(" ",21)," ","-")_$TR($J(" ",4)," "," ")_$TR($J(" ",21)," ","-")_""""
- S PSBOUTP($$PGTOT,PSBLNTOT)="W !,?7,""Total Wristband Scan Events "",$TR($J("""",(49-$X)),"" "","".""),"":"","""_$J($FN(PSBTWEVT,","),10)_""""
+ I VFD D  I 1
+ .S PSBOUTP($$PGTOT,PSBLNTOT)="W !,?7,""Total Pt Barcode ID Scan Events "",$TR($J("""",(49-$X)),"" "","".""),"":"","""_$J($FN(PSBTWEVT,","),10)_""""
+ E  S PSBOUTP($$PGTOT,PSBLNTOT)="W !,?7,""Total Wristband Scan Events "",$TR($J("""",(49-$X)),"" "","".""),"":"","""_$J($FN(PSBTWEVT,","),10)_""""
+ ;DSS/SMP - END MODS
  S PSBOUTP($$PGTOT,PSBLNTOT)="W !,$TR($J("""",IOM),"" "",""-""),!"
  S PSBOUTP($$PGTOT,PSBLNTOT)="W !,?5,""Medication Label Totals -"",?50,""     Count"",?82,""% total events"""
  S PSBOUTP($$PGTOT,PSBLNTOT)="W !,?50,"""_$TR($J(" ",21)," ","-")_$TR($J(" ",4)," "," ")_$TR($J(" ",21)," ","-")_""""

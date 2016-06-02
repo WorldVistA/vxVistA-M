@@ -1,5 +1,5 @@
-PSGPLF ;BIR/CML3-FILES AWAY PICK LIST DATA (BACKGROUND JOB) ;29 SEP 97 / 12:40 PM
- ;;5.0; INPATIENT MEDICATIONS ;**84,130,168**;16 DEC 97
+PSGPLF ;BIR/CML3-FILES AWAY PICK LIST DATA (BACKGROUND JOB) ; 27OCT2014
+ ;;5.0; INPATIENT MEDICATIONS ;**84,130,168**;16 DEC 97;Build 11
  ;
  ; Reference to ^PS(55 is supported by DBIA# 2191.
  ; Reference to ^PSDRUG is supported by DBIA# 2192.
@@ -35,6 +35,9 @@ GD1 ; get next (second) level (ward) in 57.6
  Q
  ;
 EN ; action starts here
+ ;DSS/AMC - Start mods New variable to keep NDC/Scan code in the symbol table to pass to PSGAMSA
+ N VFDNDC1
+ ;DSS/AMC - End mods
  N G,T,W,R,P,S,PD,DD,DDRG D NOW^%DTC S PSGDT=%,G=0 K C,^TMP("PSGNCF",$J)
  F  S G=$O(^PS(53.5,"AF",G)) Q:'G  S PSGPLTND=$G(^PS(53.5,G,0)) K:PSGPLTND="" ^PS(53.5,"AF",G) I PSGPLTND]"" I $$LOCK^PSGPLUTL(G,"PSGPL") D  D UNLOCK^PSGPLUTL(G,"PSGPL")
  .S WSF=$P(PSGPLTND,"^",7),D0=$S($P(PSGPLTND,"^",3):$P($P(PSGPLTND,"^",3),"."),1:DT)
@@ -43,7 +46,9 @@ EN ; action starts here
  .F  S T=$O(^PS(53.5,"AC",G,T)) Q:T=""  S (WH,W)="" F  S (W,WD)=$O(^PS(53.5,"AC",G,T,W)) Q:W=""  S R="" D:'WSF GD1 F  S R=$O(^PS(53.5,"AC",G,T,W,R)) Q:R=""  S P="" F  S P=$O(^PS(53.5,"AC",G,T,W,R,P)) Q:P=""  D
  ..S PN=$P(P,"^",2),(DD,PD)="",S="A" S:WSF WD=$P(^PS(53.5,G,1,PN,0),"^",3) D:WD'=WH&WSF GD1
  ..F  S S=$O(^PS(53.5,"AC",G,T,W,R,P,S)) Q:("Z"[S)!(S="NO ORDERS")  F  S PD=$O(^PS(53.5,"AC",G,T,W,R,P,S,PD)) Q:PD=""  S O=+$P($G(^PS(53.5,G,1,PN,1,$P(PD,"^",2),0)),"^"),D2=$P($G(^PS(55,PN,5,O,0)),"^",2) S:'D2 D2="999Z" D
- ...F  S DD=$O(^PS(53.5,"AC",G,T,W,R,P,S,PD,DD)) Q:(DD="")!(DD="NO DISPENSE DRUG")  S PLR=$G(^PS(53.5,G,1,PN,1,$P(PD,"^",2),1,$P(DD,"^",2),0)) Q:PLR=""  D:'$P(PLR,"^",4) FILE
+ ...;DSS/AMC - Start mod - added VFDNDC1 to the set command to pass to FILE and then on to PSGAMSA. If not present, VA code behavior not changed.
+ ...F  S DD=$O(^PS(53.5,"AC",G,T,W,R,P,S,PD,DD)) Q:(DD="")!(DD="NO DISPENSE DRUG")  S PLR=$G(^PS(53.5,G,1,PN,1,$P(PD,"^",2),1,$P(DD,"^",2),0)),VFDNDC1=$G(^(21600)) Q:PLR=""  D:'$P(PLR,"^",4) FILE
+ ...;DSS/AMC - End mod
  .I PSGPLFF S $P(^PS(53.5,G,0),"^",5)=2,^PS(53.5,"AO",+$P(PSGPLTND,"^",2),$P(PSGPLTND,"^",3),G)="" K ^PS(53.5,"AF",G)
  ;
  I $D(^TMP("PSGNCF",$J,"B")) D ^PSGPLFM

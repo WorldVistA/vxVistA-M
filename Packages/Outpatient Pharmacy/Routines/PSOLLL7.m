@@ -1,5 +1,5 @@
 PSOLLL7 ;BHAM/JLC - LASER LABEL MULTI RX REFILL REQUEST FORM ;12/12/92
- ;;7.0;OUTPATIENT PHARMACY;**120,161,200,326**;DEC 1997;Build 7
+ ;;7.0;OUTPATIENT PHARMACY;**120,161,200,326**;DEC 1997;Build 2
  ;
  ;Reference to ^PS(59.7 supported by DBIA 694
  ;Reference to ^PS(55 supported by DBIA 2228
@@ -31,11 +31,24 @@ SCRPTNEW S T="____"_$$ZZ^PSOSUTL(PSA) K ZDRUG D PRINT(T) S PSOYI=PSOTYI
  D DTCONNW
  S PSOYI=PSOTYI,OPSOX=PSOX,PSOX=PSOX+PSOXI,T="Refills "_$P(RX(PSA),"^",2)_"   Exp "_PSDT2_"    Rx# "_$P(^PSRX(PSA,0),"^") K TN D PRINT(T)
  S PSOYI=PSOBYI
- I $G(PSOIO("SBT"))]"" X PSOIO("SBT")
- S X2=PSOINST_"-"_PSA,PSOX=PSOX+PSOXI
- W X2
- I $G(PSOIO("EBT"))]"" X PSOIO("EBT")
- S PSOX=OPSOX
+ ;
+ ; DSS/SMH - Begin Mods. Orig in Else. Print Software C128 barcode.
+ ; NB: Notes on Alignment: BC128 restores X and Y to their original position.
+ ; Therefore, we need to advance the cursor ourselves.
+ I $G(VFDPSOLB) D
+ . S X2=PSOINST_"-"_PSA
+ . S PSOY=PSOY+5 ; Move down from the text a little bit.
+ . D BC128^VFDPSBAR(X2,1,60,(PSOX+1),PSOY,3) ; Print barcodes...
+ . S PSOX=OPSOX  ; Restore X
+ . S PSOY=PSOY+60+10 ; Move cursor down by the height of the barcode + 10 dpi.
+ E  D
+ . I $G(PSOIO("SBT"))]"" X PSOIO("SBT")
+ . S X2=PSOINST_"-"_PSA,PSOX=PSOX+PSOXI
+ . W X2
+ . I $G(PSOIO("EBT"))]"" X PSOIO("EBT")
+ . S PSOX=OPSOX
+ ; DSS/SMH - End Mods
+ ;
  I PSOY>PSOYM D  D:$O(RX(PSA)) HDR Q
  .S T=BLNKLIN,PSOYI=PSOSYI D PRINT(T) S PSOYI=PSOTYI
  .S T="Patient's Signature & Date         "_$P(PS,"^",6)_"     "_PSONOW D PRINT(T)
@@ -43,6 +56,7 @@ SCRPTNEW S T="____"_$$ZZ^PSOSUTL(PSA) K ZDRUG D PRINT(T) S PSOYI=PSOTYI
  .I PSOX=PSORX S PSOX=PSOLX W @IOF Q
  .S PSOX=PSORX
  Q
+ ;
 DTCONNW S PSDT2=$P(RX(PSA),"^"),PSDT2=$E(PSDT2,4,5)_"/"_$E(PSDT2,6,7)_"/"_($E(PSDT2,1,3)+1700) Q
 RFILL2 F AMC=0:0 S AMC=$O(^PSRX(PSRXX,1,AMC)) Q:'AMC  S PSRFL=PSRFL-1
  I PSRFL>0 S X1=DT,X2=$P(^PSRX(PSRXX,0),"^",8)-10 D C^%DTC I X'<$P(^(2),"^",6) S PSRFL=0

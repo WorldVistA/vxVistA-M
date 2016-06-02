@@ -1,7 +1,7 @@
-RAHLTCPB ; HIRMFO/REL,GJC,BNT,PAV - Rad/Nuc Med HL7 TCP/IP Bridge;05/21/99
- ;;5.0;Radiology/Nuclear Medicine;**12,17,25,51,71,81,84**;Mar 16, 1998;Build 13
+RAHLTCPB ; HIRMFO/REL,GJC,BNT,PAV - Rad/Nuc Med HL7 TCP/IP Bridge;05/21/99 ; 8/28/08 2:05pm
+ ;;5.0;Radiology/Nuclear Medicine;**12,17,25,51,71,81,84,106**;Mar 16, 1998;Build 2
  ; 07/05/2006 BAY/KAM Remedy Call 124379 Eliminate unneeded ORM msgs
- ; 09/01/2006   Acomodate multiple ORC/OBR segments Patch 81
+ ; 09/01/2006   Accomodate multiple ORC/OBR segments Patch 81
  ; 
  ;Integration Agreements
  ;----------------------
@@ -71,7 +71,10 @@ OBR ; Pick data off the 'OBR' segment.
  I $G(RACNI)'>0 S RAERR="Invalid exam record IEN" D XIT Q
  S RAHLD=$$PCEXTR^RAHLO4(CNT,SEGMNT,25,HL("FS")) K RAHL70
  I RAHLD="" S RAERR="Missing Report Status" D XIT Q
- I "AFR"'[RAHLD S RAERR="Invalid Report Status: "_RAHLD D XIT Q
+ ;P106
+ I "^A^F^R^VAQ^"'[("^"_RAHLD_"^") D  D XIT Q
+ .S RAERR="Invalid Report Status: "_RAHLD QUIT
+ ;
  S ^TMP(RARRR,$J,RASUB,"RASTAT")=RAHLD
  G:$P(RARRR,"-",3) 112 S RAHLD=$$PCEXTR^RAHLO4(CNT,SEGMNT,32,HL("FS")) K RAHL70
  I RAHLD']"" S RAERR="Missing Provider ID" D XIT Q

@@ -1,5 +1,5 @@
-ORCSAVE2 ;SLC/MKB-Utilities to update an order ;10/27/10  07:42
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**4,27,56,70,94,116,190,157,215,265,243,293,280**;Dec 17, 1997;Build 7
+ORCSAVE2 ;SLC/MKB-Utilities to update an order ;03/16/11  10:47
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**4,27,56,70,94,116,190,157,215,265,243,293,280,346**;Dec 17, 1997;Build 15
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
 STATUS(IFN,ST) ; -- Update status of order
@@ -8,8 +8,9 @@ STATUS(IFN,ST) ; -- Update status of order
  N NODE0,NODE3,ORNOW,DA,XACT,PROV,ORVP
  S NODE3=$G(^OR(100,+IFN,3)),ORVP=$P($G(^(0)),U,2),ORNOW=$$NOW^XLFDT
  ;DSS/SGM/RAC - BEGIN MODS - don't change Written status to Active
- I $T(VX^VFDI0000)'="",$$VX^VFDI0000["VX",$P(NODE3,U,3)>99,ST=6 Q
+ I $G(^%ZOSF("ZVX"))["VX",$P(NODE3,U,3)>99,ST=6 Q
  ;DSS/SGM/RAC - END MODS
+ S $P(NODE3,U)=ORNOW,$P(NODE3,U,3)=ST,^OR(100,+IFN,3)=NODE3
  S $P(NODE3,U)=ORNOW,$P(NODE3,U,3)=ST,^OR(100,+IFN,3)=NODE3
  I (ST<3)!(ST=12)!(ST=13),$G(ORDCNTRL)'="ZC" D DATES(+IFN,,+$E(ORNOW,1,12))
  I "^1^2^7^12^13^15^"[(U_ST_U) D CANCEL^ORCSEND(+IFN),UNOTIF^ORCSIGN
@@ -158,7 +159,7 @@ DATES(DA,START,STOP) ; -- Update start/stop dates for order DA
 OC ; -- Save order checks in ORCHECK() in ^OR(100,+ORIFN,9) ON SIGNATURE IN CPRS
  Q:'$G(ORIFN)  Q:'$D(^OR(100,+ORIFN,0))
  D DELOCC^OROCAPI1(+ORIFN,"SIGNATURE_CPRS")
- N I,J,ORK,CNT,OC,OROCRET
+ N I,J,ORK,CNT,OC,OROCRET,ORKI
  S CNT=0
  S I=0 F  S I=$O(ORCHECK(+ORIFN,I)) Q:'I  D
  . S J=0 F  S J=$O(ORCHECK(+ORIFN,I,J)) Q:'J  D
@@ -183,7 +184,7 @@ OC ; -- Save order checks in ORCHECK() in ^OR(100,+ORIFN,9) ON SIGNATURE IN CPRS
  . . . S ^ORD(100.05,OCINST,17)=^TMP($J,"ORMONOGRAPH",ORMONOI,"INT")
  . . . M ^ORD(100.05,OCINST,16)=^TMP($J,"ORMONOGRAPH",ORMONOI,"DATA")
  . . . S ^ORD(100.05,OCINST,16,0)="^^"_$O(^ORD(100.05,OCINST,16,""),-1)_U_$O(^ORD(100.05,OCINST,16,""),-1)_U_+$$NOW^XLFDT_U
- K ^TMP($J,"ORMONOGRAPH"),^TMP($J,"ORK XTRA TXT")
+ K ^TMP($J,"ORMONOGRAPH")
  Q
  ;
 VALUE(IFN,ID,INST) ; -- Returns value of prompt by identifier ID

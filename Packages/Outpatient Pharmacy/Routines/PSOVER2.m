@@ -1,5 +1,5 @@
-PSOVER2 ;BHAM ISC/SAB - edit and/or discontinue unverified rx's ; 07/03/95 9:32
- ;;7.0;OUTPATIENT PHARMACY;**131**;DEC 1997
+PSOVER2 ;BHAM ISC/SAB - edit and/or discontinue unverified rx's ;07/03/95 9:32
+ ;;7.0;OUTPATIENT PHARMACY;**131,251**;DEC 1997;Build 202
  ;Reference ^PSDRUG( supported by DBIA 221
  S DIR("B")="C",DIR("A")="Do you want to DELETE or EDIT Rx # "_$P(^PSRX(PSONV,0),"^")_" or Discontinue "_$P(DUPRX0,"^")_" ",DIR("?",1)="This is a duplicate drug.  Your options are to :"
  S DIR("?",2)="   (1) - Discontinue the old Rx ("_$P(DUPRX0,"^")_")",DIR("?",3)="   (2) - DELETE this Rx ("_$P(^PSRX(PSONV,0),"^")_")"
@@ -24,6 +24,7 @@ MUST ;called by `dr string' at change+1^psover2
  W !!!,$C(7),"This is a duplicate drug for an existing prescription",!!,"You MUST either CHANGE the drug in this prescription",!,?16,"DELETE this prescription",!,?13,"or DISCONTINUE the existing prescription",!!,$C(7) S Y="@2",GOOF=2 Q
  ;
 DELETE ;
+ I '$G(DRG) S DRG=$P(^PSRX(PSONV,0),"^",6)
  D NOOR^PSOCAN4 I $D(DIRUT) D DR Q
  K PSD(DRG_"^"_PSONV) S DA=PSONV I $G(PKI1) D DCV^PSOPKIV1 G:$D(PKIR) KILL D DR Q
  D ENQ^PSORXDL
@@ -33,3 +34,4 @@ KILL S DA=PSONV,DIK="^PS(52.4," D ^DIK K DA,DIK
 DR W $C(7)," ACTION NOT TAKEN!",!
  K DIR S DIR(0)="E",DIR("A")="Press Return to Continue" D ^DIR K DIR
  S UPFLAGX=1 Q
+ ;

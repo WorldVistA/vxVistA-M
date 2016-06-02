@@ -1,6 +1,6 @@
-VFDDGPM1 ;DSS/LM - PAMS Movement Events Support ; 3/4/2013 14:35
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 7
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
+VFDDGPM1 ;DSS/LM/SMP - PAMS Movement Events Support ; 10/15/2015 16:40
+ ;;15.0;DSS,INC VXVISTA OPEN SOURCE;**21**;11 Jun 2013;Build 1
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ;
  ; Only to be called from routine VFDDGPM
  ;
@@ -12,9 +12,11 @@ VFDDGPM1 ;DSS/LM - PAMS Movement Events Support ; 3/4/2013 14:35
  Q
  ;
 ADMITDX() ; expects X=lookup value
- N I,J,X,Y,D0,DA,DIC,DTOUT,DUOUT
- D CONFIG^LEXSET("ICD",,DT)
+ N I,J,X,Y,D0,DA,DIC,DTOUT,DUOUT,ICDT,ICD10
+ S ICDT=+$G(DGPMAN) I 'ICDT S ICDT=DT
+ S ICD10=ICDT>$$IMP^ICDEX(30)
+ D CONFIG^LEXSET($S(ICD10:"10D",1:"ICD"),,ICDT)
  S DIC="^LEX(757.01,",DIC(0)="EQM",DIC("A")="DIAGNOSIS [ICD]: " D ^DIC
- Q:$G(Y(1))<1 ""
- Q +$$ICDDX^ICDCODE(Y(1),DT)
+ I '$D(Y($S(ICD10:30,1:1))) Q ""
+ Q +$$ICDDX^ICDEX($S(ICD10:$G(Y(30)),1:$G(Y(1))),ICDT)
  ;

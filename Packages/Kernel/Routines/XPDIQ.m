@@ -1,5 +1,5 @@
 XPDIQ ;SFISC/RSD - Install Questions ;03/21/2008
- ;;8.0;KERNEL;**21,28,58,61,95,108,399**;Jul 10, 1995;Build 12
+ ;;8.0;KERNEL;**21,28,58,61,95,108,399**;Jul 10, 1995;Build 15
  Q
 DIR(XPFR,XPFP) ;XPFR=prefix, XPFP=file no._# or Mail Group ien
  ;XPFP is for XPF  or XPM questions
@@ -21,7 +21,10 @@ DIR(XPFR,XPFP) ;XPFR=prefix, XPFP=file no._# or Mail Group ien
  ..;'|' is used to mark variable in prompt, reset prompt with value of variable
  ..S:$G(DIR("A"))["|" DIR("A")=$P(DIR("A"),"|")_@$P(DIR("A"),"|",2)_$P(DIR("A"),"|",3)
  ..K:$G(DIR("B"))="" DIR("B")
- ..D ^DIR
+ ..;DSS/SMP - BEGIN MODS - skip questions if patch is auto-installable
+ ..I $G(VFDAUTO) S Y=0,Y(0)="NO" D:$T(VFDSETUP^VFDXPDY)'="" VFDSETUP^VFDXPDY(XPDJ)
+ ..E  D ^DIR
+ ..;DSS/SMP - END MODS
  .S %=$P(DIR(0),U)
  .;read was optional and didn't timeout and user didn't enter anything
  .I %["O",'$D(DTOUT),$S(%["P":Y=-1,1:Y="") K DIRUT Q

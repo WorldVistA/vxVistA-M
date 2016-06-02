@@ -1,6 +1,13 @@
 PRCSUT3 ;WISC/SAW/PLT/BGJ-TRANSACTION UTILITY PROGRAM ; 21 Apr 93  10:18 AM
-V ;;5.1;IFCAP;**115,123**;Oct 20, 2000;Build 6
+V ;;5.1;IFCAP;**115,123,149,150,180**;Oct 20, 2000;Build 5
  ;Per VHA Directive 2004-038, this routine should not be modified.
+ ;
+ ;PRC*5.1*150 RGB 4/23/12  Control the node 0 counter for file 410
+ ;kill (DIK) since DIK call does not handle descending file logic
+ ;
+ ;PRC*5.1*180 RGB 10/22/12  Added switch coming from IFCAP 1358 
+ ;processing to insure new entry check uses file 424, not file 410.
+ ;
 EN ;CREATE NEW TRANSACTION NUMBER
  D EN1^PRCSUT K DA,DIC G W5:'$D(PRC("SITE")) Q
 EN1 G:'$D(X) OUT1 S NODE=0,PIECE=2 I $D(PRCS("TYPE")) G:'X OUT1 S T(1)=$O(^DD(410.1,"B",PRCS("TYPE"),0)) G:'T(1)!('$D(^DD(410.1,+T(1),0))) OUT1
@@ -10,9 +17,9 @@ EN1 G:'$D(X) OUT1 S NODE=0,PIECE=2 I $D(PRCS("TYPE")) G:'X OUT1 S T(1)=$O(^DD(41
  I '$D(^PRCS(410.1,"B",X)) S T=1,DLAYGO=410.1,DIC="^PRCS(410.1,",DIC(0)="FLXZ" D ^DIC K DLAYGO G:Y<0 W4 S DA=+Y
  S HDA=DA
 T S T="000"_T,T=$E(T,$L(T)-3,$L(T))
-T1 I $D(REP) S X=X_"-"_T I $D(^PRCS(410,"B",X)) S T=+T+1,X=$P(X,"-",1,4) G:T>9999 CANCK G T
- I '$D(REP),'$D(PRCS("TYPE")) S X=Z,X=X_"-"_T I $D(^PRCS(410,"B",X)) S T=+T+1 G:T>9999 CANCK G T
- I '$D(REP),$D(PRCS("TYPE")) S Z=X,X=X_"-"_T I $D(^PRC(424,"B",X)) S T=+T+1,X=Z G T
+T1 I $D(REP),$G(PRCE424)'=1 S X=X_"-"_T I $D(^PRCS(410,"B",X)) S T=+T+1,X=$P(X,"-",1,4) G:T>9999 CANCK G T    ;PRC*5.1*180
+ I '$D(REP),'$D(PRCS("TYPE")),$G(PRCE424)'=1 S X=Z,X=X_"-"_T I $D(^PRCS(410,"B",X)) S T=+T+1 G:T>9999 CANCK G T    ;PRC*5.1*180
+ I ('$D(REP)&$D(PRCS("TYPE")))!($G(PRCE424)=1) S Z=X,X=X_"-"_T I $D(^PRC(424,"B",X)) S T=+T+1,X=Z G:T>9999 CER G T   ;PRC*5.1*180
 TEX S DA=HDA L +^PRCS(410.1,DA):15 S $P(^PRCS(410.1,DA,NODE),U,PIECE)=+T,$P(^(0),U,3)=DT L -^PRCS(410.1,DA)
 OUT K DA,DIC,N,NODE,PIECE,PRCS("TYPE"),PRCSL,T,Z,HDA Q
 OUT1 S X="",Y=-1 D OUT Q
@@ -29,23 +36,33 @@ EN2A S DA=+Y S:'$D(T(2)) T(2)=""
 EN2B S:$D(PRC("SST")) $P(^PRCS(410,DA,0),"^",10)=PRC("SST")
  D:$D(MYY) ERS410^PRC0G(DA_"^E") Q
 EN3 ;INPUT TRANSFORM FOR REORDERING 410 FILE ENTRIES
+ ;Add mod (PRC*149) to insure that the next ien used is not below 20,000,000. 
+ ;Start back at closest ien to last realistic ien using for loop check to look for last used ien when next ien is below 20,000,000.
  Q:'$D(X)  I $D(^PRCS(410,"B",X)) Q
- S DINUM=$O(^PRCS(410,500000))-1 S:DINUM<500000 DINUM=99999999
-EN3A F DINUM=DINUM:-1:500000 I '$D(^PRCS(410,DINUM)) L +^PRCS(410,DINUM):0 Q:$T
- I DINUM=500000 S DINUM=99999999 G EN3A
- L -^PRCS(410,DINUM) Q
- ;
+ N PRCSIEN
+ L +^PRCS(410,0):$S($G(DILOCKTM)>10:DILOCKTM,1:10) I '$T W $C(7),"ANOTHER USER IS EDITING FILE 410 CONTROL NODE! Please retry in a minute." K X Q
+ S PRCSIEN=$P(^PRCS(410,0),"^",3)-1
+ I PRCSIEN<20000000!(PRCSIEN>97999999) D  S:PRCSIEN=20000000 PRCSIEN=97999999
+ . F I=90000000:-10000000:20000000 I $O(^PRCS(410,I))-I>1000 S PRCSIEN=$O(^PRCS(410,I)) Q
+ F PRCSIEN=PRCSIEN:-1 I '$D(^PRCS(410,PRCSIEN)) L +^PRCS(410,PRCSIEN):$S($D(DILOCKTM):DILOCKTM,1:3) Q:$T
+ L -^PRCS(410,0)
+ I PRCSIEN'>0 K X
+ E  S DINUM=PRCSIEN
+ L -^PRCS(410,PRCSIEN)
+ Q
 CANCK ;Look for cancelled activity when all seq used
  I ZERSW=0 S ZERSW=1,T=1 G T
 CK0 S ZZH=Z,ZHOLD=Z
 CK1 S ZZH=$O(^PRCS(410,"B",ZZH)),IEN410=0 G CER:ZZH](Z_"-9999")
 CK2 S IEN410=$O(^PRCS(410,"B",ZZH,IEN410)) G CK1:IEN410=""
  I $P($G(^PRCS(410,IEN410,0)),U,2)'="CA" G CK2
+ S PRCIENCT=$P(^PRCS(410,0),"^",3)+1      ;PRC*5.1*150
  S DA=IEN410,DIK="^PRCS(410," D ^DIK
+ S $P(^PRCS(410,0),"^",3)=PRCIENCT K PRCIENCT     ;PRC*5.1*150
  S T=$P(ZZH,"-",5)
 CKQ S Z=ZHOLD K DA,DIK,ZZH,ZHOLD,IEN410
  G T1
-CER S MSG="No open sequence number found for "_Z_" for adjustment transaction"
+CER S MSG="No open sequence number found for "_Z_" for transaction"
  I $G(PRCRMPR)=1 S X="#"
  K DA,DIK,ZZH,IEN410
  G OUT

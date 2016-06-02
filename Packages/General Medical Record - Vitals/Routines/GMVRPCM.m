@@ -1,5 +1,5 @@
 GMVRPCM ; HOIFO/DP - RPC for Vitals Manager ;07/25/05 9:10am
- ;;5.0;GEN. MED. REC. - VITALS;**1,8,13,3,22**;Oct 31, 2002;Build 153
+ ;;5.0;GEN. MED. REC. - VITALS;**1,8,13,3,22**;Oct 31, 2002;Build 164
  ; Integration Agreements:
  ; #10040 [Supported] File 44 references
  ; #10076 [Supported] XUSEC Calls

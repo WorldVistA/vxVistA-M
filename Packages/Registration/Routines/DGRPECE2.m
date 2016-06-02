@@ -1,11 +1,11 @@
 DGRPECE2 ;ALB/MRY - REGISTRATION CATASTROPHIC EDITS REPORT ; 11/16/04 9:00am
- ;;5.3;Registration;**638**;Aug 13, 1993
+ ;;5.3;Registration;**638,831**;Aug 13, 1993;Build 10
  ;
  N DIR,DGFMT,DGFMTD
 FMT K DIR S DIR("A")="Select report format",DIR(0)="S^D:DETAILED;S:SUMMARY"
  S DIR("?",1)="DETAILED format allows the selected listing of all processed alerts, alerts"
  S DIR("?",2)="not reviewed, or alerts determined to be catastrophic alerts.  SUMMARY format"
- S DIR("?",3)="allows the cummulative totals of processed alerts, alerts reviewed, and alerts"
+ S DIR("?",3)="allows the cumulative totals of processed alerts, alerts reviewed, and alerts"
  S DIR("?")="determined to be catastrophic edits."
  S DIR("B")="SUMMARY" D ^DIR Q:$D(DIRUT)
  S DGFMT=Y,DGFMTD=""
@@ -74,7 +74,7 @@ DETAIL ;Print detail
  ... W !,$TR($J("",IOM)," ","-") D CHKL Q:DGQUIT
  ... W !?3,"Patient Identification (before edit)" D CHKL Q:DGQUIT
  ... W !?4,"Name: ",$P(DGA(2),U),?45,"Soc. Security Number: ",$P(DGA(2),U,2) D CHKL Q:DGQUIT
- ... W !?4,"Date of Birth: ",$$DATE4^DGRPECE1($P(DGA(2),U,3)),?45,"Gender: ",$S($P(DGA(2),U,4)="M":"MALE",$P(DGA(2),U,4)="F":"FEMALE",1:"") D CHKL Q:DGQUIT
+ ... W !?4,"Date of Birth: ",$$DATE4^DGRPECE1($P(DGA(2),U,3)),?45,"Gender: ",$S($P(DGA(2),U,4)="M":"MALE",$P(DGA(2),U,4)="F":"FEMALE",1:$P(DGA(2),U,4)) D CHKL Q:DGQUIT
  ... W !?4,"Mother's Maiden Name: ",$P(DGA(2),U,5) D CHKL Q:DGQUIT
  ... W !?4,"Place of Birth [city]: ",$P(DGA(2),U,6) D CHKL Q:DGQUIT
  ... W !?4,"Place of Birth [state]: " I $P(DGA(2),U,7) W $P(^DIC(5,$P(DGA(2),U,7),0),U) D CHKL Q:DGQUIT

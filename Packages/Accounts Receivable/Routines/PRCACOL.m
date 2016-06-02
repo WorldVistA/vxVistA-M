@@ -1,5 +1,5 @@
 PRCACOL ;WASH-ISC@ALTOONA,PA/LDB-Payment History Report ;9/27/93  4:31 PM
-V ;;4.5;Accounts Receivable;**165,198**;Mar 20, 1995
+V ;;4.5;Accounts Receivable;**165,198,264**;Mar 20, 1995;Build 1
  ;;Per VHA Directive 10-93-142, this routine should not be modified.
  ;
 EN ;Ask debtor and date range for payment history
@@ -22,7 +22,7 @@ EN ;Ask debtor and date range for payment history
  S %ZIS="AEQ" D ^%ZIS G:POP EXIT1
  I $D(IO("Q")) D  Q
  .S ZTSAVE("DEBTOR")="",ZTSAVE("BDATE")="",ZTSAVE("EDATE")="",ZTRTN="DQ^PRCACOL",ZTDESC="Patient Payment/Refund Transaction History Report"
- .D ^%ZTLOAD,^%ZISC,EXIT1 K ZTSAVE,ZTRTN Q
+ .D ^%ZTLOAD,^%ZISC,EXIT1 K ZTSAVE,ZTRTN,IO("Q") Q
  ;
 DQ ;Call to build array of payment transactions
  ;

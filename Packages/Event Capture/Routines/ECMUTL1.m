@@ -1,5 +1,5 @@
 ECMUTL1 ;ALB/ESD - Utilities for Multiple Dates/Mult Procs ;20 AUG 1997 13:56
- ;;2.0; EVENT CAPTURE ;**5,10,15,13,17,23,41,42,50,54**;8 May 96
+ ;;2.0; EVENT CAPTURE ;**5,10,15,13,17,23,41,42,50,54,76**;8 May 96;Build 6
  ;
  ;
 ASKPAT(ECPAT) ; Ask patient
@@ -66,11 +66,12 @@ PCEDAT(ECUNIT,ECSCR,ECPCE) ;get needed PCE data
  ;                 = ecpce("dxs",n)=v n=dx code and v=dx ien
  ;   ECPCE("AO")   = agent orange indicator
  ;   ECPCE("IR")   = ionizing radiation indicator
- ;   ECPCE("ENV")  = environmental contaminants indicator
+ ;   ECPCE("ENV")  = environmental contaminants indicator/south west asia
  ;   ECPCE("SC")   = service connected indicator (Y/N)
  ;   ECPCE("MST")  = military sexual trauma indicator (Y/N)
  ;   ECPCE("HNC")  = head/neck cancer indicator (Y/N)
- ;   ECPCE("CV")   = combat veteran indicator (Y/N
+ ;   ECPCE("CV")   = combat veteran indicator (Y/N)
+ ;   ECPCE("SHAD") = P112/SHAD Shipboard Hazard and Defense) (Y/N)
  ;
  ;   returns
  ;   ECOUT  = if normal user input, then "0"
@@ -84,7 +85,7 @@ PCEDAT(ECUNIT,ECSCR,ECPCE) ;get needed PCE data
  I SEND="" S SEND="N"
  S ECPCE("CLIN")="",ECPCE("DX")="",ECPCE("AO")="",ECPCE("IR")=""
  S ECPCE("ENV")="",ECPCE("SC")="",ECPCE("MST")="",ECPCE("HNC")=""
- S ECPCE("CV")=""
+ S ECPCE("CV")="",ECPCE("SHAD")=""
  K ECPCE("DXS")
  I "AO"[SEND D
  .;- Don't write message if Send to PCE = "O" and patient is an inpatient
@@ -138,10 +139,10 @@ CLINIC ;get associated clinic
  ;
  ;
 VISIT ;ask visit info
- N ECFLG,ECCLFLDS,ECCLVAR,ECX,ECAO,ECIR,ECMST,ECMST,ECSC,ECZEC,ECHNC,ECCV
- N ECMDT,ECY,ECMD,ECDT
+ N ECFLG,ECCLFLDS,ECCLVAR,ECX,ECAO,ECIR,ECMST,ECSC,ECZEC,ECHNC,ECCV,ECMDT
+ N ECY,ECMD,ECDT,ECSHAD
  Q:ECPCE("I/O")="I"
- S (ECAO,ECIR,ECSC,ECZEC,ECX,ECMST,ECHNC,ECCV)="",ECY=0
+ S (ECAO,ECIR,ECSC,ECZEC,ECX,ECMST,ECHNC,ECCV,ECSHAD)="",ECY=0
  F  S ECY=$O(^TMP("ECMPIDX",$J,ECY)) Q:'ECY  S ECMD=^(ECY) I $P(ECMD,U,2) D
  .S ECMDT($P(ECMD,U,2))=""
  S ECDT=$O(ECMDT(0)) ;use earliest date to evaluate classifications
@@ -151,7 +152,7 @@ VISIT ;ask visit info
  Q:+$G(ECOUT)
  ;
  ;- Store classification variables into ECPCE array
- F ECCLVAR="ECAO","ECIR","ECZEC","ECSC","ECMST","ECHNC","ECCV" I @($G(ECCLVAR))]"" S ECPCE($S($E(ECCLVAR,3,$L(ECCLVAR))'="ZEC":$E(ECCLVAR,3,$L(ECCLVAR)),1:"ENV"))=@ECCLVAR
+ F ECCLVAR="ECAO","ECIR","ECZEC","ECSC","ECMST","ECHNC","ECCV","ECSHAD" I @($G(ECCLVAR))]"" S ECPCE($S($E(ECCLVAR,3,$L(ECCLVAR))'="ZEC":$E(ECCLVAR,3,$L(ECCLVAR)),1:"ENV"))=@ECCLVAR
  Q
  ;
  ;

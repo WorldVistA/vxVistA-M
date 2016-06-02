@@ -1,5 +1,5 @@
-VAFCRPC ;BIR/DLR-RPC ENTRY POINTS ;10/24/02  13:07
- ;;5.3;Registration;**414,440,474,477,479**;Aug 13, 1993
+VAFCRPC ;BIR/DLR-RPC ENTRY POINTS ; 8/11/10 6:18pm
+ ;;5.3;Registration;**414,440,474,477,479,825**;Aug 13, 1993;Build 1
  ;;Routine uses the following supported IAs #2701 and #3027.
 PDAT(RETURN,VALUE,SSN) ;remote pdat display
  ;'value' will pass in either an icn, ssn, dfn or patient name
@@ -40,4 +40,8 @@ AUDIT(RETURN,VALUE,SSN,SDT,EDT) ;remote audit display
  ;M RETURN=@ARRAY
  D DSPPDAT^VAFCHFS(.RETURN)
  K ^TMP("VAFCHFS",$J)
+ Q
+AAUPD(RETURN,ARRAA) ;Assigning authority update
+ ;RPC: VAFC AA UPDATE
+ S RETURN=$$ADD^VAFCAAUT(.ARRAA,.ERR)
  Q

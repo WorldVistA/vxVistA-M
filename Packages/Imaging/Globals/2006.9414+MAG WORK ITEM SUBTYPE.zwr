@@ -1,0 +1,11 @@
+MAG WORK ITEM SUBTYPE
+ZWR
+^MAGV(2006.9414,0)="MAG WORK ITEM SUBTYPE^2006.9414^4^4"
+^MAGV(2006.9414,1,0)="DirectImport"
+^MAGV(2006.9414,2,0)="StagedMedia"
+^MAGV(2006.9414,3,0)="NetworkImport"
+^MAGV(2006.9414,4,0)="DicomCorrect"
+^MAGV(2006.9414,"B","DicomCorrect",4)=""
+^MAGV(2006.9414,"B","DirectImport",1)=""
+^MAGV(2006.9414,"B","NetworkImport",3)=""
+^MAGV(2006.9414,"B","StagedMedia",2)=""

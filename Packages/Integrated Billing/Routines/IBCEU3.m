@@ -1,8 +1,51 @@
 IBCEU3 ;ALB/TMP - EDI UTILITIES FOR 1500 CLAIM FORM ;12/29/05 9:58am
- ;;2.0;INTEGRATED BILLING;**51,137,155,323,348,371,400**;21-MAR-94;Build 52
+ ;;2.0;INTEGRATED BILLING;**51,137,155,323,348,371,400,432,488**;21-MAR-94;Build 184
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
-BOX19(IBIFN) ; Returns the text that should print in box 19 of the CMS-1500
+BOX19(IBIFN) ; New Box 19 added for patch 488.  This is for workman's comp?
+ ; This returns the Paperwork Attachment 
+ ;     Information in the following format:
+ ;   PWKNNFX12348907CHEY<3 Spaces>Next set if more than one on claim
+ ; PWK is the qualifier for data, followed by the appropriate Report Type 
+ ;Code, the appropriate Transmission Type Code, then the Attachment Control 
+ ;Number.  Do not enter spaces between qualifiers and data.
+ ;
+ ; This information can be at either the Line Level or the Claim Level.
+ ; Check all Lines first and print as many as possible - 71 characters 
+ ; maximum.  Then check the Claim Level
+ N IBRTP,LN,U8,IBBX19,IB19,DATA,I,DEL
+ S IB19="",DEL="   ",LN=0
+ ; Get rate type
+ S IBRTP=$P($G(^DGCR(399,IBIFN,0)),U,7)
+ ; Get data entered for box 19
+ S IBBX19=$P($G(^DGCR(399,IBIFN,"UF31")),U,3)
+ ; check the line Level first
+ I IBRTP=11 D
+ .F  S LN=$O(^DGCR(399,IBIFN,"CP",LN)) Q:LN=""  Q:LN'?.N  D
+ ..S DATA=$G(^DGCR(399,IBIFN,"CP",LN,1))
+ ..I $P(DATA,U,2)'="" S IB19=IB19_$S(IB19="":"",1:DEL)_$$FORMAT(DATA)
+ .; check the Claim Level next
+ .S DATA=""
+ .S DATA=$G(^DGCR(399,IBIFN,"U8"))
+ .I DATA'="" S IB19=IB19_$S(IB19="":"",1:DEL)_$$FORMAT(DATA)
+ ; If any room left add user entered box 19 info
+ I IBBX19'="",IB19'="",$L(IB19)<84 D
+ .F I=1:1:$L(IBBX19,DEL) S DATA=$P(IBBX19,DEL,I) I DATA'="" D
+ ..I $L(IB19_DEL_DATA)<84 S IB19=IB19_$S(IB19="":"",1:DEL)_DATA
+ I IB19="",IBBX19'="" S IB19=IBBX19
+ ;
+ Q IB19
+ ;
+FORMAT(DATA) ; format data for ouput
+ N ART,OUT
+ S ART=$P(DATA,U,2)
+ S ART=$P(^IBE(353.3,ART,0),U,1)
+ S OUT="PWK"_ART_$P(DATA,U,3)_$P(DATA,U,1)
+ Q OUT
+ ;
+ ; BELOW NO LONGER USED -> BAA *488*
+OBOX19(IBIFN) ; THIS IS NOLONGER USED.  IT WAS REPLACE WITH ABOVE.
+ ; Returns the text that should print in box 19 of the CMS-1500
  ;   for bill ien IBIFN
  ; Data is derived from a combo of data throughout
  ; the system and is limited to 80 characters.  The hierarchy for
@@ -21,7 +64,7 @@ BOX19(IBIFN) ; Returns the text that should print in box 19 of the CMS-1500
  ;   REMARKS FOUND IN BILL COMMENT FOR THE CLAIM, INCLUDING PROSTHETICS
  ;     DETAIL
  ;
- N IBGO,IBHOSP,IBID,IBLSDT,IBXDATA,IB19,IBHAID,IBXRAY,IBSPEC,Z,Z0,IBSUB,IBPRT,IBREM
+ N IBGO,IBHOSP,IBID,IBLSDT,IBXDATA,IB19,IBHAID,IBXRAY,IBSPEC,Z,Z0,IBSUB,IBPRT,IBREM,IBSPI
  S IB19="",IBGO=1
  S IBSUB=$S('$G(^TMP("IBTX",$J,IBIFN)):"BOX24",1:"OUTPT")
  I $D(IBXSAVE(IBSUB)) N IBXSAVE
@@ -63,6 +106,10 @@ BOX19(IBIFN) ; Returns the text that should print in box 19 of the CMS-1500
  K IBXDATA D F^IBCEF("N-SPECIAL PROGRAM",,,IBIFN)
  I IBXDATA=30 G:'$$LENOK("Medicare demonstration project for lung volume reduction surgery study",.IB19) BOX19Q
  ;
+ ; SPECIAL PROGRAM INDICATOR field code.
+ S IBSPI=$$GET1^DIQ(399,IBIFN_",",238,"E")
+ I IBSPI'="" S IBGO=$$LENOK(IBSPI,.IB19)
+ ;
  G:'IBGO BOX19Q
 NPRT K IBXDATA D F^IBCEF("N-HCFA 1500 BOX 19 RAW DATA",,,IBIFN)
  S IBREM=0
@@ -71,21 +118,27 @@ NPRT K IBXDATA D F^IBCEF("N-HCFA 1500 BOX 19 RAW DATA",,,IBIFN)
  I IBXDATA'="" G:'$$LENOK($S('IBREM:"Remarks:",1:"")_IBXDATA,.IB19) BOX19Q
  ;
 BOX19Q Q IB19
+ ; ALL OF THE ABOVE TO OBOX19 IS NO LONGER USED *488*
  ;
 LENOK(IBDATA,IB19) ; Add text IBDATA to box 19 string (IB19 passed by ref)
- ; Check length of box 19 data - truncate at 96 (max length)
+ ; Check length of box 19 data - truncate at 71 (max length)
  ; Returns 0 if max length reached or exceeded, otherwise, 1
+ ; Changed 96 to 71 for new 1500 form
  N OK
  S OK=1
  S IB19=IB19_$S(IB19'="":" ",1:"")_$G(IBDATA)
- I $L(IB19)'<96 S OK=0,IB19=$E(IB19,1,96) G LENOKQ
+ I $L(IB19)'<83 S OK=0,IB19=$E(IB19,1,71) G LENOKQ
 LENOKQ Q OK
  ;
 ASK19(IBIFN) ; Ask to display CMS-1500 box 19 data for current IBIFN
+ ;  changed to 71 length.
  N DIR,DIC,X,Y,DIE,DR,Z
  S DIR(0)="YA",DIR("B")="NO",DIR("A")="DISPLAY THE FULL CMS-1500 BOX 19?: "
  D ^DIR
- I Y=1 S Z=$$BOX19(IBIFN) W !!,?4,"19",?20,$E(Z,1,32) W:$L(Z)>32 !,?4,$E(Z,33,80),!
+ K DIR("B")
+ I Y=1 D
+ .S Z=$$BOX19(IBIFN) W !!,?4,"19",?45,$E(Z,1,23) W:$L(Z)>23 !,?4,$E(Z,24,71),!
+ .S DIR(0)="E",DIR("A")="Enter <RET> to Continue " W ! D ^DIR K DIR
  Q
  ;
 ONLAB(IBIFN) ; Functions returns 1 if the bill IBIFN is outside non-lab
@@ -148,10 +201,21 @@ TEXT24(FLD,IBXSAVE,IBXDATA,IBSUB) ; Format the text line of box 24 by fld
  .. S IBVAL=IBVAL_$$FO^IBCNEUT1($P(M,",",4),3)     ; mod#4
  .. Q
  . ;
- . I FLD="E" S IBVAL=$TR($P(IBDAT,U,7),","),IBS=45,IBE=48  ; diagnosis pointer
+ . I FLD="E" D
+ .. N NUM,IN,OUT,LET
+ .. S IN="1,2,3,4,5,6,7,8,9"
+ .. S OUT="A,B,C,D,E,F,G,H,I"
+ .. S IBVAL=$P(IBDAT,U,7)
+ .. F I=1:1:4 S NUM=$P(IBVAL,",",I) D
+ ... I NUM<10 S $P(LET,",",I)=$TR(NUM,IN,OUT)
+ ... I NUM=10 S $P(LET,",",I)="J"
+ ... I NUM=11 S $P(LET,",",I)="K"
+ ... I NUM=12 S $P(LET,",",I)="L"
+ .. S IBVAL=$TR(LET,","),IBS=45,IBE=48  ; diagnosis pointer
  . I FLD="F" S IBVAL=$P(IBDAT,U,8)*$P(IBDAT,U,9),IBS=49,IBE=57 D
  .. ; total charges
  .. S IBVAL=$$DOL^IBCEF77(IBVAL,9)
+ .. I $L(IBVAL)>9 S IBVAL=$E(IBVAL,$L(IBVAL)-8,$L(IBVAL))
  .. Q
  . ;
  . I FLD="G" S IBVAL=$S($P(IBDAT,U,12):$P(IBDAT,U,12),1:$P(IBDAT,U,9)),IBS=58,IBE=61 D
@@ -181,6 +245,29 @@ TEXT24(FLD,IBXSAVE,IBXDATA,IBSUB) ; Format the text line of box 24 by fld
  . Q
  ;
  Q
+ ;
+LINSPEC(IBIFN) ; Checks the specialities of line and claim level providers
+ ; called from IBCBB2 to check for Chiro codes & IBCBB9 to check for 99's on Medicare
+ ; Default = 99 if no valid SPEC code found for line and claim level provider
+ ; Get rendering for professional, attending for institutional
+ ; If multiple lines w/ rendering or attending, returns a string of spec codes
+ N Z,IBSPEC,IBINS,IBDT,IBCP,IBSPC
+ S IBSPC=""
+ S IBDT=$P($G(^DGCR(399,+IBIFN,"U")),U,1)  ; use statement from date
+ S IBINS=($$FT^IBCEF(IBIFN)=3)
+ D GETPRV^IBCEU(IBIFN,"ALL",.IBPRV)
+ S Z=$S('IBINS:3,1:4)
+ ; check claim level
+ I $G(IBPRV(Z,1))'="" D
+ . I $P(IBPRV(Z,1),U,3) S IBSPEC=$$SPEC^IBCEU($P($G(IBPRV(Z,1)),U,3),IBDT) I IBSPEC'="" S IBSPC=IBSPC_U_IBSPEC Q
+ . S Z0=+$O(^DGCR(399,IBIFN,"PRV","B",Z,0))
+ . I Z0 S IBSPEC=$P($G(^DGCR(399,IBIFN,"PRV",Z0,0)),U,8) S:IBSPEC="" IBSPEC=99 S IBSPC=IBSPC_U_IBSPEC
+ ; Check line level
+ S IBCP=0 F  S IBCP=$O(^DGCR(399,IBIFN,"CP",IBCP)) Q:'IBCP  D
+ .S Z0=+$O(^DGCR(399,IBIFN,"CP",IBCP,"LNPRV","B",Z,0))
+ .I Z0 S IBSPEC=$P($G(^DGCR(399,IBIFN,"CP",IBCP,"LNPRV",Z0,0)),U,8) S:IBSPEC="" IBSPEC="99" S IBSPC=IBSPC_U_IBSPEC
+ S:IBSPC="" IBSPC=99
+ Q IBSPC
  ;
 BILLSPEC(IBIFN,IBPRV) ;  Returns the specialty of the provider on bill IBIFN
  ; If IBPRV is supplied, returns the data for that provider, otherwise,
@@ -212,5 +299,6 @@ CHAMPVA(IBIFN) ; Returns 1 if the bill IBIFN has a CHAMPVA rate type
 FAC(IBIFN) ; Obsolete function.  Used by old output formatter field and data element N-RENDERING INSTITUTION
  Q ""
  ;
-MCR24K(IBIFN) ;Function returns MEDICARE id# for professional (CMS-1500) box 24k for bill IBIFN if appropriate
- Q $S($$FT^IBCEF(IBIFN)=2&$$MCRONBIL^IBEFUNC(IBIFN):"V"_$$MCRSPEC^IBCEU4(IBIFN,1)_$P($$SITE^VASITE,U,3),1:"")
+MCR24K(IBIFN,IBPRV) ;Function returns MEDICARE id# for professional (CMS-1500) box 24k for bill IBIFN if appropriate
+ ;*432/TAZ - Added IBPRV to allow circumvent the call to F^IBCEF("N-SPECIALTY CODE","IBZ",,IBIFN) in MCRSPEC^IBCEU4
+ Q $S($$FT^IBCEF(IBIFN)=2&$$MCRONBIL^IBEFUNC(IBIFN):"V"_$$MCRSPEC^IBCEU4(IBIFN,1,$G(IBPRV))_$P($$SITE^VASITE,U,3),1:"")

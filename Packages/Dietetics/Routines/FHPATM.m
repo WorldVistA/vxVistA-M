@@ -1,5 +1,18 @@
 FHPATM ; HISC/REL/JH - Patient Movements ;4/2/98  14:53
- ;;5.5;DIETETICS;;Jan 28, 2005
+ ;;5.5;DIETETICS;**21**;Jan 28, 2005;Build 6
+ ;Integration Agreements added FH*5.5*21 SLC/GDU
+ ;GLOBAL REFERENCE  FIELD REFERECE                        DBIA
+ ;^DG(405.4,D0      .01 NAME 0;1                          1380
+ ;^DGPM(APTT1,DFN,                                        2090
+ ;^DGPM(APTT2,DFN,                                        2090
+ ;^DGPM(APTT4,DFN,                                        2090
+ ;^DGPM(APID,DFN,INVERSE DATE_AS,DA                       2090
+ ;^DGPM(DO,0        .03 PATIENT 0;3                       2090
+ ;                  .06 WARD LOCATION 0;6                 2090
+ ;                  .07 ROOM-BED 0;7                      2090
+ ;                  .14 ADMISSION/CHECK-IN MOVEMENT 0;14  2090
+ ;                  .18 MAS MOVEMENT 0;18                 2090
+ ;^DIC(42,DO,0)     .015 DIVISION 0;11                    10039
  S DAT=0 D HDR
 P1 S %DT="AEXT",%DT("A")="START with DATE@TIME: " W ! D ^%DT G:Y<1 KIL S DAT=Y
  I DAT>NOW W "  [ Date cannot be in Future ]" G P1

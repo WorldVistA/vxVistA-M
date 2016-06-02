@@ -1,6 +1,10 @@
-YTQPXRM7 ;ALB/ASF- PSYCH TEST API FOR CLINICAL REMINDERS ; 7/12/07 5:07pm
- ;;5.01;MENTAL HEALTH;**85**;Dec 30, 1994;Build 48
+YTQPXRM7 ;ALB/ASF- PSYCH TEST API FOR CLINICAL REMINDERS ; 2/22/08 1:47pm
+ ;;5.01;MENTAL HEALTH;**85,96**;Dec 30, 1994;Build 46
  ;Reference to ^PXRMINDX(601.2, supported by DBIA #4114
+ ;Reference to ^DPT( supported by DBIA #10035
+ ;Reference to ^VA(200, supported by DBIA #10060
+ ;Reference to ^XUSEC( supported by DBIA #10076
+ ;Reference to ^XLFDT APIs supported by DBIA #10103
 SET(X) ;
  S N=N+1
  S YSDATA(N)=X
@@ -32,7 +36,7 @@ LEGDAS(YSDATA,DAS) ;scoring for clinical reminder DAS entry
  I YSCODE'?1N.N D ERR("bad test code") Q  ;-->OUT
  S YSCODEN=$P(^YTT(601,YSCODE,0),U)
  S DFN=$P(DAS,";")
- I DFN'?1N.N D ERR("bad dfn") Q  ;--> OUT
+ I DFN'?1N.NP D ERR("bad dfn") Q  ;--> OUT
  S (IFN,YSADATE)=$P(DAS,";",5)
  I IFN'>0 D ERR("bad IFN") Q  ;-->out
  I YSCODEN="GAF" D GAF Q  ;--> out

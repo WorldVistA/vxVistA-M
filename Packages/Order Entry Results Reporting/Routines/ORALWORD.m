@@ -1,5 +1,5 @@
 ORALWORD ; SLC/JMH - Utilities for Checking if an order can be ordered ; 5/10/07 5:55am
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**243**;Dec 17, 1997;Build 242
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**243**;Dec 17, 1997;Build 29
  ;
 ALLWORD(ORY,DFN,ORX,ORTYPE,PROV) ;
  N OROI,ORYS,QOIEN,QPIEN,ORCLOZ,QOAA
@@ -27,6 +27,9 @@ ALLWORD(ORY,DFN,ORX,ORTYPE,PROV) ;
  N ORQUIT
  S ORQUIT=0
  I '$G(PROV) S PROV=DUZ
+ ;DSS/RBN/SMP - BEGIN MOD
+ N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
+ ;DSS/SMP - END MOD
  I $G(PROV) D
  .I '$L($$DEA^XUSER(,PROV)) D
  ..S ORQUIT=1,ORY=1
@@ -34,12 +37,18 @@ ALLWORD(ORY,DFN,ORX,ORTYPE,PROV) ;
  ..S ORY(1)="*** You are not authorized to place Clozapine orders."
  ..S ORY(2)="You must have a DEA#.  Please contact your"
  ..S ORY(3)="CAC or IRM for more information. ***"
+ ..;DSS/SMP - BEGIN MOD
+ ..I VFD S ORY(3)="CAC or ITS for more information. ***"
+ ..;DSS/SMP - END MOD
  .Q:ORQUIT
  .I '$D(^XUSEC("YSCL AUTHORIZED",PROV)) D
  ..S ORQUIT=1,ORY=1
  ..S ORY(1)="*** You are not authorized to place Clozapine orders."
  ..S ORY(2)="You must hold key YSCL AUTHORIZED.  Please contact your"
  ..S ORY(3)="CAC or IRM for more information on this key. ***"
+ ..;DSS/SMP - BEGIN MOD
+ ..I VFD S ORY(3)="CAC or ITS for more information on this key. ***"
+ ..;DSS/SMP - END MOD
  Q:ORQUIT
  ;  if is a cloz med , check if patient (DFN) can have a clozapine med
  S ORYS=$$CL^YSCLTST2(DFN)
@@ -55,16 +64,26 @@ ALLWORD(ORY,DFN,ORX,ORTYPE,PROV) ;
  I +ORYS<0 D  Q
  .S ORY(1)="*** This patient is not registered in the clozapine treatment "
  .S ORY(2)="program or has been discontinued from the program and must "
- .S ORY(3)="have a new registration number assigned.  Contact the NCCC to "
- .S ORY(4)="get this patient registered in the program. ***"
+ .;DSS/SMP - BEGIN MOD
+ .I VFD D
+ ..S ORY(3)="have a new registration number assigned. ***"
+ .E  D
+ ..S ORY(3)="have a new registration number assigned.  Contact the NCCC to "
+ ..S ORY(4)="get this patient registered in the program. ***"
+ .;DSS/SMP - END MOD
  ;problem with lab tests
  I +ORYS=0 D  Q
  .I $$OVERRIDE^YSCLTST2(DFN) S ORY=0_U_ORCLOZ,ORY(0)=U_ORCLOZ D BEFQUIT  Q  ;override allowed
  .N COUNT S COUNT=0
  .S COUNT=COUNT+1,ORY(COUNT)="*** This clozapine drug may not be dispensed to the patient at this "
  .S COUNT=COUNT+1,ORY(COUNT)="time based on the available lab tests related to the clozapine "
- .S COUNT=COUNT+1,ORY(COUNT)="treatment program. Please contact the NCCC to request an override in"
- .S COUNT=COUNT+1,ORY(COUNT)="order to proceed with dispensing this drug. ***"
+ .;DSS/SMP - BEGIN MOD
+ .I VFD D
+ ..S COUNT=COUNT+1,ORY(COUNT)="treatment program. ***"
+ .E  D
+ ..S COUNT=COUNT+1,ORY(COUNT)="treatment program. Please contact the NCCC to request an override in"
+ ..S COUNT=COUNT+1,ORY(COUNT)="order to proceed with dispensing this drug. ***"
+ .;DSS/SMP - END MOD
  .Q:'$L($P(ORYS,U,3))!('$L($P(ORYS,U,5)))
  .S COUNT=COUNT+1,ORY(COUNT)="Related Lab Test(s)"
  .S COUNT=COUNT+1,ORY(COUNT)="==================="

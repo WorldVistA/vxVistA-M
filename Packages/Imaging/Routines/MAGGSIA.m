@@ -1,5 +1,5 @@
-MAGGSIA ;WOIFO/GEK - Imaging RPC Broker calls. Add/Modify Image entry ; [ 12/27/2000 10:49 ]
- ;;3.0;IMAGING;**7,21,8,59**;Nov 27, 2007;Build 20
+MAGGSIA ;WOIFO/GEK/SG - Imaging RPC Broker calls. Add/Modify Image entry ; 5/1/08 10:43am
+ ;;3.0;IMAGING;**7,21,8,59,93**;Dec 02, 2009;Build 163
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
@@ -48,8 +48,7 @@ ADD(MAGRY,MAGARRAY) ; RPC [MAG4 ADD IMAGE]
  ;----------------------------------------------------------------
  N MAGGFDA,MAGGDRV,MAGGRP,MAGCHLD,GRPCT,MAGGDA,MAGGFNM
  N MAGGWP,MAGERR,MAGREF,MAGDHASH,MAGTEMP,MAGACT,MAGGIEN,MAGGXE
- N GIEN,DIEN,NEWIEN ;3.0
- N I,J,X,Y,Z,WPCT
+ N NEWIEN,I,J,X,Y,Z,WPCT
  ;
  N $ETRAP,$ESTACK S $ETRAP="D ERRA^MAGGSERR"
  I ($D(MAGARRAY)<10) S MAGRY(0)="0^No input data, Operation CANCELED" Q
@@ -67,12 +66,7 @@ ADD(MAGRY,MAGARRAY) ; RPC [MAG4 ADD IMAGE]
  ;  Check on some possible problems: required fields, create default values etc.
  D PRE^MAGGSIA1(.MAGERR,.MAGGFDA,MAGGRP,.MAGGDRV,.MAGREF) I $L(MAGERR) S MAGRY(0)=MAGERR Q
  ; Locking Patch 8. Get latest Image IEN and Deleted IEN take the greater of the two.
- S GIEN=$O(^MAG(2005," "),-1)+1
- S DIEN=$O(^MAG(2005.1," "),-1)+1
- S NEWIEN=$S(GIEN>DIEN:GIEN,1:DIEN)
-LOCK L +^MAG(2005,NEWIEN):0 E  S NEWIEN=NEWIEN+1 G LOCK ; lock it, or get next
- I $D(^MAG(2005,NEWIEN)) L -^MAG(2005,NEWIEN) S NEWIEN=NEWIEN+1 G LOCK ; if it exists, get next
- S MAGGIEN(1)=NEWIEN
+ S (MAGGIEN(1),NEWIEN)=$$NEWIEN^MAGGI12()  ; SG - MAG*3*93
  D UPDATE^DIE("S","MAGGFDA","MAGGIEN","MAGGXE")
  ;
  ;  ERROR: QUIT

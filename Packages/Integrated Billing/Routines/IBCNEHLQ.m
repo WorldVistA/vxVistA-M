@@ -1,5 +1,5 @@
 IBCNEHLQ ;DAOU/ALA - HL7 RQI Message ;17-JUN-2002
- ;;2.0;INTEGRATED BILLING;**184,271,300,361,416**;21-MAR-94;Build 58
+ ;;2.0;INTEGRATED BILLING;**184,271,300,361,416,438,467,497**;21-MAR-94;Build 120
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  ;**Program Description**
@@ -19,20 +19,31 @@ EN ;  Entry Point
  ;    FRDT = Freshness Date
  ;
 PID ; Patient Identification Segment
- N VAFSTR,ICN,NM,I
+ N VAFSTR,ICN,NM,I,PID11,EDQ
  S VAFSTR=",1,7,8,11,",DFN=+$G(DFN)
  S PID=$$EN^VAFHLPID(DFN,VAFSTR,1)
+ S PID11=$P(PID,HLFS,12)
+ I $P(PID11,HLECH,2)="""""" D
+ . S $P(PID11,HLECH,2)=""
+ . S $P(PID,HLFS,12)=PID11
  ; Encode special characters into Name and address pieces
  ; **NOTE: If $$EN^VAFHLPID should, in the future, return more than 11 pieces than the lines below may
  ;         need to be modified as they currently expect 11 pieces to be returned.
  I DFN D
- . S NM("FILE")=2,NM("IENS")=DFN,NM("FIELD")=.01
- . S NM=$$HLNAME^XLFNAME(.NM,"",$E(HLECH)),NM=$S(NM]"":NM,1:HLQ)
- . S I=$L(NM,HLFS),NM=$$ENCHL7(NM),$P(PID,HLFS,6,5+I)=NM
- . S $P(PID,HLFS,12,99)=$$ENCHL7($P(PID,HLFS,12,99))
- . S ICN=$P($G(^DPT(DFN,"MPI")),U,1)
- . S $P(PID,HLFS,4)=ICN_HLECH_HLECH_HLECH_"USVHA"_HLECH_"NI"_HLECH_"~"_DFN_HLECH_HLECH_HLECH_"USVHA"_HLECH_"PI"_HLECH_$P($$SITE^VASITE,U,3)_HLECH
- . Q
+ .; try to get name of insured from NAME OF INSURED
+ .I EXT'=1,IRIEN S NM=$P($G(^DPT(DFN,.312,IRIEN,7)),U,1)
+ .I EXT=1,BUFF,$G(NM)="" S NM=$P($G(^IBA(355.33,BUFF,91)),U)
+ .S NM=$$HLNAME^HLFNC(NM,HLECH)
+ .; if unsuccessful, get patient name from 2/.01
+ .I NM="" D
+ ..S NM("FILE")=2,NM("IENS")=DFN,NM("FIELD")=.01
+ ..S NM=$$HLNAME^XLFNAME(.NM,"",$E(HLECH)),NM=$S(NM]"":NM,1:HLQ)
+ ..Q
+ .S I=$L(NM,HLFS),NM=$$ENCHL7(NM),$P(PID,HLFS,6,5+I)=NM
+ .S $P(PID,HLFS,12,99)=$$ENCHL7($P(PID,HLFS,12,99))
+ .S ICN=$P($G(^DPT(DFN,"MPI")),U,1)
+ .S $P(PID,HLFS,4)=ICN_HLECH_HLECH_HLECH_"USVHA"_HLECH_"NI"_HLECH_"~"_DFN_HLECH_HLECH_HLECH_"USVHA"_HLECH_"PI"_HLECH_$P($$SITE^VASITE,U,3)_HLECH
+ .Q
  S FRDT=$$HLDATE^HLFNC($G(FRDT))
  S $P(PID,HLFS,34)=FRDT
  Q
@@ -61,7 +72,8 @@ GT1 ;  Guarantor Segment
  . I IRIEN="" Q
  . S WHO=$P($G(^DPT(DFN,.312,IRIEN,0)),U,6)
  . I WHO="v"!(WHO="") Q
- . S NM=$P($G(^DPT(DFN,.312,IRIEN,0)),U,17)
+ . ;S NM=$P($G(^DPT(DFN,.312,IRIEN,0)),U,17)  ; WCJ;IB*2.0*497
+ . S NM=$P($G(^DPT(DFN,.312,IRIEN,7)),U,1)  ; WCJ;IB*2.0*497
  . S NM=$$HLNAME^HLFNC(NM,HLECH)
  . S NM=$$ENCHL7(NM)
  . S $P(GT1,HLFS,3)=NM_HLECH_HLECH_HLECH
@@ -87,23 +99,25 @@ GT1 ;  Guarantor Segment
  Q
  ;
 IN1 ;  Insurance Segment
- NEW EFFDT,EXPDT,PREL,ADMN,ADMDT,IENS
- S IN1="",SRVDT=$$HLDATE^HLFNC(SRVDT)
+ N EFFDT,ELIGDT,EXPDT,PREL,ADMN,ADMDT,IENS
+ S IN1=""
  ;
  ;  If the data was extracted from Buffer get specifics from Buffer file
  I EXT=1 D
- . S PREL=$P($G(^IBA(355.33,BUFF,60)),U,14)
- . S $P(IN1,HLFS,2)=$S(PREL=18:$$SCRUB($G(SUBID)),1:$$SCRUB($G(PATID)))
- . I PAYR'=$$FIND1^DIC(365.12,"","X","~NO PAYER") D
- .. S $P(IN1,HLFS,3)=$$ENCHL7($P(^IBE(365.12,PAYR,0),U,2))_HLECH_HLECH_HLECH_"USVHA"_HLECH_"VP"_HLECH
- .. S $P(IN1,HLFS,4)=$$ENCHL7($P(^IBE(365.12,PAYR,0),U,1))
- . S $P(IN1,HLFS,8)=$$ENCHL7($P($G(^IBA(355.33,BUFF,40)),U,3))
- . S $P(IN1,HLFS,9)=$$ENCHL7($P($G(^IBA(355.33,BUFF,40)),U,2))
- . S EFFDT=$P($G(^IBA(355.33,BUFF,60)),U,2),EFFDT=$$HLDATE^HLFNC(EFFDT)
- . S EXPDT=$P($G(^IBA(355.33,BUFF,60)),U,3),EXPDT=$$HLDATE^HLFNC(EXPDT)
- . S $P(IN1,HLFS,12)=EFFDT
- . S $P(IN1,HLFS,13)=EXPDT
- . S $P(IN1,HLFS,17)=$$PATREL(PREL)
+ .S PREL=$P($G(^IBA(355.33,BUFF,60)),U,14)
+ .S ELIGDT=$P($G(TRANSR),U,12) I ELIGDT=DT S ELIGDT=""
+ .S $P(IN1,HLFS,2)=$S(PREL=18:$$SCRUB($G(SUBID)),PREL="":$$SCRUB($G(SUBID)),1:$$SCRUB($G(PATID)))
+ .I PAYR'=$$FIND1^DIC(365.12,"","X","~NO PAYER") D
+ ..S $P(IN1,HLFS,3)=$$ENCHL7($P(^IBE(365.12,PAYR,0),U,2))_HLECH_HLECH_HLECH_"USVHA"_HLECH_"VP"_HLECH
+ ..S $P(IN1,HLFS,4)=$$ENCHL7($P(^IBE(365.12,PAYR,0),U,1))
+ .S $P(IN1,HLFS,8)=$$ENCHL7($P($G(^IBA(355.33,BUFF,40)),U,3))
+ .S $P(IN1,HLFS,9)=$$ENCHL7($P($G(^IBA(355.33,BUFF,40)),U,2))
+ .S EFFDT=$P($G(^IBA(355.33,BUFF,60)),U,2),EFFDT=$$HLDATE^HLFNC(EFFDT)
+ .S EXPDT=$P($G(^IBA(355.33,BUFF,60)),U,3),EXPDT=$$HLDATE^HLFNC(EXPDT)
+ .S $P(IN1,HLFS,12)=EFFDT
+ .S $P(IN1,HLFS,13)=EXPDT
+ .S $P(IN1,HLFS,17)=$$PATREL(PREL)
+ .S $P(IN1,HLFS,26)=$$HLDATE^HLFNC(ELIGDT)
  ;
  ;  If the data was extracted from non-Buffer, check Patient file
  I EXT'=1 D
@@ -114,7 +128,7 @@ IN1 ;  Insurance Segment
  . S $P(IN1,HLFS,12)=EFFDT
  . S $P(IN1,HLFS,13)=EXPDT
  . S PREL=$P($G(^DPT(DFN,.312,IRIEN,4)),U,3)
- . S $P(IN1,HLFS,2)=$S(PREL=18:$$SCRUB($G(SUBID)),1:$$SCRUB($G(PATID)))
+ . S $P(IN1,HLFS,2)=$S(PREL=18:$$SCRUB($G(SUBID)),PREL="":$$SCRUB($G(SUBID)),1:$$SCRUB($G(PATID)))
  . I PAYR'=$$FIND1^DIC(365.12,"","X","~NO PAYER") D
  .. S $P(IN1,HLFS,3)=$$ENCHL7($P(^IBE(365.12,PAYR,0),U,2))_HLECH_HLECH_HLECH_"USVHA"_HLECH_"VP"_HLECH
  .. S $P(IN1,HLFS,4)=$$ENCHL7($P(^IBE(365.12,PAYR,0),U,1))
@@ -125,18 +139,15 @@ IN1 ;  Insurance Segment
  ;
  I IN1="" Q
  ;
- I $G(QUERY)="I",$P(IN1,HLFS,17)'=18 S $P(IN1,HLFS,17)=18
  I $P(IN1,HLFS,17)="" S $P(IN1,HLFS,17)=18
- ;
- ;  Set the admission date if patient currently admitted
- S ADMN=$P($G(^DPT(DFN,.105)),U,1) I ADMN'="" D
- . S ADMDT=$P(^DGPM(ADMN,0),U,1),ADMDT=$$HLDATE^HLFNC(ADMDT)
- . S $P(IN1,HLFS,24)=ADMDT
- ;
- ;  Set the service date
- S $P(IN1,HLFS,26)=SRVDT
  S $P(IN1,HLFS,1)=1
  S IN1="IN1"_HLFS_IN1
+ Q
+ ;
+NTE ;  NTE Segment
+ ; TRANSR is 0 node of TQ, set in PROC^IBCNEDEP
+ S NTE=$$EXTERNAL^DILFD(365.1,.2,,$P($G(TRANSR),U,20)) ; service code from 365.1/.2
+ S NTE="NTE"_HLFS_HLFS_HLFS_NTE
  Q
  ;
 CHK ;  Check for spouse or other information in the Patient Relation File

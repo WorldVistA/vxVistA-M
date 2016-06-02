@@ -1,9 +1,11 @@
-HLOPROC1 ;ALB/CJM/OAK/PIJ- Process Manager - 10/4/94 1pm ;08/11/2008
- ;;1.6;HEALTH LEVEL SEVEN;**126,138**;Oct 13, 1995;Build 34
+HLOPROC1 ;ALB/CJM/OAK/PIJ- Process Manager - 10/4/94 1pm ;12/30/2010
+ ;;1.6;HEALTH LEVEL SEVEN;**126,138,139,147,153**;Oct 13, 1995;Build 11
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  ;
 GETWORK(PROCESS) ;
- ;finds a process that needs to be started
+ ;This is the GETWORK function for the process manager
+ ;Finds a process that needs to be started
  ;
  N NAME,IEN,GOTWORK
  ;this is how  HL7 can be stopped via Taskman
@@ -15,14 +17,15 @@ GETWORK(PROCESS) ;
  .Q:'$$GETPROC(IEN,.PROC)
  .Q:PROC("VMS SERVICE")
  .Q:PROC("NAME")="PROCESS MANAGER"
+ .Q:'PROC("ACTIVE")
  .S PROCESS("COUNT")=1
  .S QUEUED=+$G(^HLC("HL7 PROCESS COUNTS","QUEUED",PROC("NAME")))
  .S:QUEUED<0 QUEUED=0
  .S RUNNING=+$G(^HLC("HL7 PROCESS COUNTS","RUNNING",PROC("NAME")))
  .S:RUNNING<0 RUNNING=0
  .S COUNT=QUEUED+RUNNING
- .I COUNT<PROC("MINIMUM") S GOTWORK=1,PROCESS("IEN")=IEN,PROCESS("NAME")=PROC("NAME"),PROCESS("COUNT")=(PROC("MINIMUM")-COUNT) Q
- .I COUNT<PROC("MAXIMUM"),$$FMDIFF^XLFDT($$NOW^XLFDT,PROC("LAST DT/TM"),2)>PROC("WAIT SECONDS"),'QUEUED S GOTWORK=1,PROCESS("IEN")=IEN,PROCESS("NAME")=PROC("NAME"),PROCESS("COUNT")=1 Q
+ .I COUNT<PROC("MINIMUM") S GOTWORK=1,PROCESS("IEN")=IEN,PROCESS("NAME")=PROC("NAME"),PROCESS("COUNT")=(PROC("MINIMUM")-COUNT),PROCESS("NODE")=PROC("NODE") Q
+ .I COUNT<PROC("MAXIMUM"),$$FMDIFF^XLFDT($$NOW^XLFDT,PROC("LAST DT/TM"),2)>PROC("WAIT SECONDS"),'QUEUED S GOTWORK=1,PROCESS("IEN")=IEN,PROCESS("NAME")=PROC("NAME"),PROCESS("COUNT")=1,PROCESS("NODE")=PROC("NODE") Q
  I 'GOTWORK K PROCESS
  Q GOTWORK
  ;
@@ -32,7 +35,7 @@ DOWORK(PROCESS) ;
  ;don't start a new task if stopped
  Q:$$CHKSTOP^HLOPROC
  ;
- N ZTRTN,ZTDESC,ZTSAVE,ZTIO,ZTSK,I,ZTDTH
+ N ZTRTN,ZTDESC,ZTSAVE,ZTIO,ZTSK,I,ZTDTH,ZTCPU
  S:'$G(PROCESS("COUNT")) PROCESS("COUNT")=1
  F I=1:1:PROCESS("COUNT") D
  .S ZTRTN="PROCESS^HLOPROC"
@@ -40,6 +43,7 @@ DOWORK(PROCESS) ;
  .S ZTIO=""
  .S ZTSAVE("PROCNAME")=PROCESS("NAME")
  .S ZTDTH=$H
+ .I $L(PROCESS("NODE")) S ZTCPU=PROCESS("NODE")
  .D ^%ZTLOAD
  .I $D(ZTSK) D
  ..;lock before changing counts
@@ -59,12 +63,18 @@ GETPROC(IEN,PROCESS) ;
  Q:NODE="" 0
  S PROCESS("NAME")=$P(NODE,"^")
  S PROCESS("IEN")=IEN
+ S PROCESS("ACTIVE")=$P(NODE,"^",2)
  S PROCESS("MINIMUM")=+$P(NODE,"^",3)
  S PROCESS("MAXIMUM")=+$P(NODE,"^",4)
  S PROCESS("WAIT SECONDS")=+($P(NODE,"^",5))*60
  I 'PROCESS("WAIT SECONDS") S PROCESS("WAIT SECONDS")=1000
  S PROCESS("LAST DT/TM")=$P(NODE,"^",6)
  S PROCESS("VMS SERVICE")=$P(NODE,"^",15)
+ S PROCESS("NODE")=$P(NODE,"^",16)
+ I PROCESS("NODE") D
+ .S PROCESS("NODE")=$P($G(^%ZIS(14.7,PROCESS("NODE"),0)),"^")
+ E  S PROCESS("NODE")=""
+ I '$L(PROCESS("NODE")) S PROCESS("NODE")=$$GETNODE^HLOSITE
  Q 1
  ;
 STOPHL7 ;shut down HLO HL7
@@ -78,33 +88,21 @@ STOPHL7 ;shut down HLO HL7
  D CHKQUED
  Q
  ;
-STARTHL7 ; Jim's changes
- ;start HL7 system, but first do some cleanup
+STARTHL7 ;
+ ;start HL7 system
  ;
- ;*****Start HL*1.6*138
- N STOPPED
- D STOPHL7^HLOPROC1
- L +^HLTMP("PROCESS MANAGER"):60
- S STOPPED=$T
- D RECOUNT() ;checks list of processes, both running and queued
- I STOPPED D
- .N ALLDEAD
- .;wait a little while to see if all the processes stop 
- .F I=1:1:4 S ALLDEAD=$S(($O(^HLTMP("HL7 RUNNING PROCESSES",""))=""):1,1:0) Q:ALLDEAD  H 5
- .Q:'ALLDEAD  ;giveup on recounting queues - processes
- .;
- .;start HL*1.6*138
- .D RESET ;;recounts the queues and sets counts
- .;*****End HL*1.6*138
- ;set the system status flag to active
- S $P(^HLD(779.1,1,0),"^",9)=1
- ;
- ;start the HL7 Process Manager, which will start everything else
  N PROCESS
- S PROCESS("NAME")="PROCESS MANAGER"
- S PROCESS("IEN")=$O(^HLD(779.3,"B","PROCESS MANAGER",0))
- L -^HLTMP("PROCESS MANAGER") ;signals that HLO process manager can be started again
- D DOWORK(.PROCESS)
+ S $P(^HLD(779.1,1,0),"^",9)=1
+ D RECOUNT()
+ D RESET
+ ;
+ L +^HLTMP("PROCESS MANAGER"):20
+ ;if the lock was obtained then the Process Manager isn't running
+ I $T D
+ .L -^HLTMP("PROCESS MANAGER")
+ .S PROCESS("IEN")=$O(^HLD(779.3,"B","PROCESS MANAGER",0))
+ .D GETPROC(PROCESS("IEN"),.PROCESS)
+ .D DOWORK(.PROCESS)
  Q
  ;
 QUIT1(COUNT) ;just returns 1 as function value first time around,then 0, insuring that the DO WORK function is called just once
@@ -181,7 +179,6 @@ RECOUNT(RECOUNT) ;check that the processes that are supposed to be running actua
  D CNTLIVE,CNTQUED
  Q
  ;
- ;*****Start HL*1.6*138 PIJ 10/26/2007
 RESET ;
  N CTR,DT,LINK,QUEUE,MSGIEN
  K ^HLTMP("FAILING LINKS")
@@ -189,11 +186,21 @@ RESET ;
  F  S LINK=$O(^HLB("QUEUE","OUT",LINK)) Q:LINK=""  D
  . S DT=$G(^HLB("QUEUE","OUT",LINK))
  . I DT'="" S ^HLTMP("FAILING LINKS",LINK)=DT ;; down link (has a DT/TM)
+ Q
  ;
-QCNT ; reset QUEUECOUNT
- N LOCK,FROM
- N $ETRAP,$ESTACK S $ETRAP="G ERROR^HLOPROC1"
- D RCNT^HLOSITE("S") ;; SET RECOUNT FLAG on
+ERROR ;
+ ;cleanup if the error occurred during queue recount
+ L -^HLTMP("PROCESS MANAGER")
+ D:$G(HLON) STARTHL7
+ D RCNT^HLOSITE("U")
+ I $L($G(LOCK)) L -@LOCK
+ D ^%ZTER
+ D UNWIND^%ZTER
+ Q
+ ;*****End HL*1.6*138
+QCOUNT(WORK) ;count messages pending on all the queues
+ N LOCK,FROM,LINK,QUEUE
+ D RCNT^HLOSITE("S") ; Set RECOUNT FLAG on
  ;
  ; recount each OUT queue
  ;first delete counters for non-existent queues
@@ -202,7 +209,7 @@ QCNT ; reset QUEUECOUNT
  . S QUEUE=""
  . F  S QUEUE=$O(^HLC("QUEUECOUNT","OUT",LINK,QUEUE)) Q:QUEUE=""  I '$O(^HLB("QUEUE","OUT",LINK,QUEUE,0)) D
  . . S LOCK=$NA(RECOUNT("OUT",LINK,QUEUE))
- . . L +@LOCK:1 Q:'$T  ;should not fail, but if it does skip recount for this queue
+ . . L +@LOCK:1 Q:'$T  ;If lock not obtained skip recount for this queue
  . .I '$O(^HLB("QUEUE","OUT",LINK,QUEUE,0)) S ^HLC("QUEUECOUNT","OUT",LINK,QUEUE)=0
  . . L -@LOCK
  ;
@@ -212,7 +219,7 @@ QCNT ; reset QUEUECOUNT
  . S QUEUE=""
  . F  S QUEUE=$O(^HLB("QUEUE","OUT",LINK,QUEUE)) Q:QUEUE=""  D
  . . S LOCK=$NA(RECOUNT("OUT",LINK,QUEUE))
- . . L +@LOCK:1 Q:'$T  ;should not fail, but if it does skip recount for this queue
+ . . L +@LOCK:1 Q:'$T  ;If lock not obtained skip recount for this queue
  . . S (MSGIEN,CTR)=0
  . . F  S MSGIEN=$O(^HLB("QUEUE","OUT",LINK,QUEUE,MSGIEN)) Q:MSGIEN=""  S CTR=CTR+1
  . . S ^HLC("QUEUECOUNT","OUT",LINK,QUEUE)=CTR
@@ -242,8 +249,6 @@ QCNT ; reset QUEUECOUNT
  . S ^HLC("QUEUECOUNT","SEQUENCE",QUEUE)=CTR
  . L -@LOCK
  ;
- ;recount flag not needed anymore
- D RCNT^HLOSITE("U")
  ;
  ; now caculate the all-inclusive counter
  S QUEUE=""
@@ -253,30 +258,30 @@ QCNT ; reset QUEUECOUNT
  ;
  ;
  ; recount IN queues
- ;the infilers and server should currently be stopped, so there is no contention for these data structures
  ;
  ;first delete counts for non-existent queues
  S FROM=""
  F  S FROM=$O(^HLC("QUEUECOUNT","IN",FROM)) Q:FROM=""  D
  . S QUEUE=""
- . F  S QUEUE=$O(^HLC("QUEUECOUNT","IN",FROM,QUEUE)) Q:QUEUE=""  I '$O(^HLB("QUEUE","IN",FROM,QUEUE,0)) S ^HLC("QUEUECOUNT","IN",FROM,QUEUE)=0
+ . F  S QUEUE=$O(^HLC("QUEUECOUNT","IN",FROM,QUEUE)) Q:QUEUE=""  I '$O(^HLB("QUEUE","IN",FROM,QUEUE,0)) D
+ . . S LOCK=$NA(RECOUNT("IN","FROM",QUEUE))
+ . . L +@LOCK:1 Q:'$T  ;If lock not obtained skip recount for this queue
+ . .I '$O(^HLB("QUEUE","IN",FROM,QUEUE,0)) S ^HLC("QUEUECOUNT","IN",FROM,QUEUE)=0
+ . . L -@LOCK
  ;
  ;now count the queues
  S FROM=""
  F  S FROM=$O(^HLB("QUEUE","IN",FROM)) Q:FROM=""  D
  . S QUEUE=""
  . F  S QUEUE=$O(^HLB("QUEUE","IN",FROM,QUEUE)) Q:QUEUE=""  D
+ . . S LOCK=$NA(RECOUNT("IN","FROM",QUEUE))
+ . . L +@LOCK:1 Q:'$T  ;If lock not obtained skip recount for this queue
  . . S (MSGIEN,CTR)=0
  . . F  S MSGIEN=$O(^HLB("QUEUE","IN",FROM,QUEUE,MSGIEN)) Q:MSGIEN=""  D
  . . . S CTR=CTR+1
  . . S ^HLC("QUEUECOUNT","IN",FROM,QUEUE)=CTR
+ . . L -@LOCK
  ;
- Q
-ERROR ;
- ;cleanup if the error occurred during queue recount
+ ;recount flag not needed anymore
  D RCNT^HLOSITE("U")
- I $L($G(LOCK)) L -@LOCK
- D ^%ZTER
- D UNWIND^%ZTER
  Q
- ;*****End HL*1.6*138

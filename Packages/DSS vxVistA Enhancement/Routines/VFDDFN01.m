@@ -1,5 +1,5 @@
-VFDDFN01 ;DSS/LM,JG - PATIENT lookup (Cont) ; 11/13/2013 16:00
- ;;2011.1.3;DSS,INC VXVISTA OPEN SOURCE;**12**;11 Jun 2013;Build 2
+VFDDFN01 ;DSS/LM,SMP - PATIENT lookup (Cont) ; 04/25/2014 16:40
+ ;;2013.0;DSS,INC VXVISTA OPEN SOURCE;**10**;11 Jun 2013;Build 3
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  ; This routine is only invoked via the VFDDFN routine
@@ -24,7 +24,7 @@ OUT ; exit extrinsic function (either $$ID or $$DFN)
  Q X
  ;
 DFN ; convert alternate id to dfn
- N A,I,J,L,X,Y,Z,ALTID,DFN,PARM,SSN
+ N A,I,J,L,X,Y,Z,ALTID,CNT,DFN,PARM,SSN
  S X=0,Y=$$SETUP,AID=$G(AID) I AID="" S X=$$ERR(4) G OUT
  ; build ALTID()
  F  S DFN=$O(^DPT("VFD",AID,DFN)) Q:'DFN  S I=0 D
@@ -37,6 +37,12 @@ DFN ; convert alternate id to dfn
  ; altid(0)>1, are all on a single patient?
  S X=$O(ALTID("B",0)),Y=$O(ALTID("B",X)) I Y="" G OUT
  ;
+ ; at this point, more than 1 DFN found, check type
+ I $G(TYPE)'="" S CNT=0 D
+ .S DFN=0 F  S DFN=$O(ALTID("B",DFN)) Q:'DFN  D
+ ..I $D(ALTID("B",DFN,"TYPE",TYPE)) S X=DFN,CNT=CNT+1
+ I $G(CNT)=1 G OUT
+ ;
  ; at this point, more than 1 DFN found which match input
  ; check list of defaults
  I $G(ALTID("DEF")) D  G OUT
@@ -44,6 +50,30 @@ DFN ; convert alternate id to dfn
  . E  S X=$$ERR(5)
  . Q
  S X=$$ERR(6)
+ G OUT
+ ;
+DFNCHK ; extrinsic check DFN
+ ;VAR("DFN") = DFN
+ ;VAR("FN")  = FirstName
+ ;VAR("LN")  = LastName
+ ;VAR("DOB") = DateOfBirth FM
+ ;VAR("SEX") = Sex (1 character)
+ ;
+ N Y,DFN0,PTNM S (DFN0,Y)=$G(VAR("DFN"))
+ I Y'>0 S Y="-1^BAD DFN" Q Y
+ I $G(VAR("SEX"))'=$$GET1^DIQ(2,DFN0,.02,"I") S Y="-1^SEX NE" Q Y
+ I $G(VAR("DOB"))\1'=$$GET1^DIQ(2,DFN0,.03,"I")\1 S Y="-1^DOB NE" Q Y
+ S PTNM=$$GET1^DIQ(2,DFN0,.01,"I"),PTNM=$$HLNAME^HLFNC(PTNM,"~|\&")
+ I $G(VAR("FN"))'=$P(PTNM,"~",2) S Y="-1^FN NE" Q Y
+ I $G(VAR("LN"))'=$P(PTNM,"~",1) S Y="-1^LN NE" Q Y
+ Q Y
+ ;
+GENID ;
+ N I,J,X,Y,Z,ALTID,ERR,PARM,SSN
+ I $G(TYPE)="" S X=$$ERR(9) G OUT
+ S X=$$SETUP I +X=-1 G OUT
+ S I=0 F  S I=$O(^DPT(DFN,21600,I)) Q:'I  D ID1(DFN,I)
+ S X=$$ID2(DFN,TYPE)
  G OUT
  ;
 ID ;
@@ -124,6 +154,7 @@ ERR(N) ;
  ;;Multiple matches found
  ;;No SSN value found
  ;;No matches found
+ ;;Insufficient inputs recieved
  Q "-1^"_$P($T(ERR+N),";",3)
  ;
 ID1(DFN,NODE) ; Build local array of alternate IDS

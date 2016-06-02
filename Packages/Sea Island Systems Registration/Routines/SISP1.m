@@ -1,5 +1,5 @@
-SISP1 ;SIS/LM - Clone and optionally modify routine DGRP1
- ;;1.0;NON-VA REGISTRATION;;;Build 15
+SISP1 ;SIS/LM - Clone and optionally modify routine DGRP1   2/5/2016
+ ;;1.0;NON-VA REGISTRATION;;**58**;Build 2
  ;Copyright 2008 - 2009, Sea Island Systems, Inc.  Rights are granted as follows:
  ;Sea Island Systems, Inc. conveys this modified VistA routine to the PUBLIC DOMAIN.
  ;This software comes with NO warranty whatsoever.  Sea Island Systems, Inc. will NOT be
@@ -8,7 +8,10 @@ SISP1 ;SIS/LM - Clone and optionally modify routine DGRP1
 DGRP1 ;ALB/MRL,ERC - DEMOGRAPHIC DATA ; 06/22/06
  ;;5.3;Registration;**109,161,506,244,546,570,629,638,649,700,653**;Aug 13, 1993;Build 2
  ;
-EN S (DGRPS,DGRPW)=1 D H^DGRPU F I=0,.11,.121,.13,.15,.24,57,"SSN" S DGRP(I)=$S($D(^DPT(DFN,I)):^(I),1:"")
+ ;DSS/RAC - BEGIN MOD - Add Temporary address to data string
+ ;EN S (DGRPS,DGRPW)=1 D H^DGRPU F I=0,.11,.121,.13,.15,.24,57,"SSN" S DGRP(I)=$S($D(^DPT(DFN,I)):^(I),1:"")
+EN S (DGRPS,DGRPW)=1 D H^DGRPU F I=0,.11,.121,.122,.13,.15,.24,57,"SSN" S DGRP(I)=$S($D(^DPT(DFN,I)):^(I),1:"")
+ ;DSS/RAC - END MOD
  I $P(DGRP(.15),"^",2)]"" S Z="APPLICANT IS LISTED AS 'INELIGIBLE' FOR TREATMENT!",DGRPCM=1 D WW^DGRPV S DGRPCM=0
  ;I $P(DGRP(.15),"^",3)]"" S Z="APPLICANT IS LISTED AS 'MISSING'.  NOTIFY APPROPRIATE PERSONNEL!",DGRPCM=1 D WW^DGRPV S DGRPCM=0
  W ! S Z=1 D WW^DGRPV W "    Name: " S Z=$P(DGRP(0),"^",1),Z1=31 D WW1^DGRPV

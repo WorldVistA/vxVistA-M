@@ -1,12 +1,23 @@
-RORUPD01 ;HCIOFO/SG - PROCESSING OF THE FILES  ; 7/21/03 10:19am
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORUPD01 ;HCIOFO/SG - PROCESSING OF THE FILES ;7/21/03 10:19am
+ ;;1.5;CLINICAL CASE REGISTRIES;**14**;Feb 17, 2006;Build 24
  ;
  ; This routine uses the following IA's:
  ;
  ; #3646         $$EMPL^DGSEC4
  ; #10035        Browse through IENs of the file #2
- ;
  Q
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                       --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*14   APR  2011   A SAUNDERS   Tags HCVLOAD and HCVLIST added for auto-
+ ;                                      confirm functionality.  PROCESS: call
+ ;                                      to tag HCVLOAD is added.
+ ;******************************************************************************
+ ;******************************************************************************
+ ;
  ;
  ;***** CHECKS FOR A STOP REQUESTS (TASKMAN & PROPRIETARY)
  ;
@@ -96,6 +107,10 @@ LOOPINIT(PATIEN) ;
  ; during processing of a patient.
  ;
 PROCESS(BEGIEN,ENDIEN) ;
+ ;Patch 14 adds functionality to automatically confirm patients with
+ ;certain HCV LOINCs.  A list of the LOINCs are loaded into an array
+ ;for future comparison
+ D HCVLOAD ;Load list of HCV LOINCs into an array for use in HCV^RORUPD04
  N CNT,DTNEXT,ECNT,EXIT,PATIEN,RC,TH,TMP
  ;--- Loop through the patients
  S:$G(ENDIEN)'>0 ENDIEN=0
@@ -133,6 +148,7 @@ PROCESS(BEGIEN,ENDIEN) ;
  . . ;--- Create a record in the file #798.3
  . . S TMP=$$ADD^RORUPP01(PATIEN,RORUPD("DSBEG"))
  . . S:TMP<0 RC=TMP
+ K ^TMP("ROR HCV LIST"),^TMP("ROR HCV CONFIRM")
  Q $S(RC<0:RC,1:CNT_"^"_ECNT)
  ;
  ;***** PROCESSES PATIENT'S DATA (EXCEPT DEMOGRAPHIC DATA)
@@ -155,7 +171,7 @@ PROCPAT(PATIEN,NOUPD) ;
  ;--- Quit if the patient's record has been merged
  Q:$G(^DPT(PATIEN,-9)) 0
  ;--- Do not update the registries with a "test patient"
- I '$G(NOUPD),$$TESTPAT^RORUTL01(PATIEN)  D  Q 0
+ I '$G(NOUPD),$$TESTPAT^RORUTL01(PATIEN) D  Q 0
  . S @RORUPDPI@("U",PATIEN)=""
  ;
  N RORERRDL      ; Default error location
@@ -272,3 +288,30 @@ TMSTMP(REGLST) ;
  . I $G(DIERR)  D  Q
  . . S RC=$$DBS^RORERR("RORMSG",-9,,,798.1,REGIENS)
  Q $S(RC<0:RC,1:0)
+ ;
+ ;***** LOAD LIST OF HCV LOINCS INTO AN ARRAY FOR USE IN ADD^RORUPD50
+ ;
+HCVLOAD ;
+ K ^TMP("ROR HCV LIST") ;initialize HCV arrays
+ N I,RORDONE,RORLOINC
+ S RORDONE=0
+ F I=1:1 S RORLOINC=$P($T(HCVLIST+I),";;",2) Q:RORDONE  D
+ . I (($G(RORLOINC)="END OF LIST")!($G(RORLOINC)="")) S RORDONE=1 Q
+ . S ^TMP("ROR HCV LIST",$J,RORLOINC)="" ;add LOINC to array
+ ;
+ Q
+ ;LIST OF HCV LOINCS
+ ;Patients with a positive value in any of these HCV LOINCs will be confirmed into
+ ;the registry during the nightly update.  If a LOINC needs to be added to the
+ ;list, add it above the 'end of list' entry.
+HCVLIST ;
+ ;;11011-4
+ ;;29609-5
+ ;;34703-9
+ ;;34704-7
+ ;;10676-5
+ ;;20416-4
+ ;;20571-6
+ ;;49758-6
+ ;;50023-1
+ ;;END OF LIST

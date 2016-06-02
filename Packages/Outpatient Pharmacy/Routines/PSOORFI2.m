@@ -1,5 +1,5 @@
 PSOORFI2 ;BIR/BHW-finish cprs orders cont. ;07/29/96
- ;;7.0;OUTPATIENT PHARMACY;**7,15,23,27,46,130,146,177,222,225,338**;DEC 1997;Build 3
+ ;;7.0;OUTPATIENT PHARMACY;**7,15,23,27,46,130,146,177,222,225,338,313,408**;DEC 1997;Build 1
  ;External reference ^YSCL(603.01 supported by DBIA 2697
  ;External references PSOL and PSOUL^PSSLOCK supported by DBIA 2789
 HLP W !,"Enter 'S' to process orders with a priority of STAT",!,"      'E' to process orders with an Emergency priority,",!,"      'R' to process Routine orders.",! Q
@@ -31,6 +31,9 @@ DC I '$G(PSOORRNW),$G(PSOOPT)=3 S PSORENW("DFLG")=1 S:'$D(PSOBBC1("FROM")) VALMB
 DE Q:'$D(^PS(52.41,ORD,0))
  K ^PS(52.41,"AOR",$P(^PS(52.41,ORD,0),"^",2),+$P($G(^PS(52.41,ORD,"INI")),"^"),ORD),^PS(52.41,"AD",$P(^PS(52.41,ORD,0),"^",12),+$P($G(^PS(52.41,ORD,"INI")),"^"),ORD)
  S $P(^PS(52.41,ORD,0),"^",3)="DC",POERR("PLACER")=$P(^(0),"^"),POERR("STAT")="OC"
+ ; DSS/LM - Begin modification - Add suffix to EXT Rx#
+ D:$G(^%ZOSF("ZVX"))["VX" VFD
+ ; DSS/LM - End modification
  S POERR("COMM")=$S($G(POERR("DEAD")):"Patient died on "_$G(PSOPTPST(2,PSODFN,.351))_".",1:ACOM),$P(^PS(52.41,ORD,4),"^")=POERR("COMM")
  D EN^PSOHLSN(POERR("PLACER"),POERR("STAT"),POERR("COMM"),PSONOOR)
  I '$G(POERR("DEAD")) S DIR("A")="Press Return to Continue" D PAUSE^VALM1
@@ -61,6 +64,9 @@ RF ;process refill request from CPRS
  . W ! D ^DIR I $D(DIRUT)!'Y S VALMBCK="B"
  I $G(ORD),+$P($G(^PS(52.41,+ORD,0)),"^",23)=1 Q
  ;
+ I $$TITRX^PSOUTL(PSOREF("IRXN"))="t" D  D PAUSE^VALM1 K PSOREF Q
+ . W !!,$C(7),"Rx# "_$P(^PSRX($P(OR0,"^",19),0),"^")_" is marked as 'Titration Rx' and cannot be refilled."
+ ;
  K PSOMSG S (PSOREF("DFLG"),PSOREF("FIELD"),PSOREF1)=0,X="T-6M",%DT="X" D ^%DT
  S (PSOID,PSOREF("ISSUE DATE"))=$S($P(^PSRX(PSOREF("IRXN"),0),"^",13)<Y:Y,1:$P(^PSRX(PSOREF("IRXN"),0),"^",13))
  S:$G(PSORX("BAR CODE"))&($G(PSOBBC1("FROM"))="NEW") PSOREF("ISSUE DATE")=DT K X,X1,X2
@@ -69,7 +75,9 @@ RF ;process refill request from CPRS
  W !!,"Processing Refill Request for Rx "_$P(^PSRX(PSOREF("IRXN"),0),"^")
  D FILLDT^PSODIR2(.PSOREF) I PSOREF("DFLG") S VALMBCK="R" G END
  ;
- S PSORX("MAIL/WINDOW")=$S($P(OR0,"^",17)="M":"MAIL",1:"WINDOW") D MW^PSODIR2(.PSOREF) I PSOREF("DFLG") S VALMBCK="R" G END
+ S PSORX("MAIL/WINDOW")=$S($P(OR0,"^",17)="M":"MAIL",1:"WINDOW")
+ D MW^PSODIR2(.PSOREF) I PSOREF("DFLG") S VALMBCK="R" G END
+ K PSORX("ADMINCLINIC") S:$P(OR0,"^",17)="C" PSORX("ADMINCLINIC")=1
  S:'$G(PSOFROM)'="NEW" PSOFROM="REFILL" S PSOREF("DFLG")=0
  D ^PSOREF0
 END D PSOUL^PSSLOCK(PSOREF("IRXN")) K PSOREF,NODE,PSOREF1,PSL,PSOERR,PSORX("QFLG")
@@ -112,7 +120,8 @@ INST ;Select Institution
  W ! S PSOPINST=$P(Y,"^",2) K Y
  D INSTNM W !,"You have selected "_$G(PSODINST)_"."
  W !,"After completing these orders, you may re-enter this option and select again."
-INSTA S PSOCNT=$$CNT(PSOPINST)
+INSTA ;
+ S PSOCNT=$$CNT(PSOPINST)
  I '$D(IOINORM)!('$D(IOINHI)) S X="IORVOFF;IORVON;IOINHI;IOINORM" D ENDR^%ZISS
  W !!?7,IORVON_IOINHI,"<There ",$S(PSOCNT=1:"is ",1:"are "),$S(PSOCNT>0:PSOCNT,1:"no")," flagged order",$S(PSOCNT=1:"",1:"s")," for ",PSODINST,">",IOINORM_IORVOFF,!
  K PSODINST
@@ -162,4 +171,11 @@ SIG ;
  ..I $E(^TMP("PSOPO",$J,IEN,0),$L(^TMP("PSOPO",$J,IEN,0)))=" " S ^TMP("PSOPO",$J,IEN,0)=$E(^TMP("PSOPO",$J,IEN,0),1,($L(^TMP("PSOPO",$J,IEN,0))-1))
  S:$O(SIG(0)) SIGOK=1 K MIG
  F D=0:0 S D=$O(^PS(52.41,ORD,"INS1",D)) Q:'D  S PSONEW("INS",D)=^PS(52.41,ORD,"INS1",D,0)
+ Q
+ ;
+ ;DSS/LM/SMP - BEGIN MOD
+VFD ;DSS/LM - External Rx Enhancement Request v3 (part 2) - Add suffix to EXT Rx#
+ Q:$$GET^XPAR("SYS","VFD COPY EXTERNAL RX",+$G(DUZ(2)),"I")=0  ;Division check
+ Q:'$G(ORD)  N VFDXRX S VFDXRX=$G(^PS(52.41,ORD,21600)) Q:$P(VFDXRX,"^")=""
+ I $E(VFDXRX,$L(VFDXRX))'="D" S $P(^PS(52.41,ORD,21600),"^")=VFDXRX_"D"
  Q

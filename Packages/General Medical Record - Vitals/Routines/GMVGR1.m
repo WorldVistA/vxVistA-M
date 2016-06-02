@@ -1,5 +1,5 @@
 GMVGR1 ;HIOFO/YH,FT-SET ^TMP($J) GLOBAL ;11/29/02  13:34
- ;;5.0;GEN. MED. REC. - VITALS;**1**;Oct 31, 2002
+ ;;5.0;GEN. MED. REC. - VITALS;**1**;Oct 31, 2002;Build 8
  ;
  ; This routine uses the following IAs:
  ; #10061 - ^VADPT calls           (supported)
@@ -43,7 +43,11 @@ SETA ;Store measurements in ^TMP($J,"GMRK" global
  I GK'="" D
  . S GMRSITE(1)=$P($G(^TMP($J,"GMRVG",GI,GDT1,GK)),"^"),GMRVJ=$P($G(^(GK)),"^",2),GMRINF=$P($G(^(GK)),"^",4)
  . I GMRSITE(1)'="" D SYNOARY^GMVLGQU
+ ;DSS/SMP - BEGIN MODS
+ N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
  I GI="H" D  Q
+ . I VFD D  Q
+ . . S ^TMP($J,"GMRK","G"_(270+GCNTD))=GK_" "_GMRSITE,^TMP($J,"GMRK","G"_(290+GCNTD))=$S(GK>0:$$IN2CM^VFDXLF(GK,2),1:"") S:GK>0 GMRHT=$$IN2M^VFDXLF(GK)
  . S ^TMP($J,"GMRK","G"_(270+GCNTD))=GK_" "_GMRSITE,^TMP($J,"GMRK","G"_(290+GCNTD))=$S(GK>0:$J(GK*2.54,0,2),1:"") S:GK>0 GMRHT=(GK*2.54)/100
  I GI="C" S ^TMP($J,"GMRK","G"_(1640+GCNTD))=GK_"  "_^TMP($J,"GMRK","G"_(1640+GCNTD)) Q
  I GI="PO2"!(GI="CVP")!(GI="CG") D  Q
@@ -59,12 +63,17 @@ SETA ;Store measurements in ^TMP($J,"GMRK" global
  . . S ^TMP($J,"GMRK","G"_(1230+GCNTD))=$S(GK>0!(GK<0)!($E(GK)="0"):$J(GK/1.36,0,1),1:"")_$S(GMRVJ=1:"*",1:" ")
  . . Q
  . I GI="CG" D
+ . . I VFD D  Q
+ . . . S ^TMP($J,"GMRK","G"_(1250+GCNTD))=GK_" "_GMRSITE,^TMP($J,"GMRK","G"_(1320+GCNTD))=$S(GK>0:$$IN2CM^VFDXLF(GK,2),1:"")
  . . S ^TMP($J,"GMRK","G"_(1250+GCNTD))=GK_" "_GMRSITE,^TMP($J,"GMRK","G"_(1320+GCNTD))=$S(GK>0:$J(GK/.3937,0,2),1:"")
  . . Q
  I GI="B",GK'="" S ^TMP($J,"GMRK","G"_(250+GCNTD))=$S($L(GMRSITE," ")>3:$P(GMRSITE," ",2,4),1:GMRSITE) S:$L(GMRSITE," ")>3 ^TMP($J,"GMRK","G"_(1640+GCNTD))=$P(GMRSITE," ")
  I '(GI="T"!(GI="P")) D  Q
  . I GI="C" S GMRSITE=$S($L(GMRSITE," ")>3:"  "_$P(GMRSITE," "),1:"")
- . S ^TMP($J,"GMRK","G"_(GJ*16+GCNTD+1))=GK_$S(GMRVJ=1&(GI'="C"):"*",1:" ")_$S(GI="B":"",1:GMRSITE) S:GI="W" ^TMP($J,"GMRK","G"_(310+GCNTD))=$S(GK>0:$J(GK/2.2,0,2),1:"")
+ . I VFD D  I 1
+ . . S ^TMP($J,"GMRK","G"_(GJ*16+GCNTD+1))=GK_$S(GMRVJ=1&(GI'="C"):"*",1:" ")_$S(GI="B":"",1:GMRSITE) S:GI="W" ^TMP($J,"GMRK","G"_(310+GCNTD))=$S(GK>0:$$LB2KG^VFDXLF(GK,2),1:"")
+ . E  S ^TMP($J,"GMRK","G"_(GJ*16+GCNTD+1))=GK_$S(GMRVJ=1&(GI'="C"):"*",1:" ")_$S(GI="B":"",1:GMRSITE) S:GI="W" ^TMP($J,"GMRK","G"_(310+GCNTD))=$S(GK>0:$J(GK/2.2,0,2),1:"")
+ . ;DSS/SMP - END MODS
  . I GK>0,GI="W" D
  . . S GMRBMI="",GMRBMI(1)=GDT1,GMRBMI(2)=GK D CALBMI^GMVBMI(.GMRBMI)
  . . S ^TMP($J,"GMRK","G"_(330+GCNTD))=GMRBMI K GMRBMI

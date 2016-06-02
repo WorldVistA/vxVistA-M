@@ -1,5 +1,5 @@
-DGMTOFA ;ALB/CAW/AEG - Future Appointments who will require MT ; 03/19/2004
- ;;5.3;Registration;**3,50,182,326,426,568,725**;Aug 13, 1993;Build 12
+DGMTOFA ;ALB/CAW/AEG/PWC - Future Appointments who will require MT ; 4/21/11 10:57am
+ ;;5.3;Registration;**3,50,182,326,426,568,725,830**;Aug 13, 1993;Build 4
  ;
 EN ; 
  I '$$RANGE^DGMTUTL("F") G ENQ
@@ -62,6 +62,16 @@ CLN1 ; Loop through appointments
  Q
 MT ; Is patient going to need to complete a MT/Copay by appt?
  S DGMT=$$LST^DGMTU(DGDFN,$P(DGDATE,"."),DGMTYPT),DGMT1=$P($G(^DGMT(408.31,+DGMT,0)),U,3) I DGMT1,"^3^10^"'[("^"_DGMT1_"^") D
+ . N MTQ,X S MTQ=0  ; only do the following for RX Co-pay tests
+ .I DGMTYPT=2 D  Q:MTQ=1
+ .. ;Exclude from report the following:
+ .. ;Existing RX Copay Test with Source of Test = IVM AND
+ .. ;Primary eligibility code = NSC OR Primary eligibility code =
+ .. ; SC Less than 50% and percentage is 0 and Total VA check amt = 0
+ .. ;  DG*5.3*830
+ .. I $P($G(^DGMT(408.31,+DGMT,0)),U,23)'=2 Q  ; quit if not IVM
+ .. S X=$P($G(^DPT(DGDFN,.36)),"^",1)
+ .. I $P($G(^DIC(8,+X,0)),"^",9)=5!($$SC(DGDFN)) S MTQ=1
  .S X1=$P(DGMT,U,2),X2=365 D C^%DTC I $P(DGDATE,".")<X,$S(DGMT1=1:0,DGMT1=9:0,1:1) Q
  .;Check to see if Cat C/Pend Adj agreed to pay with test date >10/5/99
  .I $P(DGMT,U,2)>2991005,$P($G(^DGMT(408.31,+DGMT,0)),U,11)=1,((DGMT1=6)!(DGMT1=2)) Q
@@ -74,6 +84,20 @@ MT ; Is patient going to need to complete a MT/Copay by appt?
  .I 'DGNXTMT S DGNXTMT=""
  .S ^TMP("DGMTO",$J,$S(+$P(^SC(DGCLN,0),U,15):$P(^(0),U,15),1:$O(^DG(40.8,0))),$P(^SC(DGCLN,0),U),$P(^DPT(DGDFN,0),U),DGDATE)=DGDFN_U_$P(DGMT,U,1,4)_U_$P($P(DGTMP,U,10),";")_U_DGNXTMT,^TMP("DGMTL",$J,$P(^DPT(DGDFN,0),U),DGDFN)=""
  Q
+ ;
+SC(DFN) ; Check if patient is SC 0% non-compensable
+ ; Input -- DFN       Patient IEN
+ ; Output -- 1=Yes and 0=No
+ N Y
+ S Y=0
+ ; Primary eligibility is SC LESS THAN 50%
+ I $D(^DPT(DFN,.36)),$P($G(^DIC(8,+^(.36),0)),"^",9)=3 S Y=1
+ G:'Y SCQ
+ ; Service connected percentage is zero
+ I $P($G(^DPT(DFN,.3)),"^",2)'=0 S Y=0 G SCQ
+ ; No Total annual VA check amount
+ I $P($G(^DPT(DFN,.362)),"^",20) S Y=0
+SCQ Q +$G(Y)
  ;
 LETTER() ;
  ;   Input - none

@@ -1,5 +1,5 @@
 DGRPECE1 ;ALB/MRY - REGISTRATION CATASTROPHIC EDITS ALERT ; 11/17/04 9:30am
- ;;5.3;Registration;**638**;Aug 13, 1993
+ ;;5.3;Registration;**638,831**;Aug 13, 1993;Build 10
  ;
 ALERT ;setup alert, display
  K XQA,XQAMSG,XQAROU,XQAARCH,XQAID,XQADATA
@@ -10,7 +10,7 @@ ALERT ;setup alert, display
  . S DGDUZ=0 F  S DGDUZ=$O(^XUSEC("DG SUPERVISOR",DGDUZ)) Q:'DGDUZ  S XQA(DGDUZ)="",XMY(DGDUZ)=""
  . S XMY("G.MPIF EXCEPTIONS")=""
  . D MSG
- I $O(XQA(""))="" Q  ;hard too believe no supervisors.
+ I $O(XQA(""))="" Q  ;hard to believe no supervisors.
  S XQAMSG="POTENTIAL CATASTROPHIC EDIT OF PATIENT IDENTIFYING DATA"
  ;see below for XQADATA values
  S CNT=0 F DGI="NAME","SSN","DOB","SEX","MAIDEN","POBCITY","POBSTATE" S CNT=CNT+1 I $D(BEFORE(DGI)) S $P(XQADATA,U,CNT)=BEFORE(DGI)
@@ -35,7 +35,7 @@ DISP ;display catastrophic alert information
  W !,"Patient Identification fields (before edit)"
  W !,$TR($J("",IOM)," ","-")
  W !?1,"Name: ",$P(XQADATA,U),?45,"Soc. Security Number: ",$P(XQADATA,U,2)
- W !?1,"Date of Birth: ",$$DATE4($P(XQADATA,U,3)),?45,"Gender: ",$S($P(XQADATA,U,4)="M":"MALE",$P(XQADATA,U,4)="F":"FEMALE",1:"")
+ W !?1,"Date of Birth: ",$$DATE4($P(XQADATA,U,3)),?45,"Gender: ",$S($P(XQADATA,U,4)="M":"MALE",$P(XQADATA,U,4)="F":"FEMALE",1:$P(XQADATA,U,4))
  W !?1,"Mother's Maiden Name: ",$P(XQADATA,U,5)
  W !?1,"Place of Birth [city]: ",$P(XQADATA,U,6)
  W !?1,"Place of Birth [state]: " I $P(XQADATA,U,7) W $P(^DIC(5,$P(XQADATA,U,7),0),U)
@@ -100,7 +100,8 @@ MSG ;
  S XMTEXT="^TMP("_$J_",""DGRPECE""," D ^XMD S DA=XMZ,DIE=3.9,DR="1.7///P;1.97///Y" D ^DIE
  K ^TMP($J,"DGRPECE"),DIE,DA,DR,XMY,XMDUZ,XMSUB,XMTEXT,XMZ Q
 DATE4(X) ;return date in DD/MM/YYYY format
- S:X X=$E(X,4,5)_"/"_$E(X,6,7)_"/"_(1700+$E(X,1,3))
+ I X'["/" D
+ .S:X X=$E(X,4,5)_"/"_$E(X,6,7)_"/"_(1700+$E(X,1,3))
  Q X
  ;
 XQADATA ;XQADATA =

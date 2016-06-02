@@ -1,9 +1,9 @@
-YTQPXRM1 ;ALB/ASF- MHA3 API FOR CLINICAL REMINDERS ; 3/13/07 1:43pm
- ;;5.01;MENTAL HEALTH;**85**;Dec 30, 1994;Build 48
+YTQPXRM1 ;ALB/ASF- MHA3 API FOR CLINICAL REMINDERS ; 2/20/08 10:32am
+ ;;5.01;MENTAL HEALTH;**85,96**;Dec 30, 1994;Build 46
  ;Reference to ^PXRMINDX(601.2, supported by DBIA #4114
- ;Reference to ^PXRMINDX(601.84, supported by DBIA #??????
+ ;Reference to ^PXRMINDX(601.84, supported by DBIA #4290
  Q
-OCCUR(YSSUB,YS) ;occurances OF TESTS,GAF,ASI
+OCCUR(YSSUB,YS) ;occurrences OF TESTS,GAF,ASI
  ;Input:
  ;YS("CODE"): Test code NUMBER from file 601.71 including "ASI","GAF"
  ;YS("BEGIN"): inclusive date in %DT acceptable format (11/11/2011) to begin search [optional]                
@@ -28,6 +28,7 @@ PA S DFN=0
  ... S NI=NI+1
  ... S ^TMP($J,YSSUB,DFN,YSOCC)=DAS_U_YSN2_U_YSCODEN_"^601.84"
 P0 S DFN=0,YS601=$O(^YTT(601,"B",YSCODE,0))
+ Q:YS601=""  ;out ASF 2/20/08
  F  S DFN=$O(^PXRMINDX(601.2,"IP",YS601,DFN)) Q:DFN'>0  S YS("DFN")=DFN D P1
  S ^TMP($J,YSSUB)="[DATA]"_U_NI
  Q

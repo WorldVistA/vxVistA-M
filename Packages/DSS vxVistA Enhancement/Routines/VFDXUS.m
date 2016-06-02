@@ -1,5 +1,5 @@
-VFDXUS ;DSS/LM - Kernel Signon Remote Procedure Calls
- ;;2009.2;DSS,INC VXVISTA OPEN SOURCE;;01 Dec 2009
+VFDXUS ;DSS/LM/MBH - Kernel Signon Remote Procedure Calls;  12/21/15
+ ;;15.0;DSS,INC VXVISTA OPEN SOURCE;**37**;01 Dec 2009;Build 2
  ;Copyright 1995-2009,Document Storage Systems Inc. All Rights Reserved
  ;
  ;
@@ -76,4 +76,13 @@ CREATE(RESULT,LIST) ;;Create NEW PERSON file entries from LIST
  .E  S VFDERR=1
  .Q
  S:VFDERR RESULT(1)="-1^Failed to create user "_VFDI_U_LIST(VFDI)
+ Q
+TIMEOUT(VFDRET);Returns the Kernel Parameters for ORWOR TIMEOUT CHART, 
+ ;              ORWOR TIMEOUT COUNTDOWN and Default time (DTIME)
+ ;
+ ; Return VFDRET = ORWOR TIMEOUT CHART^ORWOR TIMEOUT COUNTDOWN^DTIME
+ ;
+ S VFDRET=$$GET^XPAR("ALL","ORWOR TIMEOUT CHART",1,"I")
+ S $P(VFDRET,U,2)=$$GET^XPAR("ALL","ORWOR TIMEOUT COUNTDOWN",1,"I")
+ S $P(VFDRET,U,3)=$G(DTIME)
  Q

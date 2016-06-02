@@ -1,9 +1,9 @@
-ORQ21 ; SLC/MKB/GSS - Detailed Order Report cont ; 12/28/2006
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**141,190,195,215,243**;Dec 17, 1997;Build 242
+ORQ21 ; SLC/MKB/GSS - Detailed Order Report cont ;05/23/12  10:30
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**141,190,195,215,243,361**;Dec 17, 1997;Build 10
  ;
  ; DBIA 2400   OEL^PSOORRL   ^TMP("PS",$J)
  ; DBIA 2266   EN30^RAO7PC1  ^TMP($J,"RAE2")
- ; 
+ ;
 RAD(TCOM) ; -- add RA data for 2.5 orders
  N RAIFN,CASE,PROC,ORD,ORI,X,ORTTL,ORB
  S RAIFN=$G(^OR(100,ORIFN,4)) Q:RAIFN'>0
@@ -82,7 +82,7 @@ BA ;Billing Aware data display
  . ; DXIEN=Dx IEN
  . S DXIEN=+^OR(100,ORIFN,5.1,OCT,0)
  . ; Get Dx record for date ORFMDAT
- . S ICDR=$$ICDDX^ICDCODE(DXIEN,ORFMDAT)
+ . S ICDR=$$ICDDATA^ICDXCODE("DIAGNOSIS",DXIEN,ORFMDAT)
  . ; Get Dx verbiage and ICD code
  . S DXV=$P(ICDR,U,4),ICD9=$P(ICDR,U,2)
  . S X="               "
@@ -100,6 +100,10 @@ BA ;Billing Aware data display
 FILLED(TYPE) ; -- add FILLD data
  N Y S Y=$$FMTE^XLFDT($P(FILLD,U),2)_" ("_$$ROUTING($P(FILLD,U,5))_")"
  S:TYPE="R"&$P(FILLD,U,4) Y=Y_" released "_$$FMTE^XLFDT($P(FILLD,U,4),2)
+ ;DSS/RAC/SMP - BEGIN MOD
+ I $G(^%ZOSF("ZVX"))["VX",TYPE="R",$P(FILLD,U,4),$P(FILLD,U,7)'="" D
+ .S Y=Y_" by:  "_$$USER^ORQ20($P($G(FILLD),U,7))
+ ;DSS/RAC/SMP - END MOD
  S:TYPE="P"&$P(FILLD,U,3) Y=Y_" Qty: "_$P(FILLD,U,3)
  S CNT=CNT+1,@ORY@(CNT)=X_Y,X=$$REPEAT^XLFSTR(" ",30)
  S:$L($P(FILLD,U,6)) CNT=CNT+1,@ORY@(CNT)=X_$P(FILLD,U,6)
@@ -118,6 +122,10 @@ RETURNS(NODE) ; add Return to Stock Data
  ;
 ROUTING(X) ; -- Returns external form
  N Y S Y=$S($G(X)="M":"Mail",$G(X)="W":"Window",1:$G(X))
+ ;DSS/RJS - BEGIN MODS - OPT REFILL RELEASE
+ I $G(^%ZOSF("ZVX"))["VX" D 
+ .S Y=$S($G(X)="M":"Mail",$G(X)="I":"In House",$G(X)="W":"Window",1:$G(X))
+ ;DSS/RJS - END MODS - OPT REFILL RELEASE
  Q Y
  ;
 SC(J) ; -- Returns name of SC field by piece number

@@ -1,6 +1,8 @@
-MDRPCOP ; HOIFO/DP - Object RPCs (TMDPatient) ;3/12/08  09:16
- ;;1.0;CLINICAL PROCEDURES;**4,6**;Apr 01, 2004;Build 102
+MDRPCOP ; HOIFO/DP - Object RPCs (TMDPatient) ;8/3/09  10:39
+ ;;1.0;CLINICAL PROCEDURES;**4,6,11,20**;Apr 01, 2004;Build 9
  ; Integration Agreements:
+ ; IA# 2054 [Supported] DILF call
+ ; IA# 2056 [Supported] DIQ calls
  ; IA# 2263 [Supported] XPAR calls
  ; IA# 3027 [Supported] Calls to DGSEC4
  ; IA# 2981 [Subscription] Calls to GUI~GMRCP5
@@ -37,6 +39,8 @@ CHKIN ; [Procedure] Check In Study
  .S MDFDA(702,"+1,",.01)=DFN
  .S MDFDA(702,"+1,",.02)=$$NOW^XLFDT()
  .S MDFDA(702,"+1,",.03)=DUZ
+ .S MDPC=$P(DATA,"^",5),MDPC=$S($L(MDPC,";")=1:MDPC,1:$P(MDPC,";",2))
+ .S MDFDA(702,"+1,",.14)=MDPC
  .D UPDATE^DIE("","MDFDA","MDIEN","MDERR") Q:$D(MDERR)
  .S MDIENS=MDIEN(1)_",",MDHL7=$$SUB^MDHL7B(MDIEN(1))
  .I +MDHL7=-1 S MDFDA(702,MDIENS,.09)=2,MDFDA(702,MDIENS,.08)=$P(MDHL7,U,2)
@@ -98,7 +102,7 @@ GETHDR ; [Procedure] Get Pt Header
  Q
  ;
 GETOBJ ; [Procedure] Get information for TMDPATIENT object
- D DEM^VADPT,INP^VADPT
+ D DEM^VADPT,INP^VADPT Q:'$D(VADM)
  S @RESULTS@(0)=DFN
  S @RESULTS@(1)=VADM(1)
  S @RESULTS@(2)=$P(VADM(2),U,2)
@@ -123,9 +127,11 @@ GETRES ; [Procedure] Get results report
  Q
  ;
 GETTRAN ; [Procedure] Get a patients transactions
- K ^TMP("MDTMP",$J),^TMP("MDCONL",$J) N MDCDT,MDCOM,MDMULT,MDNUM,MDREQ,MDREQDT,MDYR,X1,X2,X
- S MDNUM=$$GET^XPAR("SYS","MD DAYS TO RETAIN COM STUDY",1) S MDCOM=0
+ K ^TMP("MDTMP",$J),^TMP("MDCONL",$J) N MDCDT,MDCDY,MDCOM,MDMULT,MDMULN,MDNUM,MDREQ,MDREQDT,MDYR,X1,X2,X
+ S MDNUM=$$GET^XPAR("SYS","MD DAYS TO RETAIN COM STUDY",1) S (MDCDY,MDCOM)=0
+ S MDMULN=$$GET^XPAR("SYS","MD DAYS TO RET COM MULT",1)
  I +MDNUM>0 S X1=DT,X2=-MDNUM D C^%DTC S MDCOM=X
+ I +MDMULN>0 S X1=DT,X2=-MDMULN D C^%DTC S MDCDY=X
  D CPLIST^GMRCCP(DFN,,$NA(^TMP("MDTMP",$J)))
  S X1=DT,X2=-365 D C^%DTC S MDCDT=X
  S MDX=0 F  S MDX=$O(^TMP("MDTMP",$J,MDX)) Q:'MDX  D:"saprc"[$P(^(MDX),U,4)
@@ -138,6 +144,7 @@ GETTRAN ; [Procedure] Get a patients transactions
  .S MDMULT=+$$GET1^DIQ(702,MDX,".04:.12","I")
  .S MDYR=$S(MDMULT<1:MDCOM,1:MDCDT)
  .I MDNUM Q:$$GET1^DIQ(702,MDX,.09,"I")=3&($$GET1^DIQ(702,MDX,.02,"I")<MDYR)
+ .I MDMULT=1&(+MDMULN>0) Q:$$GET1^DIQ(702,MDX,.09,"I")=3&($$GET1^DIQ(702,MDX,.02,"I")<MDCDY)
  .S MDREQDT="" I +$$GET1^DIQ(702,MDX,.05,"I") S MDREQDT=$G(^TMP("MDCONL",$J,+$$GET1^DIQ(702,MDX,.05,"I")))
  .I MDREQDT'="" S MDREQDT=$$FMTE^XLFDT(MDREQDT,"1P")
  .S MDREQ=$$GET1^DIQ(702,MDX,.04)_"  "_+MDX_"  (Consult #:"_$$GET1^DIQ(702,MDX,.05,"I")_$S(MDREQDT'="":" Requested: "_MDREQDT,1:"")_")"
@@ -156,7 +163,7 @@ GETVST ; [Procedure] Return list of visits
  I END>NOW D   ; get future encounters, past cancels/no-shows from VADPT
  .S VASD("F")=BEG
  .S VASD("T")=END
- .S VASD("W")="123456789"
+ .S VASD("W")="129"
  .D SDA^VADPT
  .S I=0 F  S I=$O(^UTILITY("VASD",$J,I)) Q:'I  D
  ..S XI=^UTILITY("VASD",$J,I,"I"),XE=^("E")
@@ -181,7 +188,7 @@ GETVST ; [Procedure] Return list of visits
  S EARLY=BEG,DONE=0 S:$G(DFN)="" DFN=MDTDF
  S TIM="" F  S TIM=$O(^DGPM("ATID1",DFN,TIM)) Q:TIM'>0  D  Q:DONE
  .S MOV=0  F  S MOV=$O(^DGPM("ATID1",DFN,TIM,MOV)) Q:MOV'>0  D  Q:DONE
- ..D GETS^DIQ(405,+MOV_",","*","IE","MDX0") S MTIM=$G(MDX0(405,MOV_",",".01","I"))
+ ..D GETS^DIQ(405,+MOV_",",".01;.04;.06","IE","MDX0") S MTIM=$G(MDX0(405,MOV_",",".01","I"))
  ..S XTYP=$G(MDX0(405,+MOV_",",".04","E"))
  ..S XLOC=$G(MDX0(405,+MOV_",",".06","E"))
  ..S XLOCI=+$G(MDX0(405,+MOV_",",".06","I")),HLOC=+$G(^DIC(42,+XLOCI,44))

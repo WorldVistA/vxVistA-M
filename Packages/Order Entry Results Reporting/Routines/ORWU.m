@@ -1,5 +1,5 @@
 ORWU ; SLC/KCM - General Utilites for Windows Calls; 2/28/01 [1/15/04 11:43am]
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**10,85,132,148,149,187,195,215,243**;Dec 17, 1997;Build 242
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**10,85,132,148,149,187,195,215,243**;Dec 17, 1997;Build 2
  ;
 DT(Y,X,%DT) ; Internal Fileman Date/Time
  ; change the '00:00' that could be passed so Fileman doesn't reject
@@ -124,6 +124,9 @@ CLINLOC(Y,FROM,DIR) ; Return a set of clinics from HOSPITAL LOCATION
  F  Q:I'<CNT  S FROM=$O(^SC("B",FROM),DIR) Q:FROM=""  D  ; IA# 10040.
  . S IEN="" F  S IEN=$O(^SC("B",FROM,IEN),DIR) Q:'IEN  D
  . . I ($P($G(^SC(IEN,0)),U,3)'="C")!('$$ACTLOC(IEN)) Q
+ . . ;DSS/SMP - BEGIN MOD
+ . . Q:'$$VFD(IEN)
+ . . ;DSS/SMP - END MOD
  . . S I=I+1,Y(I)=IEN_"^"_FROM
  Q
 INPLOC(Y,FROM,DIR) ;Return a set of wards from HOSPITAL LOCATION
@@ -218,3 +221,17 @@ VERSRV(VAL,X,CLVER) ; Return server version of option name
  I $P(VAL,".",4)="" S BADVAL=1
  I ((BADVAL)!('VAL)!(VAL="")) S VAL="0.0.0.0"
  Q
+ ;
+ ;DSS/SMP - BEGIN MODS - Clinic Restriction
+VFD(LOC) ; Clinic Restriction
+ ; Q 0 do not add
+ ; Q 1 add
+ ;
+ N INST,LIST
+ I $G(^%ZOSF("ZVX"))'["VX" Q 1
+ D GET^VFDCXPR(.LIST,"~VFD CLINIC RESTRICTION~1")
+ Q:'$P(LIST(1),U,3) 1  K LIST
+ S INST=$$GET1^DIQ(44,LOC,"3","I",,"VFDERR")
+ D GETDIV^VFDORDS(.LIST,DUZ)
+ I $D(LIST(INST)) Q 1
+ Q 0

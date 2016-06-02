@@ -1,5 +1,5 @@
-DGRPP ;ALB/MRL,AEG - REGISTRATION SCREEN PROCESSOR ;07/18/06
- ;;5.3;Registration;**92,147,343,404,397,489,689,688**;Aug 13, 1993;Build 29
+DGRPP ;ALB/MRL,AEG,LBD - REGISTRATION SCREEN PROCESSOR ; 10/21/10 3:55pm
+ ;;5.3;Registration;**92,147,343,404,397,489,689,688,828,797**;Aug 13, 1993;Build 24
  ;
  ;DGRPS    : Screen to edit
  ;DGRPSEL  : If screen 9 (income screening) set to allowable selections
@@ -16,7 +16,7 @@ EN ;
  .D CKUPLOAD^DGENUPL3(DFN)
  .I $$LOCK^DGENPTA1(DFN)
  D ENDUPLD^DGENUPL3(DFN)
- D Q1,WHICH^DGRPP1 W ! K DGRP S DGRPAN="" F I=1:1:$L(DGRPVV(DGRPS)) I $S('DGRPV:1,DGRPS=6:I=2!(I=3),1:0) S:'$E(DGRPVV(DGRPS),I) DGRPAN=DGRPAN_I_","
+ D Q1,WHICH^DGRPP1 W ! K DGRP S DGRPAN="" F I=1:1:$L(DGRPVV(DGRPS)) I $S('DGRPV:1,DGRPS=6:I=1!(I=2)!(I=3),1:0) S:'$E(DGRPVV(DGRPS),I) DGRPAN=DGRPAN_I_","
  D STR^DGRPP1 F I=$Y:1:20 W !
  ; remove COPY option DG*5.3*688
  I ("8^9"[DGRPS),($G(DGEFDT)'=DT) S Z="E" D W W "=ENTER new "_(DGISYR+1)_" data,"
@@ -26,6 +26,7 @@ EN ;
  . W " to "_$S('$G(DGRPV):"EDIT, ",DGRPS=6:"EXPAND, ",1:"")
  S DGRPOUT=0,Z="^N" D W W " for screen N or " S Z="'^'" D W W " to QUIT" I DGRPSEL=""!(DGRPVV(9)'["0")!+$G(DGRPV) W ": "
  I DGRPSEL]"" D MOREHLP^DGRPP1
+ G:$E(IOST,1,2)="P-" NEXT  ;RGB/VM 4/28/10 Just go to next screen for non-interactive jobs
  R DGRPANN:DTIME S:'$T DGRPOUT=1 I DGRPANN']"",'DGRPOUT G NEXT
  I $E(DGRPANN)="E",$G(DGNOBUCK),("8^9"[DGRPS) D
  .S DGNOCOPY=1

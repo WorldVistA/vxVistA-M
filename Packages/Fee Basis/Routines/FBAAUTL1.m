@@ -1,6 +1,6 @@
-FBAAUTL1 ;AISC/GRR-Fee Basis Utility Routine ;1/13/98
- ;;3.5;FEE BASIS;**3,12,13**;JAN 30, 1995
- ;;Per VHA Directive 10-93-142, this routine should not be modified.
+FBAAUTL1 ;AISC/GRR - Fee Basis Utility Routine ;9/12/2012
+ ;;3.5;FEE BASIS;**3,12,13,108,132**;JAN 30, 1995;Build 17
+ ;;Per VHA Directive 2004-038, this routine should not be modified.
 PLUSOB ;ENTRY POINT TO INCREASE OBLIGATION ADJUSTMENT
  S FBAAMT="-"_FBAARA
  D ADD Q
@@ -30,7 +30,11 @@ CHOOS W !! S DIR(0)="N^1:"_CNT D ^DIR K DIR S X=+Y Q:$D(DUOUT)  G H^XUS:$D(DTOUT
  S FBDMRA=$G(^FBAAA(DFN,1,X,"ADEL")) I FBDMRA']"" K FBDMRA
  S FBASSOC=X
  I FB7078]"" S FBVEN=+$P($G(^FB7078(+FB7078,0)),U,2)
+ S FBCNTRA=$P(FB,"^",22)
 Q Q
+GETAUTHK ; kill new authorization variables output from GETAUTH
+ K FBCNTRA
+ Q
 DAYS ;CALCULATES THE NUMBER OF DAYS IN MONTH
  S X1=X,X=+$E(X,4,5),X=$S("^1^3^5^7^8^10^12^"[("^"_X_"^"):31,X=2:28,1:30)
  I X=28 D
@@ -91,3 +95,17 @@ ADD ;call to add money back into 1358 when version of IFCAP>3.6
  S PRCSX=FBADDX_"^"_%_"^"_FBAAMT_"^"_FBCOMM_"^"_1
  D ^PRCS58CC I Y'=1 W !!,*7,$P(Y,U,2),! S FBERR=1
  Q
+ ;
+ASKVET(FBSCR) ; Prompt for patient
+ ; input FBSCR - (optional) screen logic for DIC lookup
+ ;                e.g. I $D(^FBAAC("AH",12,+Y))
+ ; returns IEN of patient in file 161 or 0 if none selected
+ N DIC,FBRET,Y
+ S FBRET=0
+ W !!
+ S DIC="^FBAAA("
+ S DIC(0)="AQEM"
+ S:$G(FBSCR)'="" DIC("S")=FBSCR
+ D ^DIC
+ I Y'<0 S FBRET=+Y
+ Q FBRET

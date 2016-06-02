@@ -1,6 +1,6 @@
-MAGJUTL3 ;WIRMFO/JHC VistARad subrtns & RPCs ; 29 Jul 2003  10:03 AM
- ;;3.0;IMAGING;**16,9,22,18,65,76**;Jun 22, 2007;Build 19
- ;;Per VHA Directive 2004-038, this routine should not be modified.
+MAGJUTL3 ;WIRMFO/JHC - VistARad subrtns & RPCs ; 29 Mar 2013  5:02 PM
+ ;;3.0;IMAGING;**16,9,22,18,65,76,101,90,120,133**;Mar 19, 2002;Build 5393;Sep 09, 2013
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -8,7 +8,6 @@ MAGJUTL3 ;WIRMFO/JHC VistARad subrtns & RPCs ; 29 Jul 2003  10:03 AM
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -54,23 +53,52 @@ LISTINF(MAGGRY) ; RPC: MAGJ CUSTOM LISTS
  . . S T=@MAGGRY@(0)+1,^(0)=T,^(T)=INF ; add entry to reply
  Q
  ;
-LOG(ACTION,LOGDATA) ; Log exam access
- N PTCT,TXT,RADFN,MAGIEN,NIMGS,REMOTE
+LOG(ACTION,LOGDATA,PSETLST) ; Log exam access
+ ;  ACTION --- Action code string passed in (e.g. VR-VW for vrad view)
+ ;  LOGDATA - ^-delimited fields--see code immediately below
+ ;  PSETLST -- For Printset exams, has list of Rad Case Numbers included
+ ;  
+ N PTCT,TXT,RADFN,MAGIEN,NIMGS,REMOTE,PRTSET
  S RADFN=$P(LOGDATA,U),MAGIEN=$P(LOGDATA,U,2),NIMGS=$P(LOGDATA,U,3),REMOTE=$P(LOGDATA,U,4)
+ ;
+ ; For Printset, append string to TXT
+ ;   string= "|VR-PRINTSET~"_CaseNum_~x~y   ; x = nth; y = total PrtSet members
+ ;   
+ S PSETLST=$G(PSETLST)
+ S PRTSET=$L(PSETLST,U)
+ I PRTSET>1 D
+ . N I,T F I=1:1:PRTSET S T=$P(PSETLST,U,I),T=$P(T,"-",$L(T,"-")),PRTSET(I)="VR-PRINTSET~"_T_"~"_I_"~"_PRTSET
  I ACTION="" S ACTION="UNKNOWN"  ; Should never happen
  S PTCT=RADFN'=$G(MAGJOB("LASTPT",ACTION))
  I PTCT S MAGJOB("LASTPT",ACTION)=RADFN
  S TXT=ACTION_U_RADFN_U_MAGIEN_U_U_U_NIMGS
  S TXT=TXT_U_PTCT_U_$S(+MAGJOB("USER",1):1,1:0)_U_REMOTE
- ; Session Log
- D ACTION^MAGGTAU(TXT,1)
- ; Mag Log
+ ;
+ ;=== Log to Imaging Windows Sessions file (#2006.82).
+ ;  for PRTSET members 2 to N (prevent double-counting):
+ ;    set NIMGS = 0
+ ;    set PTCT to FALSE
+ ;
+ I PRTSET>1 N I F I=1:1:PRTSET D
+ . I I>1 S $P(TXT,U,6)=0,$P(TXT,U,7)=0
+ . D ACTION^MAGGTAU(TXT_"|"_PRTSET(I),1)
+ E  D ACTION^MAGGTAU(TXT,1)
+ ;
+ ;=== Log to Mag Log
+ ;  For Printset, add string to new Param-7 prior to calling ENTRY...
+ ;    string= s/a above, but no pipe char.
+ ;    for PRTSET members 2 to N set NIMGS = 0 to not double-count
+ ;
  I REMOTE S ACTION=ACTION_"/REM"
- D ENTRY^MAGLOG(ACTION,+DUZ,MAGIEN,"VRAD:"_MAGJOB("VRVERSION"),RADFN,NIMGS)
+ I PRTSET>1 N I F I=1:1:PRTSET D
+ . I I>1 S NIMGS=0
+ . D ENTRY^MAGLOG(ACTION,+DUZ,MAGIEN,"VRAD:"_MAGJOB("VRVERSION"),RADFN,NIMGS,PRTSET(I))
+ E  D ENTRY^MAGLOG(ACTION,+DUZ,MAGIEN,"VRAD:"_MAGJOB("VRVERSION"),RADFN,NIMGS)
  Q
  ;
 LOGOFF(MAGGRY,DATA) ; RPC: MAGJ LOGOFF
- ; update session file: logoff time & session entry closed
+ ;
+ ;=== Update Imaging Windows Sessions file: logoff time & session entry closed.
  D LOGOFF^MAGGTAU(.MAGGRY)
  Q
  ;
@@ -105,7 +133,7 @@ CACHEQ(MAGGRY,DATA) ; RPC: MAGJ CACHELOCATION
  S DIQUIET=1 D DT^DICRW
  S REPLY=0,MAGLST="MAGJCACHE"
  K MAGGRY S MAGGRY=$NA(^TMP($J,MAGLST)) K @MAGGRY
- S WSLOC=$P(DATA,U),VRADVER=$P(DATA,U,2),OSVER=$P(DATA,U,3)
+ S WSLOC=$$UPCASE($P(DATA,U)),VRADVER=$P(DATA,U,2),OSVER=$P(DATA,U,3)
  I '$D(MAGJOB("OSVER")) D  ; ID p32 initialization
  . S MAGJOB("OSVER")=$S(OSVER]"":OSVER,1:"UNK")
  . S MAGJOB("VRVERSION")=$S(VRADVER]"":VRADVER,1:"UNK")
@@ -157,7 +185,12 @@ MAGJOB ; Init magjob array
  S MAGJOB("WSLOCTYP")=$S(+MAGJOB("USER",1):"RAD",1:"Non-Rad") ; USer is Rist/Not
  I '$D(MAGJOB("WRKSIEN")) D
  . Q:+$G(NOTCLIEN)  ; proceed only if Vrad Client is attached
- . S X=MAGJOB("WSNAME")_"^^^"_MAGJOB("WSLOCTYP")_U_U_U_U_1_U_MAGJOB("OSVER")_U_MAGJOB("VRVERSION")
+ . S X=MAGJOB("WSNAME")
+ . S $P(X,U,4)=MAGJOB("WSLOCTYP")
+ . S $P(X,U,8)=1                     ; StartupMode=Normal.
+ . S $P(X,U,9)=MAGJOB("OSVER")
+ . S $P(X,U,10)=MAGJOB("VRVERSION")
+ . S $P(X,U,17)=MAGJOB("VRBLDDTTM")
  . D UPD^MAGGTAU(.Y,X)
  . D REMLOCK^MAGJEX1B ; put here to only run 1x/ login
  Q
@@ -184,49 +217,149 @@ USERKEYS ; Store Security Keys in MagJob
  Q
  ;
 PINF1(MAGGRY,MAGDFN) ;RPC Call MAGJ PT INFO -- Get pt info
+ N AGE,DFN,DOB,MAGSSN,X
  S X="ERR3^MAGJUTL3",@^%ZOSF("TRAP")
- D INFO^MAGGTPT1(.MAGGRY,MAGDFN_"^1") ; 1=Don't log to session file
+ S (AGE,MAGSSN)=""
+ D INFO^MAGGTPT1(.MAGGRY,MAGDFN_"^1^^^1") ; 1=Don't log to session file; 4-digit yr
+ I +MAGGRY D
+ . ; calculate Age & SSN/MRN display strings
+ . S DOB=$P(MAGGRY,U,5)
+ . I DOB D DT^DILF("",DOB,.X,"") S AGE=$$AGECALC(X)
+ . S DFN=MAGDFN D PID^VADPT6 S MAGSSN=$S(VAERR:"Unknown",1:VA("PID")) ; IA #10062 (Supported)
+ . K VA("PID"),VA("BID"),VAERR
+ S MAGGRY=MAGGRY_"|"_AGE_U_MAGSSN
  Q
  ;
-USERINF2(MAGGRY,DATA) ; rpc: MAGJ USER2--get user info
- ; Input= unused ^ Client Vs ^ Client O/S Vs
- ; Reply=
- ; 0) = 1/0^code~Msg |  DUZ ^ NAME ^ INITIALS ^ REQFLAG
- ; 1)= Net UserName ^ PSW ^ UserType ^ SYSADMIN
- ;     1/0=Success/Fail flag for vs chk
- ;     code=4 if fail
- ;     Msg=Disp msg if fail
- ;     REQFLAG = 1/0 (Ena/Disa Requisition for non-rad staff)
- ;     UserType = 3: Staff R'ist; 2: Resident R'ist; 1: Rad Tech; 0: Non-Rad
- ;     SYSADMIN = 1/0 1=user has System User privileges
- ; 2:N)=Sec Keys
- ;  
+AGECALC(DOB) ; calculate age from DOB til now
+ ; format for age-appropriate display
+ ; Input DOB in Fileman format
+ ;   Note: assumes a previously validated date is passed in
+ N AGE,NDAYS,X,X1,X2
+ S AGE="unknown"
+ I DOB?7N1"."0.N S DOB=$E(DOB,1,7) ; strip off time value
+ I DOB?7N D
+ . D NOW^%DTC S X1=X K %I
+ . s X2=DOB D ^%DTC S NDAYS=X
+ . I NDAYS<0 Q  ; * Invalid DOB later than today --> Unknown
+ . I NDAYS<32 S AGE=NDAYS_"d" Q  ; days
+ . I NDAYS<365 S AGE=$J(NDAYS\30.5,0,0)_"m" Q  ; months
+ . I NDAYS=365 S AGE="1y 0m" Q  ; special case
+ . S AGE=NDAYS\365.25_"y"  ; years
+ . I AGE<16 S AGE=AGE_" "_(($J(NDAYS#365.25,0,0))\30.5)_"m" Q  ; years & months
+ Q AGE
+ ; 
+ ;+++++ INITIALIZE SESSION (VERSION CHK, DISPLAY RES CHK, COLLECT USER INFO).
+ ; RPC: MAGJ USER2
+ ; 
+ ; MAGGRY      Reference to a variable naming the global to store returned data
+ ; 
+ ; DATA        Information about the client and its workstation.
+ ;               ^01: MAMMORES -- Screen resolution of main viewer display:
+ ; 
+ ;                       format is X_"x"_Y_","_ColorType (e.g., 2048x2580,GRAY)
+ ;                       where X,Y are resolutions & ColorType={GRAY, COLOR}.
+ ;                
+ ;               ^02: Client Vs ....... Client software version for checking.
+ ;               ^03: Client O/S Vs ... Client OS version for logging.
+ ;               ^04: ClientBuildDayTime ..... for logging.
+ ;
+ ; Return Values
+ ; =============
+ ; 
+ ; ^(0)
+ ;     |01
+ ;        ^01: 1/0 -- Success/Fail flag for version check.
+ ;        ^02: 
+ ;            ~01: code ... 4=fail.
+ ;            ~02: Msg .... Message to display if fail.
+ ;     |02
+ ;        ^01: DUZ
+ ;        ^02: NAME
+ ;        ^03: INITIALS
+ ;        ^04: REQFLAG .... 1/0 Enable/Disable Requisition for non-rad staff
+ ;        ^05: SVERSION ... VistARad Server Version
+ ;        ---- Patch MAG*3*101 ----
+ ;        ^06: DICTPREF ... 1/0 ENA DICT PREF-YES ALL LOCKED (File 2006.69,13)
+ ;        ---- Patch MAG*3*90 ----
+ ;        ^07: SSN
+ ;        ^08: UserLocalStationNumber
+ ;        ^09: LocalPrimaryDivision
+ ;        ^10: PrimarySiteStationNumber
+ ;        ^11: SiteServiceURL
+ ;        ^12: SiteCode       
+ ; ^(1)
+ ;     ^01: UserName ... Network UserName
+ ;     ^02: PSW ........ Network Password
+ ;     ^03: UserType ... 3=Staff R'ist, 2=Resident R'ist, 1=Rad Tech, 0=Non-Rad
+ ;     ^04: SYSADMIN ... 1/0 1=user has System User privileges
+ ;     ^05: Production account? 1/0 1=yes
+ ;
+ ; ^(2:N)   Security Keys
+ ; ^(N+1:M) Mammography display message data
+ ;
+USERINF2(MAGGRY,DATA) ; RPC: MAGJ USER2--get user info
  S X="ERR2^MAGJUTL3",@^%ZOSF("TRAP")
  K MAGGRY S MAGGRY(0)="",MAGGRY(1)=""
  I +$G(DUZ)=0 S MAGGRY(0)="0^4~DUZ Undefined, Null or Zero|" Q
- N I,J,K,Y,REQ,VRADVER,OSVER,RADTECH,PLACE,REPLY
- S VRADVER=$P(DATA,U,2),OSVER=$P(DATA,U,3)
+ N I,J,K,Y,REQFLAG,VRADVER,OSVER,RADTECH,PLACE,REPLY,DICTPREF,MAMMORES,ICNT,MSG
+ S MAMMORES=$P(DATA,U),VRADVER=$P(DATA,U,2),OSVER=$P(DATA,U,3)
  D CHKVER^MAGJUTL5(.REPLY,VRADVER,.PLACE,.SVERSION)
  I 'REPLY S MAGGRY(0)=REPLY_"|^^^^",MAGGRY(1)="^^^" G USERIN2Z ; Version check or PLACE failed
  S RADTECH=""
  S MAGJOB("OSVER")=$S(OSVER]"":OSVER,1:"UNK")   ; IDs P18 initialization; cf cacheq ep above
  S MAGJOB("VRVERSION")=$S(VRADVER]"":VRADVER,1:"UNK")
+ S MAGJOB("VRBLDDTTM")=$P(DATA,U,4)
  S MAGJOB("VSVERSION")=SVERSION
  D MAGJOB
- ; Enable/Disable Requisition if not a radiology user
- S REQ=1
+ ;
+ ;=== Enable/Disable Requisition if not a radiology user
+ S REQFLAG=1
  I 'MAGJOB("USER",1) D  ; not a rist
  . I $D(^VA(200,"ARC","T",+DUZ)) S RADTECH=1 Q  ; Rad Tech OK
  . S X=+$P($G(^MAG(2006.69,1,0)),U,16)
- . I X S REQ=0 ; Disable Req
- S MAGGRY(0)=REPLY_"|"_DUZ_U_$$GET1^DIQ(200,DUZ_",",.01)_U_$$GET1^DIQ(200,DUZ_",",1)_U_REQ_U_SVERSION
- ; Network UserName and PSW
+ . I X S REQFLAG=0 ; Disable Req
+ S DICTPREF=+$P($G(^MAG(2006.69,1,0)),U,17)
+ S MAGGRY(0)=REPLY_"|"_DUZ_U_$$GET1^DIQ(200,DUZ_",",.01)_U_$$GET1^DIQ(200,DUZ_",",1)_U_REQFLAG_U_SVERSION_U_DICTPREF
+ ;
+ ;=== Add "^"-pieces 7:12 for ViX (MAG*3*90).
+ S MAGGRY(0)=MAGGRY(0)_U_$$GET1^DIQ(200,DUZ_",",9) ;...SSN
+ S MAGGRY(0)=MAGGRY(0)_U_$$GET1^DIQ(4,DUZ(2),99,"E") ;.UserLocalStationNumber
+ S MAGGRY(0)=MAGGRY(0)_U_$P($$SITE^VASITE(),U,3) ;.......LocalPrimaryDivision
+ S MAGGRY(0)=MAGGRY(0)_U_$P($$SITE^VASITE(),U,3) ;.....PrimarySiteStationNumber
+ ;
+ ;=== Lookup SiteServiceURL.
+ N SSUNC,VIXPTR
+ S VIXPTR=$P($G(^MAG(2006.1,+MAGJOB("SITEP"),"NET")),"^",5)
+ ;
+ ;=== Return UNC only if OpStatus is 'online'.
+ I VIXPTR,+$P($G(^MAG(2005.2,VIXPTR,0)),"^",6) D
+ . S SSUNC=$P($G(^MAG(2005.2,VIXPTR,0)),"^",2)
+ S MAGGRY(0)=MAGGRY(0)_U_$G(SSUNC) ;...................SiteServiceURL
+ S MAGGRY(0)=MAGGRY(0)_U_$P(MAGJOB("SITEP"),U,2) ;.....SiteCode
+ ;
+ ;=== Network UserName and PSW
  S MAGGRY(1)=$P($G(^MAG(2006.1,PLACE,"NET")),U,1,2)
  S X=+MAGJOB("USER",1),X=$S(X=15:3,X=12:2,+RADTECH:1,1:0)
  S MAGGRY(1)=MAGGRY(1)_U_X_U_$D(MAGJOB("KEYS","MAGJ SYSTEM USER"))
- S MAGGRY(2)="*KEYS",X="" F I=3:1 S X=$O(MAGJOB("KEYS",X)) Q:X=""  S MAGGRY(I)=X
- S MAGGRY(I)="*END"
+ S MAGGRY(1)=MAGGRY(1)_U_$S($L($T(PROD^XUPROD)):+$$PROD^XUPROD,1:0)
+ S MAGGRY(2)="*KEYS",X="" F ICNT=3:1 S X=$O(MAGJOB("KEYS",X)) Q:X=""  S MAGGRY(ICNT)=X
+ S MAGGRY(ICNT)="*END"
+ S ICNT=ICNT+1,MAGGRY(ICNT)="*MAMMO"
+ S MSG=$$MAMMOCHK(MAMMORES)
+ I MSG]"" S ICNT=ICNT+1,MAGGRY(ICNT)=MSG
+ S ICNT=ICNT+1,MAGGRY(ICNT)="*END"
 USERIN2Z Q
+ ;
+MAMMOCHK(X) ; P133--now ignoring screen resolution, etc.
+ ; note--as of ??/12 there are other sized displaysapproved for mammo
+ ; now returns just a single disclaimer message, regardless of display
+ ; keeping this structure for possible change in the future
+ N MSG
+ S MSG="Primary diagnostic interpretation of mammography images may only be performed on medical devices that are cleared for that intended use, and that use display hardware conforming to technical specifications set by the FDA."
+ Q:$Q MSG Q
+ ;
+UPCASE(X) ; strip spaces, and cx to uppercase
+ Q $TR(X,"abcdefghijklmnopqrstuvwxyz ","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
  ;
 ERR1 N ERR S ERR=$$EC^%ZOSV S @MAGGRY@(0)="0^4~"_ERR G ERR
 ERR2 N ERR S ERR=$$EC^%ZOSV S MAGGRY(0)="0^4~"_ERR G ERR

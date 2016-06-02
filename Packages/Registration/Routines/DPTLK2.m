@@ -1,5 +1,5 @@
 DPTLK2 ;ALB/RMO,ERC - MAS Patient Look-up Add New Patient ; 1/8/09 3:10pm
- ;;5.3;Registration;**32,197,214,244,532,578,615,620,647,680,702,653**;Aug 13, 1993;Build 153
+ ;;5.3;Registration;**32,197,214,244,532,578,615,620,647,680,702,653**;Aug 13, 1993;Build 164
  N DPTCT,DGVV,DPTLIDR,DGCOL S DGCOL=0
  I $D(DDS) D CLRMSG^DDS S DX=0,DY=DDSHBX+1 X DDXY
  I '$D(DUZ(0)) W:DIC(0)["Q" !?3,*7,"Unable to Add Patient. Your Fileman Access Code is undefined." S DPTDFN=-1 G Q

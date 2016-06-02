@@ -1,5 +1,5 @@
 PRSAOTX ; HISC/REL-OT/CT Approvals ;5/23/95  12:55
- ;;4.0;PAID;**34,114**;Sep 21, 1995;Build 6
+ ;;4.0;PAID;**34,114,110**;Sep 21, 1995;Build 7
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  S (QT,NF)=0,PRSTLV=3 K ^TMP($J)
  S TLE="" F  S TLE=$O(^PRST(455.5,"B",TLE)) Q:TLE=""  S TLH=0 F TLI=0:0 S TLI=$O(^PRST(455.5,"B",TLE,TLI)) Q:TLI<1  I $D(^PRST(455.5,TLI,"A",DUZ)) D TLC I QT G ES
@@ -12,7 +12,7 @@ TLC ; Check T&L
  S NN="" F  S NN=$O(^PRSPC("ATL"_TLE,NN)) Q:NN=""  F DFN=0:0 S DFN=$O(^PRSPC("ATL"_TLE,NN,DFN)) Q:DFN<1  I $D(^PRST(458.2,"AS",DFN)) D CHK I QT G T1
  Q:'$D(^TMP($J,TLI))  I ECST W !!,"Estimated Cost of Overtime: $",$J(ECST,0,2)
 OK R !!,"Disposition (A=Approve, D=Disapprove, X=Dis. Line Item, RETURN to bypass): ",ACT:DTIME S:'$T!(ACT["^") QT=1 G:QT!(ACT="") T1 S ACT=$TR(ACT,"adx","ADX") I ACT'?1U!("ADX"'[ACT) W *7,!,"Enter A, D or X or Press RETURN to bypass" G OK
- I ACT="X" D CAN S ACT="A"
+ I ACT="X" D CAN G:Y["^" T1 S ACT="A"
  S ^TMP($J,TLI)=ACT Q
 T1 K ^TMP($J,TLI) Q
 CHK ; Check for needed approvals

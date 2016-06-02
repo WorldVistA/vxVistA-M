@@ -1,11 +1,14 @@
-ORWPCE3 ; SLC/KCM/REV/JM - Get a PCE encounter for a TIU document;11/21/03 ;11/30/09  13:55
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**10,85,116,190,280**;Dec 17, 1997;Build 85
- Q
+ORWPCE3 ; SLC/KCM/REV/JM/TC - Get a PCE encounter for a TIU document ;02/07/14  13:02
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**10,85,116,190,280,306,371,361,385**;Dec 17, 1997;Build 29
+ ;
 PCE4NOTE(LST,IEN,DFN,VSITSTR) ; Return encounter for an associated note
  ; LST(1)=HDR^AllowEdit^CPTRequired^VStr^Author^hasCPT
  ; LST(n)=TYP+^CODE^CAT^NARR^QUAL1^QUAL2 (QUAL1=Primary!Qty, QUAL2=Prv)
  N VISIT,VSTR,ILST,LOC,CODE,PRIM,QTY,CAT,NARR,PRV,X0,X12,X802,X811,VTYP
  N IPOV,ICPT,IPRV,IIMM,ISK,IPED,IHF,IXAM,ITRT,ICOM,MIDX,MIEN,MCNT,MODS
+ ;DSS/SMP - BEGIN MODS
+ I $$VX N X21600
+ ;DSS/SMP - END MODS
  I +$G(IEN)<1 D  I 1 ; Get PCE Data on a new note not yet saved
  . S (X0,X12)=""
  . S VISIT=$$GETENC^PXAPI(DFN,$P(VSITSTR,";",2),$P(VSITSTR,";"))
@@ -45,6 +48,13 @@ PCE4NOTE(LST,IEN,DFN,VSITSTR) ; Return encounter for an associated note
  .S ILST=ILST+1,LST(ILST)="VST^HNC^"_$P($P(VAL,";",6),U,2)
  I $P(VAL,";",7)'="" D
  .S ILST=ILST+1,LST(ILST)="VST^CV^"_$P($P(VAL,";",7),U,2)
+ ;DSS/SMP - BEGIN MODS
+ I $$VX D
+ .N PG S PG=+$G(^TMP("PXKENC",$J,VISIT,"VST",VISIT,21600))
+ .I PG D
+ ..S ILST=ILST+1,LST(ILST)="VST^PG^"_PG
+ ..S LST(ILST)=LST(ILST)_"~"_$G(^VFD(21630.005,PG,1))
+ ;DSS/SMP - END MODS
  ;for provider
  ; LST(n)="PRV"^ien^^^name^primary/secondary flag
  S IPRV=0 F  S IPRV=$O(^TMP("PXKENC",$J,VISIT,"PRV",IPRV)) Q:'IPRV  D
@@ -55,13 +65,14 @@ PCE4NOTE(LST,IEN,DFN,VSITSTR) ; Return encounter for an associated note
  . S ILST=ILST+1
  . S LST(ILST)="PRV"_U_CODE_"^^^"_NARR_"^"_PRIM
  S IPOV=0 F  S IPOV=$O(^TMP("PXKENC",$J,VISIT,"POV",IPOV)) Q:'IPOV  D
+ . N ICDCSYS
  . S X0=^TMP("PXKENC",$J,VISIT,"POV",IPOV,0),X802=$G(^(802)),X811=$G(^(811))
- . S CODE=$P(X0,U)
- . S:CODE CODE=$P(^ICD9(CODE,0),U)
+ . S CODE=$P(X0,U),NARR=$P(X0,U,4),ICDCSYS=$$SAB^ICDEX($$CSI^ICDEX(80,CODE),DT)
+ . I CODE D
+ . . S CODE=$P($$ICDDATA^ICDXCODE(ICDCSYS,CODE,DT),U,2)
+ . . S NARR=$$SETNARR(NARR,CODE)
  . S CAT=$P(X802,U)
  . S:CAT CAT=$P(^AUTNPOV(CAT,0),U)
- . S NARR=$P(X0,U,4)
- . S:NARR NARR=$P(^AUTNPOV(NARR,0),U)
  . S PRIM=($P(X0,U,12)="P")
  . S PRV=$P(X12,U,4)
  . S ILST=ILST+1
@@ -88,6 +99,12 @@ PCE4NOTE(LST,IEN,DFN,VSITSTR) ; Return encounter for an associated note
  . I +MCNT S MODS=MCNT_MODS
  . S ILST=ILST+1
  . S LST(ILST)="CPT"_U_CODE_U_CAT_U_NARR_U_QTY_U_PRV_U_U_U_MODS
+ . ;DSS/SMP - BEGIN MODS
+ . I $$VX,$G(^TMP("PXKENC",$J,VISIT,"CPT",ICPT,21600)) D
+ .. S X21600=$G(^TMP("PXKENC",$J,VISIT,"CPT",ICPT,21600))
+ .. S $P(X21600,"~",2)=$G(^VFD(21630.005,X21600,1))
+ .. S $P(LST(ILST),U,7)=X21600
+ . ;DSS/SMP - END MODS
  . I X811]"" D
  .. S ICOM=ICOM+1
  .. S $P(LST(ILST),U,10)=ICOM
@@ -191,8 +208,8 @@ PCE4NOTE(LST,IEN,DFN,VSITSTR) ; Return encounter for an associated note
  .. S $P(LST(ILST),U,10)=ICOM
  .. S ILST=ILST+1
  .. S LST(ILST)="COM"_U_ICOM_U_X811
- ;DSS/SMP - BEGIN MODS - Incorporate OSHERA compliant vxVistA tabs from CPRS/PCE.
- I $G(^%ZOSF("ZVX"))["VX" D
+ ;DSS/SMP - BEGIN MODS - Incorporate OSHERA compliant vxVistA tabs from  CPRS/PCE.
+ I $$VX D
  .;for vxVistA SnoMed:
  .; LST(n)="VFDSNO"^Code^CAT^NARR^prv
  .S VFDSNO=0 F  S VFDSNO=$O(^TMP("PXKENC",$J,VISIT,"VFDPXSN4",VFDSNO)) Q:'VFDSNO  D
@@ -211,5 +228,35 @@ PCE4NOTE(LST,IEN,DFN,VSITSTR) ; Return encounter for an associated note
  ... S $P(LST(ILST),U,10)=ICOM
  ... S ILST=ILST+1
  ... S LST(ILST)="COM"_U_ICOM_U_X811
- ;DSS/SMP - END MODES
+ ;DSS/SMP - END MODS
  Q
+GETDXTXT(ORY,NARR,CODE) ; RPC to resolve Dx Text for PCE view
+ S ORY=$$SETNARR(NARR,CODE)
+ Q
+SETNARR(NARR,CODE) ; Set narrative string
+ N I,PRIMCODE,ICDLBL
+ I (NARR?1.N),($P($G(^AUTNPOV(+NARR,0)),U)]"") S NARR=$P($G(^AUTNPOV(+NARR,0)),U)
+ ;S:(ICDD]"")&($$UP^XLFSTR(NARR)'[$$UP^XLFSTR(ICDD)) NARR=$P(NARR," (")_" - "_ICDD_" - "_$S(NARR[" (":" (",1:"")_$P(NARR," (",2)
+ ;S:NARR'[CODE NARR=$S(NARR["(SCT":$P(NARR,")")_", ",1:NARR_" (")_"ICD-9-CM "_CODE_")"
+ I NARR["(SNOMED CT" S NARR=$P(NARR,"(")_"(SCT"_$P($P(NARR,")"),"(SNOMED CT",2)_")"
+ E  I NARR["SNOMED CT" S NARR=$P(NARR,"SNOMED CT")_"(SCT"_$P($P(NARR,":"),"SNOMED CT",2)_")"
+ S PRIMCODE=$S(CODE["/":$P(CODE,"/"),1:CODE),ICDLBL=$P($$CODECS^ICDEX(PRIMCODE,80,DT),U,2)
+ I CODE["/" F I=1:1:$L(CODE,"/") D
+ . N ICDC,ICDD S ICDC=$P(CODE,"/",I),ICDD=$$ICDDESC(ICDC)
+ . I (NARR'[ICDC)&((ICDD]"")&($$UP^XLFSTR(NARR)'=$$UP^XLFSTR(ICDD))) S NARR=NARR_" - "_ICDD_" ("_$G(ICDLBL)_" "_ICDC_")"
+ . E  S:NARR'[ICDC NARR=NARR_" ("_$G(ICDLBL)_" "_ICDC_")"
+ E  D
+ . N ICDD S ICDD=$$ICDDESC(CODE)
+ . I (NARR'[CODE)&((ICDD]"")&($$UP^XLFSTR(NARR)'=$$UP^XLFSTR(ICDD))) S NARR=NARR_" - "_ICDD_" ("_$G(ICDLBL)_" "_CODE_")"
+ . E  S:NARR'[CODE NARR=NARR_" ("_$G(ICDLBL)_" "_CODE_")"
+ Q NARR
+ICDDESC(ORCODE,ORDT) ; Get description for ICD9 Code
+ N ICDD,ORY S ORY="",ORDT=$G(ORDT,DT)
+ D ICDDESC^ICDXCODE("DIAGNOSIS",ORCODE,ORDT,.ICDD)
+ I '$D(ICDD) G ICDDESQ
+ S ORY=$$SENTENCE^XLFSTR($G(ICDD(1)))
+ICDDESQ Q ORY
+ ;
+ ;DSS/SMP - BEGIN MODS
+VX() ;
+ Q $G(^%ZOSF("ZVX"))["VX"

@@ -1,10 +1,16 @@
 FHASM2B ; HISC/REL - Target Weight - Geriatric ;6/1/89  16:17
- ;;5.5;DIETETICS;**8**;Jan 28, 2005;Build 28
+ ;;5.5;DIETETICS;**8,21**;Jan 28, 2005;Build 6
  ; Target Weight for Geriatrics
  ; Journal of Amer. Medical Assn., Vol. 172, p. 658, by
  ; Master & Lasser. Used for people ages 65 to 94.
+ ; Full source information:
+ ; Tables of Average Weight and Height of Americans Aged 65 to 94 years
+ ; Relationship Of Weight And Height To Survival
+ ; By Arthur M. Master, M.D., Richard P. Lasser, M.D., and Gloria Beckman, B.A., New York
+ ; J.A.M.A., Feb. 13, 1960 Vol. 172, No. 7 pages 658 to 662
 G1 S OFF=$S(SEX="M":H1-61,1:H1-45),A1=$P($T(GM1+OFF),";",$S(AGE<70:4,AGE<75:5,AGE<80:6,AGE<85:7,AGE<90:8,1:9))
- G:A1'["*" G2 S A2=+A1,A1=$P($T(GM1+OFF),";",A2)
+ G:A1'["*" G2
+ S A2=+A1,A1=$P($T(GM1+OFF),";",$S(A2=1:4,A2=2:5,A2=3:6,A2=4:7,1:8))
  W *7,!!,"No data for your Age Group, the ",$S(A2=1:"65-69",A2=2:"70-74",A2=3:"75-79",A2=4:"80-84",1:"85-89")," Group was used."
 G2 S W1=$P(A1,"-",1),W2=+$P(A1,"-",2),W3=+$J(W1+W2/2,0,0)
  S X1=$S(FHU'="M":W1,1:+$J(W1/2.2,0,1)),X2=$S(FHU'="M":W2,1:+$J(W2/2.2,0,1)),X3=$S(FHU'="M":W3,1:+$J(W3/2.2,0,1))

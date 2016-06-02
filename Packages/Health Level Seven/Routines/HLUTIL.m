@@ -1,5 +1,6 @@
-HLUTIL ;SFISC/RJH- Utilities for HL7 TCP    ;08/24/2000  16:55
- ;;1.6;HEALTH LEVEL SEVEN;**36,19,57,64,66,109**;Oct 13, 1995
+HLUTIL ;SFISC/RJH- Utilities for HL7 TCP    ;06/03/2008  11:20
+ ;;1.6;HEALTH LEVEL SEVEN;**36,19,57,64,66,109,142**;Oct 13, 1995;Build 17
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  Q
  ;For TCP only
 MSGSTAT(X) ;message status
@@ -125,7 +126,11 @@ REPROC(IEN,RTN) ; reprocessing message
  N HL,HDR,FS,ECH,HLMSA,X,X1,X2
  S HLQUIT=0,HLNODE="",HLNEXT="D HLNEXT^HLCSUTL"
  I '$D(^HLMA(+$G(IEN),0)) Q -1
- I $G(RTN)'["" Q -1
+ ;
+ ; patch HL*1.6*142
+ ; I $G(RTN)'["" Q -1
+ I $G(RTN)']"" Q -1
+ ;
  S (HLMTIENS,HLTCP)=+IEN,HLMTIEN=+^HLMA(HLMTIENS,0),HLMSA=$$MSA^HLTP3(HLMTIEN)
  M HDR=^HLMA(HLMTIENS,"MSH")
  D CHK^HLTPCK2(.HDR,.HL,.HLMSA)

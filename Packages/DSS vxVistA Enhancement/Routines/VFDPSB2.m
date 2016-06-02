@@ -1,18 +1,18 @@
 VFDPSB2 ;DSS/LM - vxBCMA to vxPAMS interface ; 6/23/2009
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 153
+ ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 3
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  Q
 DQ ;Tasked from RPC: VFD BCMA EVENT after filing data to AUDIT LOG multiple
  ; of BCMA MEDICATION LOG file.
- ; 
+ ;
  ; VFDIEN is File 53.79 IEN
  ; VFDIENR(1) is AUDIT LOG multiple IEN
- ; 
+ ;
  ; Other VFD* variables may also be referenced.
- ; 
+ ;
  ; Example VFD* variable values:
- ; 
+ ;
  ;   VFD50IEN=3009
  ;   VFDIEN=261
  ;   VFDIENR("1")=15
@@ -84,7 +84,7 @@ DQ ;Tasked from RPC: VFD BCMA EVENT after filing data to AUDIT LOG multiple
  S VFDPPR=$$INPR(@VFDR@(.02),@VFDB@(.06,"I"))
  S:VFDPPR @VFDR@(1204)=+VFDPPR ;PRIMARY PROVIDER, if inpatient
  S:$L(VFDCMT) @VFDR@(1101)=VFDCMT ;COMMENT
- ; 
+ ;
  D FILE^DIE(,$NA(VFDFDA))
  Q
 VISIT(VFDFN,VFDT) ;[Private] Return VISIT associated with BCMA MEDICATION LOG entry
@@ -126,9 +126,9 @@ VISIT(VFDFN,VFDT) ;[Private] Return VISIT associated with BCMA MEDICATION LOG en
  ;
 DD0(VFDIEN) ;[Private] If one and only one DISPENSE DRUG multiple entry
  ; return 0-node of that entry.
- ; 
+ ;
  ; VFDIEN=[Required] BCMA MEDICATION LOG IEN
- ; 
+ ;
  I $G(VFDIEN)>0 N VFDDIEN S VFDDIEN=$O(^PSB(53.79,VFDIEN,.5,0))
  E  Q ""
  I VFDDIEN,VFDDIEN=$O(^PSB(53.79,VFDIEN,.5," "),-1) Q $G(^(VFDDIEN,0))
@@ -137,7 +137,7 @@ DD0(VFDIEN) ;[Private] If one and only one DISPENSE DRUG multiple entry
 UVPR(VFDFN,VFD55) ;[Private] UNIT DOSE or IV order PROVIDER (pointer to File 200)
  ; VFDFN=[Required] PATIENT IEN (File 55 IEN)
  ; VFD55=[Required] ORDER NUMBER with SUFFIX
- ; 
+ ;
  I $G(VFDFN)>0,$G(VFD55)>0 N VFDATA,VFDFLD,VFDIEN,VFDSUBDD,VFDTYPE,VFDY
  E  Q ""
  ;
@@ -151,10 +151,10 @@ UVPR(VFDFN,VFD55) ;[Private] UNIT DOSE or IV order PROVIDER (pointer to File 200
 INPR(DFN,VFDT) ;[Private] PRIMARY PROVIDER, if inpatient
  ; DFN=[Required] PATIENT IEN
  ; VFDT=[Required] Date.time of encounter
- ; 
+ ;
  ; Return=PRIMARY CARE PHYSICIAN assigned to the patient in
  ;        internal^external format. (e.g., 3^SMITH,JACOB)
- ; 
+ ;
  I $G(DFN)>0,$G(VFDT)>0 N VAIP S VAIP("D")=$P(VFDT,".")
  E  Q ""
  D IN5^VADPT Q $G(VAIP(7))

@@ -1,10 +1,25 @@
-PSBPRN ;BIRMINGHAM/EFC-BCMA PRN FUNCTIONS ;Mar 2004
- ;;3.0;BAR CODE MED ADMIN;**5,3,13**;Mar 2004
+PSBPRN ;BIRMINGHAM/EFC-BCMA PRN FUNCTIONS ;12/14/12 12:22pm
+ ;;3.0;BAR CODE MED ADMIN;**5,3,13,61,68,70**;Mar 2004;Build 101
+ ;Per VHA Directive 2004-038 (or future revisions regarding same), this routine should not be modified.
  ;
  ;Reference/IA
  ;DEM^VADPT/10061
  ;INP^VADPT/10061
  ;$$GET1^DIQ/2056
+ ;GETSIOPI^PSJBCMA5/5763
+ ;
+ ;*68 - add call to add special instructions (SI) entries to the
+ ;      ^TMP("PSB")  global that ends up in the RESULTS ARRAY of
+ ;      RPC PSB GETPRNS.
+ ;      and add new parameter to GETPRNS tag to use new SI/OPI word
+ ;      processing fields.
+ ;*70 - remove discharged status from the api and rename DECEASED
+ ;      see below, in tag Getprns, for searchng back rules and dates
+ ;      of CO vs IM orders.
+ ;
+ ; ** Warning: PSBSIOPI will be used as a global variable for all down
+ ;    streams calls from this RPC tag call.
+ ;
 EN ;
  Q
  ;
@@ -49,7 +64,7 @@ EDIT1 ;
  K PSBCNT,PSBDT,PSBIEN,PSBSRCH,PSBTMP,DA,DR,DDSFILE
  Q
  ;
-GETPRNS(RESULTS,DFN,PSBORD) ; Get the PRN's for a pt needing effectness
+GETPRNS(RESULTS,DFN,PSBORD,PSBSIOPI) ; Get the PRN's for a pt needing effectiveness
  ;
  ; RPC PSB GETPRNS
  ;
@@ -57,17 +72,37 @@ GETPRNS(RESULTS,DFN,PSBORD) ; Get the PRN's for a pt needing effectness
  ; Returns all administrations of a PRN order that have NOT had
  ; the PRN Effectiveness documented BASED ON THE TRANSFER DATE AND SITE PARAM
  ;
- N PSBIEN,PSBSTOP
+ N PSBADMDT,PSBHOUR,PSBPRNDT,PSBIEN,PSBSTOP,PSBIMHR,PSBIMPRNDT,PSBCODY,PSBCOPRNDT           ;*70
  K ^TMP("PSB",$J),RESULTS
+ S PSBSIOPI=+$G(PSBSIOPI)   ;*68 init to 0 if not present or 1 if sent
  ;
- Q:$$DISCHRGD(DFN)
+ Q:$$DECEASED(DFN)                                                ;*70
  ;
- D INP^VADPT S PSBTRDT=+VAIN(7)
- S PSBHOUR=$$GET^XPAR("DIV","PSB PRN DOCUMENTATION") I PSBHOUR="" S PSBHOUR=72
- D NOW^%DTC S PSBSTRT=%,PSBPRNDT=$$FMADD^XLFDT(PSBSTRT,"",-PSBHOUR)
+ D INP^VADPT S PSBADMDT=+VAIN(7)                   ;get admit date *70
+ ;get IM site param then build IM & CO PRN dates                   *70
+ S PSBIMHR=$$GET^XPAR("DIV","PSB PRN DOCUMENTATION")  ;IM hours
+ S:'PSBIMHR PSBIMHR=72                ;IM def=72 hrs if param null *70
+ S PSBCODY=1                          ;CO def = 1 day, no time     *70
  ;
- ;Use the (OLDER) value of PSBPRNDT(site param) or PSBTRDT(admission)
- I PSBPRNDT>PSBTRDT S PSBPRNDT=PSBTRDT
+ ;*70
+ ; BUILD IM & CO prn date limit from Site param and/or defaults,
+ ; then use the oldest of the 2 PRN dates for the loop quit value.
+ ; If an admit date exists and is older than the IM date, then use
+ ; it for the loop. Also if admit date is present, then CO orders
+ ; should use IM rules and dates.
+ ;
+ ; CO date, for non-admitted patient, will be a whole day, no time.
+ ;
+ D NOW^%DTC S PSBSTRT=%
+ ;create IM & CO past date limit to include these order types     *70
+ S PSBIMPRNDT=$$FMADD^XLFDT(PSBSTRT,"",-PSBIMHR)
+ S PSBCOPRNDT=$$FMADD^XLFDT($P(PSBSTRT,"."),-PSBCODY)
+ S PSBPRNDT=$S(PSBCOPRNDT<PSBIMPRNDT:PSBCOPRNDT,1:PSBIMPRNDT)
+ ;use older of PSBPRNDT & PSBADMDT(admission) for loop quit value
+ I PSBADMDT,PSBADMDT<PSBPRNDT S (PSBPRNDT,PSBIMPRNDT,PSBCOPRNDT)=PSBADMDT
+ ;end dates                                                       *70
+ ;
+ ;begin loop of PRN records
  S PSBSTRT="" F  S PSBSTRT=$O(^PSB(53.79,"APRN",DFN,PSBSTRT),-1) Q:(PSBSTRT<PSBPRNDT)  D
  .S PSBIEN=""
  .F  S PSBIEN=$O(^PSB(53.79,"APRN",DFN,PSBSTRT,PSBIEN),-1) Q:'PSBIEN  D
@@ -81,6 +116,12 @@ GETPRNS(RESULTS,DFN,PSBORD) ; Get the PRN's for a pt needing effectness
  ..S PSBX=PSBX_U_$$GET1^DIQ(53.79,PSBIENS,.08)
  ..S PSBX=PSBX_U_$$GET1^DIQ(53.79,PSBIENS,.21)
  ..D PSJ1^PSBVT(DFN,$$GET1^DIQ(53.79,PSBIENS,.11))
+ ..;admit date exists, force CO order to look like an IM           *70
+ ..I PSBADMDT S PSBCLORD=""
+ ..;skip CO order admins that are older than CO PRN date           *70
+ ..Q:($G(PSBCLORD)]"")&($P(PSBSTRT,".")<$P(PSBCOPRNDT,"."))
+ ..;skip IM order admins that are older than IM PRN date           *70
+ ..Q:($G(PSBCLORD)="")&(PSBSTRT<PSBIMPRNDT)
  ..S PSBX=PSBX_U_PSBOIT_U_PSBONX
  ..S PSBX=PSBX_U_$$GET1^DIQ(53.79,PSBIENS,.27)
  ..S Y=$O(^TMP("PSB",$J,""),-1)+1
@@ -93,30 +134,41 @@ GETPRNS(RESULTS,DFN,PSBORD) ; Get the PRN's for a pt needing effectness
  ...Q:'$D(^PSB(53.79,PSBIEN,PSBZ,PSBY))
  ...S PSBUNIT=$$GET1^DIQ(PSBDD,PSBY_","_PSBIEN_",",.03)
  ...S PSBUNFR=$$GET1^DIQ(PSBDD,PSBY_","_PSBIEN_",",.04)
+ ...I PSBUNIT>0&(PSBUNIT<1) S PSBUNIT="0"_+PSBUNIT ;add leading 0 for a decimal value less than 1 - PSB*3*61
  ...S Y=Y+1
  ...S ^TMP("PSB",$J,Y)=PSBSOL_U_$$GET1^DIQ(PSBDD,PSBY_","_PSBIEN_",",.01)_U_PSBUNIT_U_PSBUNFR
+ ..D:PSBSIOPI GETSI(DFN,PSBONX,.Y)     ;*68 get spec inst/oth prt info
  ..S Y=Y+1,^TMP("PSB",$J,Y)="END"
  S ^TMP("PSB",$J,0)=+$O(^TMP("PSB",$J,""),-1)
  S RESULTS=$NAME(^TMP("PSB",$J))
- K PSBTRDT,PSBHOUR,PSBPRNDT
  D CLEAN^PSBVT
  Q
  ;
-DISCHRGD(DFN) ; Patient Discharged OR Deceased?
+DECEASED(DFN) ; Patient Deceased?                                        *70
  ;
- S DISCHRGD=0
+ S DECEASED=0
  ;
  D DEM^VADPT ;check for date of death entry
- I VADM(6)]"" S DISCHRGD=1,^TMP("PSB",$J,0)=0 K VADM
+ I VADM(6)]"" S DECEASED=1,^TMP("PSB",$J,0)=0 K VADM
  ;
- I DISCHRGD=0 D  ;check for discharge if they're not dead
- .D INP^VADPT
- .I VAIN(1)']"" S DISCHRGD=1,^TMP("PSB",$J,0)=0 K VAIN
- ;
- I DISCHRGD D  ;setup results and clean up
+ I DECEASED D  ;setup results and clean up
  .S RESULTS=$NAME(^TMP("PSB",$J))
- .K PSBTRDT,PSBHOUR,PSBPRNDT
  .D CLEAN^PSBVT
  ;
- Q DISCHRGD
+ Q DECEASED
  ;
+GETSI(DFN,ORD,PSB) ;Get Special Instructions/Other Print Info from IM   ;*68
+ ;
+ ; This Tag will load the SIOPI WP text into the TMP global used by
+ ; the PSB GETPRNS RPC, which ends up in the RESULTS array passed
+ ; back to the BCMA GUI.
+ ;
+ N QQ
+ K ^TMP("PSJBCMA5",$J,DFN,ORD)
+ D GETSIOPI^PSJBCMA5(DFN,ORD,1)
+ Q:'$D(^TMP("PSJBCMA5",$J,DFN,ORD))
+ F QQ=0:0 S QQ=$O(^TMP("PSJBCMA5",$J,DFN,ORD,QQ)) Q:'QQ  D
+ .S PSB=PSB+1
+ .S ^TMP("PSB",$J,PSB)="SI^"_^TMP("PSJBCMA5",$J,DFN,ORD,QQ)
+ K ^TMP("PSJBCMA5",$J,DFN,ORD)
+ Q

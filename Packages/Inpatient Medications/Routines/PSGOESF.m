@@ -1,9 +1,9 @@
-PSGOESF ;BIR/MLM-SPEED FINISH ORDERS ENTERED THROUGH OE/RR ; 4/27/09 2:39pm
- ;;5.0; INPATIENT MEDICATIONS ;**7,11,29,35,127,133,221**;16 DEC 97;Build 11
+PSGOESF ;BIR/MLM-SPEED FINISH ORDERS ENTERED THROUGH OE/RR ;10 Mar 98 / 2:35 PM
+ ;;5.0; INPATIENT MEDICATIONS ;**7,11,29,35,127,133,221,181**;16 DEC 97;Build 190
  ;
  ; Reference to ^PS(55 is supported by DBIA 2191
- ; Reference to ^TMP is supported by DBIA 2190
- ; Reference to ^PSSLOCK is supported by DBIA #2789
+ ; Reference to ^PSDRUG( is supported by DBIA 2192
+ ; Reference to ^PSSLOCK is supported by DBIA 2789
  ;
 EN ;
  I '$$HIDDEN^PSJLMUTL("SPEED") S VALMBCK="R" Q
@@ -39,13 +39,15 @@ ENCHK ;
  .;K PSGORQF D ENDDC^PSGSICHK(PSGP,+$G(^PS(53.1,+PSGORD,1,1,0)))
  .;I '$D(PSGORQF) K PSGORQF,^TMP($J,"DI") D
  .;. F PSGDDI=1:0 S PSGDDI=$O(^PS(53.1,+PSGORD,1,PSGDDI)) Q:'PSGDDI  S PSJDD=+$G(^PS(53.1,+PSGORD,1,PSGDDI,0)) D IVSOL^PSGSICHK
- .D OC531
- .I 'PSGOEFF&($D(PSGORQF)) W !!,"  ",PSGOERS2,". ",$P($$DRUGNAME^PSJLMUTL(PSGP,PSGORD),"^")," ",$P($G(^PS(53.1,+PSGORD,.2)),"^",2),!,"...No action taken on this order...",! H 1 Q
  .S X=$G(^PS(53.1,+PSGORD,.2)),PSGPDRGN=$$ENPDN^PSGMI(+X),PSGDO=$P(X,U,2),X=$G(^PS(53.1,+PSGORD,0)),PSGMRN=$$ENMRN^PSGMI($P(X,U,3)),PSGST=$P(X,U,7)
  .S PSGSCH=$P($G(^PS(53.1,+PSGORD,2)),U),PSGSI=$G(^(6))
+ .D OC531
+ .I 'PSGOEFF&($D(PSGORQF)) W !!,"  ",PSGOERS2,". ",$P($$DRUGNAME^PSJLMUTL(PSGP,PSGORD),"^")," ",$P($G(^PS(53.1,+PSGORD,.2)),"^",2),!,"...No action taken on this order...",! H 1 Q
+ .;S X=$G(^PS(53.1,+PSGORD,.2)),PSGPDRGN=$$ENPDN^PSGMI(+X),PSGDO=$P(X,U,2),X=$G(^PS(53.1,+PSGORD,0)),PSGMRN=$$ENMRN^PSGMI($P(X,U,3)),PSGST=$P(X,U,7)
+ .;S PSGSCH=$P($G(^PS(53.1,+PSGORD,2)),U),PSGSI=$G(^(6))
  .S $P(^PS(53.1,+PSGORD,2),U,2)=PSGSD,$P(^(2),U,4)=PSGFD,X=+$P($G(^PS(53.1,+PSGORD,0)),U,25)
  .I $P($G(^PS(55,PSGP,5,+X,2)),U,4)>PSGSD S $P(^(2),U,3)=$P(^(2),U,4) K DA,DIE,DR S DA(1)=PSGP,DA=X,DR="34////"_PSGSD,DIE="^PS(55,"_DA(1)_",5," D ^DIE
- .W !,"  ",PSGOERS2,". ",$P($$DRUGNAME^PSJLMUTL(PSGP,PSGORD),"^")," "
+ .W !!,"  ",PSGOERS2,". ",$P($$DRUGNAME^PSJLMUTL(PSGP,PSGORD),"^")," "
  .W $P($G(^PS(53.1,+PSGORD,.2)),"^",2)
  .D UPDATE
  .D EN^PSGOEV(PSGORD)
@@ -69,9 +71,27 @@ UPDATE        ;
  .S ^PS(53.45,PSJSYSP,2,0)="^53.4502P"_"^"_LOOP_"^"_LOOP K PSJJDRUG
  Q
 OC531 ;* Order checks for Speed finish and regular finish
- N INTERVEN,PSJDDI,PSJIREQ,PSJRXREQ,PSJPDRG
+ ;PSJOCDS("ON_TYPE") - Order type of either "UD" or "IV"
+ ;PSJOCDS - 0/1 (O - will exclude dose check.  1 - include the dose check for the prospective)
+ N INTERVEN,PSJDDI,PSJIREQ,PSJRXREQ,PSJPDRG,PSJDD,PSJALLGY,PSJOCDS,PSJX,PSGDT,%
+ D NOW^%DTC S PSGDT=%
  S Y=1,(PSJIREQ,PSJRXREQ,INTERVEN,X)=""
- K PSGORQF D ENDDC^PSGSICHK(PSGP,+$G(^PS(53.1,+PSGORD,1,1,0)))
- I '$D(PSGORQF) K PSGORQF,^TMP($J,"DI") D
- . F PSGDDI=1:0 S PSGDDI=$O(^PS(53.1,+PSGORD,1,PSGDDI)) Q:'PSGDDI  S PSJDD=+$G(^PS(53.1,+PSGORD,1,PSGDDI,0)) K PSJPDRG D IVSOL^PSGSICHK
+ ;K PSGORQF D ENDDC^PSGSICHK(PSGP,+$G(^PS(53.1,+PSGORD,1,1,0)))
+ ;I '$D(PSGORQF) K PSGORQF,^TMP($J,"DI") D
+ ;. F PSGDDI=1:0 S PSGDDI=$O(^PS(53.1,+PSGORD,1,PSGDDI)) Q:'PSGDDI  S PSJDD=+$G(^PS(53.1,+PSGORD,1,PSGDDI,0)) K PSJPDRG D IVSOL^PSGSICHK
+ I $G(PSJSPEED) D
+ . F PSGDDI=0:0 S PSGDDI=$O(^PS(53.1,+PSGORD,1,PSGDDI)) Q:'PSGDDI  D
+ .. S PSJDD=+$G(^PS(53.1,+PSGORD,1,PSGDDI,0))
+ .. S PSJX=$S('$D(^PSDRUG(+PSJDD,0)):1,$P($G(^(2)),U,3)'["U":1,$G(^("I"))="":0,1:^("I")'>$G(PSGDT))
+ .. Q:PSJX
+ .. S PSJALLGY(PSJDD)=""
+ I '+$G(PSJSPEED) S PSJDD=$$DD53P45^PSJMISC()
+ S PSJDD=$O(PSJALLGY(0)) Q:'+PSJDD
+ K PSGORQF D ENDDC^PSGSICHK(PSGP,PSJDD)
+ ;Only do dosing check for speed finish. Regular finish will do dosing check at ENCKDD^PSGOEF1
+ I '+$G(PSJSPEED),$G(PSGOEFF) Q
+ ;For some reasons PSGMR is not define when SF a UD order
+ ;If user was not required to enter a DD (order was able to default a DD), need to get dosing check
+ NEW PSGMR I ($G(PSGORD)["P") S PSGMR=$P($G(^PS(53.1,+PSGORD,0)),U,3)
+ D:'$G(PSGORQF) IN^PSJOCDS($G(PSGORD),"UD",+PSJDD)
  Q

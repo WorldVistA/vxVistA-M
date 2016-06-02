@@ -1,5 +1,5 @@
 PRSALDA ;HISC/MGD-Labor Distribution Audit ;02/13/2007
- ;;4.0;PAID;**82,109**;Sep 21, 1995;Build 5
+ ;;4.0;PAID;**82,109,110**;Sep 21, 1995;Build 7
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  Q
 TL W @IOF
@@ -20,11 +20,12 @@ D2 W !!,"Would you like to review the Labor Distributions "
  . W !!,"Answer YES if you want the Labor Distribution and any changes"
  . W !,"that have occurred during the selected Pay Period for all"
  . W !,"employees."
- I %=1 D  Q
+ I %=1 D  D EX Q
  . D DVC
- . I POP D EX Q
+ . I POP Q
  . Q
- I %=2 D EMP Q
+ I %=2 D EMP D EX Q
+ D EX
  Q
  ;
 DVC N PRSALST,PRSAPGM,PRTC S PRTC=""

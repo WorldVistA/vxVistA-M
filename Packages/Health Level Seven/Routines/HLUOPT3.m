@@ -1,8 +1,9 @@
-HLUOPT3 ;CIOFO-O/LJA - Delete 772, 773 Entries w/Direct Kills ;02/04/2004 15:15
- ;;1.6;HEALTH LEVEL SEVEN;**109**;Oct 13, 1995
+HLUOPT3 ;CIOFO-O/LJA - Delete 772, 773 Entries w/Direct Kills ;05/15/2008 16:16
+ ;;1.6;HEALTH LEVEL SEVEN;**109,142**;Oct 13, 1995;Build 17
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  ;
- ; WARNING!  No locing used in DEL772 and DEL773.  You MUST already
+ ; WARNING!  No locking used in DEL772 and DEL773.  You MUST already
  ;           have the entry lock before calling here, (or be willing to
  ;           accept the consequences.)
  ;
@@ -85,6 +86,18 @@ DEL773(IEN773) ; Delete 773 entry using kill commands...  (See WARNINGS above)
  KILL ^HLMA("B",P01,IEN773)
  KILL ^HLMA("C",P02,IEN773)
  KILL ^HLMA("AI",P22,773,IEN773)
+ ;
+ ; patch HL*1.6*142 start
+ N HDR,FLD
+ S HDR=$G(^HLMA(IEN773,"MSH",1,0))
+ I HDR]"" D
+ . I $G(^HLMA(IEN773,"MSH",2,0))]"" D
+ .. S HDR=HDR_$G(^HLMA(IEN773,"MSH",2,0))
+ . S FLD=$E(HDR,4)
+ . I FLD]"" D
+ .. S HDR=$P(HDR,FLD,3,6)
+ .. K:HDR]"" ^HLMA("AH-NEW",HDR,P02,IEN773)
+ ; patch HL*1.6*142 end
  ;
  ; Remove data...
  KILL ^HLMA(IEN773)

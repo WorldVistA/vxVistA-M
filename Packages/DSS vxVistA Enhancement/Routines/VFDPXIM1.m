@@ -1,6 +1,6 @@
-VFDPXIM1 ;DSS/WLC - MAIN ENTRY TO VFDPXIM ROUTINES ; 08 Nov 2013  9:28 AM
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;**11**;11 Jun 2013;Build 2
- ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
+VFDPXIM1 ;DSS/WLC/JM - MAIN ENTRY TO VFDPXIM ROUTINES ; 30 Dec 2015  3:15 pm
+ ;;15.0;DSS,INC VXVISTA OPEN SOURCE;**10,19,40**;11 Jun 2013;Build 3
+ ;Copyright 1995-2015,Document Storage Systems Inc. All Rights Reserved
  ;
  ;All Integration Agreements for VFDPXIM*
  ;DBIA#  Supported Reference
@@ -41,20 +41,30 @@ GETORD(VFDIM,DFN)  ;  RPC:  VFD PXIM GET IMM ORDERS
  S CNT=1
  S X="" F  S X=$O(^TMP("ORR",$J,X)) Q:X=""  S MAX=$P(^TMP("ORR",$J,X,.1),U,1) D
  .F Y=1:1:MAX S ORN=+^TMP("ORR",$J,X,Y) D
- ..;Not ACTIVE or WRITTEN status
- ..N X,Y
- ..S ACT=$$GET1^DIQ(100,ORN,5,"I") Q:"^6^100^"'[(U_ACT_U)
- ..F Z=1:1 Q:'$D(^OR(100,ORN,4.5,Z))  D
- ...I $P(^OR(100,ORN,4.5,Z,0),U,4)="ORDERABLE" S OR=+^OR(100,ORN,4.5,Z,1) D:OR
- ....S TYP="",PDRG=+$$GET1^DIQ(101.43,OR_",",2),TYP=$O(^PSDRUG("AOC",PDRG,TYP))
- ....I TYP'="IM100",TYP'="IM105",TYP'="IM109" Q  ; not immunization
- ....D GETS^DIQ(100,ORN_",","**",,"ARR")
- ....S VFDIM(CNT)=ORN_U_ARR(100.001,"1,"_ORN_",",.01),CNT=CNT+1
+ ..I $$ISIMM(ORN) D
+ ...D GETS^DIQ(100,ORN_",","**",,"ARR")
+ ...S VFDIM(CNT)=ORN_U_ARR(100.001,"1,"_ORN_",",.01),CNT=CNT+1
  .S VFDIM(0)=CNT-1
  Q
  ;
-GETLOTS(VFDIM,ORN)  ; RPC:  VFD PXIM GET LOTS
- ; RPC to return associated lOT #'S FOR Vaccines
+ISIMM(ORN) ; Is this order an Immunization Order?
+ N X,Y,Z,ACT,OI,PDRG,TYP,RET
+ S RET=0
+ F Z=1:1 Q:'$D(^OR(100,ORN,4.5,Z))  D
+ .I $P(^OR(100,ORN,4.5,Z,0),U,4)="ORDERABLE" S OI=+^OR(100,ORN,4.5,Z,1)
+ I $G(OI) Q $$ISIMMOI(OI)
+ Q RET
+ ;
+ISIMMOI(VFDOI) ; Is this orderable item an immunization?
+ N RET,PDRG,TYP
+ S RET=0 D
+ .S TYP="",PDRG=+$$GET1^DIQ(101.43,VFDOI_",",2),TYP=$O(^PSDRUG("AOC",PDRG,TYP))
+ .I TYP'="IM100",TYP'="IM105",TYP'="IM109" Q  ; not immunization
+ .S RET=1
+ Q RET
+ ;
+GETLOTS(VFDIM,ORN)  
+ ; RPC to return associated LOT #'S FOR Vaccines
  ; Each lot number indicates a separate quantity of vaccine.
  ; These could be by Vial, ml, mcl, etc.
  ; INPUT:
@@ -62,30 +72,48 @@ GETLOTS(VFDIM,ORN)  ; RPC:  VFD PXIM GET LOTS
  ; OUTPUT:
  ;    LIST(n) where:
  ;    LIST(0) = Count of Active Lots
- ;    LIST(n) = IEN # ^ LOT NUMBER ^ MANUFACTURER ^ PRODUCT NAME ^
- ;               CVX CODE ^ MVX CODE ^ START DATE ^ EXPIRATION DATE ^
- ;               OVERRIDE EXPIRATION DATE ^ OUT OF STOCK? ^ QUANTITY ^
- ;               UNIT ^ IMMUNIZATION
+ ;    LIST(n) = IEN # ^ LOT NUMBER ^ MANUFACTURER ^ CVX CODE ^ MVX CODE ^EXPIRATION DATE ^ QUANTITY AVAIL ^
  ;
- N I,J,X,Y,CNT,ERR,ID,LOTAR,ORBLE,PHID,VFDIEN
+ ; The scheme for looking up lots goes like this:
+ ; The Order record points to a list orderable items
+ ; Each Orderable item is then looked up in the DRUG file to get the Pharmacy Orderable Item
+ ; The Pharmacy Orderable Item has the pointer to the IMMUNIZATION file
+ N I,J,X,Y,CNT,CVX,ERR,FLE,ID,IMM,IMMREC,LOT,LOTAR,MVX,ORBLE,PHID,VFDIEN
  S ORN=$G(ORN),VFDIM(0)=0 I 'ORN S VFDIM(0)="-1^Invalid Order number sent." Q
  I '$D(^OR(100,ORN)) S VFDIM(0)="-1^Order NOT on file." Q
- S CNT=1 F I=1:1 Q:'$D(^OR(100,ORN,.1,I))  S X=+^OR(100,ORN,.1,I,0) D
- . S PHID=+$P(^ORD(101.43,X,0),U,2)
- . S ID="",ID=$O(^PSDRUG("AOC",PHID,ID)) Q:$E(ID,1,2)'="IM"
- . S ORBLE(X)=""
+ S CNT=0 F I=1:1 Q:'$D(^OR(100,ORN,.1,I))  S X=+^OR(100,ORN,.1,I,0) D
+ . S PHID=+$P(^ORD(101.43,X,0),U,2) ; Pharmacy Orderable Item IEN
+ . S ID="",ID=$O(^PSDRUG("AOC",PHID,ID)) Q:$E(ID,1,2)'="IM"  ; Check that its an Immunization
+ . S ORBLE(X)=PHID ; Save the IDs for later
+ ; 
+ S VFDIM(0)="0^No lot numbers found"  ;Default return value
  S X=0 F  S X=$O(ORBLE(X)) Q:'X  D
- . S Y=0 F  S Y=$O(^VFD(21630.01,"B",X,Y)) Q:'Y  D
- . . S VFDIEN=Y_"," N X,Y
- . . D GETS^DIQ(21630.01,VFDIEN,"*","IE","LOTAR","ERR")
- . . N FLE S FLE=$NA(LOTAR(21630.01,VFDIEN))
- . . Q:$G(@FLE@(2.3,"I")) ; Out of Stock
- . . Q:$G(@FLE@(2,"I"))>DT ; Not active yet
- . . I $G(@FLE@(2.1,"I"))<DT,'$G(@FLE@(2.2,"I")) Q  ; past expiration and no override
- . . S VFDIM(CNT)=(+VFDIEN)_U
- . . F I=.02,.03,.04,1,1.1,2,2.1,2.2,2.3,3,3.1,4 S VFDIM(CNT)=VFDIM(CNT)_@FLE@(I,"E")_U
- . . S CNT=CNT+1
- S VFDIM(0)=(CNT-1)
+ . I '$D(^PS(50.7,ORBLE(X),"IMM")) S VFDIM("PHID")=ORBLE(X),VFDIM(0)="-1^Orderable Item "_ORBLE(X)_" is not linked to an immunization" Q
+ . S IMM=$P(^PS(50.7,ORBLE(X),"IMM"),U) I IMM=""!'$D(^AUTTIMM(IMM,0)) S VFDIM("IMM")=IMM,VFDIM(0)="-1^Pharmacy Orderable Item "_ORBLE(X)_" links to an invalid immunization: "_IMM Q
+ . S IMMREC=$G(^AUTTIMM(IMM,0)) I IMMREC="" S VFDIM("IMM")=IMM,VFDIM(0)="-1^Immunization: "_IMM_" is corrupt" Q  ; jm 10/9/15 add additional data check
+ . ; GET THE CVX CODE FOR THIS IMMUNIZATION
+ . S CVX=$P(IMMREC,U,3) ;save the immunization CVX code for later
+ . ; FIND THE LOTS AVAILABLE FOR THIS IMMUNIZATION
+ . S LOT=0 F  S LOT=$O(^AUTTIML("C",IMM,LOT)) Q:+LOT'>0  D
+ . . S VFDIEN=LOT_","
+ . . D GETS^DIQ(9999999.41,VFDIEN,"*","IE","LOTAR","ERR")
+ . . N FLE S FLE=$NA(LOTAR(9999999.41,VFDIEN))
+ . . Q:$G(@FLE@(.03,"I"))       ;0 IS ACTIVE - QUIT IF NON-ZERO
+ . . Q:$G(@FLE@(.09,"I"))<DT    ;EXPIRED
+ . . Q:'$G(@FLE@(.12,"I"))      ;UNUSED DOSES = 0
+ . . D LOTADD
+ . S VFDIM(0)=CNT_U_IMM
+ Q
+ ;
+LOTADD  ; ADD A LOT NUMBER RECORD TO THE GETLOTS RESULT ARRAY
+ S CNT=CNT+1,VFDIM(CNT)=+LOT_U ; IEN
+ F I=.01,.02,.09,.12,.18 D   ; LOT#,MFG,EXP DT,DOSES UNUSED,NDC CODE,  removedSTART COUNT,.11
+ . ; IEN # ^ LOT NUMBER ^ MANUFACTURER ^ CVX CODE ^ MVX CODE ^ EXPIRATION DATE ^ DOSES UNSED ^ NDC CODE
+ . S VFDIM(CNT)=VFDIM(CNT)_@FLE@(I,"E")_U    ;,"p","50","LOTAR","ERR")
+ . I I=.02 D  ;GET THE MFG'S MVX #
+ . . S MVX=$P($G(^AUTTIMAN(@FLE@(.02,"I"),0)),U,2)
+ . . S MVX=$S($G(MVX):MVX,1:"")
+ . . S VFDIM(CNT)=VFDIM(CNT)_CVX_U_MVX_U ; ADD CVX # AND MVX # TO OUTPUT
  Q
  ;
 STORLOT(VFDIM,VFDRAY)  ; RPC:  VFD PXIM STORE LOT
@@ -111,3 +139,118 @@ STORLOT(VFDIM,VFDRAY)  ; RPC:  VFD PXIM STORE LOT
  I $D(ERR) S VFDIM="-1^"_$G(ERR("DIERR",1,"TEXT",1))
  E  S VFDIM="1^Success"
  Q
+ ;
+ERROR(VFDARR) ; RPC: VFD PXIM ENTERED IN ERROR
+ ;  This RPC will mark an entry in the V IMMUNIZATION file as being
+ ;  ENTERED IN ERROR.  It will record the date/time ($$NOW) and the 
+ ;  current user (DUZ), as well as a REASON as to why this is being
+ ;  done.
+ ;
+ ;  Input:
+ ;  VFDARR is an array
+ ;  VFDARR(n) = TAG^DATA
+ ;
+ ;  Supported Tags:
+ ;    IMM - req - IEN in the V IMMUNIZATION file
+ ;    RSN - req - REASON why this record is being entered in error
+ ;
+ ;  Output:
+ ;    If successful:  1
+ ;    If FAILURE:    -1^Error Message
+ ;
+ ;  Updates the fields:  File 9000010.11
+ ;    21601.01  ENTERED IN ERROR (D), [21601;1]
+ ;    21601.02  ENTERED IN ERROR BY (P200'), [21601;2]
+ ;    21601.03  ENTERED IN ERROR REASON (F), [21601;3]
+ ;
+ N X,Y,IMM,RSN,VFDERR,VFDFDA
+ S X="" F  S X=$O(VFDARR(X)) Q:X=""  S Y=VFDARR(X),@$P(Y,U)=$P(Y,U,2)
+ I '$G(IMM) Q "-1^No V IMMUNIZATION record passed in"
+ I '$D(^AUPNVIMM(IMM)) Q "-1^Invalid V IMMUNIZATION record"
+ I $L($G(RSN))<10 Q "-1^Invalid REASON"
+ S IMM=IMM_","
+ S VFDFDA(9000010.11,IMM,21601.01)=$$NOW^XLFDT
+ S VFDFDA(9000010.11,IMM,21601.02)=DUZ
+ S VFDFDA(9000010.11,IMM,21601.03)=RSN
+ D FILE^DIE(,"VFDFDA","VFDERR")
+ I $D(VFDERR) Q "-1^Error updating V IMMUNIZATION file"
+ Q 1
+ ;
+ROUTES(VFDIM) ;RPC: VFD PXIM ROUTES
+ N VIMMI,RTE
+ S RTE="",VIMMI=0
+ F  S RTE=$O(^PXV(920.2,"B",RTE)) Q:RTE=""  D
+ . S IDX=0 F  S IDX=$O(^PXV(920.2,"B",RTE,IDX)) Q:IDX'>0  D 
+ . . S VIMMI=VIMMI+1,VFDIM(VIMMI)=IDX_U_RTE
+ S VFDIM(0)=VIMMI
+ Q
+ ;  
+SITES(VFDIM) ;RPC: VFD PXIM SITES
+ N IDX,SITE,VIMMI
+ S SITE="",VIMMI=0
+ F  S SITE=$O(^PXV(920.3,"B",SITE)) Q:SITE=""  D
+ . S IDX=0 F  S IDX=$O(^PXV(920.3,"B",SITE,IDX)) Q:IDX'>0  D 
+ . . I ^PXV(920.3,"B",SITE,IDX)'=1 S VIMMI=VIMMI+1,VFDIM(VIMMI)=IDX_U_SITE ;FILTER OUT HL7 CODES IN THE "B" INDEX (!)
+ S VFDIM(0)=VIMMI
+ Q
+ ;  
+SOURCES(VFDIM) ;RPC: VFD PXIM SOURCES - May not be needed but, here it is if we do!
+ N SRC,VIMMI
+ S SRC="",VIMMI=0
+ F  S SRC=$O(^PXV(920.1,"B",SRC)) Q:SRC=""  D
+ . S IDX=0 F  S IDX=$O(^PXV(920.1,"B",SRC,IDX)) Q:IDX'>0  D 
+ . . S VIMMI=VIMMI+1,VFDIM(VIMMI)=IDX_U_SRC
+ S VFDIM(0)=VIMMI
+ Q
+ ;  
+VIS(VFDIM,IMM) ;RPC: VFD PXIM VIS
+ ; RETRIEVE LIST OF VACCINE INFORMATION STATEMENTS FOR THE GIVEN IMMUNIZATION
+ ; IMM = IEN OF VACCINE IN QUESTION
+ ; Returns VFDIM(0..N) where:
+ ;      VFDIM(0) = Count of records returned
+ ;      VFDIM(N) = VIS IEN# ^ VIS NAME (Language) EDITION DATE
+ ; as of patch 40 this RPC returns only the latest dated record
+ ;
+ N CNT,FLD,IMMVIS,VFDVIS,VISIEN,VISDATA,VISNM,VISDT,VISL,LASTDT
+ K VFDVIS
+ I '$G(IMM) S VFDIM(0)="-1^Invalid Immunization IEN" Q
+ I '$D(^AUTTIMM(IMM)) S VFDIM(0)="-1^Invalid IMMUNIZATION record" Q
+ I '$D(^AUTTIMM(IMM,4,0)) S VFDIM(0)="0^No VIS records" Q  ;Not all immunizations have VIS records
+ S CNT=0,IMMVIS=0
+ F  S IMMVIS=$O(^AUTTIMM(IMM,4,IMMVIS)) Q:IMMVIS'>0  D
+ . S VISIEN=$P(^AUTTIMM(IMM,4,IMMVIS,0),U,1)
+ . K VISAR
+ . D GETS^DIQ(920,VISIEN_",",".01;.04;.02;.03","IE","VISAR","VISERR")
+ . S VISDATA=$NA(VISAR(920,VISIEN_",")),VISNM=@VISDATA@(.01,"E"),VISDT=@VISDATA@(.02,"I"),VISL=@VISDATA@(.04,"I")
+ . I @VISDATA@(.03,"I")="C" D
+ . . S LASTDT=$G(VFDVIS(VISNM,VISL))
+ . . I LASTDT<VISDT S VFDVIS(VISNM,VISL)=VISDT,VFDVIS(VISNM,VISL,"IEN")=VISIEN
+ S VISNM=""
+ F  S VISNM=$O(VFDVIS(VISNM)) Q:VISNM=""  D
+ . S VISL=""
+ . F  S VISL=$O(VFDVIS(VISNM,VISL)) Q:VISL=""  D
+ . . S VFDLANG=$$TOCAMEL($$GET1^DIQ(.85,VISL_",","1",,,"VFDMSGS"))
+ . . S VISDT=$G(VFDVIS(VISNM,VISL))
+ . . S VISIEN=$G(VFDVIS(VISNM,VISL,"IEN"))
+ . . S CNT=CNT+1,VFDIM(CNT)=+VISIEN_U_VISNM_" ("_VFDLANG_") "_$$FMTE^XLFDT(VISDT)
+ S VFDIM(0)=CNT
+ Q
+ ;
+PRODUCT(VFDIM,IMM) ; rpc - VFD PXIM PRODUCT NAMES
+ ; RETRIEVE LIST OF PRODUCT NAMES FOR A GIVEN IMMUNIZATION
+ ; IMM = IEN OF VACCINE IN QUESTION
+ ; Returns VFDIM(0..N) where:
+ ;      VFDIM(0) = Count of records returned
+ ;      VFDIM(1..N) = PRODUCT NAMES
+ N CNT,PROD,VIMMI
+ I '$D(^AUTTIMM(IMM)) S VFDIM(0)="-1^Invalid IMMUNIZATION record" Q
+ I '$D(^AUTTIMM(IMM,5,0)) S VFDIM(0)="0^No Product Names for this Immunization" Q  ;Not all immunizations have Product Name records
+ S (CNT,VIMMI,VFDIM(0))=0
+ F  S VIMMI=$O(^AUTTIMM(IMM,5,VIMMI)) Q:VIMMI'>0  D
+ . S CNT=CNT+1,VFDIM(CNT)=^AUTTIMM(IMM,5,VIMMI,0)
+ S VFDIM(0)=CNT
+ Q
+ ;
+TOCAMEL(VFDSTR) ; Utility to change XYYYYYY to Xyyyyyy (not really camel case...)
+ Q $E(VFDSTR,1,1)_$TR($E(VFDSTR,2,99),"ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwxyz")
+ ;

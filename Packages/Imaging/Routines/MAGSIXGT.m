@@ -1,6 +1,6 @@
-MAGSIXGT ;WOIFO/EdM/GEK/SEB - RPC for Document Imaging ; 04/29/2002  16:15
- ;;3.0;IMAGING;**8,48,61,59**;Nov 27, 2007;Build 20
- ;;Per VHA Directive 2004-038, this routine should not be modified.
+MAGSIXGT ;WOIFO/EdM/GEK/SEB/NST - RPC for Document Imaging ; 04/29/2002  16:15
+ ;;3.0;IMAGING;**8,48,61,59,108**;Mar 19, 2002;Build 1738;May 20, 2010
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -231,3 +231,26 @@ E2I(D) N %DT,X,Y
  Q:D="" 0
  S X=D,%DT="TS" D ^%DT Q:Y<0 0
  Q Y\1
+ ;
+ ;##### RPC TO RETURN ORIGIN INDEX
+ ;
+ ; Return Values
+ ; =============
+ ;  MAGRY(0) =  "1^OK: <Number of records>" 
+ ;  MAGRY(1) =  "Image Origin^Abbr"
+ ;  MAGRY(2..n) = ORIGIN INDEX^ORIGIN ABBREVIATION
+ ;
+IGO(MAGRY) ;RPC [MAG4 INDEX GET ORIGIN]
+ N I,J,ORGS,ORG
+ K MAGRY
+ ; ^DD(2005,45,0)=ORIGIN INDEX^S^V:VA;N:NON-VA;D:DOD;F:FEE;^40;6^Q
+ D FIELD^DID(2005,45,"","POINTER","ORGS")
+ I $G(ORGS("POINTER"))="" S MAGRY(0)="0^Problem retrieving origin index" Q
+ S I=1
+ F J=1:1 S ORG=$P(ORGS("POINTER"),";",J) Q:ORG=""  D
+ . S I=I+1
+ . S MAGRY(I)=$P(ORG,":",2)_"^"_$P(ORG,":",1)
+ . Q
+ S MAGRY(0)="1^OK: "_I
+ S MAGRY(1)="Image Origin^Abbr"
+ Q

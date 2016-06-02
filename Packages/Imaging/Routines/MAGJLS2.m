@@ -1,6 +1,6 @@
-MAGJLS2 ;WIRMFO/JHC Rad. Workstation RPC calls ; 29 Jul 2003  9:58 AM
- ;;3.0;IMAGING;**22,18,76**;Jun 22, 2007;Build 19
- ;;Per VHA Directive 2004-038, this routine should not be modified.
+MAGJLS2 ;WIRMFO/JHC Rad. Workstation RPC calls ; 24-Mar-2010  1:26pm
+ ;;3.0;IMAGING;**22,18,76,101,90**;Mar 19, 2002;Build 1764;Jun 09, 2010
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -8,7 +8,6 @@ MAGJLS2 ;WIRMFO/JHC Rad. Workstation RPC calls ; 29 Jul 2003  9:58 AM
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -29,20 +28,48 @@ ERR N ERR S ERR=$$EC^%ZOSV S ^TMP($J,"RET",0)="0^4~"_ERR
  S MAGGRY=$NA(^TMP($J,"RET"))
  D @^%ZOSF("ERRTN")
  Q:$Q 1  Q
+ ;
 ACTIVE(MAGGRY,DATA) ; EP--get Active (Unread/Recent/Pend) Exam Lists
  ; MAGGRY holds $NA ref to ^TMP where return msg is assembled
  ;   all refs to MAGGRY use SS indirection
  ; If not use bkgnd, compile in foregnd
  ;
- N BKGND,COMPFAIL,MAGLST,LSTPARAM,LSTREQ,LSTID,LSTNUM,LSTNAM,NEWLIST
+ N BKGND,COMPFAIL,DATA01,LSTID,LSTNAM,LSTNUM,LSTPARAM,LSTREQ,MAGLST
  N $ETRAP,$ESTACK S $ETRAP="D ERR^MAGJLS2"
- S X=$P(DATA,U) D PARAMS^MAGJLS2B(X)
- I 'LSTID S MAGGRY=$NA(^TMP($J,"RET")),@MAGGRY@(0)="0^4~Problem with Exams List Compile--"_DATA_"." Q
+ S DATA01=$P(DATA,U) D PARAMS^MAGJLS2B(DATA01)
+ I 'LSTID S MAGGRY=$NA(^TMP($J,"RET")) D  Q
+ . ;
+ . ; Initialize to the error condition.
+ . S @MAGGRY@(0)="0^4~Problem with Exams List Compile--"_DATA_"."
+ . ;
+ . ;--- next line--hard-coded 99999 value from client and here for logon initial Manager screen (MAG*3.0*101).
+ . D:DATA01=99999
+ . . S @MAGGRY@(0)="0^1~           * * *  Use PATIENT LOOKUP button, or select Exam List tab of interest.  * * *"
+ . ;
+ . ;--- next line--hard-coded 99998 value from client and here for VIX EXAMID LOOKUP (MAG*3.0*90).
+ . D:DATA01=99998
+ . . ;
+ . . ;--- Validate additional DATA pieces for this context.
+ . . N V,X,XX S V=-1
+ . . ;
+ . . ;--- Are RADPT, RACNI, and RDFN numbers?
+ . . F X=2,4,5 Q:'V  S XX=$P(DATA,U,X) S:XX=""!(XX'?1N.N) V=0
+ . . ;
+ . . ;--- Is RADTM in FileMan format?
+ . . I V<0 S XX=$P(DATA,U,3) S:XX=""!(XX'?7N1"."1.6N) V=0
+ . . ;
+ . . ;--- Set return array for VIX.
+ . . D:V<0
+ . . . S @MAGGRY@(0)="1^1~FOR VIX EXAMID LOOKUP"
+ . . . S @MAGGRY@(1)="^VIX LOOKUP"
+ . . . S @MAGGRY@(2)="^EXAMID^|"_$P(DATA,U,2,5)_"||"
  I MAGJOB("P32"),+$G(MAGJOB("P32STOP")) S MAGGRY=$NA(^TMP($J,"RET")),@MAGGRY@(0)="0^4~VistARad Patch 32 is no longer supported.  Contact Imaging support for the current version of the VistARad client software." Q  ; <*>
  I BKGND,LSTREQ="U" D BKREQU Q  ; UNREAD in bkgnd
  I BKGND,LSTREQ="R" D BKREQR Q  ; RECENT in bkgnd
  I BKGND,LSTREQ="A" D BKREQA(DATA) Q  ; ALL Active Exams
- D FOREGND  ; other list types, or bkgnd compile not enabled
+ ;
+ ;--- Process other list types, or bkgnd compile not enabled.
+ D FOREGND
 ACTIVEZ Q
  ;
 FOREGND ; compile in foregnd
@@ -80,13 +107,15 @@ BKREQU ; UNREAD exams from bkgnd
  ; 2nd errtrap is to deal with locks if error occurs
  N $ETRAP,$ESTACK S $ETRAP="D ERR1^MAGJLS2"
  N ZTDESC,ZTDTH,ZTIO,ZTRTN
- S ZTRTN="BKGND^MAGJLS2",ZTDESC="IMAGING VistaRad UNREAD List Compile"
+ S ZTRTN="BKGND^MAGJLS2",ZTDESC="IMAGING VistARad UNREAD List Compile"
  S ZTDTH=$H,ZTIO="" D ^%ZTLOAD
- S X=$$CURLIST(LSTNAM),LSTAGE=$P(X,U,2),LSTNUM=+X
+ S X=$$CURLIST(LSTNAM),LSTAGE=$P(X,U,2),LSTNUM=$S(+X:+X,1:+$P(X,U,3))
+ ; CURLIST sub's check for excessive time n/a here
  I LSTAGE>(DELTA+300)  S BKGPROC=2 D  ; Foregnd compile if need fresh list
- . D LSTCOMP(.COMPFAIL) K BKGPROC S X=$$CURLIST(LSTNAM),LSTAGE=$P(X,U,2),LSTNUM=+X
+ . D LSTCOMP(.COMPFAIL) K BKGPROC
+ . S X=$$CURLIST(LSTNAM),LSTAGE=$P(X,U,2),LSTNUM=+X
  L -^XTMP("MAGJ2","BKGND2","RUN")
- I +$G(COMPFAIL) S MAGGRY=$NA(^TMP($J,"RET")),@MAGGRY@(0)="0^4~Unable to Compile Unread Exams list"
+ I +$G(COMPFAIL)!'LSTNUM S MAGGRY=$NA(^TMP($J,"RET")),@MAGGRY@(0)="0^4~Unable to Compile Unread Exams list ("_$S(+LSTNUM:"COMPFAIL",1:"LSTNUM")_" in MAGJLS2)."
  E  D LSTOUT^MAGJLS2B(.MAGGRY,LSTID,$NA(^XTMP("MAGJ2",LSTNAM,LSTNUM)),LSTAGE)
  K LSTAGE
  Q
@@ -96,31 +125,39 @@ BKREQR ; Recent Exams from bkgnd
  Q
  ;
 BKOUT(LSTNM) ; output list from the bkgnd process
+ N MSG S MSG=""
+ ; if CURLIST returns a value in Piece 3, then the Compile is probably not current
+ ; so get a message out with the list
  S X=$$CURLIST(LSTNAM),LSTAGE=$P(X,U,2),LSTNUM=+X
- I 'LSTNUM S MAGGRY=$NA(^TMP($J,"RET")),@MAGGRY@(0)="0^4~Problem with "_LSTNM_" List Compile program (age="_LSTAGE_" for "_LSTNAM_")"_$S(LSTNAM["9992":"--May need to Schedule RECENT List Compile in TaskMan.",1:"")
- E  D LSTOUT^MAGJLS2B(.MAGGRY,LSTID,$NA(^XTMP("MAGJ2",LSTNAM,LSTNUM)),LSTAGE)
+ I 'LSTNUM D
+ . I +$P(X,U,3) S LSTNUM=+$P(X,U,3) S MSG="Compile program for "_LSTNM_" may not be current (age="_LSTAGE_" for "_LSTNAM_")"_$S(LSTNAM["9992":"--May need to Schedule RECENT List Compile in TaskMan.",1:"")
+ I LSTNUM D LSTOUT^MAGJLS2B(.MAGGRY,LSTID,$NA(^XTMP("MAGJ2",LSTNAM,LSTNUM)),LSTAGE,MSG)
+ E  I 'LSTNUM S MAGGRY=$NA(^TMP($J,"RET")),@MAGGRY@(0)="0^4~Problem with "_LSTNM_" List Compile program (age="_LSTAGE_" for "_LSTNAM_")"_$S(LSTNAM["9992":"--May need to Schedule RECENT List Compile in TaskMan.",1:"")
  K LSTAGE
  Q
  ;
 BKREQA(DATA) ; ALL Active from Bkgnd
  ; Copy compiles of Unread & Recent to a scratch global, & call lstout
- N ALLGO,CNT,GETLST,ICNT,REPLY
- S ALLGO=1,CNT=0
+ N ALLGO,CNT,GETLST,ICNT,REPLY,MSG
+ S ALLGO=1,CNT=0,MSG=""
  F GETLST=9991,9992 D  I 'ALLGO S REPLY="Component List "_GETLST_ALLGO Q
  . D PARAMS^MAGJLS2B(GETLST) I 'LSTID S ALLGO=" not properly defined."  Q
  . S X=$$CURLIST(LSTNAM),LSTAGE=$P(X,U,2),LSTNUM=+X
+ . I 'LSTNUM D
+ . . I +$P(X,U,3) S LSTNUM=+$P(X,U,3)
+ . . I LSTNUM S MSG=MSG_$S(MSG="":"Compile program for ",1:"; ")_"component "_LSTNAM_" may not be current (age="_LSTAGE_" for "_GETLST_")"
  . I 'LSTNUM S ALLGO=" needs more time to compile." Q
  . F ICNT=1:1:$G(^XTMP("MAGJ2",LSTNAM,LSTNUM,0,1)) S X=^XTMP("MAGJ2",LSTNAM,LSTNUM,ICNT,1),Y=^(2),CNT=CNT+1,^TMP($J,"MAGJ",CNT,1)=X,^(2)=Y
  I ALLGO D
  . S ^TMP($J,"MAGJ",0,1)=CNT_U_"1~ALL Active Exams",^(2)=""
  . D PARAMS^MAGJLS2B($P(DATA,U))
- . D LSTOUT^MAGJLS2B(.MAGGRY,LSTID,$NA(^TMP($J,"MAGJ")))
+ . D LSTOUT^MAGJLS2B(.MAGGRY,LSTID,$NA(^TMP($J,"MAGJ")),,MSG)
  I 'ALLGO S MAGGRY=$NA(^TMP($J,"RET")),@MAGGRY@(0)="0^4~Problem with ALL Exams List Compile "_DATA_". "_REPLY
  K LSTAGE
  Q
  ;
 BKGND ; EP for background compile of UNREAD exams
- L +^XTMP("MAGJ2","BKGND2","RUN"):600 ; allow fgnd job to finish compile
+ L +^XTMP("MAGJ2","BKGND2","RUN"):1200 ; allow fgnd job to finish compile
  E  Q  ; I must already be running!
  N BKGLSTID S BKGLSTID=9991 G BKGNDA
  Q
@@ -140,14 +177,16 @@ BKLOOP ; Loop & compile "master" UNREAD List only
  . F I=1,2 S ^XTMP("MAGJ2",LSTNAM,I,0,1)=X,^(2)=""  ; get msg to WS user
  I 'BKGND G BKGNDZ  ; need this to cover for excessive time to compile
  S X=$$CURLIST(LSTNAM),LSTAGE=$P(X,U,2),LSTNUM=+X
+ I 'LSTNUM,+$P(X,U,3) S LSTNUM=+$P(X,U,3)
+ ; above prevents compiling over top of the active list LSTNUM=1 if compiles are excessively long
  I LSTREQ="U",(LSTAGE<DELTA) D  I 'BKGND G BKGNDZ ;bkgnd compile off?
- . N ITEST,TEST,MORE
- . S TEST=(DELTA-LSTAGE)\5,MORE=(DELTA-LSTAGE)-(5*TEST)
+ . N ITEST,TEST
+ . S TEST=(DELTA-LSTAGE)\5
  . ; while waiting, periodic chk for stop conditions
  . F ITEST=1:1:TEST H 5 D  Q:'BKGND
  .. S BKGND=+$P($G(^MAG(2006.69,1,0)),U,8) Q:'BKGND
  .. I $D(ZTQUEUED),$$S^%ZTLOAD S BKGND=0 ; Exit bkgnd via TaskMan Req
- . H MORE
+ . H 3
  D LSTCOMP()
  I LSTREQ="R" D NEWINT
  I LSTREQ="U" D UPDR^MAGJLS2B G BKLOOP  ;UNREAD loops; RECENT uses TaskMan
@@ -179,10 +218,11 @@ LSTCOMP(COMPFAIL) ; Compile new list; subrtn used by Active and Bkgnd tags
  S COMPFAIL=0 ; Return T/F for "Executed a List Compile?"
  L +^XTMP("MAGJ2","BKGND",LSTNAM,"COMPILE"):60
  E  S COMPFAIL=1 G LSTCOMZ
+ ;
+ N COMTIM,NEWLIST,TS
  S NEWLIST=$S(LSTNUM=1:2,1:1) ; toggle node to use
- N TS,COMTIM
  S TS="" F I=2,0 S TS=TS_$S(TS="":"",1:U)_$$HTFM^XLFDT($H+I,0)
- S ^XTMP("MAGJ2",0)=TS_U_"VistaRad List Compile"
+ S ^XTMP("MAGJ2",0)=TS_U_"VistARad List Compile"
  S ^XTMP("MAGJ2",0,LSTNAM,NEWLIST)=$H
  D BLDACTV^MAGJLS3(.MAGGRY,LSTPARAM,$NA(^XTMP("MAGJ2",LSTNAM,NEWLIST)))
  S COMTIM=$$DELTA($P(^XTMP("MAGJ2",0,LSTNAM,NEWLIST),U))
@@ -194,13 +234,16 @@ LSTCOMP(COMPFAIL) ; Compile new list; subrtn used by Active and Bkgnd tags
 LSTCOMZ L -^XTMP("MAGJ2","BKGND",LSTNAM,"COMPILE")
  Q  ;
 CURLIST(LSTNAM,WAIT) ; return cur. list & age in secs
+ ;  RET = Current_List_Num ^ age ^ Problem_Current_List_Num
+ ;    Current_List_Num -- Nil means brand new; value means this is most current
+ ;      piece 3 populated if excessive time has elapsed, indicating potential problem
  S WAIT=+$G(WAIT)
  N X,RET,AGE,TRY,START,EXTRATIM
  S TRY=0,START=$H,EXTRATIM=$S(LSTREQ="U":600,1:1800)
  S X=$G(^XTMP("MAGJ2","BKGND",LSTNAM,0))  ; Cur # ^ $H created
- I X="" S RET="^86400" G CURLISZ  ; this lstnam not yet compiled!
+ I X="" S RET="^86400^0" G CURLISZ  ; this lstnam not yet compiled!
  S AGE=$$DELTA($P(X,U,2)),RET=$P(X,U)_U_AGE
- I AGE>(DELTA+EXTRATIM) S $P(RET,U)=""  ; Something's wrong w/ compile; force error message
+ I AGE>(DELTA+EXTRATIM) S X=$P(RET,U),$P(RET,U,3)=X,$P(RET,U)=""  ; last compile was "long" ago; return indicator of this
 CURLISZ Q RET
  ;
 DELTA(X,Y) ; calc # secs bet 2 $h values; dflt 2nd value = now

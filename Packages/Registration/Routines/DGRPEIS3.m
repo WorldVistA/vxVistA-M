@@ -1,5 +1,5 @@
-DGRPEIS3 ;ALB/CAW,EG,ERC,BAJ - INCOME SCREENING DATA (CON'T) ; 1/3/06 9:03am
- ;;5.3;Registration;**45,624,659,653,688**;Aug 13, 1993;Build 29
+DGRPEIS3 ;ALB/CAW,EG,ERC,BAJ,TDM - INCOME SCREENING DATA (CON'T) ; 5/26/10 2:03pm
+ ;;5.3;Registration;**45,624,659,653,688,754**;Aug 13, 1993;Build 46
  ;
 HELP ; Display information when veteran's DOB is past the income year
  ;
@@ -199,14 +199,21 @@ HELPCITY ; * Displays help for City
  Q
  ;
 HELPSTAT ; * Displays help for the state
- N DGRELTP,DIRA,DGRDVAR
+ N DGRELTP,DIRA,DGRDVAR,DDIOLARY
  S DGRELTP=$$RELTYPE^DGRPEIS2($G(DA),1)
- W !,"If a "_DGRELTP_"'s name has been specified, select the state in which"
- W !,"that person resides; otherwise this field may be left blank.  This"
- W !,"field cannot be deleted as long as a "_DGRELTP_"'s name is on file.",!
+ S DDIOLARY(1)="If a "_DGRELTP_"'s name has been specified, select the state in which"
+ S DDIOLARY(1,"F")="!"
+ S DDIOLARY(2)="that person resides; otherwise this field may be left blank.  This"
+ S DDIOLARY(2,"F")="!"
+ S DDIOLARY(3)="field cannot be deleted as long as a "_DGRELTP_"'s name is on file."
+ S DDIOLARY(3,"F")="!"
+ S DDIOLARY(4)=""
+ S DDIOLARY(4,"F")="!"
+ D EN^DDIOL(.DDIOLARY)
  ;
  Q:X="?"
- W !,"Enter RETURN to continue:" R DGRDVAR:DTIME
+ D EN^DDIOL("Enter RETURN to continue:","","!")
+ R DGRDVAR:DTIME
  Q
  ;
 HELPZIP ; * Displays help for the Zip code

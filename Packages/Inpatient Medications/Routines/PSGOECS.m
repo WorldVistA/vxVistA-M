@@ -1,5 +1,5 @@
 PSGOECS ;BIR/CML3-CANCEL SELECTED ORDERS ;02 Mar 99 / 9:29 AM
- ;;5.0; INPATIENT MEDICATIONS ;**23,29,44,58,81,110,134**;16 DEC 97;Build 124
+ ;;5.0; INPATIENT MEDICATIONS ;**23,29,44,58,81,110,134,181**;16 DEC 97;Build 190
  ;
  ; Reference to FULL^VALM1 is supported by DBIA# 10116.
  ; Reference to ^PS(55 is supported by DBIA# 2191.
@@ -24,12 +24,12 @@ AC ; discontinue active order
  S X=$$DRUGNAME^PSJLMUTL(PSGP,PSGORD)
  I '$P(PSJSYSP0,"^",5) D AM Q
  W !,"...discontinuing ",$P(X,U),"...",! S PSGAL("C")=PSJSYSU*10+4000 D ^PSGAL5
- S PSGALR=20,DIE="^PS(55,"_PSGP_",5,",DR="28////D;Q;34////"_PSGDT_$S(PSJSYSU:"",1:";49////1"),DP=55.06,$P(^(2),"^",3)=$P(^PS(55,PSGP,5,DA,2),"^",4) D ^DIE S ^PS(55,"AUE",PSGP,DA)=""
+ S PSGALR=20,DIE="^PS(55,"_PSGP_",5,",DR="136////@;28////D;Q;34////"_PSGDT_$S(PSJSYSU:"",1:";49////1"),DP=55.06,$P(^(2),"^",3)=$P(^PS(55,PSGP,5,DA,2),"^",4) D ^DIE S ^PS(55,"AUE",PSGP,DA)=""
  D EN1^PSJHL2(PSGP,"OD",PSGORD) S DA(1)=PSGP,DA=+PSGORD
  I PSJSYSL S $P(^PS(55,PSGP,5,DA,7),"^",1,2)=PSGDT_"^D",PSGTOL=2,PSGUOW=DUZ,PSGTOO=1 D ENL^PSGVDS
  Q
  ;
-NC ; discontinue non-verifed order
+NC ; discontinue non-verified order
  I $P($G(^PS(53.1,+PSGORD,0)),U,24)="R" S PSJDCTYP=$$PNDRNA^PSGOEC(PSGORD) I $G(PSJDCTYP)'=1 D PNDRN($G(PSJDCTYP)) Q
 NC2 ; Called from PNDRN to discontinue both pending renewal and original order
  K DA S DA=+PSGORD,X=$G(^PS(53.1,DA,.2)),X=$$DRUGNAME^PSJLMUTL(PSGP,PSGORD)
@@ -53,6 +53,7 @@ EN1 ;
  W ! I '$$REQPROV^PSGOEC G EN1
  W !
  ;
+ ;F PSGOECS=1:1:PSGODDD F PSGOECS1=1:1 S PSGOECS2=$P(PSGODDD(PSGOECS),",",PSGOECS1) Q:'PSGOECS2  S (ON,PSGORD)=^TMP("PSJON",$J,PSGOECS2) D:(PSGORD["U") AC D:(PSGORD["P") NC D:(PSGORD["V") SPDCIV^PSIVSPDC
  ;Replaced above line with block structure below.
  N COMFLG,PSJCOM S (EXITLOOP,PSJCOM)=0
  F PSGOECS=1:1:PSGODDD D

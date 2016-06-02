@@ -1,5 +1,5 @@
 VFDXTPAR ;DSS/LM - Parameter Initialization ;17 Mar 2010 10:57
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 86
+ ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;11 Jun 2013;Build 97
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  ;POST-INSTALL PARAMETER INITIALIZATION API

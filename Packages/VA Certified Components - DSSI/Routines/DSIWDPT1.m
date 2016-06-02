@@ -1,5 +1,5 @@
 DSIWDPT1 ;DSS/SGM/LM - DESKTOP PATIENT LOOKUP
- ;;1.0;;;;
+ ;;1.0;;**1,2**;;Build 1
  ;
 LOOKUP(DSIWDPT,DSIWA) ;[PRIVATE] Continuation of RPC: DSIW PATIENT LOOKUP
  ; See LOOKUP^DSIWDPT for details
@@ -22,7 +22,8 @@ LOOKUP(DSIWDPT,DSIWA) ;[PRIVATE] Continuation of RPC: DSIW PATIENT LOOKUP
  E  F I=1:1:$L(X,"^") S Y=$P(X,U,I) D  Q:DSIWERR  S $P(X,U,I)=Y
  .I Y=""!(Y="BS")!(Y="BS5")!(Y="SSN") ;no-op
  .E  I Y="ADR" S Y="" ;Per Steve: Defer ADR index
- .E  I Y="ALTID" S Y="AVFD"
+ .;E  I Y="ALTID" S Y="AVFD"
+ .E  I Y="ALTID" S Y="VFD" ; SMP 11/12/2014
  .E  I Y="DOB" S Y="ADOB"
  .E  I Y="NAME" S Y="B"
  .E  I Y="TEL" S Y="VFDTEL"
@@ -44,6 +45,10 @@ LOOKUP(DSIWDPT,DSIWA) ;[PRIVATE] Continuation of RPC: DSIW PATIENT LOOKUP
  S DSIWLVAL=$G(DSIWA("B","VAL"))
  S DSIWMAXN=$G(DSIWA("B","MAX"),44)
  ; Parse additional input codes here
+ I $G(DSIWA("B","INDEX"))="DOB" D
+ .N X,X1,X2 S X1=DSIWLVAL,X2="-1"
+ .D C^%DTC S DSIWFROM=X
+ I $G(DSIWA("B","INDEX"))="TEL" S DSIWLVAL=$TR(DSIWLVAL,"()-"),DSIWFROM=$E(DSIWLVAL,1,9)
  ;
  N DSIWSPC S DSIWSPC=$E(DSIWLVAL)=" " ;Flag indicating VAL starts with space
  ; Basic validity checks
@@ -100,8 +105,7 @@ LOOKUP(DSIWDPT,DSIWA) ;[PRIVATE] Continuation of RPC: DSIW PATIENT LOOKUP
  .S DSIWNPUT(6)="FROM^"_DSIWFROM_"^"_DSIWLIEN ;optional
  .D LIST(.DSIW,.DSIWNPUT)
  .F I=1:1 Q:'($D(@DSIW@(I,0))#2)!DSIWERR  D
- ..S DSIWDFN=+@DSIW@(I,0)
- ..Q:$D(DSIWUNL(DSIWDFN))  S DSIWUNL(DSIWDFN)="" ;Unique DFN
+ ..S DSIWDFN=+@DSIW@(I,0),DSIWUNL(DSIWDFN)="" ;Unique DFN  << S22206 Multiple alsias Lookup
  ..S DSIWJ=DSIWJ+1,DSIWDPT(DSIWJ)=@DSIW@(I,0)
  ..S:DSIWDFN<0 DSIWERR=1
  ..Q
@@ -159,7 +163,9 @@ LIST(DSIW,DSIWNPUT) ;[Private] Wrap LIST^DIC
  .S $P(DSIWY,U,2)=$G(@DSIWFM@("DILIST","ID",I,.01)) ;NAME
  .; ^-piece 3 intentionally left blank
  .; ^-piece 4 special for "AVFD" index ->
- .S $P(DSIWY,U,4)=$S($G(DSIWSPC):" ",1:"")_$S(DSIWX("INDEX")="AVFD":$G(@DSIWFM@("DILIST",1,I,1))_"~"_$G(@DSIWFM@("DILIST",1,I,2)),1:$G(@DSIWFM@("DILIST",1,I)))
+ .;S $P(DSIWY,U,4)=$S($G(DSIWSPC):" ",1:"")_$S(DSIWX("INDEX")="AVFD":$G(@DSIWFM@("DILIST",1,I,1))_"~"_$G(@DSIWFM@("DILIST",1,I,2)),1:$G(@DSIWFM@("DILIST",1,I)))
+ .S $P(DSIWY,U,4)=$S($G(DSIWSPC):" ",1:"")_$S(DSIWX("INDEX")="VFD":$G(@DSIWFM@("DILIST",1,I))_"~"_$G(@DSIWFM@("DILIST",1,I)),1:$G(@DSIWFM@("DILIST",1,I))) ; SMP 11/12/2014
+ .S:$G(DSIWCNDX)="VFDTEL" $P(DSIWY,U,4)=$P(DSIWA("1"),U,2) ;; USE EXTERNAL TEL#
  .S $P(DSIWY,U,5)=DSIWX("INDEX") ;Index name
  .F J=1:1:$L(DSIWX("FIELDS"),";") S Y=$P(DSIWX("FIELDS"),";",J) D:Y
  ..S $P(DSIWY,U,5+J)=$G(@DSIWFM@("DILIST","ID",I,Y))

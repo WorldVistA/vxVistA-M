@@ -1,5 +1,5 @@
 ORS100 ; SLC/RAF-unsigned orders search ;10/19/00  14:02
- ;;3.0;ORDER ENTRY/RESULTS REPORTING;**50**;Dec 17, 1997
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**50**;Dec 17, 1997;Build 3
  ;
  ;This routine will loop thru the "AS" xref in file 100 and 
  ;allow the user to sort orders by date range, with a status of unsigned,
@@ -145,6 +145,9 @@ USER(USER) ;resolves user pointers
 STAT(STA) ;resolves pointer to the order status file
  N X
  S X=$E($P(^ORD(100.01,+STA,0),U),1,14)
+ ;DSS/RAC - BEGIN MOD - Use Short name instead of the name of the Order status
+ I ^%ZOSF("ZVX")["VX" S X=$P(^ORD(100.01,+STA,0),U,2)
+ ;DSS/RAC - END MOD
  Q X
 SER(SER) ;resolves pointer to the service/section file
  N X
@@ -157,6 +160,9 @@ DIV(LOC) ;determines the division based on the entry in file 44
  Q X
 HDR ;Print header
  I $G(SUMONLY) Q
+ ;DSS/RAC - BEGIN MOD  Undefined error when PAGE is undefined
+ I VFD,'$D(PAGE) S PAGE=1
+ ;DSS/RAC - END MOD
  I $E(IOST)="C"&(PAGE) S DIR(0)="E" D ^DIR S:Y'=1 STOP=1 K DIR Q:STOP
  I PAGE!('PAGE&($E(IOST)="C")) W @IOF
  I $D(RPDT) W @RPDT

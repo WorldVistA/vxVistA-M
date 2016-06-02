@@ -1,5 +1,5 @@
 PSJHL4A ;BIR/RLW-CONTINUE DECODE HL7 /MESSSAGE FROM OE/RR ;16 Mar 99 / 4:55 PM
- ;;5.0; INPATIENT MEDICATIONS ;**105,111,154,170,159,134,197,226**;16 DEC 97;Build 46
+ ;;5.0;INPATIENT MEDICATIONS ;**105,111,154,170,159,134,197,226,263**;16 DEC 97;Build 51
  ;
  ; Reference to ^PS(52.6 is supported by DBIA# 1231.
  ; Reference to ^PS(52.7 is supported by DBIA# 2173.
@@ -23,7 +23,8 @@ RXC ; IV order
  .S ADDITIVE="" F  S ADDITIVE=$O(^PS(52.6,"AOI",PTR,ADDITIVE)) Q:'ADDITIVE  S INACT=$G(^PS(52.6,ADDITIVE,"I")),IVFL=$P($G(^(0)),"^",13) I 'INACT!(INACT>DT),IVFL'=0 Q:$G(^PS(52.6,ADDITIVE,0))']""  D  Q:ADDITIVE
  ..I $G(PSITEM)="" S PSITEM=PTR
  ..S ^TMP("PSJNVO",$J,"AD",0)=ADCNT
- ..S ^TMP("PSJNVO",$J,"AD",ADCNT,0)=ADDITIVE_"^"_STRENGTH_"^"_$S('+$P($G(FIELD(5)),U):"",1:$P($G(FIELD(5)),U))
+ ..;Store the bag data ("" = all bag, "S" = See comment, Numeric valure = bottle #)
+ ..S ^TMP("PSJNVO",$J,"AD",ADCNT,0)=ADDITIVE_"^"_STRENGTH_"^"_$S($P($G(FIELD(5)),U)="S":"See Comments",('+$P($G(FIELD(5)),U)):"",1:$P($G(FIELD(5)),U))
  Q
  ;
 RXO ;
@@ -64,7 +65,8 @@ NTE ;
 ZRX ;
  N ND,ND2,CHK,FOLOR,STDT
  S PREON=$G(FIELD(1)),ROC=$G(FIELD(3)),IVCAT=$G(FIELD(6))
- S IVCAT=$S(",I,C,"[(","_IVCAT_","):IVCAT,1:"") I 'PREON S IVTYP=$S($G(PSGS0XT):"P",1:"A") S IVTYP=$S(IVCAT="I":"P",IVCAT="C":"A",1:$G(IVTYP))
+ S IVCAT=$S(",I,C,"[(","_IVCAT_","):IVCAT,1:"") S IVTYP=$S($G(PSGS0XT):"P",1:"A") S IVTYP=$S(IVCAT="I":"P",IVCAT="C":"A",1:$G(IVTYP))
+ ; HD281238 - No longer checked for PREON before setting IVTYP
  S ND=$S((PREON["N")!(PREON["P"):$G(^PS(53.1,+PREON,0)),PREON["V":$G(^PS(55,PSJHLDFN,"IV",+PREON,0)),1:$G(^PS(55,PSJHLDFN,5,+PREON,0)))
  S ND2=$S((PREON["N")!(PREON["P"):$G(^PS(53.1,+PREON,2)),PREON["V":$G(^PS(55,PSJHLDFN,"IV",+PREON,2)),1:$G(^PS(55,PSJHLDFN,5,+PREON,2)))
  I 'ND I ROC'="N" S PSREASON="Invalid Pharmacy order number" D ERROR^PSJHL9 Q

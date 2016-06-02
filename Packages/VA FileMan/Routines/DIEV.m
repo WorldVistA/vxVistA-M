@@ -1,15 +1,19 @@
-DIEV ;SFISC/DPC-DATA VALIDATOR ;2:10 PM  21 Jul 2000
- ;;22.0;VA FileMan;**55**;Mar 30, 1999
- ;Per VHA Directive 10-93-142, this routine should not be modified.
+DIEV ;SFISC/DPC-DATA VALIDATOR ;22SEP2009
+ ;;22.2;MSC Fileman;;Jan 05, 2015;
+ ;;Submitted to OSEHRA 5 January 2015 by the VISTA Expertise Network.
+ ;;Based on Medsphere Systems Corporation's MSC Fileman 1051.
+ ;;Licensed under the terms of the Apache License, Version 2.0.
+ ;;GFT;**55,160**
+ ;
 VAL(DIEVF,DIEVIEN,DIEVFLD,DIEVFLG,DIEVAL,DIEVANS,DIEVFAR,DIOUTAR) ;
 VALX ;
- N DIEV0,DIEVP2,DA,D,I,C K DIEVANS
+ N DIEV0,DIEVP2,DA,D,I,C,G K DIEVANS
  I '$D(DIQUIET) N DIQUIET S DIQUIET=1
  I '$D(DIFM) N DIFM S DIFM=1 D INIZE^DIEFU
  S DIEVFLG=$G(DIEVFLG) I '$$VERFLG^DIEFU(DIEVFLG,"HFERYUK") G OUT
  D FLDVAL G:$G(DIEVAL)=U OUT
- D DA^DIEFU(DIEVIEN,.DA)
- S C=$L(DIEVIEN,",")-1 F I=1:1:C S D="D"_(C-I) N @D S @D=$P(DIEVIEN,",",I)
+IENS S G=$G(DIEVIEN) I G]"" S:G'?.E1"," G=G_"," S C=$L(G,",")-1 F I=1:1:C S D="D"_(C-I) N @D S @D=$P(G,",",I) I @D="" D BLD^DIALOG(308,$G(DIEVIEN)) G OUT
+ S DIEVIEN=G D DA^DIEFU(G,.DA)
  D AUXVAL(DIEVF,DIEVIEN,DIEVFLD,DIEVFLG,DIEVAL,.DIEVANS,.DIEV0,.DIEVP2)
  I $G(DIEVANS)=U!("@"[DIEVAL) G OUT
 MINVAL ;
@@ -101,7 +105,7 @@ INT(%B1,%B2,DIEVFLG,X,DIEVANS,%B3,%B) ;
  I %B["S" S X=$$UP^DILIBF(X)
  S %A=%B1_","_%B2_",V",%E=0,DIR("V")="",%T=$E(%B1)
  S DIEVECNT=$G(DIERR)
- S:DIEVFLG["N" DIRDINUM=1 D 1^DIR1
+ S:DIEVFLG["N" DIRDINUM=1 D 1^DIR1 ;input transform to 52,3 KILLs off "Y" variable!
  I DIEVECNT'=$G(DIERR) S DIEVANS=U D HKERR^DILIBF(%B1,$G(DIEVIEN),%B2,"screen on a pointer or set of codes or in an input transform") K:$G(DIRDINUM) DINUM Q
  I %E S DIEVANS=U K:$G(DIRDINUM) DINUM Q
  S DIEVANS=$S(%B'["P":Y,1:$P(Y,U))

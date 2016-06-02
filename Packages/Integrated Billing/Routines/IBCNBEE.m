@@ -1,5 +1,5 @@
-IBCNBEE ;ALB/ARH-Ins Buffer: add/edit existing entries in buffer ;1 Jun 97
- ;;2.0;INTEGRATED BILLING;**82,184,252,251,356,361,371,377,416**;21-MAR-94;Build 7
+IBCNBEE ;ALB/ARH - Ins Buffer: add/edit existing entries in buffer ;1 Jun 97
+ ;;2.0;INTEGRATED BILLING;**82,184,252,251,356,361,371,377,416,438,452,497**;21-MAR-94;Build 18
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
 ADD(IBSOURCE) ; add a new buffer file entry (#355.33), sets only status (0) node data
@@ -54,13 +54,11 @@ POLICY(IBBUFDA,FLDS) ; edit the patient policy portion of the buffer file entry
  N DIC,DIE,DA,DR,X,Y,IBZZ I $P($G(^IBA(355.33,+$G(IBBUFDA),0)),U,4)'="E" Q
  I $G(FLDS)="" S FLDS="MR"
  ;
- ;DSS/RAC - BEGIN MOD - Substitute modified DR string in vxVistA context
- ;S DR=$P($T(@(FLDS_"POL")+1),";;",2,9999) Q:DR=""
- I $T(VX^VFDI0000)'="",$$VX^VFDI0000["VX",FLDS="MR"!(FLDS="OT")  D  Q:DR=""  I 1
+ ;DSS/SMP - BEGIN MOD - Substitute modified DR string in vxVistA
+ I $G(^%ZOSF("ZVX"))["VX",FLDS="MR"!(FLDS="OT")  D  Q:DR=""  I 1
  .S DR=$P($T(@("VFD"_FLDS_"POL")+1),";;",2,9999)
- .Q
- E  S DR=$P($T(@(FLDS_"POL")+1),";;",2,9999) Q:DR=""  ;Else original DR string
- ;DSS/RAC - END MOD
+ E  S DR=$P($T(@(FLDS_"POL")+1),";;",2,9999) Q:DR=""
+ ;DSS/SMP - END MOD
  S DIE="^IBA(355.33,",DA=IBBUFDA
  S DIE("NO^")="BACKOUTOK" D ^DIE K DIE,DA,DR Q:$D(Y)
  ;
@@ -159,24 +157,24 @@ CHECKQ Q IBNEW
 MRINS ; Insurance Company fields asked of MCCR users in the Buffer Process options (all buffer ins fields 20.01-21.06)
  ;;20.01;20.05;20.02:20.04;21.01;I X="" S Y="@111";21.02;I X="" S Y="@111";21.03;@111;21.04:21.06
  ;
-MRGRP ; Group/Plan fields asked of MCCR users in the Buffer Process options (all buffer grp fields 40.01-40.09) ;;Daou/EEN adding BIN and PCN (40.1,40.11)
- ;;40.01:40.03;40.1;40.11;40.09;40.04:40.08
+MRGRP ; Group/Plan fields asked of MCCR users in the Buffer Process options (all buffer grp fields 40.01,90.01,90.02,40.04-40.09)
+ ;;40.01;90.01;90.02;40.1;40.11;40.09;40.04:40.08
  ;
 MRPOL ; Patient Policy fields asked of MCCR users in the Buffer Process options (all buffer policy fields except ESGHP,60.05,60.06 60.02-61.01
- ;;60.02;60.03;60.14PT. RELATIONSHIP TO INSURED;S IBZZ=X;60.04T;I IBZZ'="18" S Y="@111";60.07///1;60.08///@;60.09///@;62.01///@;S Y="@112";@111;60.07;60.08;60.13;62.01T;@112;60.1:60.12;.03;61.01;62.02;62.03;62.04;62.05;62.06
+ ;;60.02;60.03;60.14T;S IBZZ=X;I IBZZ'="18" S Y="@111";91.01///1;90.03T;60.08///@;60.09///@;62.01///@;S Y="@112";@111;91.01;90.03T;60.08;60.13;62.01T;@112;60.1:60.12;.03;60.15;60.16;61.01;62.02:62.06
  ;
 OTINS ; Insurance Company fields asked of non-MCCR users entering buffer data from options outside IB (20.01-20.04,21.01-21.06)
  ;;20.01:20.04;21.01;I X="" S Y="@111";21.02;I X="" S Y="@111";21.03;@111;21.04:21.06
  ;
-OTGRP ; Group/Plan fields asked of non-MCCR users entering buffer data from options outside IB (40.02,40.03,40.09) ;;Daou/EEN-adding BIN & PCN (40.1,40.11)
- ;;40.02;40.03;40.1;40.11;40.09
+OTGRP ; Group/Plan fields asked of non-MCCR users entering buffer data from options outside IB (90.01,90.02,40.09) ;;Daou/EEN-adding BIN & PCN (40.1,40.11)
+ ;;90.01;90.02;40.1;40.11;40.09
  ;
-OTPOL ; Patient Policy fields asked of non-MCCR users entering buffer data from options outside IB (60.02-60.08)
- ;;60.02;60.03;60.14PT. RELATIONSHIP TO INSURED;S IBZZ=X;60.04T;I IBZZ'="18" S Y="@111";60.07///1;60.08///@;60.09///@;62.01///@;S Y="@112";@111;60.07;60.08;60.13;62.01T;@112;62.02;62.03;62.04;62.05;62.06
+OTPOL ; Patient Policy fields asked of non-MCCR users entering buffer data from options outside IB (60.02,60.03,90.03,60.05,60.06,91.01,60.08)
+ ;;60.02;60.03;60.14PT. RELATIONSHIP TO INSURED;S IBZZ=X;90.03T;I IBZZ'="18" S Y="@111";91.01///1;60.08///@;60.09///@;62.01///@;S Y="@112";@111;91.01;60.08;60.13;62.01T;@112;60.15;60.16;62.02;62.03;62.04;62.05;62.06
  ;
-VFDMRPOL ; DSS/LM - vxVistA replacement for MRPOL
- ;;60.02;60.03;60.14PT. RELATIONSHIP TO INSURED;S IBZZ=X;60.04T;I IBZZ'="18"&0 S Y="@111";60.07;60.08///@;60.09///@;62.01///@; S Y="@112";@111;60.07;60.08;60.13;62.01T;@112;60.1:60.12;.03;61.01
+VFDMRPOL ; DSS/SMP - vxVistA replacement for MRPOL
+ ;;60.02;60.03;60.14T;S IBZZ=X;I IBZZ'="18"&0 S Y="@111";91.01;90.03T;60.08///@;60.09///@;62.01///@;S Y="@112";@111;91.01;90.03T;60.08;60.13;62.01T;@112;60.1:60.12;.03;60.15;60.16;61.01;62.02:62.06
  ;
-VFDOTPOL ; DSS/LM - vxVistA replacement for OTPOL
- ;;60.02;60.03;60.14PT. RELATIONSHIP TO INSURED;S IBZZ=X;60.04T;I IBZZ'="18"&0 S Y="@111";60.07;60.08///@;60.09///@;62.01///@; S Y="@112";@111;60.07;60.08;60.13;62.01T;@112
+VFDOTPOL ; DSS/SMP - vxVistA replacement for OTPOL
+ ;;60.02;60.03;60.14PT. RELATIONSHIP TO INSURED;S IBZZ=X;90.03T;I IBZZ'="18"&0 S Y="@111";91.01;60.08///@;60.09///@;62.01///@;S Y="@112";@111;91.01;60.08;60.13;62.01T;@112;60.15;60.16;62.02;62.03;62.04;62.05;62.06
  ;

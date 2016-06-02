@@ -1,5 +1,6 @@
-MAGDIR82 ;WOIFO/PMK - Read a DICOM image file ; 03/01/2006 14:04
- ;;3.0;IMAGING;**11,30,51,20**;Apr 12, 2006
+MAGDIR82 ;WOIFO/PMK - Read a DICOM image file ; 10/30/2008 09:20
+ ;;3.0;IMAGING;**11,30,51,20,54**;03-July-2009;;Build 1424
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGDIR82 ;WOIFO/PMK - Read a DICOM image file ; 03/01/2006 14:04
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -122,9 +122,9 @@ POSTPRO2 ; consolidation code version of post processing
  Q
  ;
 COUNT(STEP) ; update today's count
- N %,D2,%H,NOW,PC,TODAY,X
- D NOW^%DTC S TODAY=X,NOW=%
- L +^MAGDAUDT(2006.5762,TODAY)
+ N D2,NOW,PC,TODAY,X
+ S NOW=$$NOW^XLFDT,TODAY=NOW\1
+ L +^MAGDAUDT(2006.5762,TODAY):1E9 ; Background job MUST wait
  D:'$D(^MAGDAUDT(2006.5762,TODAY))
  . S X=$G(^MAGDAUDT(2006.5762,0))
  . S $P(X,"^",1,2)="DICOM INSTRUMENT STATISTICS^2006.5762"
@@ -154,14 +154,14 @@ COUNT(STEP) ; update today's count
  L -^MAGDAUDT(2006.5762,TODAY)
  Q
  ;
-WARNROUT(PLACE) N LAST,X1,X2,X3
+WARNROUT(PLACE) N LAST,X2,X3
  D:'PLACE
  . S PLACE=$$PLACE^MAGDRPC2(LOCATION)
  . Q
  S LAST=$G(^MAG(2006.1,+PLACE,"LASTROUTE"))
  S (X2,X3)=LAST\1 D:X3
  . N DEST,E,I,PRI,T
- . S X1=DT D ^%DTC Q:X<7
+ . Q:$$FMDIFF^XLFDT(DT,X2,1)<7
  . S X2=$P(LAST,"^",2) Q:X2'<DT  ; Only send one message per day
  . S (E,T,I)=0 F  S I=$O(^MAGQUEUE(2006.03,"C",PLACE,"EVAL",I)) Q:I=""  S E=E+1
  . S PRI="" F  S PRI=$O(^MAGQUEUE(2006.035,"STS",LOCATION,"WAITING",PRI)) Q:PRI=""  D

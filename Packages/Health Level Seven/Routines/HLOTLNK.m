@@ -1,5 +1,6 @@
-HLOTLNK ;IRMFO-ALB/CJM - APIs for the HL Logical Link file;03/24/2004  14:43
- ;;1.6;HEALTH LEVEL SEVEN;**126,130,131**;Oct 13, 1995;Build 10
+HLOTLNK ;IRMFO-ALB/CJM - APIs for the HL Logical Link file;03/24/2004  14:43 ;02/11/2011
+ ;;1.6;HEALTH LEVEL SEVEN;**126,130,131,139,146,155**;Oct 13, 1995;Build 4
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  ;
 SETSHUT(LINKIEN) ;
  ;sets the shutdown flag (can not fail - if the link doesn't exist, by definition its shutdown)
@@ -16,13 +17,17 @@ SETOPEN(LINKIEN) ;
  ;
 IFSHUT(LINKNAME) ;
  ;returns 1 if the link was shut down to HLO
- N IEN,LINK
+ N IEN,LINK,RET
+ S RET=0
  S LINK=$P($G(LINKNAME),":")
- Q:LINK=""
+ ;** Start HL*1.6*139 RBN **
+ ;Q:LINK=""
+ Q:LINK="" 1
+ ;** END HL*1.6*139 RBN **
  S IEN=$O(^HLCS(870,"B",LINK,0))
  Q:'IEN 1
- Q:$P($G(^HLCS(870,IEN,0)),"^",16) 1
- Q 0
+ S:$P($G(^HLCS(870,IEN,0)),"^",16) RET=1
+ZB0 Q RET
  ;
 DOMAIN(LINKIEN) ;
  ;Returns the domain associated with this link
@@ -36,6 +41,7 @@ DOMAIN(LINKIEN) ;
  .S DOMAIN=$S($L(DOMAIN):"HL7."_DOMAIN,1:"")
  I '$L(DOMAIN) S DOMAIN=$P(NODE,"^",8)
  Q DOMAIN
+ ;
 PORT(LINKIEN) ;
  ;Returns the HLO port associated with this link
  ;
@@ -47,7 +53,11 @@ PORT(LINKIEN) ;
  Q PORT
  ;
 PORT2(LINKNAME) ;given the name of the link, returns its HLO port
- Q $$PORT($O(^HLCS(870,"B",LINKNAME,0)))
+ N PORT
+ Q:'$L(LINKNAME) ""
+ S PORT=$$PORT($O(^HLCS(870,"B",LINKNAME,0)))
+ Q:'$L(PORT) ""
+ Q PORT
  ;
 STATNUM(LINKIEN) ;
  ;Given the ien of the link, this function returns the station #.
@@ -73,6 +83,7 @@ FINDLINK(STATN) ;
  ;
 GETLINK(LINKNAME,LINK) ;
  N IEN
+ Q:'$L(LINKNAME) 0
  S IEN=$O(^HLCS(870,"B",LINKNAME,0))
  I IEN Q $$GET(IEN,.LINK)
  I LINKNAME="HLO DEFAULT LISTENER" D  Q 1
@@ -95,6 +106,8 @@ GET(IEN,LINK) ;
  S LINK("NAME")=$P(NODE,"^")
  S LINK("IEN")=IEN
  S LINK("SHUTDOWN")=+$P(NODE,"^",16)
+ I $P(NODE,"^",23)=1 S LINK("SINGLE THREADED")=1
+ E  S LINK("SINGLE THREADED")=0
  I $P(NODE,"^",7) D
  .S LINK("DOMAIN")=$P(^DIC(4.2,$P(NODE,"^",7),0),"^")
  .S LINK("DOMAIN")=$S($L(LINK("DOMAIN")):"HL7."_LINK("DOMAIN"),1:"")
@@ -174,3 +187,35 @@ CHKLINK(LINK) ;
  Q:'$L(LINK) 0
  Q:'$O(^HLCS(870,"B",LINK,0)) 0
  Q 1
+ONETHRED(LINKNAME) ;
+ ;Returns the value of the SINGLE THREADED flag of the HL LOGICAL LINK
+ ;file.
+ ;Input:
+ ;   LINKNAME - the name given to an entry in the HL LOGICAL LINK file.
+ ;Output:
+ ;   The function returns 1 if the SINGLE THREADED flag is set to YES,
+ ;   otherwiste it returns 0.
+ N IEN
+ S IEN=$O(^HLCS(870,"B",LINKNAME,0))
+ Q:'IEN 0
+ I $P($G(^HLCS(870,IEN,0)),"^",23)=1 Q 1
+ Q 0
+ ;
+STHREADS(LINKNAME,ON) ;
+ ;This function is used to turn on or off the SINGLE THREADED flag of
+ ;the HL LOGICAL LINK file.
+ ;
+ ;Input:
+ ;   LINKNAME - (required) the name of an entry in the HL LOGICAL LINK file.
+ ;   ON - 1 will set the flag.
+ ;        0,"", or not present will cause the flag to be deleted. 
+ ;        Other values are not accepted and will cause an error to be returned.  
+ ;Output:
+ ;   function returns -1 if the inputs are invalid.  Otherwise returns
+ ;            the new value of the SINGLE THREADED flag.
+ N IEN
+ I $G(ON)'="",$G(ON)'=0,$G(ON)'=1 Q -1
+ S IEN=$O(^HLCS(870,"B",LINKNAME,0))
+ Q:'IEN -1
+ S $P(^HLCS(870,IEN,0),"^",23)=+$G(ON)
+ Q +$G(ON)

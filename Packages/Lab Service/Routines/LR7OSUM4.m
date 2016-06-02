@@ -1,5 +1,5 @@
 LR7OSUM4 ;DALOI/STAFF - Silent Patient cum cont. ;06/04/12  11:15
- ;;5.2;LAB SERVICE;**121,187,228,241,251,350**;Sep 27, 1994;Build 230
+ ;;5.2;LAB SERVICE;**121,187,228,241,251,350**;Sep 27, 1994;Build 3
  ;
 BS ;from LR7OSUM3
  ;
@@ -20,7 +20,11 @@ BS ;from LR7OSUM3
  S:LRTT>(LRTY-1)&(LRMULT=1) LRFULL=1
  S:LRTT>(LRTY-1)&(LRMU=(LRMULT-1)) LRFULL=1
  F I=1:1:LRSHD D LRLO^LR7OSUM5 S:LRLOHI'="" ^TMP($J,"TY",(LRTT+1),I)=LRLOHI S:P7'="" ^TMP($J,"TY",LRTT,I)=P7
- S ^TMP($J,"TY",LRTT,"T")="Units",^TMP($J,"TY",(LRTT+1),"T")="Ranges"
+ ;DSS/RAF - BEGIN MOD - modify the cumulative header to display current after Ranges
+ I ^%ZOSF("ZVX")["VX" D
+ . S ^TMP($J,"TY",LRTT,"T")="Units   ",^TMP($J,"TY",(LRTT+1),"T")="Ranges(current)"
+ E  S ^TMP($J,"TY",LRTT,"T")="Units",^TMP($J,"TY",(LRTT+1),"T")="Ranges"  ;original line with Else command added
+ ;DSS/RAF - END MOD
  S ^TMP($J,"TY",(LRTT+1),0)=$S($P(^LAB(64.5,"A",1,LRMH,LRSH,I(1)),U,11)'="":"Therapeutic",1:"Reference")
  S ^TMP($J,"TY",LRTT,0)=""
  ;

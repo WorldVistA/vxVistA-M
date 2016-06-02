@@ -1,10 +1,20 @@
-RAUTL8 ;HISC/CAH-Utility routines ;10/3/97  16:02
- ;;5.0;Radiology/Nuclear Medicine;**45,72**;Mar 16, 1998
+RAUTL8 ;HISC/CAH-Utility routines ;05/19/09  12:02
+ ;;5.0;Radiology/Nuclear Medicine;**45,72,99,90**;Mar 16, 1998;Build 20
  ;
  ;Called by File 70, Exam subfile, Procedure Fld 2 Input transform
  ;RA*5*45: modified -  logic in PRC1, ASK, ASK1, & MES1 subroutines
  ;          removed -  MES subroutine
  ;RA*5*72 03/23/2006 BAY/GJC/KAM Remedy Call 136200 Correct UNDEF issue
+ ;RA*5.0*99 added utility for pt age and pt sex
+ ;
+ ;Supported IA #10061 reference to ^VADPT
+ ;Supported IA #10103 reference to ^XLFDT
+ ;Supported IA #10142 reference to EN^DDIOL
+ ;Supported IA #2056 reference to GET1^DIQ and GETS^DIQ
+ ;Supported IA #10104 reference to UP^XLFSTR
+ ;Supported IA #10076 reference to ^XUSEC
+ ;Supported IA #2055 reference to EXTERNAL^DILFD
+ ;Supported IA #2378 reference to ORCHK^GMRAOR
  ;
 PRC G PRC1:'$D(^RADPT(DA(2),"DT","AP",X)) ; check for C.M. reaction
  N RADUP S RADUP=+$$DPDT^RAUTL8(X,.DA)
@@ -170,4 +180,102 @@ CMEDIA(RADFN,RADTI,RACNI) ;return the CM used with an exam
 GMRAOR(RADA2) ;look for a contrast media reaction
  N D,D0,D1,D2,D3,DA,DC,DD,DFN,DG,DH,DI,DIC,DIE,DIEDA,DIEL,DIETMP,DIEXREF,DIFLD,DIIENS,DIOV,DIP,DK,DL,DLAYGO,DM,DN,DOV,DP,DQ,DR,X,Y
  Q $$ORCHK^GMRAOR(RADA2,"CM")
+ ;
+PTAGE(DFN,RADTST) ;return pt age, added by p#99
+ ;input = DFN pt ien
+ ;      = RADTST date to process pt age from; if blank, use today's date
+ ;output = pt age
+ N RADAYS,VADM,VA,VAERR,%,RAYSAVE,RAXSAVE
+ M RAYSAVE=Y,RAXSAVE=X   ;save value of Y and X, patch #90
+ S:RADTST="" RADTST=$$DT^XLFDT()
+ D DEM^VADPT   ; $P(VADM(3),"^") DOB of patient, internal
+ S RADAYS=$$FMDIFF^XLFDT(RADTST,$P(VADM(3),"^"),3)
+ M X=RAXSAVE,Y=RAYSAVE
+ Q RADAYS\365.25
+ ;
+PTSEX(DFN) ;return pt sex, added by p#99
+ ;input = pt dfn
+ ;output = pt sex (M=for MALE, F=for FEMALE)
+ ;save value of Y and X; patch #90
+ N VADM,VA,VAERR,%,RAYSAVE,RAXSAVE M RAYSAVE=Y,RAXSAVE=X D DEM^VADPT
+ M Y=RAYSAVE,X=RAXSAVE
+ Q $P(VADM(5),U)
+PRSCR(RADFN,RADTI,RACNI,RAFRMT) ;return pregnancy screen
+ ;input: radfn = pt dfn
+ ;       radti = inverse dt
+ ;       racni = ien of exam sub
+ ;       rafrmt = E for External format or I for Internal format
+ ;return = pregnancy screen
+ N RAIENS,RAOUT
+ S RAIENS=RACNI_","_RADTI_","_RADFN_","
+ D GETS^DIQ(70.03,RAIENS,"32",RAFRMT,"RAOUT")
+ Q $G(RAOUT(70.03,RAIENS,32,RAFRMT))
+PRSCOM(RADFN,RADTI,RACNI) ;return pregnancy screen comment
+ ;input: radfn = pt dfn
+ ;       radti = inverse dt
+ ;       racni = ien of exam sub
+ ;return = pregnancy screen comment
+ N RAIENS,RAOUT
+ S RAIENS=RACNI_","_RADTI_","_RADFN_","
+ D GETS^DIQ(70.03,RAIENS,"80","E","RAOUT")
+ Q $G(RAOUT(70.03,RAIENS,80,"E"))
+PRCEXA(RADFN) ;return a previous case exam
+ ;input:  radfn = pt dfn
+ ;
+ ;output: racexa(0) =radti^racni, where radti=inverse date ien and racni=record ien
+ N RADTIEN,RACNIEN
+ S RADTIEN=$O(^RADPT(RADFN,"DT",0)),RACNIEN=9999,RACNIEN=$O(^RADPT(RADFN,"DT",RADTIEN,"P",RACNIEN),-1)
+ Q RADTIEN_U_RACNIEN
+PRACTO(RADFN) ;returns previous active order IEN of file #75.1 or null if no previous order
+ ;input  radfn = pt dfn
+ ;output  = ien of #75.1
+ N RA751IEN,RA751PR
+ S RA751PR=""
+ S RA751IEN=" " F  S RA751IEN=$O(^RAO(75.1,"B",RADFN,RA751IEN),-1) Q:RA751IEN'>0!$G(RA751PR)  D
+ .I $$GET1^DIQ(75.1,RA751IEN,5)="ACTIVE" S RA751PR=RA751IEN
+ Q RA751PR
+PAOE() ;Entry point to enter Pregnancy field of file 75.1.  This label is being called from
+ ;RA ORDER EXAM input template.
+ ;RETURN value:  0 if unsuccessful (up arrow, timeout or problem occured), 1 if successful.
+ N DIR,DIROUT,DIRUT,DUOUT,DTOUT,Y,X S DIR(0)="75.1,13"
+ S DIR("B")=$S($G(RAPREG)="y":"YES",$G(RAPREG)="n":"NO",$G(RAPREG)="u":"UNKNOWN",1:"")
+ S DIR("A")="PREGNANT AT TIME OF ORDER ENTRY" D ^DIR
+ Q:$D(DIRUT)!$D(DUOUT)!$D(DTOUT)!$D(DIROUT) 0
+ S RAPREG=$P(Y,"^")
+ Q 1
+ ;
+ASKSEX() ;RA*5.0*99 - Determine the sex of the patient by asking the user.
+ ;Called from the RA ORDER EXAM compiled input template.
+ ;
+ ;Question: "THE SEX OF THIS PATIENT IS NOT AVAILABLE. IS PATIENT FEMALE"
+ ;If 'Yes' Y=1; if 'No' Y=0
+ ;The default presented to the user: 'No'
+ ;
+ ;Return: the place holder value ('Y' is reset in the RA ORDER EXAM input template)
+ ;necessary for branching within that template.
+ ;
+ N DIR,DTOUT,DUOUT,DIROUT,DIRUT,RAY,X S RAY=Y S DIR(0)="Y",DIR("B")="No"
+ S DIR("A")="THE SEX OF THIS PATIENT IS NOT AVAILABLE. IS PATIENT FEMALE"
+ S DIR("?")="Enter 'YES' if patient is female, or 'NO' if patient is male."
+ D ^DIR
+ Q $S($D(DIRUT):"@999",Y=0:"@130",1:RAY)
+ ;
+ASKPREG() ;RA*5.0*99 - Evaluate the conditions to present the PREGNANCY
+ ;SCREENING (70.03 ; 32) prompt to the user. Called from the RA EXAM EDIT
+ ;input template & the RA REGISTER compiled input template.
+ ;
+ ;Input: RA0(17) (global) The IEN of the report associated with this exam.
+ ;                Note: no IEN will exist when the case is being registered.
+ ;        RADFN  (global) the IEN of the patient
+ ;            Y  (global) the place holder for the RA EXAM EDIT input template. 
+ ;
+ ;Return: the place holder value (Y = $$ASKPREG^RAUTL8) necessary for
+ ;branching within these templates.
+ ;
+ N %,DIERR,RAERR,RAGE,RAST,VAERR,X,RAY S RAY=Y
+ S RAGE=$$PTAGE^RAUTL8(RADFN,""),Y=$G(RA0(17))_","
+ D:+Y GETS^DIQ(74,Y,5,"I","RAST","RAERR")
+ S RAST=$G(RAST(74,Y,5,"I"),"")
+ I $$PTSEX^RAUTL8(RADFN)'="F"!((RAGE>55)!(RAGE<12))!(RAST="V")!(RAST="EF") S RAY="@8001"
+ Q RAY
  ;

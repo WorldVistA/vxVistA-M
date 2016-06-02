@@ -1,5 +1,5 @@
-VFDPSUTL ;DSS/LM - Support Utility for Rx Processing ; 07/10/2012 17:05
- ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;;28 Jan 2013;Build 153
+VFDPSUTL ;DSS/LM - Support Utility for Rx Processing ; 04/25/2014 10:20
+ ;;2011.1.2;DSS,INC VXVISTA OPEN SOURCE;**12**;28 Jan 2013;Build 1
  ;Copyright 1995-2013,Document Storage Systems Inc. All Rights Reserved
  ;
  ; ICR#  Supported Description
@@ -216,8 +216,9 @@ PSITE(VFDHLOC) ;Return OUTPATIENT SITE corresponding to given HOSPITAL LOCATION
  ;
 PAT(IENS) ; get patient demographics [From SGM modification to ^VFDPOAF]
  N X,Y,Z,VFDTMP K PATDEM
- D DEM^VFDCDPT(.VFDTMP,IENS)
+ D DEM^VFDCDPT(.VFDTMP,+IENS) ;DSS/LM - Added '+' 3/31/2014
  S Z("PAT NAME")=VFDTMP(1)
+ S Z("PAT SEX")=VFDTMP(5) ;DSS/LM - Added 3/31/2014
  S Z("PAT AD L1")=VFDTMP(11)
  S Z("PAT AD L2")=VFDTMP(12)
  S Z("PAT AD L3")=VFDTMP(13)
@@ -226,6 +227,7 @@ PAT(IENS) ; get patient demographics [From SGM modification to ^VFDPOAF]
  S X=VFDTMP(16) S:$P(X,U,2)'="" X=$P(X,U,2) S Z("PAT AD ZIP")=X
  S Z("PAT DOB")=$P(VFDTMP(3),";",2)
  S Z("PHONE #")=VFDTMP(18)
+ S Z("PAT LANG")=VFDTMP(34) ;DSS/LM - Added 3/31/2014
  M PATDEM=Z
  Q
  ;

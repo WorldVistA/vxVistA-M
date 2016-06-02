@@ -1,5 +1,5 @@
 LR7OF2 ;slc/dcm - Process messages from OE/RR ;8/11/97
- ;;5.2;LAB SERVICE;**121,187**;Sep 27, 1994
+ ;;5.2;LAB SERVICE;**121,187,440**;Sep 27, 1994;Build 29
  ;
 NEW ;Process New orders from OE/RR
  ;LRXMSG=Message with linking identifiers
@@ -14,7 +14,10 @@ CANC ;Process Canceled orders from OE/RR
  D GET(.LRXORC,LRXORC) Q:LREND
  I 'LRVERZ S LRODT=0 F  S LRODT=$O(^LRO(69,"C",LRORD,LRODT)) Q:LRODT<1  S LRSN=0 F  S LRSN=$O(^LRO(69,"C",LRORD,LRODT,LRSN)) Q:LRSN<1  D  Q
  . S X=$P($P(LRXMSG,"|",5),"^",4) I X S TST=$O(^LRO(69,LRODT,1,LRSN,2,"B",X,0)) I TST D DOIT(LRODT,LRSN,TST,LRXORC,LRDUZ,REASON) Q:LREND
- I LRVERZ,$D(^LRO(69,LRODT,1,LRSN,0)) S X=$P($P(LRXMSG,"|",5),"^",4) I X S TST=$O(^LRO(69,LRODT,1,LRSN,2,"B",X,0)) I TST D DOIT(LRODT,LRSN,TST,LRXORC,LRDUZ,REASON) Q:LREND
+ I LRVERZ,$D(^LRO(69,LRODT,1,LRSN,0)) D  Q:LREND
+ . S X=$P($P(LRXMSG,"|",5),"^",4),TST=""
+ . I X S TST=$O(^LRO(69,LRODT,1,LRSN,2,"B",X,0))
+ . I TST D DOIT(LRODT,LRSN,TST,LRXORC,LRDUZ,REASON),CHKCOMB(LRODT,LRSN,TST,LRXORC,LRDUZ,REASON)
  D ACK^LR7OF0("CR",LRXORC)
  Q
 XO ;Process order changes from OE/RR
@@ -29,6 +32,27 @@ DOIT(LRODT,LRSN,TST,LRXORC,LRDUZ,REASON) ;Clean it out
  S $P(^LRO(69,LRODT,1,LRSN,2,TST,0),"^",3,6)="^^^",$P(^(0),"^",9,11)="CA^W^"_LRDUZ
  I $L($P(REASON,"^",5)) S:'$D(^LRO(69,LRODT,1,LRSN,2,TST,1.1,0)) ^(0)="^^^^"_DT S X=1+$O(^(9999),-1),$P(^LRO(69,LRODT,1,LRSN,2,TST,1.1,0),"^",3,4)=X_"^"_X,^(X,0)=$P(REASON,"^",5)
  Q
+CHKCOMB(LRODT,LRSN,LRIN,LRXORC,LRDUZ,REASON)  ;
+ ; check for other entries that have combined this test
+ N LR60,LRI,LRORD,LRX,LRY
+ ;
+ ; retrieve list of merged orders
+ S LRX=$P($G(^LRO(69,LRODT,1,LRSN,1)),"^",7) Q:LRX=""
+ ;
+ S LR60=$P(^LRO(69,LRODT,1,LRSN,2,LRIN,0),"^")
+ S LRY=LRODT_";"_LRSN_";"_LRIN
+ ;
+ ; scan the merged order # (LRX) and check corresponding orders/seq (LRSN)
+ ; for matching (#20) COMBINED FROM [14F] and update if match
+ F LRI=1:1 S LRORD=$P(LRX,"/",LRI) Q:LRORD=""  D
+ . S LRODT=0
+ . F  S LRODT=$O(^LRO(69,"C",LRORD,LRODT)) Q:LRODT<1  D
+ . . S LRSN=0
+ . . F  S LRSN=$O(^LRO(69,"C",LRORD,LRODT,LRSN)) Q:LRSN<1  D
+ . . . S LRIN=$O(^LRO(69,LRODT,1,LRSN,2,"B",LR60,0))
+ . . . I LRIN,$P(^LRO(69,LRODT,1,LRSN,2,LRIN,0),"^",14)=LRY D DOIT(LRODT,LRSN,LRIN,LRXORC,LRDUZ,REASON)
+ ;
+ Q
 NUM ;Process Return of OE/RR Order number
  N LRODT,LRSN,LRORD,ORIFN,STARTDT,LRDUZ,PROV,REASON,QUANT
  D GET(.LRXMSG,LRXORC) Q:LREND
@@ -39,7 +63,12 @@ NA ;Set ORIFN at test level
  N I,X,LRODT,LRSN,LRORD,ORIFN,STARTDT,LRDUZ,PROV,REASON,QUANT
  D GET(.LRXORC,LRXORC) Q:LREND
  S I=0
- S X=$P($P(LRXMSG,"|",5),"^",4) I X S I=$O(^LRO(69,LRODT,1,LRSN,2,"B",X,0)) I I S $P(^LRO(69,LRODT,1,LRSN,2,I,0),"^",7)=ORIFN
+ ;DSS/FHS - BEGIN MOD - Added following line to set new X-reference
+ ;S X=$P($P(LRXMSG,"|",5),"^",4) I X S I=$O(^LRO(69,LRODT,1,LRSN,2,"B",X,0)) I I S $P(^LRO(69,LRODT,1,LRSN,2,I,0),"^",7)=ORIFN
+ S X=$P($P(LRXMSG,"|",5),"^",4) I X S I=$O(^LRO(69,LRODT,1,LRSN,2,"B",X,0)) I I S $P(^LRO(69,LRODT,1,LRSN,2,I,0),"^",7)=ORIFN D
+ . I $G(^%ZOSF("ZVX"))["VX" D
+ . . S ^LRO(69,"AVFDOR",ORIFN,LRODT,LRSN,I)=""
+ ;DSS/FHS - END MOD
  Q
 GET(XMSG,XORC) ;Get identification data from message
  ;ORIFN= OE/RR order number

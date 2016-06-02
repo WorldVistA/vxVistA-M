@@ -1,5 +1,6 @@
-MAGXCVR ;WOIFO/SEB,MLH - Image File Conversion Reports ; 24 Mar 2005  10:56 AM
- ;;3.0;IMAGING;**17,25,31**;Mar 31, 2005
+MAGXCVR ;WOIFO/SEB,MLH - Image File Conversion Reports ; 05/18/2007 11:23
+ ;;3.0;IMAGING;**17,25,31,54**;03-July-2009;;Build 1424
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGXCVR ;WOIFO/SEB,MLH - Image File Conversion Reports ; 24 Mar 2005  10:56 AM
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -29,13 +29,13 @@ REPORT N START,END S (START,END)=0
  ;
 REPORT1 N MAGIEN,LINENUM,PAGE,RET,STARTDT,ENDDT
  I IOM<132 W !,"This report must be run on a device at least 132 columns wide. Goodbye!" Q
- D NOW^%DTC S Y=% D DD^%DT S STARTDT=Y
+ S STARTDT=$$HTE^XLFDT($H,1)
  S LINENUM=0,PAGE=0,RET="" D HEADER(1)
  S START=+$G(START),END=+$G(END)
  I END=0 S END=+$P($G(^MAG(2005,0)),U,3)
  S MAGIEN=START-1 I MAGIEN=-1 S MAGIEN=0
  F  S MAGIEN=$O(^MAG(2005,MAGIEN)) Q:MAGIEN>END!(+MAGIEN'=MAGIEN)  D REPONE(MAGIEN,1) I RET="^" Q
- D NOW^%DTC S Y=% D DD^%DT S ENDDT=Y
+ S ENDDT=$$HTE^XLFDT($H,1)
  Q
  ;
  ; Print data for one image (IEN=MAGIEN)
@@ -169,3 +169,4 @@ ST() N STDATA,STFLAG,STATUS
  I +STFLAG=0 Q "Image index conversion not started yet"
  S STATUS="Image index "_$S(STFLAG<4:"generation",1:"commit")_" "_$S(STFLAG#3=0:"done",STFLAG#3=1:"in progress",1:"aborted")
  Q STATUS
+ ;

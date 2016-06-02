@@ -1,6 +1,10 @@
-RAPMW1 ;HOIFO/SWM-Radiology Wait Time reports ;12/05/05 13:40
- ;;5.0;Radiology/Nuclear Medicine;**67,79,83**;Mar 16, 1998;Build 4
+RAPMW1 ;HOIFO/SWM-Radiology Wait Time reports ;3/20/09 13:40
+ ;;5.0;Radiology/Nuclear Medicine;**67,79,83,99**;Mar 16, 1998;Build 5
  ; IA 10090 allows Read w/Fileman for entire file 4
+ ; IA #2541 = KSP^XUPARAM
+ ; Supported IA #10103 reference to ^XLFDT
+ ; Supported IA #2056 reference to ^DIQ
+ ; RVD - 3/20/99 p99
  ; summary
  Q
 FILTER1 ;
@@ -64,6 +68,7 @@ CHECK3 ; check inpatient, no credit, cancelled exam
  Q
 STORSUM ;
  S RACOL=$S(RAWAITD'>30:1,RAWAITD'>60:2,RAWAITD'>90:3,RAWAITD'>120:4,1:5)
+ S:RAWAITD<15 RACOL14(RAPTA,"FR")=RACOL14(RAPTA,"FR")+1
  S RACOL(RAPTA,RACOL)=RACOL(RAPTA,RACOL)+1
  S RATOTAL(RAPTA)=RATOTAL(RAPTA)+1,RATOTAL=RATOTAL+1
  ; count negative Wait Days as 0
@@ -72,6 +77,8 @@ STORSUM ;
 WRTSUM ;
  S RAHD0="Summary",RAPG=1
  D SETHD
+ I $G(RAS99) D RAJOB^RAPMW3 Q   ;if this is an email wait and time performance report
+ I $G(RAL99) D RAJOB1^RAPMW3 Q  ;if email W&T performance report, process all.
  D PRTS Q:RAXIT
  D FOOTS
  Q
@@ -79,6 +86,8 @@ SETHD ; Set up header & dev vars for identical parts of summary and detail repor
  S RAIOM=$S(RATYP="S":80,1:IOM),$P(RADASH,"-",46)=""
  S RAH1=RAHD0_" Radiology Outpatient Procedure Wait Time Report"
  ; Hdr Line 3 -- Facility, Station, VISN
+ S:'$G(DUZ(2)) DUZ(2)=$$KSP^XUPARAM("INST")  ;if NULL, use the default institution
+ ;
  D GETS^DIQ(4,DUZ(2),".01;14*;99","E","RAR","RAMSG")
  K X
  S X(1)=RAR(4,DUZ(2)_",",.01,"E") ; Name of facility
@@ -142,10 +151,20 @@ HD ;
 HDSUM ;
  W !!,"Total number of procedures registered during specified exam date range: ",RATOTAL,!
  Q
+DAY14 ;
+ W !!,"The ""<=14 Days"" column contains data that is also in the ""<=30 Days"" column."
+ W !,"The reason that performance is calculated for both <=14 days and <=30 days is"
+ W !,"so that facilities can track their performance to a 14 day performance standard"
+ W !,"rather than a 30 day standard if they choose to do so."
+ Q
 PRTS ;
  I RAPG=1 D HD Q:RAXIT  D HDSUM S RAPG=RAPG+1
  S I="" F  S I=$O(RACOL(I)) Q:I=""  D
- .F J=1:1:5 S RAPCT(I,J)=$S(RATOTAL(I)>0:$J(RACOL(I,J)/RATOTAL(I)*100,5,1),1:$J(0,5,1)),RACOL(I,J)=$J(RACOL(I,J),7)
+ .F J=1:1:5 D
+ ..S RAPCT(I,J)=$S(RATOTAL(I)>0:$J(RACOL(I,J)/RATOTAL(I)*100,5,1),1:$J(0,5,1))
+ ..S RACOL(I,J)=$J(RACOL(I,J),7)
+ ..S RAPCT14(I,"FR")=$S(RATOTAL(I)>0:$J(RACOL14(I,"FR")/RATOTAL(I)*100,5,1),1:$J(0,5,1))
+ ..Q
  .S RAAVG(I)=$S(RATOTAL(I)>0:$J(RAWAITD(I)/RATOTAL(I),7,0),1:"")
  .I I="unknown",RATOTAL(I)=0 K RATOTAL(I),RACOL(I) Q  ;remove "unknown" row if 0s
  .I RANX="C",RATOTAL(I)=0 K RATOTAL(I),RACOL(I) Q  ;remov 0 row if by CPT
@@ -154,14 +173,14 @@ PRTS ;
  .Q
  W !?30,"DAYS WAIT -- PERCENTAGES",! D COLHDS^RAPMW2(1)
  S I="" F  S I=$O(RACOL(I)) Q:I=""  D
- .W !,$E($S(I="unknown":""""_I_"""",1:I),1,26),?30,RAPCT(I,1),?40,RAPCT(I,2),?50,RAPCT(I,3),?60,RAPCT(I,4),?70,RAPCT(I,5)
+ .W !,$E($S(I="unknown":""""_I_"""",1:I),1,24),?28,RAPCT14(I,"FR"),?36,RAPCT(I,1),?45,RAPCT(I,2),?54,RAPCT(I,3),?64,RAPCT(I,4),?72,RAPCT(I,5)
  .Q
  D PRESS Q:RAXIT
  W !!!!?30,"DAYS WAIT -- COUNTS",! D COLHDS^RAPMW2(2)
  S I="" F  S I=$O(RACOL(I)) Q:I=""  D
- .W !,$E($S(I="unknown":""""_I_"""",1:I),1,26),?27,RACOL(I,1),?34,RACOL(I,2),?41,RACOL(I,3),?48,RACOL(I,4),?55,RACOL(I,5),?62,RATOTAL(I),?69,$S(RAAVG(I)="":"      -",1:RAAVG(I))
+ .W !,$E($S(I="unknown":""""_I_"""",1:I),1,15),?16,$J(RACOL14(I,"FR"),7),?24,RACOL(I,1),?32,RACOL(I,2),?40,RACOL(I,3),?48,RACOL(I,4),?56,RACOL(I,5),?63,RATOTAL(I),?72,$S(RAAVG(I)="":"      -",1:RAAVG(I))
  .Q
- W !!,"Number of procedures cancelled and re-ordered on the same day = ",RASAME
+ D DAY14 W !!,"Number of procedures cancelled and re-ordered on the same day = ",RASAME
  ; *79, deleted display of average wait days
  Q
 FOOTS ;

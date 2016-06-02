@@ -1,6 +1,6 @@
-RCXFMSSV ;WISC/RFJ-fms standard voucher (sv) code sheet generator ;1 Nov 97
- ;;4.5;Accounts Receivable;**96,101,135,139,98,156,170,191,203,220,138,184,239**;Mar 20, 1995
- ;;Per VHA Directive 10-93-142, this routine should not be modified.
+RCXFMSSV ;WISC/RFJ-fms standard voucher (sv) code sheet generator ; 9/7/10 7:43am
+ ;;4.5;Accounts Receivable;**96,101,135,139,98,156,170,191,203,220,138,184,239,273**;Mar 20, 1995;Build 3
+ ;;Per VHA Directive 2004-038, this routine should not be modified.
  Q
  ;
  ;
@@ -142,7 +142,7 @@ BADDEBT(RCRJDATE) ;  top entry point to generate a sv code sheet
  ;  Input:  RCRJDATE  -- last day of accounting month
  ;
  N DATA1319,DATA1338,DATA1339,DATA4032,DATAHSIF,GECSDATA,RESULT,RCRJFMM,RCRJFXSV,RCTRANID,X,RCNOHSIF,LTCFUND,DATA133M,DATA133T
- N DATA133N
+ N DATA133N,DATA133Q,DATA133R,DATA133S
  ;
  S RCNOHSIF=$$NOHSIF^RCRJRCO() ; disabled HSIF
  ;
@@ -159,6 +159,9 @@ BADDEBT(RCRJDATE) ;  top entry point to generate a sv code sheet
  S DATA4032=$G(^RC(348.1,+$O(^RC(348.1,"B",1319.2,0)),0))
  S DATA133M=$G(^RC(348.1,+$O(^RC(348.1,"B",1319.3,0)),0))
  S DATA133T=$G(^RC(348.1,+$O(^RC(348.1,"B",1319.4,0)),0))
+ S DATA133Q=$G(^RC(348.1,+$O(^RC(348.1,"B",1319.5,0)),0))
+ S DATA133R=$G(^RC(348.1,+$O(^RC(348.1,"B","133N.2",0)),0))
+ S DATA133S=$G(^RC(348.1,+$O(^RC(348.1,"B",1338.2,0)),0))
  ;
  ; the revenue source code here is a 0
  S ^TMP($J,"RCRJRCOLSV","23",$$ADJFUND^RCRJRCO($S(DT<$$ADDPTEDT^PRCAACC():5287.3,1:528703)),0)=$P(DATA1319,"^",8)
@@ -168,6 +171,9 @@ BADDEBT(RCRJDATE) ;  top entry point to generate a sv code sheet
  S ^TMP($J,"RCRJRCOLSV","23",LTCFUND,0)=$P(DATA4032,"^",8)
  S ^TMP($J,"RCRJRCOLSV","23",528701,0)=$P(DATA133M,"^",8)
  S ^TMP($J,"RCRJRCOLSV","23",528704,0)=$P(DATA133T,"^",8)
+ S ^TMP($J,"RCRJRCOLSV","23",528711,0)=$P(DATA133Q,"^",8)
+ S ^TMP($J,"RCRJRCOLSV","2J",528711,0)=$P(DATA133R,"^",8)
+ S ^TMP($J,"RCRJRCOLSV","2B",528711,0)=$P(DATA133S,"^",8)
  ;
  S ^TMP($J,"RCRJRCOLSV","2B",$$ADJFUND^RCRJRCO($S(DT<$$ADDPTEDT^PRCAACC():5287.4,1:528704)),0)=$P(DATA1338,"^",8)
  S ^TMP($J,"RCRJRCOLSV","27",$$ADJFUND^RCRJRCO($S(DT<$$ADDPTEDT^PRCAACC():5287.4,1:528704)),0)=$P(DATA1339,"^",8)

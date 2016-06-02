@@ -1,5 +1,5 @@
 IBCNBU1 ;ALB/ARH-Ins Buffer: Utilities ;1 Jun 97
- ;;2.0;INTEGRATED BILLING;**82,184,263**;21-MAR-94
+ ;;2.0;INTEGRATED BILLING;**82,184,263,438,497**;21-MAR-94;Build 120
  ;;Per VHA Directive 10-93-142, this routine should not be modified.
  ;
 BUFFER(DFN) ; returns IFN of first buffer entry found for the patient, 0 otherwise
@@ -34,14 +34,15 @@ PTGRP(DFN,IBINSDA,IBGRPDA) ; return policy ifn if patient is a member of this gr
 DISPBUF(IBBUFDA) ; display summary info on a buffer entry
  ;
  Q:'$G(IBBUFDA)
- N IB0,IB60 S IB0=$G(^IBA(355.33,IBBUFDA,0)) Q:IB0=""  S IB60=$G(^IBA(355.33,IBBUFDA,60))
+ N IB0,IB60,IB90 S IB0=$G(^IBA(355.33,IBBUFDA,0)) Q:IB0=""
+ S IB60=$G(^IBA(355.33,IBBUFDA,60)),IB90=$G(^IBA(355.33,IBBUFDA,90)) ;WCJ;IB*2*497 used new fields for SUB ID and GROUP#
  ;
  W !,"--------------------------------------------------------------------------------"
  W !,?2,"Entered: ",?15,$$FMTE^XLFDT(+IB0,2),?50,"Source: ",?60,$$EXPAND^IBTRE(355.33,.03,$P(IB0,U,3))
  W !,?2,"Entered By: ",?15,$$EXPAND^IBTRE(355.33,.02,+$P(IB0,U,2)),?50,"Verified: ",?60,$$FMTE^XLFDT($P(IB0,U,10),2)
  I +$P(IB0,U,10) W !,?50,"Verif By: ",?60,$E($$EXPAND^IBTRE(355.33,.11,$P(IB0,U,11)),1,20)
- W !!,?2,"Patient: ",?15,$$EXPAND^IBTRE(355.33,60.01,$P(IB60,U,1)),?50,"Sub Id: ",?60,$P(IB60,U,4)
- W !,?2,"Insurance: ",?15,$P($G(^IBA(355.33,+IBBUFDA,20)),U,1),?50,"Group #: ",?60,$P($G(^IBA(355.33,+IBBUFDA,40)),U,3)
+ W !!,?2,"Patient: ",?15,$$EXPAND^IBTRE(355.33,60.01,$P(IB60,U,1)),?50,"Sub Id: ",?60,$E($P(IB90,U,3),1,19)
+ W !,?2,"Insurance: ",?15,$P($G(^IBA(355.33,+IBBUFDA,20)),U,1),?50,"Group #: ",?60,$E($P(IB90,U,2),1,19)
  W !,?15,$P($G(^IBA(355.33,+IBBUFDA,21)),U,1)
  W !,"--------------------------------------------------------------------------------"
  Q
@@ -52,9 +53,27 @@ LOCK(IBBUFDA,DISP,TO) ; return true if able to lock the buffer entry, if not an 
  S TO=$G(TO,4)
  I +$G(IBBUFDA) L +^IBA(355.33,+IBBUFDA):TO I +$T S IBX=1
  I 'IBX,+$G(DISP) W !!,"Another user is currently editing/processing this entry, please try again later.",! H TO
+ I IBX D
+ .; eIV real time inquiries temp. global
+ .K ^TMP("IBCNERTQ",$J,+IBBUFDA)
+ .S ^TMP("IBCNERTQ",$J,+IBBUFDA,"LOCK")=1
+ .Q
  Q IBX
  ;
 UNLOCK(IBBUFDA) ; unlock a Buffer entry
+ K ^TMP("IBCNERTQ",$J,+IBBUFDA,"LOCK")
+ I $G(^TMP("IBCNERTQ",$J,+IBBUFDA,"TRIGGER"))=1 D
+ .; eIV real time inquiry
+ .N TQIEN,RESPONSE,DIE,DA,DR,X,Y
+ .S RESPONSE=0
+ .; create an entry in eIV transmision queue
+ .S TQIEN=$$IBE^IBCNERTQ(+IBBUFDA)
+ .; Load and Send HL7 Message
+ .I TQIEN S RESPONSE=$$PROCSEND^IBCNERTQ(TQIEN)
+ .; set field 355.33/.16 (real time verification)
+ .S DIE="^IBA(355.33,",DA=+IBBUFDA,DR=".16////^S X=RESPONSE" D ^DIE
+ .K ^TMP("IBCNERTQ",$J,+IBBUFDA,"TRIGGER")
+ .Q
  L -^IBA(355.33,+IBBUFDA)
  Q
  ;

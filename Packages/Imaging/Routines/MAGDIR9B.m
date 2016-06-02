@@ -1,5 +1,6 @@
-MAGDIR9B ;WOIFO/PMK - Read a DICOM image file ; 12 Oct 2005  8:21 AM
- ;;3.0;IMAGING;**11,51,50**;26-May-2006
+MAGDIR9B ;WOIFO/PMK/RRB - Read a DICOM image file ; 04 May 2010 8:25 AM
+ ;;3.0;IMAGING;**11,51,50,54,53,99**;Mar 19, 2002;Build 2057;Apr 19, 2011
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
  ;; +---------------------------------------------------------------+
  ;; | Property of the US Government.                                |
  ;; | No permission to copy or redistribute this software is given. |
@@ -7,7 +8,6 @@ MAGDIR9B ;WOIFO/PMK - Read a DICOM image file ; 12 Oct 2005  8:21 AM
  ;; | to execute a written test agreement with the VistA Imaging    |
  ;; | Development Office of the Department of Veterans Affairs,     |
  ;; | telephone (301) 734-0100.                                     |
- ;; |                                                               |
  ;; | The Food and Drug Administration classifies this software as  |
  ;; | a medical device.  As such, it may not be changed in any way. |
  ;; | Modifications to this software may result in an adulterated   |
@@ -15,11 +15,11 @@ MAGDIR9B ;WOIFO/PMK - Read a DICOM image file ; 12 Oct 2005  8:21 AM
  ;; | to be a violation of US Federal Statutes.                     |
  ;; +---------------------------------------------------------------+
  ;;
- ; M2MB server
- ;
+ Q
  ; Create an image entry in ^MAG(2005)
  ;
 IMAGE() ; entry point from ^MAGDIR81 to create an image entry in ^MAG(2005)
+ N I ;-------- scratch counter
  N IMAGE ;---- image array for ^MAGGTIA
  N IMAGECNT ;- counter of image in the group
  N IMAGEPTR ;- value returned by ^MAGGTIA
@@ -38,38 +38,45 @@ IMAGE() ; entry point from ^MAGDIR81 to create an image entry in ^MAG(2005)
  ;
  S IMAGECNT=$P($G(^MAG(2005,MAGGP,1,0)),"^",4)+1 ; next image # in group
  ;
- K IMAGE
- S IMAGE(1)=".01^"_PNAMEVAH_"  "_DCMPID_"  "_PROCDESC ; used in ^MAGDIR8
- S IMAGE(2)="5^"_DFN
+ K IMAGE S I=0
+ S I=I+1,IMAGE(I)=".01^"_PNAMEVAH_"  "_DCMPID_"  "_PROCDESC ; used in ^MAGDIR8
+ S I=I+1,IMAGE(I)="5^"_DFN
  I $D(FILEDATA("SHORT DESCRIPTION")) D  ; set in ^MAGDIR7F
- . S IMAGE(3)="10^"_FILEDATA("SHORT DESCRIPTION")
+ . S I=I+1,IMAGE(I)="10^"_FILEDATA("SHORT DESCRIPTION")
  . Q
- E  S IMAGE(3)="10^"_PROCDESC_" (#"_IMAGECNT_")" ; used in ^MAGDIR81
- S IMAGE(4)="14^"_MAGGP
- S IMAGE(5)="15^"_DATETIME
- S IMAGE(6)="60^"_IMAGEUID
- S IMAGE(7)=FILEDATA("EXTENSION") ; specify the image file extension
- I $D(FILEDATA("ABSTRACT")) S IMAGE(8)=FILEDATA("ABSTRACT")
- S IMAGE(9)="WRITE^PACS" ; select the PACS image write location
- S IMAGE(10)="3^"_FILEDATA("OBJECT TYPE")
- S IMAGE(11)="6^"_FILEDATA("MODALITY")
- S IMAGE(12)="16^"_FILEDATA("PARENT FILE")
- S IMAGE(13)="17^"_FILEDATA("PARENT IEN")
- I $D(FILEDATA("PARENT FILE PTR")) S IMAGE(14)="18^"_FILEDATA("PARENT FILE PTR")
- I $D(FILEDATA("RAD REPORT")) S IMAGE(15)="61^"_FILEDATA("RAD REPORT")
- I $D(FILEDATA("RAD PROC PTR")) S IMAGE(16)="62^"_FILEDATA("RAD PROC PTR")
- I MODPARMS["/" S IMAGE(17)="BIG^1" ; big file will be output
- S IMAGE(18)="DICOMSN^"_SERINUMB ; series number
- S IMAGE(19)="DICOMIN^"_IMAGNUMB ; image number
- S IMAGE(20)=".05^"_INSTLOC
- S IMAGE(21)="40^"_FILEDATA("PACKAGE")
- S IMAGE(22)="41^"_$O(^MAG(2005.82,"B","CLIN",""))
- S IMAGE(23)="42^"_FILEDATA("TYPE")
- S IMAGE(24)="43^"_FILEDATA("PROC/EVENT")
- S IMAGE(25)="44^"_FILEDATA("SPEC/SUBSPEC")
- S IMAGE(26)="107^"_FILEDATA("ACQUISITION DEVICE")
- S IMAGE(27)="251^"_FILEDATA("SOP CLASS POINTER")
- S IMAGE(28)="253^"_SERIEUID
+ E  S I=I+1,IMAGE(I)="10^"_PROCDESC_" (#"_IMAGECNT_")" ; used in ^MAGDIR81
+ S I=I+1,IMAGE(I)="14^"_MAGGP
+ S I=I+1,IMAGE(I)="15^"_DATETIME
+ S I=I+1,IMAGE(I)="60^"_IMAGEUID
+ S I=I+1,IMAGE(I)=FILEDATA("EXTENSION") ; specify the image file extension
+ S:$D(FILEDATA("ABSTRACT")) I=I+1,IMAGE(I)=FILEDATA("ABSTRACT")
+ S I=I+1,IMAGE(I)="WRITE^PACS" ; select the PACS Image write location
+ S I=I+1,IMAGE(I)="3^"_FILEDATA("OBJECT TYPE")
+ S I=I+1,IMAGE(I)="6^"_FILEDATA("MODALITY")
+ S I=I+1,IMAGE(I)="16^"_FILEDATA("PARENT FILE")
+ S I=I+1,IMAGE(I)="17^"_FILEDATA("PARENT IEN")
+ S:$D(FILEDATA("PARENT FILE PTR")) I=I+1,IMAGE(I)="18^"_FILEDATA("PARENT FILE PTR")
+ S:$D(FILEDATA("RAD REPORT")) I=I+1,IMAGE(I)="61^"_FILEDATA("RAD REPORT")
+ S:$D(FILEDATA("RAD PROC PTR")) I=I+1,IMAGE(I)="62^"_FILEDATA("RAD PROC PTR")
+ I MODPARMS["/" D
+ . N EXTENSION
+ . S I=I+1
+ . S EXTENSION=$S($P(MODPARMS,"/",2)="<DICOM>":"DCM",1:"BIG")
+ . S IMAGE(I)="BIG^1^"_EXTENSION ; big file will be output
+ . Q
+ S I=I+1,IMAGE(I)="DICOMSN^"_SERINUMB ; series number
+ S I=I+1,IMAGE(I)="DICOMIN^"_IMAGNUMB ; image number
+ S I=I+1,IMAGE(I)=".05^"_INSTLOC
+ S I=I+1,IMAGE(I)="40^"_FILEDATA("PACKAGE")
+ S I=I+1,IMAGE(I)="41^"_$O(^MAG(2005.82,"B","CLIN",""))
+ S I=I+1,IMAGE(I)="42^"_FILEDATA("TYPE")
+ S I=I+1,IMAGE(I)="43^"_FILEDATA("PROC/EVENT")
+ S I=I+1,IMAGE(I)="44^"_FILEDATA("SPEC/SUBSPEC")
+ S I=I+1,IMAGE(I)="45^"_ORIGINDX
+ S I=I+1,IMAGE(I)="107^"_FILEDATA("ACQUISITION DEVICE")
+ S I=I+1,IMAGE(I)="110^"_STAMP
+ S I=I+1,IMAGE(I)="251^"_FILEDATA("SOP CLASS POINTER")
+ S I=I+1,IMAGE(I)="253^"_SERIEUID
  D ADD^MAGGTIA(.RETURN,.IMAGE)
  ;
  S IMAGEPTR=+RETURN

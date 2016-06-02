@@ -1,6 +1,6 @@
 PRCB8B ;WISC/PLT-AUTO GENERATE FMS VT-DOCUMENTS ;11/12/96  15:42
-V ;;5.1;IFCAP;**71**;Oct 20, 2000
- ;Per VHA Directive 10-93-142, this routine should not be modified.
+V ;;5.1;IFCAP;**71,142,173**;Oct 20, 2000;Build 9
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  QUIT  ;invalid entry
  ;
  ;.X = record id of file 2100.1 if generated, "" if fail
@@ -32,6 +32,7 @@ S S PRCRI(440.7)=$P(PRCFC,"^"),A=$P(PRCFC,"^",12),PRCSITE=$P(A,"-",2)
  . QUIT
  D SETSTAT^GECSSTAA(PRCRI(2100.1),"Q")
 EXIT S X=$G(PRCRI(2100.1))_"/"_PRCID
+ L -^PRCH(440.7,PRCRI(440.7))
  QUIT
  ;
 SV2() ;create sv2
@@ -57,7 +58,7 @@ LINE(PRCA) ;assemble line
  S A=$O(^PRCD(420.14,"UNQ",$P(PRCA,"/"),$P(PRCA,"/",2),1))
  D PIECE($E($P(PRCA,"/",2),3,4),4,2) D:$P(PRCA,"/",2)'=A PIECE($E(A,3,4),5,2)
  D PIECE($P(PRCA,"/"),6,6),PIECE(PRCSITE,8,7)
- I $G(PRCREQ("CC"))'="N" D PIECE($P(PRCA,"/",5),10,7),PIECE($E($P(PRCA,"/",5),5,6),11,2)
+ I $G(PRCREQ("CC"))'="N" D PIECE($P(PRCA,"/",5),10,7),PIECE("00",11,2)  ;PRC*5.1*173 set sub CC to '00'
  D PIECE($P(PRCA,"/",4),12,9),PIECE($P(PRCA,"/",6),13,4)
  D PIECE(220,23,4)
  S PRCSVA=PRCDATA
@@ -66,7 +67,6 @@ LINE(PRCA) ;assemble line
  D PIECE($J(A,0,2),2,15),PIECE($S(PRCAMT<0:"D",1:"I"),3,1),PIECE("E",5,1)
  S PRCSVB=PRCDATA
  QUIT PRCLIN_"^~"_PRCSVA_"^~"_PRCSVB_"^~"
- ;
 PIECE(A,B,C) ;set piece in variable PRCDATA, A-VALUE, B-PPECE #, C-LENGTH
  S $P(PRCDATA,"^",B)=$E(A,1,C)
  QUIT

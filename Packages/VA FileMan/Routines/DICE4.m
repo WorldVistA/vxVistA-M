@@ -1,6 +1,10 @@
-DICE4 ;SFISC/GFT-TRIGGER LOGIC ;8:51 AM  1 May 2000
- ;;22.0;VA FileMan;**6,37**;Mar 30, 1999
- ;Per VHA Directive 10-93-142, this routine should not be modified.
+DICE4 ;SFISC/GFT-TRIGGER LOGIC ;26NOV2004
+ ;;22.2;MSC Fileman;;Jan 05, 2015;
+ ;;Submitted to OSEHRA 5 January 2015 by the VISTA Expertise Network.
+ ;;Based on Medsphere Systems Corporation's MSC Fileman 1051.
+ ;;Licensed under the terms of the Apache License, Version 2.0.
+ ;;GFT;**6,37,157**
+ ;
  D SET S DTAG="S DIH=$G("_DREF_DSUB_")),DIV=X "_$P("I $D(^(0)) ","""",A>99)_X_",DIH="_DIN_",DIG="_DENEW_" D ^DICR",X=""
  S:$L(DE)+$L(DTAG)>160&($L(DE)>30) ^UTILITY("DICE",$J,DIK+.1)=DE,DE="X "_DA_DIK_".1)" S X=DE
 F ;
@@ -23,7 +27,7 @@ Q Q
  ;
 CC ;
  S DA=DA_(DIK+5)
-R W !!,"DO YOU WANT TO MAKE THE "_DCOND_" CONDITIONAL" K DICOMPX S %=2,DICOMPX="",DICOMP="?X",D="ENTER AN EXPRESSION FOR THE CONDITION: " D YN^DICN I %-1 K DCOND Q
+R W !!,"DO YOU WANT TO MAKE THE "_DCOND_" CONDITIONAL" K DICOMPX S %=2,DICOMPX="",DICOMP="?",D="ENTER AN EXPRESSION FOR THE CONDITION: " D YN^DICN I %-1 K DCOND Q
  I DIK=1 S DICOMPX("Y(0)")="Y(0)",DICOMPX(1,DI,DL)="Y(0)",DICOMPX("Y(0)",U)=DI_U_DL
  E  W ! D OLD^DICE2 S Y="CREATE CONDITION" I $D(^UTILITY("DICE",$J,Y)) W !,D_^(Y)_"// " R X:DTIME S:'$T DTOUT=1 G Q:X=U!'$T S:X="" X=^(Y) G X
  W !,D R X:DTIME S:'$T DTOUT=1 G Q:X=U!'$T

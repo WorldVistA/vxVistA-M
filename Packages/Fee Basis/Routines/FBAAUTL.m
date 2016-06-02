@@ -1,5 +1,5 @@
 FBAAUTL ;AISC/GRR,SBW-Fee Basis Utility Routine ; 4/23/10 3:06pm
- ;;3.5;FEE BASIS;**101,114**;JAN 30, 1995;Build 7
+ ;;3.5;FEE BASIS;**101,114,108,124,127**;JAN 30, 1995;Build 9
  ;;Per VHA Directive 2004-038, this routine should not be modified.
 DATE N FBDT S FBPOP=0 K BEGDATE,ENDDATE K:$G(%DT)'["A" %DT W !!,"**** Date Range Selection ****"
  S FBDT=$S($D(%DT):1,1:0) W ! S %DT=$S(FBDT:%DT,1:"APEX"),%DT("A")="   Beginning DATE : " D ^%DT S:Y<0 FBPOP=1 Q:Y<0  S (%DT(0),BEGDATE)=Y
@@ -18,6 +18,7 @@ D S Y=$P("JAN^FEB^MAR^APR^MAY^JUN^JUL^AUG^SEP^OCT^NOV^DEC","^",$E(Y,4,5))_" "_$S
 SITEP ;SET FBSITE(0),FBSITE(1) VARIABLE TO FEE SITE PARAMETERS
  S FBPOP=0,FBSITE(0)=$G(^FBAA(161.4,1,0)) S:FBSITE(0)']"" FBPOP=1
  S FBSITE(1)=$G(^FBAA(161.4,1,1)) S:FBSITE(1)']"" FBPOP=1
+ S FBSITE("FBNUM")=$G(^FBAA(161.4,1,"FBNUM")) S:FBSITE("FBNUM")']"" FBPOP=1
  W:FBPOP !,*7,"Fee Basis Site Parameters must be entered to proceed",!
  Q
 TM S X=$E($P(X,".",2)_"0000",1,4),%=X>1159 S:X>1259 X=X-1200 S X=X\100_":"_$E(X#100+100,2,3)_" "_$E("AP",%+1)_"M" Q
@@ -29,10 +30,12 @@ GETNXB ;GET NEXT AVAILABLE BATCH NUMBER
  I '$P($G(^FBAA(161.4,1,"FBNUM")),"^") S $P(^("FBNUM"),"^")=1
  S FBBN=$P(^FBAA(161.4,1,"FBNUM"),"^")
  ;I FBBN>99899,$S('$D(^FBAA(161.4,1,"PURGE")):1,$P(^FBAA(161.4,1,"PURGE"),"^",1)'>0:1,1:"") D WARNBT
- I $P(^FBAA(161.7,0),U,4)>99899 D WARNBT ;*114
+ N FBBATLT ;Batches Left *127
+ S FBBATLT=$P($G(^FBAA(161.7,0)),U,4)
+ I FBBATLT>99499 D WARNBT ;*114,127
  S $P(^FBAA(161.4,1,"FBNUM"),"^",1)=$S(FBBN+1>99999:1,1:FBBN+1) I '$$CHKBI^FBAAUTL4(FBBN,1) L -^FBAA(161.4) G GETNXB
  L -^FBAA(161.4) Q
-WARNBT W !,*7,"There are ",99999-FBBN," batches left before the BATCH PURGE routine",!,"needs to be run. Contact your IRM Service!",!!
+WARNBT W !,*7,"There are ",99999-FBBATLT," batches left before the BATCH PURGE routine",!,"needs to be run. Contact your IRM Service!",!!
  Q
 GETNXI ;GET NEXT AVAILABLE INVOICE NUMBER 
  L +^FBAA(161.4):$G(DILOCKTM,3) I '$T D  G GETNXI
@@ -43,8 +46,16 @@ GETNXI ;GET NEXT AVAILABLE INVOICE NUMBER
  L -^FBAA(161.4) Q
 PDATE S FBPDT=$P("January^February^March^April^May^June^July^August^September^October^November^December","^",$E(Y,4,5))_" "_$S(Y#100:$J(Y#100\1,2)_", ",1:"")_(Y\10000+1700)_$S(Y#1:"  "_$E(Y_0,9,10)_":"_$E(Y_"000",11,12),1:"") Q
 DATCK S HOLDY=Y,HOLDY=$S($P(HOLDY,"^",2):$P(HOLDY,"^",2),1:HOLDY)
- I $D(FBAAID),Y>FBAAID W !!,*7,"Date of Service cannot be later than Invoice Date!" K X Q
- I $D(FBAABDT),$D(FBAAEDT),(Y<FBAABDT!(Y>FBAAEDT)) W !!,*7,"Date of Service ",$S(Y<FBAABDT:"prior to ",1:"later than "),"Authorization period.",! K X
+ I $D(FBAAID),Y>FBAAID D  K X Q
+ .N SHODAT S SHODAT=$E(FBAAID,4,5)_"/"_$E(FBAAID,6,7)_"/"_$E(FBAAID,2,3)
+ .W !!,*7,?5,"*** Date of Service cannot be later than",!?8," Invoice Received Date ("_SHODAT_") !!!",!
+ I $D(FBAABDT),$D(FBAAEDT),(Y<FBAABDT!(Y>FBAAEDT)) D  K X
+ .N PRIORLAT,AUTHDAT,SHODAT
+ .S PRIORLAT=$S($P(Y,"^",2)<FBAABDT:"prior to ",1:"later than ")
+ .S AUTHDAT=$S($P(Y,"^",2)<FBAABDT:FBAABDT,1:FBAAEDT)
+ .S SHODAT=$E(AUTHDAT,4,5)_"/"_$E(AUTHDAT,6,7)_"/"_$E(AUTHDAT,2,3)
+ .W !!,*7,?5,"*** Date of Service cannot be ",PRIORLAT
+ .W !?8," Authorization period ("_SHODAT_") !!!",!
  S Y=HOLDY Q
  ;
 DATX(X) ;external output function for date format

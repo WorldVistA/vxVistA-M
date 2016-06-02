@@ -1,5 +1,5 @@
-RORRP025 ;HCIOFO/SG - RPC: RORICR CDC LOAD ; 2/3/04 8:11am
- ;;1.5;CLINICAL CASE REGISTRIES;;Feb 17, 2006
+RORRP025 ;HCIOFO/SG - RPC: RORICR CDC LOAD ;2/3/04 8:11am
+ ;;1.5;CLINICAL CASE REGISTRIES;**14**;Feb 17, 2006;Build 24
  ;
  ; This routine uses the following IAs:
  ;
@@ -9,6 +9,15 @@ RORRP025 ;HCIOFO/SG - RPC: RORICR CDC LOAD ; 2/3/04 8:11am
  ; Registry: [VA HIV]
  ;--------------------------------------------------------------------
  Q
+ ;******************************************************************************
+ ;******************************************************************************
+ ;                       --- ROUTINE MODIFICATION LOG ---
+ ;        
+ ;PKG/PATCH    DATE        DEVELOPER    MODIFICATION
+ ;-----------  ----------  -----------  ----------------------------------------
+ ;ROR*1.5*14   APR  2011   A SAUNDERS   CS: quit if not 'yes'
+ ;******************************************************************************
+ ;******************************************************************************
  ;
  ;***** DEMOGRAPHIC INFORMATION (III)
 CDM(IENS) ;
@@ -55,7 +64,7 @@ CS(IENS) ;
  S I=0
  F  S I=$O(RORBUF("DILIST","ID",I))  Q:I'>0  D
  . S BUF="AID"_U_$G(RORBUF("DILIST","ID",I,.01))
- . S TMP=$G(RORBUF("DILIST","ID",I,.02))  Q:TMP'>0
+ . S TMP=$G(RORBUF("DILIST","ID",I,.02))  Q:TMP'=1
  . S $P(BUF,U,3)=TMP
  . S $P(BUF,U,4)=$$DATE^RORRP026($G(RORBUF("DILIST","ID",I,.03)))
  . ;--- Store the data into the result buffer

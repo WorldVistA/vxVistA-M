@@ -1,5 +1,5 @@
 IBCNEHL2 ;DAOU/ALA - HL7 Process Incoming RPI Msgs (cont.) ;26-JUN-2002  ; Compiled December 16, 2004 15:29:37
- ;;2.0;INTEGRATED BILLING;**300,345,416**;21-MAR-94;Build 58
+ ;;2.0;INTEGRATED BILLING;**300,345,416,438,497**;21-MAR-94;Build 120
  ;;Per VHA Directive 2004-038, this routine should not be modified.
  ;
  ;**Program Description**
@@ -63,7 +63,7 @@ CTD(ERROR,IBSEG,RIEN) ; Process the CTD seg
  I 'FFL F II=2,4,6 I $P(DATA,U,II)="" S FLD=II Q
  ;
  S IENS=$$IENS^DILF(.DA)
- S RSUPDT(365.03,IENS,".0"_(FLD+1))=CTNUM
+ S RSUPDT(365.03,IENS,(FLD/2))=CTNUM   ;stuffs the communication # in the correct field ;IB*2.0*497
  S RSUPDT(365.03,IENS,".0"_FLD)=CTQIEN
  D FILE^DIE("I","RSUPDT","ERROR")
 CTDX ;
@@ -108,24 +108,32 @@ IN1(ERROR,IBSEG,RIEN,SUBID) ;  Process the IN1 Insurance seg
  S MBRID=$$DECHL7($G(IBSEG(3))) I ACK="AE",($TR(MBRID,0)="") S MBRID=""
  S PAYRID=$G(IBSEG(4)),PYRNM=$G(IBSEG(5))
  S GNAME=$$DECHL7($G(IBSEG(10))),GNUMB=$$DECHL7($G(IBSEG(9)))
+ ; make sure group number is not longer than 17 chars, send mailman notification
+ ; if truncation is necessary
+ I $L(GNUMB)>17 D TRNCWARN^IBCNEHLU(GNUMB,$G(TRACE)) S GNUMB=$E(GNUMB,1,17)
  S EFFDT=$G(IBSEG(13)),EXPDT=$G(IBSEG(14))
  S COB=$G(IBSEG(23)),SRVDT=$G(IBSEG(27))
  S PYLEDT=$G(IBSEG(30)),RELTN=$G(IBSEG(18))
  ;
  ; Relationship codes sent through the HL7 msg are X12 codes
- ; X12 codes from the interface "01"=spouse, "18"=self, "19"=child, "21"=unknown, "34"=other adult
- I RELTN'="34" S RELTN=$S(RELTN="01":"02",RELTN="18":"01",RELTN="19":"03",RELTN="21":"09",1:"")
+ ; X12 codes from the interface that are special cases: "21"=unknown, "40"=cadaver donor
+ S RELTN=$S(RELTN="21":"",RELTN="40":"G8",1:RELTN)
  S EFFDT=$$FMDATE^HLFNC(EFFDT),EXPDT=$$FMDATE^HLFNC(EXPDT)
  S SRVDT=$$FMDATE^HLFNC(SRVDT),PYLEDT=$$FMDATE^HLFNC(PYLEDT)
  ;
- S RSUPDT(365,RIEN_",",1.05)=$S($G(SUBID)'="":SUBID,1:MBRID)
- S RSUPDT(365,RIEN_",",1.07)=GNUMB
- S RSUPDT(365,RIEN_",",1.06)=GNAME,RSUPDT(365,RIEN_",",1.11)=EFFDT
+ S RSUPDT(365,RIEN_",",1.11)=EFFDT
  S RSUPDT(365,RIEN_",",1.12)=EXPDT,RSUPDT(365,RIEN_",",1.1)=SRVDT
  S RSUPDT(365,RIEN_",",1.19)=PYLEDT
  S RSUPDT(365,RIEN_",",1.13)=COB,RSUPDT(365,RIEN_",",1.18)=MBRID
- S RSUPDT(365,RIEN_",",1.09)=RELTN
- D FILE^DIE("I","RSUPDT","ERROR")
+ D FILE^DIE("","RSUPDT","ERROR") Q:$D(ERROR)  ; data needs to filed as internal values
+ ; IB*2*497 - add the following lines
+ ; data at 365, 8.01,13.02,14.01, 14.02 needs to be validated before it can be filed; pass the 'E' flag to DBS filer
+ K RSUPDT
+ S RSUPDT(365,RIEN_",",8.01)=RELTN D CODECHK^IBCNEHLU(.RSUPDT)  ; IB*2*497  check for new coded values
+ S RSUPDT(365,RIEN_",",13.02)=$S($G(SUBID)'="":SUBID,1:MBRID)
+ S RSUPDT(365,RIEN_",",14.01)=GNAME
+ S RSUPDT(365,RIEN_",",14.02)=GNUMB
+ D FILE^DIE("E","RSUPDT","ERROR")
 IN1X ;
  Q
  ;
@@ -154,7 +162,7 @@ ZEB(EBDA,ERROR,IBSEG,RIEN) ;  Process the ZEB Elig/Benefit seg
  ; Output:
  ; EBDA,ERROR
  ;
- N D1,DA,DIC,DILN,DISYS,DLAYGO,EBN,IENS,II,MSG,PRMODS,RSUPDT,SUBJECT,X,XMY,Y,MA
+ N D1,DA,DIC,DILN,DISYS,DLAYGO,EBN,IENS,II,MSG,PRMODS,RSUPDT,STC,STCSTR,SUBJECT,X,XMY,Y,MA,CODES
  ;
  ; Set a default eIV Status value of # ("V")
  I IIVSTAT="" D
@@ -165,7 +173,7 @@ ZEB(EBDA,ERROR,IBSEG,RIEN) ;  Process the ZEB Elig/Benefit seg
  .   S MSG(1)="An invalid Eligibility Status flag '"_$G(IBSEG(3))_"' was received for site "_$P($$SITE^VASITE,"^",3)_","
  .   S MSG(2)="trace number "_$G(TRACE,"unknown")_" and message control id "_$G(MSGID,"unknown")_"."
  .   S MSG(3)="It has been interpreted as an ambiguous response in VistA."
- .   S XMY("FSCECADMIN@mail.va.gov")=""
+ .   S XMY("FSCECADMIN@mail.domain.ext")=""
  .   D MSG^IBCNEUT5("",SUBJECT,"MSG(",,.XMY)
  .   S IIVSTAT="V"
  ;
@@ -180,21 +188,31 @@ ZEB(EBDA,ERROR,IBSEG,RIEN) ;  Process the ZEB Elig/Benefit seg
  ;
  ; decode plan description ZEB segment
  S IBSEG(7)=$$DECHL7($G(IBSEG(7)))
- F II=2:1:7 S RSUPDT(365.02,IENS,".0"_II)=$G(IBSEG(II+1))
+ S RSUPDT(365.02,IENS,".02")=$P($G(IBSEG(3)),HLCMP) ; elig/benefit info
+ S RSUPDT(365.02,IENS,".03")=$P($G(IBSEG(4)),HLCMP) ; coverage level
+ S RSUPDT(365.02,IENS,".05")=$P($G(IBSEG(6)),HLCMP) ; insurance type
+ S RSUPDT(365.02,IENS,".06")=$G(IBSEG(7))           ; plan coverage
+ S RSUPDT(365.02,IENS,".07")=$P($G(IBSEG(8)),HLCMP) ; time period qualifier
  S MA=$G(IBSEG(9)) I $TR(MA," ","")'="" S MA=$J(MA,0,2)
- S RSUPDT(365.02,IENS,".08")=MA                     ; Monetary amt
- S RSUPDT(365.02,IENS,".09")=$G(IBSEG(10))          ; Percent
- S RSUPDT(365.02,IENS,".1")=$G(IBSEG(11))           ; Quantity Qual.
+ S RSUPDT(365.02,IENS,".08")=$$NUMCHK(MA)            ; Monetary amt
+ S RSUPDT(365.02,IENS,".09")=$$NUMCHK($G(IBSEG(10))) ; Percent
+ S RSUPDT(365.02,IENS,".1")=$G(IBSEG(11))            ; Quantity Qual.
  F II=11:1:13 S RSUPDT(365.02,IENS,"."_II)=$G(IBSEG(II+1))
  S RSUPDT(365.02,IENS,"1.01")=$P($G(IBSEG(15)),HLCMP) ; Procedure coding method
  S RSUPDT(365.02,IENS,"1.02")=$G(IBSEG(16)) ; Procedure code
  ; Procedure modifiers
  S PRMODS=$G(IBSEG(17)) F II=1:1:4 S RSUPDT(365.02,IENS,"1.0"_(II+2))=$TR($P(PRMODS,HLREP,II),HL("ECH"))
- D FILE^DIE("ET","RSUPDT","ERROR")
+ D CODECHK^IBCNEHLU(.RSUPDT)  ; IB*2*497  check for new coded values
+ D FILE^DIE("ET","RSUPDT","ERROR") I $D(ERROR) Q
+ ; service type codes
+ K RSUPDT S STCSTR=$P($G(IBSEG(5)),HLCMP)
+ F II=1:1 S STC=$P(STCSTR,HLREP,II) Q:STC=""  S RSUPDT(365.292,"+"_II_","_IENS,".01")=STC,CODES(365.292,II,.01)=STC  ; IB*2*497 set up CODES array
+ D CODECHK^IBCNEHLU(.CODES)  ;IB*2*497
+ I $D(RSUPDT) D UPDATE^DIE("E","RSUPDT",,"ERROR")
 ZEBX ;
  Q
  ;
-NTE(EBDA,IBSEG,RIEN) ; Process NTE Notes seg
+EBNTE(EBDA,IBSEG,RIEN) ; Process NTE Benefit related entity Notes segment (in Eligibility/Benefit group)
  ;
  ; Input:
  ; EBDA,IBSEG,RIEN
@@ -203,12 +221,12 @@ NTE(EBDA,IBSEG,RIEN) ; Process NTE Notes seg
  ; ERROR
  ;
  N DA,IENS,NOTES
- I $G(EBDA)="" Q
+ I $G(EBDA)="" G EBNTEX
  S NOTES(1)=$$DECHL7($G(IBSEG(4)))
  S DA(1)=RIEN,DA=EBDA
  S IENS=$$IENS^DILF(.DA)
  D WP^DIE(365.02,IENS,2,"A","NOTES","ERROR")
-NTEX ;
+EBNTEX ;
  Q
  ;
 DECHL7(STR,HLSEP,ECHARS) ; Decode HL7 escape seqs in data fields
@@ -253,3 +271,6 @@ DECHL7(STR,HLSEP,ECHARS) ; Decode HL7 escape seqs in data fields
  ;
 DECHL7X ; Exit w/return values
  Q STR
+ ;
+NUMCHK(N) ; make sure that numeric value N is not greater than 99999
+ Q $S(+N>99999:99999,1:N)

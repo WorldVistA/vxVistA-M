@@ -1,5 +1,5 @@
-IVMPTRN ;ALB/MLI,SEK,RTK,BRM,BAJ - IVM BACKGROUND JOB/TRANSMISSIONS TO IVM CENTER; 10/28/2005
- ;;2.0;INCOME VERIFICATION MATCH;**1,9,11,12,17,28,34,74,79,89,105**;JUL 8,1996;Build 2
+IVMPTRN ;ALB/MLI,SEK,RTK,BRM,BAJ,LBD - IVM BACKGROUND JOB/TRANSMISSIONS TO IVM CENTER; 10/28/2005 ; 7/13/10 4:11pm
+ ;;2.0;INCOME VERIFICATION MATCH;**1,9,11,12,17,28,34,74,79,89,105,143,147**;JUL 8,1996;Build 4
  ;;Per VHA Directive 10-93-142, this routine should not be modified.
  ;
  ; This routine is run nightly to send HL7 messages to the IVM Center for
@@ -74,7 +74,11 @@ REG ; Creates FULL query transmission for patient's
  ..;
  ..Q:($$STATUS^IVMPLOG(IVMDA,.EVENTS)=1)
  ..;
- ..S IVMMTDT=$P($$LST^DGMTU(DFN,($E(IVMDT,1,3)+1)_"1231.9999"),"^",2)
+ ..; - if merged patient record, then update Transmission Status to
+ ..;   remove from "ATR" x-ref and do not create Z07 (IVM*2*147)
+ ..I $D(^DPT(DFN,-9)) S X=$$CLEAR^IVMPLOG(IVMDA) K X Q
+ ..;
+ ..S IVMMTDT=$$GETMTDT(DFN,IVMDT)  ;IVM*2*143
  ..;
  ..; - prepare FULL transmission
  ..D FULL^IVMPTRN7(DFN,IVMMTDT,.EVENTS,.IVMCT,.IVMGTOT,,,,.IVMQUERY)
@@ -205,3 +209,20 @@ FUTURECK(TYPE,FDATE,IVMPAT,MTIEN) ;
  I FDATE'=+(^DGMT(408.31,MTIEN,0)) S VALID=0 Q VALID
  ;
  Q VALID
+ ;
+GETMTDT(DFN,IVMDT) ;Get date of primary Means Test or RX Copay Test (IVM*2*143)
+ N IDT,MT,MTDT,MTSTA,RX,RXDT,RXSTA
+ I '$G(DFN)!('$G(IVMDT)) Q ""
+ S IDT=($E(IVMDT,1,3)+1)_"1231.9999"
+ ;Get most recent primary MT
+ S MT=$$LST^DGMTU(DFN,IDT,1),MTDT=$P(MT,"^",2),MTSTA=$P(MT,"^",4)
+ ;Get most recent primary RX Copay Test
+ S RX=$$LST^DGMTU(DFN,IDT,2),RXDT=$P(RX,"^",2),RXSTA=$P(RX,"^",4)
+ ;If there's no RX Copay Test, then return the Means Test date.
+ I 'RXDT Q MTDT
+ ;If the RX Copay Test date is greater than or equal to the Means
+ ;Test date, and the RX Copay Test status is Exempt, Non-Exempt,
+ ;or Pending Adjudication, then return the RX Copay Test date.
+ I RXDT'<MTDT,("^E^M^P^"[("^"_RXSTA_"^")) Q RXDT
+ ;Otherwise, return the Means Test date.
+ Q MTDT

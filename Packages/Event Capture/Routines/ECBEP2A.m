@@ -1,5 +1,5 @@
 ECBEP2A ;BIR/MAM,JPW-Batch Enter by Procedure (cont'd) ;1 May 96
- ;;2.0; EVENT CAPTURE ;**4,5,10,13,17,18,23,33,41,42,54,72**;8 May 96
+ ;;2.0; EVENT CAPTURE ;**4,5,10,13,17,18,23,33,41,42,54,72,76**;8 May 96;Build 6
 EN ;entry pt
  D HDR
  S CNT=0
@@ -67,7 +67,7 @@ ADCAT ;add category/procedures for patients
  Q
 KILL ;kill arrays and variables
  K ECSC,ECZEC,ECIR,ECDX,ECDXN,ECVST,ECINP,ECAO,ECPTSTAT,ECMST,ECHNC,ECCV
- K ECA,ECHOICE,ECJLP,ECPT,ECO,ECON,ECV,ECDXS,ECDXIEN
+ K ECA,ECHOICE,ECJLP,ECPT,ECO,ECON,ECV,ECDXS,ECDXIEN,ECSHAD
  S ECOUT=0
  Q
 ASK ; ask ord sect & vol
@@ -104,7 +104,7 @@ V ; vol
  S ECV=X
 DIAG ;diagnosis, in/outpatient, visit
  S (ECDX,ECDXN,ECINP,ECVST,ECSC,ECAO,ECIR,ECZEC,ECMST,ECHNC,ECCV)=""
- S ECDFN=$P(ECPT(CNT),U)
+ S ECDFN=$P(ECPT(CNT),U),ECSHAD=""
  I $P(ECPCE,"~",2)="N" G NODE
  D PCEQST^ECBEN2U
  I ECOUT D DELPT(.CNT) Q
@@ -112,7 +112,7 @@ NODE ;set node
  ;- Get associated clinic from event code screen and DSS ID if null
  S:$G(EC4)="" EC4=$P($G(^ECJ(+$O(^ECJ("AP",+ECL,+ECD,+ECC,$G(ECP),0)),"PRO")),"^",4)
  S EC4N=$S($P($G(^SC(+EC4,0)),"^")]"":$P(^(0),"^"),1:"NO ASSOCIATED CLINIC"),ECID=$P($G(^SC(+EC4,0)),"^",7)
- S ECPT(CNT)=ECPT(CNT)_"^"_ECO_"^"_ECON_"^"_ECV_"^"_ECDX_"^"_$S(ECINP="":$G(ECPTSTAT),1:ECINP)_"^"_ECVST_"^"_ECSC_"^"_ECAO_"^"_ECIR_"^"_ECZEC_"^"_EC4_"^"_ECID_"^"_ECMST_"^"_ECHNC_"^"_ECCV
+ S ECPT(CNT)=ECPT(CNT)_"^"_ECO_"^"_ECON_"^"_ECV_"^"_ECDX_"^"_$S(ECINP="":$G(ECPTSTAT),1:ECINP)_"^"_ECVST_"^"_ECSC_"^"_ECAO_"^"_ECIR_"^"_ECZEC_"^"_EC4_"^"_ECID_"^"_ECMST_"^"_ECHNC_"^"_ECCV_"^"_ECSHAD
  I $D(ECDXS) M ECPT(CNT,"DXS")=ECDXS K ECDXS
  S ECELPT(CNT)=$S($G(ECELIG):ECELIG,1:"") K ECPTSTAT
  Q

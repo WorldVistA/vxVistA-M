@@ -1,5 +1,5 @@
 PSOSD2 ;BHAM ISC/SAB - action or informational profile cont. ;3/24/93
- ;;7.0;OUTPATIENT PHARMACY;**2,19,107,110,176,233,258,326**;DEC 1997;Build 7
+ ;;7.0;OUTPATIENT PHARMACY;**2,19,107,110,176,233,258,326**;DEC 1997;Build 8
  ;External reference to ^PS(59.7 is supported by DBIA 694
  ;
 1 W !,$E(LINE,1,$S('PSORM:80,1:IOM)-1),!
@@ -41,13 +41,14 @@ HD1 S RXCNT=0 I $E(IOST)="C",'PSTYPE K DIR S DIR(0)="E",DIR("A")="Press Return t
  W $S(PSTYPE:"Action",1:"Informational")_" Rx Profile",?47,"Run Date: " S Y=DT D DT^DIO2 W ?71,"Page: "_PAGE
  W !,"Sorted by drug classification for Rx's currently active"_$S('PSDAYS:" only.",1:"") W:PSDAYS !,"and for those Rx's that have been inactive less than "_PSDAYS_" days."
  S X=$$SITE^VASITE
- ;DSS/RAC - BEGIN MOD - Deveteranization - orig line arg of ELSE
- I $T(VX^VFDI0000)'="",$$VX^VFDI0000["VX" D VFD^PSOSD1("SD2")
+ ;DSS/RAC/SMP - BEGIN MOD - Deveteranization - orig line arg of ELSE
+ N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
+ I VFD D VFD^PSOSD1("SD2") I 1
  E  W @$S(PSORM:"?70",1:"!"),"Site: VAMC "_$P(X,"^",2)_" ("_$P(X,"^",3)_")",!,$E(LINE,1,$S('PSORM:80,1:IOM)-1)
- ;DSS/RAC - END MODS
  I $P(VAIN(4),"^",2)]"",+$P($G(^PS(59.7,1,40.1)),"^") W !,"Outpatient prescriptions are discontinued 72 hours after admission.",!
  I $D(CLINICX) W !?1,"Clinic: ",$E(CLINICX,1,28),?45,"Date/Time: " S Y=CLDT D DT^DIO2
  W !?1,"Name  : ",PSNAME W:PSTYPE ?58,"Action Date: ________" W !?1,"DOB   : "_PSDOB
+ I VFD W !,?1,"MRN   : "_$G(VA("MRN"))
  W:ADDRFL]"" ?30,ADDRFL,! W ?30,"Address  :"
  I $G(ADDRFL)="" D CHECKBAI^PSOSD1
  W ?41,VAPA(1) W:VAPA(2)]"" !?41,VAPA(2) W:VAPA(3)]"" !?41,VAPA(3)
@@ -67,7 +68,13 @@ HD1 S RXCNT=0 I $E(IOST)="C",'PSTYPE K DIR S DIR(0)="E",DIR("A")="Press Return t
  .E  D:$G(PAGE)>1&('$G(PSOPOL))
  ..S (WT,HT)="",X="GMRVUTL" X ^%ZOSF("TEST") I $T D
  ...F GMRVSTR="WT","HT" S VM=GMRVSTR D EN6^GMRVUTL S @VM=X,$P(@VM,"^")=$E($P(@VM,"^"),4,5)_"/"_$E($P(@VM,"^"),6,7)_"/"_($E($P(@VM,"^"),1,3)+1700)
- ...S X=$P(WT,"^",8),Y=$J(X/2.2,0,2),$P(WT,"^",9)=Y,X=$P(HT,"^",8),Y=$J(2.54*X,0,2),$P(HT,"^",9)=Y
+ ...I VFD D  I 1
+ ....S X=$P(WT,"^",8),Y=$$LB2KG^VFDXLF(X,2),$P(WT,"^",9)=Y
+ ....S X=$P(HT,"^",8),Y=$$IN2CM^VFDXLF(X,2),$P(HT,"^",9)=Y
+ ...E  D
+ ....S X=$P(WT,"^",8),Y=$J(X/2.2,0,2),$P(WT,"^",9)=Y
+ ....S X=$P(HT,"^",8),Y=$J(2.54*X,0,2),$P(HT,"^",9)=Y
+ ...;DSS/SMP - END MODS
  ..W !!,"WEIGHT(Kg): " W:+$P(WT,"^",8) $P(WT,"^",9)_" ("_$P(WT,"^")_")" W ?41,"HEIGHT(cm): " W:$P(HT,"^",8) $P(HT,"^",9)_" ("_$P(HT,"^")_")" K VM,WT,HT
  D:$D(DIRUT) KLCL Q:$D(DIRUT)  S PAGE=PAGE+1 I $D(^UTILITY("VASD",$J)),PAGE=2!($G(PSOPOLP)) D KLCL S PSOPOLP=0 D HD Q
  D KLCL I PSTYPE,'$D(HDFL) D 1 S HDFL=""

@@ -1,11 +1,19 @@
-ECXPLBB ;DALOI/KML - DSS BLOOD BANK PRE-EXTRACT AUDIT REPORT ; 8/13/07 7:08am
- ;;3.0;DSS EXTRACTS;**78,92,105**;Dec 22, 1997;Build 70
+ECXPLBB ;DALOI/KML - DSS BLOOD BANK PRE-EXTRACT AUDIT REPORT ;5/9/14  14:02
+ ;;3.0;DSS EXTRACTS;**78,92,105,136,143,149**;Dec 22, 1997;Build 27
  ;Per VHA Directive 97-033 this routine should not be modified.  Medical Device # BK970021
  ;entry point from option
- D SETUP^ECXLBB I ECFILE="" Q
- N ECXINST
+ D SETUP^ECXLBB1 I ECFILE="" Q  ;149
+ N ECXINST,ECXPORT,CNT ;149
  D DATES
- Q:ECED']""&(ECSD']"")
+ Q:ECED']""!(ECSD']"")  ;149 Changed logic so it stops if either start or stop date is null
+ S ECXPORT=$$EXPORT^ECXUTL1 Q:ECXPORT=-1  I $G(ECXPORT) D  Q  ;149 Section added
+ .W !!,"This report may take a while to generate.  Please be patient.",!
+ .S ECSDN=$$FMTE^XLFDT(ECSD),ECEDN=$$FMTE^XLFDT(ECED),ECSD1=ECSD-.1
+ .K ^TMP($J,"ECXPORT")
+ .S ^TMP($J,"ECXPORT",0)="NAME^SSN^FEEDER LOCATION^TRANSFUSION DATE^COMPONENT^NUMBER OF UNITS",CNT=1
+ .D START
+ .D EXPDISP^ECXUTL1
+ .D ^ECXKILL
  N ECXPOP S ECXPOP=0 D QUE Q:ECXPOP
  ;
 START ;  entry point from tasked job
@@ -16,18 +24,19 @@ START ;  entry point from tasked job
  S ECXJOB=$J
  K ^TMP("ECXLBB",ECXJOB)
  U IO
- I $E(IOST,1,2)="C-" W !,"Retrieving records... "
- S ECXRPT=1 D AUDRPT^ECXLBB
+ I '$G(ECXPORT) I $E(IOST,1,2)="C-" W !,"Retrieving records... " ;149
+ S ECXRPT=1 D AUDRPT^ECXLBB1 ;149
 OUTPUT ; entry point called by EN tag
- I '$D(^TMP("ECXLBB",ECXJOB)) W !,"There were no records that met the date range criteria" Q
+ I '$D(^TMP("ECXLBB",ECXJOB)) W:'$G(ECXPORT) !,"There were no records that met the date range criteria" Q  ;149
  S (ECPG,ECDATE,ECQUIT,ECXDFN)=0,ECLINE="",$P(ECLINE,"=",80)="="
  S ECSDN=$$FMTE^XLFDT(ECSD,9),ECEDN=$$FMTE^XLFDT(ECED,9),ECRDT=$$FMTE^XLFDT(DT,9)
- W:$E(IOST,1,2)="C-" @IOF D HED
- F  S ECXDFN=$O(^TMP("ECXLBB",ECXJOB,ECXDFN)) Q:'ECXDFN  F  S ECDATE=$O(^TMP("ECXLBB",ECXJOB,ECXDFN,ECDATE))  Q:'ECDATE  Q:ECQUIT  S ECXSTR=^(ECDATE) D PRINT
- D ^ECXKILL
+ I '$G(ECXPORT) W:$E(IOST,1,2)="C-" @IOF D HED ;149
+ F  S ECXDFN=$O(^TMP("ECXLBB",ECXJOB,ECXDFN)) Q:'ECXDFN  F  S ECDATE=$O(^TMP("ECXLBB",ECXJOB,ECXDFN,ECDATE))  Q:'ECDATE  Q:ECQUIT  S ECXSTR=^(ECDATE) D PRINT ;143 Put correct code back into routine
+ I '$G(ECXPORT) D ^ECXKILL ;149
  Q
  ;
 PRINT ;
+ I $G(ECXPORT) S ^TMP($J,"ECXPORT",CNT)=$P(ECXSTR,U,5)_U_$P(ECXSTR,U,4)_U_$P(ECXSTR,U,16)_U_$$FMTE^XLFDT($$HL7TFM^XLFDT($P(ECXSTR,U,8)),2)_U_$P(ECXSTR,U,11)_U_+$P(ECXSTR,U,12),CNT=CNT+1 Q  ;149
  I $Y+5>IOSL D  Q:ECQUIT
  . I $E(IOST,1,2)["C-" S DIR(0)="E" D ^DIR K DIR I 'Y S ECQUIT=1 Q
  . W @IOF D HED
@@ -38,7 +47,7 @@ PRINT ;
  ;
 HED ;
  S ECPG=ECPG+1
- W !,"LBB Extract Audit Report",?72,"Page",$J(ECPG,3)
+ W !,"LBB Pre-Extract Audit Report",?72,"Page",$J(ECPG,3) ;136
  W !,ECSDN," - ",ECEDN,?58,"Run Date:",$J(ECRDT,12)
  W !,?37,"Transf",?57,"Number"
  W !,"Name",?14,"SSN",?25,"FDR LOC",?37,"Date",?49,"COMP"
@@ -49,7 +58,11 @@ DATES ;
  N OUT,CHKFLG
  I '$D(ECNODE) S ECNODE=7
  I '$D(ECHEAD) S ECHEAD=" "
- W @IOF,!,"LBB Extract Audit Report Information for DSS",!!
+ W @IOF,!,"LBB Pre-Extract Audit Report Information for DSS",!! ;136
+ ;Added descriptive text DSS FY13 Logic
+ W !,"**NOTE: This audit can only be run prior to the LBB Extract being generated." ;136
+ W !,"If you have already generated your LBB Extract, refer to the Processing "
+ W !,"Guide Chapter 4 section on Regenerating.**",!
  S:'$D(ECINST) ECINST=+$P(^ECX(728,1,0),U)
  S ECXINST=ECINST
  K ECXDIC S DA=ECINST,DIC="^DIC(4,",DIQ(0)="I",DIQ="ECXDIC",DR=".01;99"
@@ -77,7 +90,7 @@ QUE ;
  F X="ECPACK","ECPIECE","ECRTN","ECGRP","ECNODE" S ZTSAVE(X)=""
  F X="ECFILE","ECHEAD","ECVER","ECINST","ECXINST" S ZTSAVE(X)=""
  F X="ECXLOGIC","ECXDATES" S ZTSAVE(X)=""
- S ZTDESC=ECPACK_" EXTRACT AUDIT REPORT: "_ECSDN_" TO "_ECEDN,ZTRTN="START^ECXPLBB",ZTIO=""
+ S ZTDESC=ECPACK_" EXTRACT AUDIT REPORT: "_ECSDN_" TO "_ECEDN,ZTRTN="START^ECXPLBB1",ZTIO="" ;149
  S IOP="Q" W ! S %ZIS="QMP" D ^%ZIS S:POP ECXPOP=1 Q:POP  I $D(IO("Q")) K IO("Q"),ZTIO D ^%ZTLOAD W:$D(ZTSK) !,$C(7),"REQUEST QUEUED",!,"Task #: ",$G(ZTSK) K I,ZTSK,ZTIO,ZTSAVE,ZTRTN D HOME^%ZIS S ECXPOP=1
  Q
  ;

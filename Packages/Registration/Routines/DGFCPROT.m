@@ -1,5 +1,5 @@
-DGFCPROT ;FLB/ALB-DG Field Monitor cross-reference initialing routine. ; 01 AUG 2000 ; 6/18/03 9:08am
- ;;5.3;Registration;**273,526,707**;AUG 13, 1993;Build 14
+DGFCPROT ;FLB/ALB-DG Field Monitor cross-reference initialing routine. ;06/24/2010 10:51
+ ;;5.3;Registration;**273,526,707,825**;AUG 13, 1993;Build 1
  ;
 FC(DGDA,DGFILE,DGFIELD,DGTYPE,DGDTH,DGUSER,DGX,DGX1,DGX2,DGOPT) ; Field change listener
  ;Input: DGDA = DA array as exists during Fileman editing
@@ -31,6 +31,14 @@ FC(DGDA,DGFILE,DGFIELD,DGTYPE,DGDTH,DGUSER,DGX,DGX1,DGX2,DGOPT) ; Field change l
  I DGX1]"",DGX2]"" S DGTYPE="UPDATE"
  ;
  S DGOPT=$P(DGOPT,U,1,2) S:DGOPT="" DGOPT="-1^Unknown"  ;Current option
+ ; **825,MPIC_2114
+ ;see if in reg option and save off values before getting into taskman task job and out of line with reg option
+ I $$REG^VAFCDD01() D  Q
+ .I (DGFIELD=994)!(DGFIELD=.525)!(DGFIELD=.0906)!(DGFIELD=.121)!(DGFIELD=.133)!(DGFIELD=.134) S VAFCFLDS(DGFIELD_";")=""
+ .;The fields below ARE multiples
+ .I DGFILE=2.01 S VAFCF="1;" S VAFCFLDS(VAFCF)="" ;ALIAS
+ .I DGFILE=2.02 S VAFCF="2.02,.01;" S VAFCFLDS(VAFCF)="" ;RACE INFORMATION
+ .I DGFILE=2.06 S VAFCF="2.06,.01;" S VAFCFLDS(VAFCF)="" ;ETHNICITY INFORMATION
  ;
  ;Task off (Taskman) driver routine.
  N ZTRTN,ZTDESC,ZTIO,ZTDTH,ZTSAVE,ZTSK,DGVAR,BXREF,SUBSCR,ZTREQ

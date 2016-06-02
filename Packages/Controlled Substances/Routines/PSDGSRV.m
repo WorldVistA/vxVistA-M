@@ -1,12 +1,12 @@
 PSDGSRV ;BIR/JPW-Review and Complete Green Sheet ; 6 July 94
- ;;3.0; CONTROLLED SUBSTANCES ;**28,30**;13 Feb 97
+ ;;3.0; CONTROLLED SUBSTANCES ;**28,30,71**;13 Feb 97;Build 29
  ;References to ^PSDRUG( are covered by DBIA221
  ;Reference to PSD(58.8 supported by DBIA # 2711
  ;Reference to PSD(58.81 supported by DBIA # 2808
  ;Reference to VA(200 supported by DBIA # 10060
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- S OK=$S($D(^XUSEC("PSJ RPHARM",DUZ)):1,$D(^XUSEC("PSJ PHARM TECH",DUZ)):1,1:0)
- I 'OK W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to complete",!,?12,"Green Sheets.  PSJ RPHARM or PSJ PHARM TECH security key required.",! K OK Q
+ S OK=$S($D(^XUSEC("PSJ RPHARM",DUZ)):1,$D(^XUSEC("PSJ PHARM TECH",DUZ)):1,$D(^XUSEC("PSD TECH ADV",DUZ)):1,1:0)
+ I 'OK W $C(7),!!,?9,"** Please contact your Pharmacy Coordinator for access to complete",!,?12,"Green Sheets.  PSJ RPHARM, PSJ PHARM TECH or PSD TECH ADV security",!?12,"key required.",! K OK Q
  I $P($G(^VA(200,DUZ,20)),U,4)']"" N XQH S XQH="PSD ESIG" D EN^XQH Q
  N X,X1 D SIG^XUSESIG Q:X1=""
 ASKD ;ask disp location
@@ -29,7 +29,7 @@ GS ;select green sheet #
  S NBKU=$P($G(^PSD(58.8,+PSDS,1,+PSDR,0)),"^",8)
 START ;start processing
  S PSDOUT=0
- W ! K DA,DIC S DIC=58.83,DIC(0)="QEA",DIC("A")="Select Completion Status: " S:COMP DIC("B")=COMP S:'$D(^XUSEC("PSJ RPHARM",PSDUZ)) DIC("S")="I $S(Y=2:0,Y=3:0,1:1)"
+ W ! K DA,DIC S DIC=58.83,DIC(0)="QEA",DIC("A")="Select Completion Status: " S:COMP DIC("B")=COMP S:'$D(^XUSEC("PSJ RPHARM",PSDUZ))&'$D(^XUSEC("PSD TECH ADV",PSDUZ)) DIC("S")="I $S(Y=2:0,Y=3:0,1:1)"
  D ^DIC K DIC I Y<0 G END
  S COMP=+Y,CSTAT=$S(COMP=1:7,COMP=2:7,COMP=3:7,1:8)
  ;perpetual inventory?

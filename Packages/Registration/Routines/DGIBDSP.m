@@ -1,5 +1,5 @@
 DGIBDSP ;ALB/SCK - FORMATTED INSURANCE DISPLAY ; 16-JUNE-04
- ;;5.3;Registration;**570,670**;Aug 13, 1993
+ ;;5.3;Registration;**570,670**;Aug 13, 1993;Build 1
  ; This routine replaces the supported API DISP^IBCNS which provided a formatted
  ; display of patient insurance information.  This functionality was removed
  ; when DBIA10146 was retired.
@@ -58,4 +58,8 @@ D1(DGVAL) ;
  W ?(55+OFF),$TR($$FMTE^XLFDT(DGINS(DGVAL,10),"2DF")," ","0"),?(65+OFF+$S(OFF:1,1:0)),$TR($$FMTE^XLFDT(DGINS(DGVAL,11),"2DF")," ","0")
  I 'OFF D
  .I $P(DGINS(DGVAL,9),U,2)="NO" W ?75,"*WNR*" Q
+ ;DSS/SMP - Begin Mods
+ I $G(^%ZOSF("ZVX"))["VX",$G(DGINS(DGVAL,21600))'="" D
+ . W !?(4+OFF),"TYPE OF COVERAGE:  "_DGINS(DGVAL,21600)
+ ;DSS/SMP - End Mods
  Q

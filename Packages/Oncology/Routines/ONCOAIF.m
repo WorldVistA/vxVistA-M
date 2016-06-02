@@ -1,5 +1,5 @@
-ONCOAIF ;Hines OIFO/GWB - [PF Post/Edit Follow-up]; 07/12/00
- ;;2.11;ONCOLOGY;**11,15,16,24,25,26,27,28,37,45,47,48**;Mar 07, 1995;Build 13
+ONCOAIF ;Hines OIFO/GWB - [PF Post/Edit Follow-up] ;11/08/10
+ ;;2.2;ONCOLOGY;**1**;Jul 31, 2013;Build 8
  ;
 BEG W @IOF,!," Post/Edit Follow-up"
  W !," -------------------",!
@@ -11,7 +11,7 @@ PAT ;[PF Post/Edit Follow-up]
  D BEG
  S DIC("A")=" Post/Edit Follow-Up for patient: "
  S DIC="^ONCO(160,",DIC(0)="AEMQZ" D ^DIC K DIC
- G EX:Y<0
+ G KILL:Y<0
  S (ONCOD0,DA,D0)=+Y,ONCONM=Y(0,0)
  D SUM,LST^ONCODLF G DIE
  ;
@@ -25,22 +25,26 @@ EN ;FOLLOW-UP entry when patient has been pre-selected
  K F,DIC,DO,ONCOD1,LC,VS,NF,XDT,XDD,XR
  S ONCDUZ=DUZ,ONCDT=DT
  S PRESEL=1
- S XDT=$S('$D(ONCOD0P):"",1:$$GET1^DIQ(165.5,ONCOD0P,1.1,"I"))
+ ;S XDT=$S('$D(ONCOD0P):"",1:$$GET1^DIQ(165.5,ONCOD0P,1.1,"I"))
+ S XDT=""
  I (XDT="")!(XDT="0000000")!(XDT="9999999") D LST G DIE
  D DD S F=$P($G(^ONCO(160,ONCOD0,"F",0)),U,4)
  I F<1 D DLC,LST S F=1 G DIE
 RF S D0=ONCOD0 W !! K DXS,DIOT D BEG W ! D LST^ONCODLF G DIE
  ;
-DIE K DXS S ONCOSTAT=1,DA=ONCOD0,DR="[ONCO FOLLOWUP]",DIE="^ONCO(160,",FG=0
+DIE K DXS
+ S ONCDUZ=DUZ,ONCDT=DT
+ S ONCOSTAT=1,DA=ONCOD0,DR="[ONCO FOLLOWUP]",DIE="^ONCO(160,",FG=0
  W ! D ^DIE
  I 'FG S ONCOVS="" D UPOUT,CHKCMP I $G(FOLINP)="YES" G DIE
  I $O(^ONCO(160,ONCOD0,"F",0))="" Q
  D CHKCHG
- ;S XD0=ONCOD0 D DUPPRI^ONCFUNC
+ S XD0=ONCOD0 D DUPPRI^ONCFUNC
  I 'FG Q
  ;
 UPDAT S D0=ONCOD0 K DXS,DIOT W ! D LST^ONCODLF,UPD^ONCOCRF
- N Y K DIQ,ONC S DIC="^ONCO(160,",DR=".01;16;15;15.2",DA=ONCOD0,DIQ="ONC"
+ N Y,ONCOD
+ K DIQ,ONC S DIC="^ONCO(160,",DR=".01;16;15;15.2",DA=ONCOD0,DIQ="ONC"
  D EN^DIQ1 W !
  W !," Name..: ",ONC(160,ONCOD0,.01)
  W ?35,"Date Last Contact: ",ONC(160,ONCOD0,16)
@@ -49,14 +53,14 @@ UPDAT S D0=ONCOD0 K DXS,DIOT W ! D LST^ONCODLF,UPD^ONCOCRF
  D SUM
 C K DIR S DIR("A")="DATA OK",DIR("B")="Yes",DIR(0)="Y"
  D ^DIR Q:(Y=U)!(Y="")  G DIE:'Y
- I ONCOVS G EX:$D(PRESEL) G PAT:'$D(REC),REC
+ I ONCOVS G KILL:$G(ONCRFOPT)=1 S ONCFRMPF=1 G REC  ;G KILL:$D(PRESEL) G PAT:'$D(REC),REC
  W !! D DEAD^ONCOFDP
- Q:$D(ONCOAI)  G REC:$D(REC) D KIL K ONCONM S ONCOD=1 G PAT:'$D(QA) Q
+ Q:$D(ONCOAI)  G REC:$D(REC) D KILL K ONCONM S ONCOD=1 Q
  ;
-UPOUT ;Uparrow out check before deleting
+UPOUT ;Up-arrow out check before deleting
  Q:'$D(ONCOD1)
  Q:'$D(^ONCO(160,ONCOD0,"F",ONCOD1,0))
- Q:$P(^(0),U,8)=1
+ Q:$P(^ONCO(160,ONCOD0,"F",ONCOD1,0),U,8)=1
  D DEL
  Q
  ;
@@ -71,7 +75,7 @@ DEL ;Delete FOLLOW-UP entry
  Q
  ;
 CHKCMP ;Check for 'Complete" abstracts with no follow-up
- K ASTAT,FOLINP
+ N AN,ASTAT,PID,PN,PRIM,PSCODE,SEQ
  Q:$O(^ONCO(160,ONCOD0,"F",0))'=""
  S PRIM=0 F  S PRIM=$O(^ONCO(165.5,"C",ONCOD0,PRIM)) Q:PRIM'>0  D
  .I $P($G(^ONCO(165.5,PRIM,7)),U,2)=3 S ASTAT(PRIM)=""
@@ -85,6 +89,7 @@ CHKCMP ;Check for 'Complete" abstracts with no follow-up
  S DIR("A")=" Do you wish to enter a follow-up at this time"
  S DIR("B")="YES",DIR(0)="Y" D ^DIR
  I Y=1 S FOLINP="YES" Q
+ S FOLINP="NO"
  S PRIM=0 F  S PRIM=$O(ASTAT(PRIM)) Q:PRIM'>0  D
  .S DIE="^ONCO(165.5,"
  .S DA=PRIM
@@ -104,6 +109,7 @@ CHKCMP ;Check for 'Complete" abstracts with no follow-up
  Q
  ;
 CHKCHG ;Check for checksum changes to 'Complete' abstracts
+ N CHECKSUM,CNT,ONCDST
  S CNT=0 W !!," Checking for changes to 'Complete' abstracts" S PRIM=0 F  S PRIM=$O(^ONCO(165.5,"C",ONCOD0,PRIM)) Q:PRIM'>0  D
  .W "."
  .I $P($G(^ONCO(165.5,PRIM,7)),U,2)=3 D
@@ -112,22 +118,23 @@ CHKCHG ;Check for checksum changes to 'Complete' abstracts
  ..I CHECKSUM'=$P($G(^ONCO(165.5,PRIM,"EDITS")),U,1) D
  ...S $P(^ONCO(165.5,PRIM,"EDITS"),U,1)=CHECKSUM
  ...W !!," Re-computing checksum value for 'Complete' abstract ",$$GET1^DIQ(165.5,PRIM,.061)
+ ...S DIE="^ONCO(165.5,",DA=PRIM,DR="198///^S X=DT" D ^DIE
  ...S CNT=CNT+1
  W:CNT=0 " No changes found."
  Q
  ;
 REC ;[RF Recurrence/Sub Tx Follow-up]
- K ^DISV(DUZ,"^ONCO(165.5,")
- N ONCDUZ,ONCDT
+ N D,ONCDUZ,ONCDT,TX
  S ONCDUZ=DUZ,ONCDT=DT
  S XR=1,REC="" W @IOF,!," Recurrence/Sub Tx Follow-up"
  W !," ---------------------------",!
- S DIC("A")="Select Patient for Recurrence: "
+ I $G(ONCFRMPF)=1 G RECPF ;if pt pre-selected from ^PF skip pt select
+ S ONCRFOPT=1,DIC("A")="Select Patient for Recurrence: "
  S DIC="^ONCO(160,",DIC(0)="AEQMZ" D ^DIC K DIC
- G EX:Y<0
+ G KILL:Y<0
  S (D0,ONCOD0)=+Y,ONCONM=Y(0,0)
  N Y
- K DIQ,ONC S DIC="^ONCO(160,",DR=".01;2;3;8;10;15",DA=ONCOD0,DIQ="ONC"
+RECPF K DIQ,ONC S DIC="^ONCO(160,",DR=".01;2;3;8;10;15",DA=ONCOD0,DIQ="ONC"
  D EN^DIQ1 W !
  W !?2,"Name.........: ",ONC(160,ONCOD0,.01)
  W ?35,"Race.........: ",ONC(160,ONCOD0,8)
@@ -137,27 +144,42 @@ REC ;[RF Recurrence/Sub Tx Follow-up]
  W ?35,"Status.......: ",ONC(160,ONCOD0,15)
  D SUM
  K DIC W !?1,"Select Primary for Recurrence: ",!
- S D="C",DIC="^ONCO(165.5,",X=ONCOD0,DIC(0)="EFZ" D IX^DIC G:Y<0 REC
- I Y'=" " S (ONCOD0P,DA)=+Y,DR="[ONCO RECURRENCE FOLLOWUP]",DIE="^ONCO(165.5,",DATEDX=$P(^ONCO(165.5,DA,0),U,16),TX=$P($G(^ONCO(165.5,DA,2)),U,1) D ^DIE D CHKCHG S AB=2,ONCOD0P=D0 G EN
+ ;S D="C",DIC="^ONCO(165.5,",X=ONCOD0,DIC(0)="EFZ" D IX^DIC G:Y<0 REC
+ S D="C",DIC="^ONCO(165.5,",X=ONCOD0,DIC(0)="EFZ" D IX^DIC G:Y<0 KILL
+ I Y'=" " S (ONCOD0P,DA)=+Y,DR="[ONCO RECURRENCE FOLLOWUP]",DIE="^ONCO(165.5,",DATEDX=$P(^ONCO(165.5,DA,0),U,16),TX=$P($G(^ONCO(165.5,DA,2)),U,1) D ^DIE D CHKCHG S AB=2,ONCOD0P=D0 G EN:$D(ONCRFOPT)
+ G KILL Q
  ;
 RE ;Recurrence
- W !!," Recurrence"
- W !," ----------"
- Q
+ W !!," Recurrence"," ----------"
+ ; If Type of First Recurrence is not set yet, then check the
+ ; Cancer Status field of Tumor Status multiple to set defaults for
+ ; Type of First Rec, Rec Date 1st-Flag & Distant Sites 1-3 fields
+ ;  -- Called from [ONCO RECURRENCE FOLLOWUP] template --
+ S ONCTOFR=$P($G(^ONCO(165.5,ONCOD0P,5)),"^",2) I ONCTOFR'="" K ONCTOFR Q
+ S ONCTSDAT=$O(^ONCO(165.5,ONCOD0P,"TS","AA",0)) Q:ONCTSDAT=""
+ S ONCTSIEN=$O(^ONCO(165.5,ONCOD0P,"TS","AA",ONCTSDAT,0)) Q:ONCTSIEN=""
+ S ONCTSCS=$P($G(^ONCO(165.5,ONCOD0P,"TS",ONCTSIEN,0)),"^",2)
+ S ONCTOFRV=""
+ I ONCTSCS=1 S ONCTOFRV=$O(^ONCO(160.12,"B","00","")),ONCRD1F=11
+ I ONCTSCS=2 S ONCTOFRV=$O(^ONCO(160.12,"B",70,"")),ONCRD1F=11
+ I ONCTSCS=9 S ONCTOFRV=$O(^ONCO(160.12,"B",99,"")),ONCRD1F=10
+ ;Hard set the nodes since we are within an Input Template when called
+ ;so ^DIE not working - there are no X-refs to set
+ S $P(^ONCO(165.5,ONCOD0P,5),U,2,5)=ONCTOFRV_"^0^0^0"
+ S $P(^ONCO(165.5,ONCOD0P,27),U,26)=ONCRD1F
+ ;
+ K ONCRD1F,ONCTOFR,ONCTOFRV,ONCTSDAT,ONCTSIEN,ONCTSCS Q
  ;
 STX ;Subsequent Course of Treatment
  W !!," Subsequent Course of Treatment"
  W !," ------------------------------"
  Q
  ;
-KIL ;Kill variables
- K ONCOSTAT,XR,ED0,DA,DIC,DIE,DIK,DIOT,DIR,DO,DR,DQ,DXS,F,FDOC,FG,FS
- K ONCOD1,ONCOLC,TM,TS,CS,K,I,XY,XX,XDA,XD1,XD0,LC,ONCONF,ONCOVS,REC
- K AB,DATEDX,PRESEL
+KILL ;Kill variables
+ K ONCOSTAT,XR,DA,DIC,DIE,DIK,DIOT,DIR,DO,DR,DXS,F,FG,FOLINP
+ K ONCOD1,ONCOLC,X,XD1,XD0,LC,ONCOVS,REC
+ K AB,DATEDX,PRESEL,ONCFRMPF,ONCRFOPT
  Q
- ;
-EX ;Exit
- D KIL Q
  ;
 DD ;Date format
  S XDD=$E(XDT,4,5)_"/"_$E(XDT,6,7)_"/"_($E(XDT,1,3)+1700) Q
@@ -176,3 +198,6 @@ SUM ;Primary summary
  N J,XD1 W !!
  S J=0,XD1=0 F  S XD1=$O(^ONCO(165.5,"C",XD0,XD1)) Q:XD1'>0  I $D(^ONCO(165.5,XD1,0)) S J=J+1 D ^ONCOCOML
  Q
+ ;
+CLEANUP ;Cleanup
+ K D0,ONCOAI,ONCOD0,ONCOD0P

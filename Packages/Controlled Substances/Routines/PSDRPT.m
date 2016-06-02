@@ -1,9 +1,14 @@
 PSDRPT ;BIR/BJW-Reprint Misc (VA FORM 10-2321) ; 3 Mar 98
- ;;3.0; CONTROLLED SUBSTANCES ;**8**;13 Feb 97
+ ;;3.0; CONTROLLED SUBSTANCES ;**8,69**;13 Feb 97;Build 13
  ;**Y2K compliance** display 4 digit year on va forms
+ ;Reference to PSD(58.8 supported by DBIA # 2711
+ ;Reference to ^PSD(58.81 supported by DBIA2808
+ ;Reference to ^PSD(58.86 supported by DBIA4472
+ ;Reference to ^PSDRUG( supported by DBIA #221
+ ;
  I '$D(PSDSITE) D ^PSDSET Q:'$D(PSDSITE)
- S OK=$S($D(^XUSEC("PSJ RNURSE",DUZ)):1,$D(^XUSEC("PSD NURSE",DUZ)):1,$D(^XUSEC("PSJ RPHARM",DUZ)):1,1:0)
- I 'OK W $C(7),!!,?9,"** Please contact your Coordinator for access to reprint",!,?12,"this transfer copy of VA FORM 10-2321.",!!,"PSJ RNURSE, PSD NURSE, or PSJ RPHARM security key required.",! K OK Q
+ S OK=$S($D(^XUSEC("PSJ RNURSE",DUZ)):1,$D(^XUSEC("PSD NURSE",DUZ)):1,$D(^XUSEC("PSJ RPHARM",DUZ)):1,$D(^XUSEC("PSD TECH ADV",DUZ)):1,1:0)
+ I 'OK W $C(7),!!,?9,"** Please contact your Coordinator for access to reprint",!,?12,"this transfer copy of VA FORM 10-2321.",!!,"PSJ RNURSE, PSD NURSE, PSJ RPHARM or PSD TECH ADV security key required.",! K OK Q
  W !!,"Reprint Transfer Between NAOUs VA FORM 10-2321",!
  W $C(7),!,"Please note that you may reprint only the copy of the VA FORM 10-2321 for",!,"Green Sheets transferred from your NAOU that have NOT BEEN RECEIVED on",!,"the transfer to NAOU.",!
 ASKN ;ask transfer from naou

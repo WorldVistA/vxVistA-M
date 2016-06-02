@@ -1,5 +1,5 @@
 GMVVS1 ;HIOFO/YH,FT-PATIENT VITAL SIGNS-I/O SF 511 GRAPH - 1 ;11/6/01  14:43
- ;;5.0;GEN. MED. REC. - VITALS;;Oct 31, 2002
+ ;;5.0;GEN. MED. REC. - VITALS;;Oct 31, 2002;Build 8
  ;
  ; This routine uses the following IAs:
  ; #10104 - ^XLFSTR calls          (supported)
@@ -39,10 +39,19 @@ STLNP ;
  S $P(GMRLINE(GMRI),"|",GMRNM)=GI_$S(GMRI="P"&($L(GMRSITE," ")>3):""_$P(GMRSITE," "),GMRI="R"!(GMRI="T")!(GMRI="H")!(GMRI="W")!(GMRI="CG"):""_GMRSITE,1:"")
  S $P(GMRLINE(GMRI),"|",GMRNM)=$E($P(GMRLINE(GMRI),"|",GMRNM)_"          ",1,10)
  D SETLN
- I GMRI="CG",$D(GMRLINE("CG2")) S $P(GMRLINE("CG2"),"|",GMRNM)=$E($S(GMR(GMRI)>0:$J(GMR(GMRI)/.3937,0,2),1:"")_"          ",1,10)
+ ;DSS/SMP - BEGIN MODS
+ N VFD S VFD=$G(^%ZOSF("ZVX"))["VX"
+ I GMRI="CG",$D(GMRLINE("CG2")) D
+ .I VFD S $P(GMRLINE("CG2"),"|",GMRNM)=$E($S(GMR(GMRI)>0:$$IN2CM^VFDXLF(GMR(GMRI),2),1:"")_"          ",1,10) Q
+ .S $P(GMRLINE("CG2"),"|",GMRNM)=$E($S(GMR(GMRI)>0:$J(GMR(GMRI)/.3937,0,2),1:"")_"          ",1,10)
  I GMRI="P" S $P(GMRLINE("P1"),"|",GMRNM)=$E($S($L(GMRSITE," ")>3:$P(GMRSITE," ",2,4),1:GMRSITE)_"          ",1,10)
- I GMRI="H",$D(GMRLINE("H1")) S:GMR(GMRI)>0 $P(GMRLINE("H1"),"|",GMRNM)=$E($S(GMR(GMRI)>0:$J(GMR(GMRI)*2.54,0,2),1:GMR(GMRI))_"          ",1,10)
- I GMRI="W",$D(GMRLINE("W1")) S:GMR(GMRI)>0 $P(GMRLINE("W1"),"|",GMRNM)=$E($S(GMR(GMRI)>0:$J(GMR(GMRI)/2.2,0,2),1:GMR(GMRI))_"          ",1,10)
+ I GMRI="H",$D(GMRLINE("H1")) D
+ .I VFD S:GMR(GMRI)>0 $P(GMRLINE("H1"),"|",GMRNM)=$E($S(GMR(GMRI)>0:$$IN2CM^VFDXLF(GMR(GMRI),2),1:GMR(GMRI))_"          ",1,10) Q
+ .S:GMR(GMRI)>0 $P(GMRLINE("H1"),"|",GMRNM)=$E($S(GMR(GMRI)>0:$J(GMR(GMRI)*2.54,0,2),1:GMR(GMRI))_"          ",1,10)
+ I GMRI="W",$D(GMRLINE("W1")) D
+ .I VFD S:GMR(GMRI)>0 $P(GMRLINE("W1"),"|",GMRNM)=$E($S(GMR(GMRI)>0:$$LB2KG^VFDXLF(GMR(GMRI),2),1:GMR(GMRI))_"          ",1,10) Q
+ .S:GMR(GMRI)>0 $P(GMRLINE("W1"),"|",GMRNM)=$E($S(GMR(GMRI)>0:$J(GMR(GMRI)/2.2,0,2),1:GMR(GMRI))_"          ",1,10)
+ ;DSS/SMP - END MODS
  I GMRI="W",$D(GMRLINE("BMI")),GMR(GMRI)>0 D
  . S GMRBMI="",GMRBMI(1)=GMRDT,GMRBMI(2)=GMR(GMRI) D CALBMI^GMVBMI(.GMRBMI)
  . S $P(GMRLINE("BMI"),"|",GMRNM)=$E(GMRBMI_"          ",1,10) K GMRBMI

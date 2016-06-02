@@ -1,5 +1,5 @@
 PSAPROC1 ;BIR/JMB-Process Uploaded Prime Vendor Invoice Data - CONT'D ;7/23/97
- ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**12,21,50,60**; 10/24/97;Build 4
+ ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**12,21,50,60,70**; 10/24/97;Build 12
  ;
  ;This routine processes uploaded invoices.
  ;
@@ -36,6 +36,8 @@ NOERROR ;Display list of invoices that can be processed by selecting
  S DIR(0)="LO^1:"_PSACNT,DIR("A")="Select invoices to process",DIR("?",1)="Enter the number to the left of the invoice",DIR("?")="data to be processed or a range of numbers." W !
  S DIR("??")="^D SEL^PSAPROC1" D ^DIR K DIR G:Y="" EDIT I $G(DIRUT) S PSAOUT=1 Q
  S PSASEL=Y
+ D PLOCK^PSAPROC8(1)  ;; < PSA*3*70 RJS
+ I '$G(PSASEL) G EXIT^PSAPROC
 INVSEL F PSAPC=1:1 S PSA=+$P(PSASEL,",",PSAPC) Q:'PSA  D  Q:PSAOUT
  .I '$D(PSAOK(PSA)) Q  ;*50
  .S PSACTRL=$P(PSAOK(PSA),"^",3) Q:'$D(^XTMP("PSAPV",PSACTRL,"IN"))

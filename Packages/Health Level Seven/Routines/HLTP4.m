@@ -1,5 +1,6 @@
-HLTP4 ;SFIRMFO/RSD - Transaction Processor for TCP ;01/26/2006  14:06
- ;;1.6;HEALTH LEVEL SEVEN;**19,57,59,91,109,116,117,125,120**;Oct 13, 1995;Build 12
+HLTP4 ;SFIRMFO/RSD - Transaction Processor for TCP ;06/24/2008  10:47
+ ;;1.6;HEALTH LEVEL SEVEN;**19,57,59,91,109,116,117,125,120,142**;Oct 13, 1995;Build 17
+ ;Per VHA Directive 2004-038, this routine should not be modified.
 GENACK ;called from HLMA1
  ;Entry point to generate an acknowledgement message
  ;for TCP
@@ -217,7 +218,12 @@ ACK(HLTACK,HLMG) ;build response based on original msg header
  ;Update status to Being Generated
  D STATUS^HLTF0(HLTCP,8)
  ;Update zero node of Message Admin file #773
- D UPDATE^HLTF0(HLTCP,,"O",,HLREC,HLSAN,"I",HLMTIENS,HLDP,.HLP)
+ ; patch HL*1.6*142
+ ; update ien of sending application (from HL("RAP") of the incoming msg),
+ ; ien of receiving application (from HL("SAP") of the incoming msg),
+ ; and subscriber protocol
+ ; D UPDATE^HLTF0(HLTCP,,"O",,HLREC,HLSAN,"I",HLMTIENS,HLDP,.HLP)
+ D UPDATE^HLTF0(HLTCP,,"O",$G(HL("EIDS")),$G(HL("SAP")),$G(HL("RAP")),"I",HLMTIENS,HLDP,.HLP)
  ; update message sent count
  D LLCNT^HLCSTCP(HLDP,3)
  ; HL*1.6*117 end

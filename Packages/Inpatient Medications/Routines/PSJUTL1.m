@@ -1,5 +1,5 @@
 PSJUTL1 ;BIR/MLM-MISC. INPATIENT UTILITIES ;29 Jul 98 / 4:29 PM
- ;;5.0; INPATIENT MEDICATIONS ;**15,50,58**;16 DEC 97
+ ;;5.0;INPATIENT MEDICATIONS;**15,50,58,260**;16 DEC 97;Build 1
  ;
  ; Reference to ^PSSLOCK is supported by DBIA# 2789.
  ; Reference to ^PS(55 is supported by DBIA# 2191.
@@ -9,6 +9,7 @@ PSJUTL1 ;BIR/MLM-MISC. INPATIENT UTILITIES ;29 Jul 98 / 4:29 PM
  ; Reference to ^PS(59.7 is supported by DBIA# 2181.
  ; Reference to ^PSDRUG is supported by DBIA# 2192.
  ; Reference to ^XPD(9.7 is supported by DBIA# 2197.
+ ; Reference to ^PSSDIUTL is supported by DBIA# 5737.
  ;
 CONVERT(DFN,TYPE) ;
  ; Convert existing UD orders to new format. Only run once/patient, and
@@ -117,6 +118,16 @@ CNIV(DFN)    ;Converts OI on active and pending IV orders for POE
 CNIV1(DFN)   ;
  ;I $P($G(^PS(55,DFN,5.1)),U,11)=2 Q
  Q:'$$L^PSSLOCK(DFN,0)
+ ;DSS/RJS - BEGIN MOD - PREVENT FILE CORRUPTION BY CHECKING FOR ^PS(55 AND CREATE 0 NODE IF IT DOESN'T EXIST
+ I $G(^%ZOSF("ZVX"))["VX" D
+ .I '$D(^PS(55,DFN,0)) D
+ ..N DO,DA,DD,DIC,PSIVFN,DIK
+ ..S ^PS(55,DFN,0)=DFN,DIK="^PS(55,",DIK(1)=.01,DA=DFN D EN^DIK
+ ...I $D(XQSAV) D
+ ....N VFDVAP,VFDMSG,VFDSEV
+ ....S VFDVAP=$P(XQSAV,"^"),VFDMSG="Patient Added to Pharmacy Patient file.",VFDSEV=4
+ ....D XCPT^VFDXX($$NOW^XLFDT,VFDVAP,VFDMSG,"",VFDSEV,VFDMSG,.VMSG)
+ ;DSS/RJS - END MOD
  S $P(^PS(55,DFN,5.1),U,11)=2
  I '$D(^XTMP("PSSCONA")),'$D(^XTMP("PSSCONS")) D UL^PSSLOCK(DFN) Q
  F STPDT=PSGDT:0 S STPDT=$O(^PS(55,DFN,"IV","AIS",STPDT)) Q:'STPDT  D
@@ -184,6 +195,9 @@ SEND ;Send mail message
  S XMSUB="Inpatient Meds IV conversion",XMTEXT="LINE("
  S XMDUZ="Inpatient Meds POE"
  S XMY(+DUZ)="" D ^XMD
+ Q
+PSSDGCK ;Run Drug Check Util
+ D ^PSSDIUTL
  Q
 INSTLDT() ;Return the date PSJ*5*58 was first installed
  NEW DIC,X,Y

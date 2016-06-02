@@ -1,5 +1,5 @@
 PSOORDRG ;BIR/SAB - order entry drug selection ;11/13/97
- ;;7.0;OUTPATIENT PHARMACY;**3,29,49,46,81,105,134,144,132,188,207,148,243**;DEC 1997;Build 22
+ ;;7.0;OUTPATIENT PHARMACY;**3,29,49,46,81,105,134,144,132,188,207,148,243,251,379**;DEC 1997;Build 28
  ;External references to ^PSJORUT2 supported by DBIA 2376
  ;External reference to ^PS(50.7 supported by DBIA 2223
  ;External reference to ^PS(50.605 supported by DBIA 696
@@ -66,7 +66,11 @@ BUILD ;build profiles
  S EN=0
  F PSOEN=0:0 S PSOEN=$O(^PS(52.41,"AOR",PSODFN,PSOEN)) Q:'PSOEN  D
  .F  S EN=$O(^PS(52.41,"AOR",PSODFN,PSOEN,EN)) Q:'EN  D
- ..S PSOOI=^PS(52.41,EN,0) I $P(PSOOI,"^",3)'="DC"&($P(PSOOI,"^",3)'="DE") D:'$P(^PS(52.41,EN,0),"^",9) BLDOI I $P(^PS(52.41,EN,0),"^",9) S PSODD=+$P(PSOOI,"^",9) D SETTMP
+ ..Q:'$P(^PS(52.41,EN,0),"^",8)
+ ..S PSOOI=^PS(52.41,EN,0)
+ ..I $P(PSOOI,"^",3)'="DC"&($P(PSOOI,"^",3)'="DE") D
+ ...I '$P(^PS(52.41,EN,0),"^",9) D BLDOI Q
+ ...S PSODD=+$P(PSOOI,"^",9) D SETTMP
  D BUILDX
  Q
  ;

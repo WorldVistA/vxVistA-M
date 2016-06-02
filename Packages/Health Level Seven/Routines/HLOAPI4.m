@@ -1,5 +1,6 @@
-HLOAPI4 ;ALB/CJM-HL7 - Developer API's for sending & receiving messages(continued) ;12/11/2006
- ;;1.6;HEALTH LEVEL SEVEN;**131,134**;Oct 13, 1995;Build 30
+HLOAPI4 ;ALB/CJM-HL7 - Developer API's for sending & receiving messages(continued) ;08/19/2009
+ ;;1.6;HEALTH LEVEL SEVEN;**131,134,146**;Oct 13, 1995;Build 16
+ ;Per VHA Directive 2004-038, this routine should not be modified.
  ;
 SETTS(SEG,VALUE,FIELD,COMP,REP) ;
  ;Sets a value that is a timestamp in FM format into the segment in HL7
@@ -232,3 +233,39 @@ SETAD(SEG,VALUE,FIELD,COMP,REP) ;
  S @VAR=7,SEG(FIELD,REP,COMP,SUB)=$G(VALUE("TYPE"))
  S @VAR=8,SEG(FIELD,REP,COMP,SUB)=$G(VALUE("OTHER"))
  Q
+ ;
+ ;** P146 START CJM
+SETXPN(SEG,VALUE,FIELD,COMP,REP) ;
+ ;Sets an XPN data type (extended person name) into the segment in the specified field.
+ ;IF the component is specified, then the data type is 'demoted' to a component, and its components are 'demoted' to subcomponents.
+ ;
+ ;Input:
+ ;  SEG - (required, pass by reference) The array where the seg is being built.
+ ;  VALUE  (required, pass-by-reference) These subscripts may be passed:
+ ;    "FAMILY"
+ ;    "GIVEN" first name
+ ;    "SECOND" second and further names or initials
+ ;    "SUFFIX" (e.g., JR)
+ ;    "PREFIX" (e.g., DR)
+ ;    "DEGREE" (e.g., MD)
+ ;  FIELD (required) the sequence # of the field
+ ;  COMP (optional) If specified, the data type is 'demoted' to a component value.
+ ;  REP - the occurrence# (optional, defaults to 1)  For a non-repeating fields, this parameter is not necessary.
+ ;Output: 
+ ;   SEG - segment that is being built
+ ;
+ N SUB,VAR
+ Q:'$G(FIELD)
+ S:'$G(REP) REP=1
+ I '$G(COMP) D
+ .S VAR="COMP",SUB=1
+ E  D
+ .S VAR="SUB"
+ S @VAR=1,SEG(FIELD,REP,COMP,SUB)=$G(VALUE("FAMILY"))
+ S @VAR=2,SEG(FIELD,REP,COMP,SUB)=$G(VALUE("GIVEN"))
+ S @VAR=3,SEG(FIELD,REP,COMP,SUB)=$G(VALUE("SECOND"))
+ S @VAR=4,SEG(FIELD,REP,COMP,SUB)=$G(VALUE("SUFFIX"))
+ S @VAR=5,SEG(FIELD,REP,COMP,SUB)=$G(VALUE("PREFIX"))
+ S @VAR=6,SEG(FIELD,REP,COMP,SUB)=$G(VALUE("DEGREE"))
+ Q
+ ;**P146 END CJM

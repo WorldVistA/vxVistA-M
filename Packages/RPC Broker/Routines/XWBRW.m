@@ -1,20 +1,22 @@
-XWBRW ;ISF/RWF - Read/Write for Broker TCP ;08/03/2004  15:09
- ;;1.1;RPC BROKER;**35**;Mar 28, 1997
+XWBRW ;ISF/RWF - Read/Write for Broker TCP ;09/29/08  14:41
+ ;;1.1;RPC BROKER;**35,49**;Mar 28, 1997;Build 2
  Q
  ;
  ;XWBRBUF is global
  ;SE is a flag to skip error for short read. From PRSB+41^XWBBRK
 BREAD(L,TO,SE) ;read tcp buffer, L is length, TO is timeout
- N R,S,DONE,C
+ N R,S,DONE,C,MODE
  I L'>0 Q ""
  I $L(XWBRBUF)'<L S R=$E(XWBRBUF,1,L),XWBRBUF=$E(XWBRBUF,L+1,999999) Q R
  S R="",DONE=0,L=+L,C=0
- S TO=$S($G(TO)>0:TO,$G(XWBTIME(1))>0:XWBTIME(1),1:60)/2+1
+ S TO=$S($G(TO)>0:TO,$G(XWBTIME(1))>0:XWBTIME(1),1:60)/2+1,MODE=(XWBOS="GT.M")
  U XWBTDEV
  F  D  Q:DONE
  . S S=L-$L(R),R=R_$E(XWBRBUF,1,S),XWBRBUF=$E(XWBRBUF,S+1,999999)
  . I ($L(R)=L)!(R[$C(4))!(C>TO) S DONE=1 Q
- . R XWBRBUF:2 S:'$T C=C+1 S:$L(XWBRBUF) C=0
+ . I MODE R XWBRBUF#S:2 S:'$T C=C+1 ;p49
+ . I 'MODE R XWBRBUF:2 S:'$T C=C+1 ;p49
+ . S:$L(XWBRBUF) C=0 I $DEVICE S DONE=1 Q  ;p49
  . I $G(XWBDEBUG)>2,$L(XWBRBUF) D LOG^XWBDLOG("rd: "_$E(XWBRBUF,1,252))
  . Q
  I $L(R)<L,'$G(SE) S $ECODE=",U411," ;Throw Error, Did not read full length
@@ -79,9 +81,10 @@ SNDERR ;send error information
 WRITE(STR) ;Write a data string
  ; send data for DSM (requires buffer flush (!) every 511 chars)
  ;IF XWBOS="DSM"!(XWBOS="UNIX")!(XWBOS="OpenM) next line
+ N MAX S MAX=255 ;p49
  F  Q:'$L(STR)  D
- . I $L(XWBSBUF)+$L(STR)>240 D WBF
- . S XWBSBUF=XWBSBUF_$E(STR,1,255),STR=$E(STR,256,99999)
+ . I $L(XWBSBUF)+$L(STR)>MAX D WBF
+ . S XWBSBUF=XWBSBUF_$E(STR,1,MAX),STR=$E(STR,MAX+1,99999) ;p49
  Q
 WBF ;Write Buffer Flush
  Q:'$L(XWBSBUF)
